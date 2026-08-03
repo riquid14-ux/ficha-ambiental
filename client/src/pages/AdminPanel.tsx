@@ -84,7 +84,7 @@ export default function AdminPanel() {
               <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">RAP — Resp. Ambiental de Projeto</p>
+                  <p className="text-xs font-bold text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
                   <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
                 </div>
               </div>

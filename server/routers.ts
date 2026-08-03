@@ -379,6 +379,18 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode eliminar esta ficha." });
         }
+        // Log the deletion before deleting
+        const company = sub.companyId ? await db.getCompanyById(sub.companyId) : null;
+        await db.createDeletionLog({
+          submissionId: input.id,
+          weekNumber: sub.weekNumber,
+          weekYear: sub.weekYear,
+          companyId: sub.companyId,
+          companyName: company?.shortName || null,
+          deletedBy: ctx.user.id,
+          deletedByName: ctx.user.name || null,
+          deletedByEmail: ctx.user.email || null,
+        });
         await db.deleteWeeklySubmission(input.id);
         return { success: true };
       }),
@@ -696,6 +708,17 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getProjectUsers(input.projectId);
       }),
+    // Get all user-project assignments (for admin panel)
+    allUserAssignments: adminProcedure.query(async () => {
+      return db.getAllUserProjectAssignments();
+    }),
+    // Set user projects (replace all assignments for a user)
+    setUserProjects: adminProcedure
+      .input(z.object({ userId: z.number(), projectIds: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        await db.setUserProjects(input.userId, input.projectIds);
+        return { success: true };
+      }),
     addUser: adminProcedure
       .input(z.object({ projectId: z.number(), userId: z.number() }))
       .mutation(async ({ input }) => {
@@ -708,6 +731,13 @@ export const appRouter = router({
         await db.removeUserFromProject(input.projectId, input.userId);
         return { success: true };
       }),
+  }),
+
+  // ─── Deletion Logs ──────────────────────────────────────────────────────────
+  deletionLogs: router({
+    list: adminProcedure.query(async () => {
+      return db.getDeletionLogs();
+    }),
   }),
 });
 

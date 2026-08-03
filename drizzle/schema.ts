@@ -235,3 +235,21 @@ export const projectUsers = mysqlTable("project_users", {
 
 export type ProjectUser = typeof projectUsers.$inferSelect;
 export type InsertProjectUser = typeof projectUsers.$inferInsert;
+
+// ─── Deletion Log ─────────────────────────────────────────────────────────────
+export const deletionLogs = mysqlTable("deletion_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  weekNumber: int("weekNumber").notNull(),
+  weekYear: int("weekYear").notNull(),
+  companyId: int("companyId"),
+  companyName: varchar("companyName", { length: 255 }),
+  deletedBy: int("deletedBy").notNull(),
+  deletedByName: varchar("deletedByName", { length: 255 }),
+  deletedByEmail: varchar("deletedByEmail", { length: 255 }),
+  reason: text("reason"),
+  deletedAt: timestamp("deletedAt").defaultNow().notNull(),
+});
+
+export type DeletionLog = typeof deletionLogs.$inferSelect;
+export type InsertDeletionLog = typeof deletionLogs.$inferInsert;

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban, Settings2 } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -44,7 +44,6 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
-  { icon: Settings2, label: "Projetos", path: "/projetos" },
 ];
 const reviewMenuItems = [
   { icon: FileSearch, label: "Revisão", path: "/revisao" },

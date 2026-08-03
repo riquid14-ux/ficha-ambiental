@@ -14,7 +14,6 @@ import SubmissionHistory from "./pages/SubmissionHistory";
 import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
 import Profile from "./pages/Profile";
-import ProjectManagement from "./pages/ProjectManagement";
 
 function Router() {
   return (
@@ -28,7 +27,6 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
       <Route path="/revisao" component={ReviewPage} />
       <Route path="/perfil" component={Profile} />
-      <Route path="/projetos" component={ProjectManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

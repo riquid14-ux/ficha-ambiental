@@ -95,3 +95,8 @@
 - [x] "Todos os Projetos" visível como opção explícita no selector de projetos
 - [x] Permissões por projeto: utilizadores só veem dados dos projetos atribuídos (admin/dono_obra veem todos)
 - [x] Corrigir logo Start Campus que não aparece para utilizadores (problema de URL/path)
+- [x] Remover tab "Projetos" do menu lateral (não deve ser página separada)
+- [x] Mover gestão de permissões por projeto para Administração (inline na lista de utilizadores)
+- [x] Na Administração, cada linha de utilizador mostra os projetos atribuídos (editável)
+- [x] Histórico de eliminações: registar quem eliminou, quando, e que semana (tabela deletion_log)
+- [x] Histórico: botão para alternar entre "Fichas Submetidas" e "Fichas Eliminadas"

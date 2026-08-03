@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
-import { FileText, Calendar, Download, Filter, FolderDown, BarChart3 } from "lucide-react";
+import { FileText, Calendar, Download, Filter, FolderDown, BarChart3, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,6 +42,7 @@ export default function SubmissionHistory() {
   const [filterValue, setFilterValue] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
   const [exportMode, setExportMode] = useState<"fichas" | "medidas">("fichas");
+  const [viewMode, setViewMode] = useState<"submissions" | "deleted">("submissions");
 
   // Per-measure export state
   const [measureSearch, setMeasureSearch] = useState("");
@@ -213,6 +214,33 @@ export default function SubmissionHistory() {
           <p className="text-muted-foreground text-sm mt-1">Consulte e exporte fichas por período ou por medida</p>
         </div>
 
+        {/* View mode toggle: Submissions vs Deleted */}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "submissions" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("submissions")}
+            className="gap-1.5"
+          >
+            <FileText className="w-4 h-4" />
+            Fichas Submetidas
+          </Button>
+          {(user?.role === "admin" || user?.role === "dono_obra") && (
+            <Button
+              variant={viewMode === "deleted" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("deleted")}
+              className="gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              Fichas Eliminadas
+            </Button>
+          )}
+        </div>
+
+        {viewMode === "deleted" ? (
+          <DeletionHistoryView />
+        ) : (
         <Tabs value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
           <TabsList>
             <TabsTrigger value="fichas">
@@ -474,7 +502,79 @@ export default function SubmissionHistory() {
             </Card>
           </TabsContent>
         </Tabs>
+        )}
       </div>
     </AppLayout>
   );
 }
+
+function DeletionHistoryView() {
+  const deletionLogsQuery = trpc.deletionLogs.list.useQuery();
+
+  if (deletionLogsQuery.isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          A carregar histórico de eliminações...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const logs = deletionLogsQuery.data || [];
+
+  if (logs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Nenhuma ficha foi eliminada até ao momento.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Semana</TableHead>
+              <TableHead>Empresa</TableHead>
+              <TableHead>Eliminado por</TableHead>
+              <TableHead>Data</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {logs.map((log: any) => (
+              <TableRow key={log.id}>
+                <TableCell className="font-medium">
+                  S{String(log.weekNumber).padStart(2, "0")} / {log.weekYear}
+                </TableCell>
+                <TableCell>{log.companyName || "-"}</TableCell>
+                <TableCell>
+                  <div>
+                    <span className="font-medium">{log.deletedByName || "-"}</span>
+                    {log.deletedByEmail && (
+                      <span className="text-xs text-muted-foreground ml-1">({log.deletedByEmail})</span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {new Date(log.deletedAt).toLocaleString("pt-PT", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

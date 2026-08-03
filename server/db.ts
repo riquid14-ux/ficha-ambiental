@@ -697,6 +697,46 @@ export async function removeUserFromProject(projectId: number, userId: number) {
   await db.delete(projectUsers).where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, userId)));
 }
 
+export async function getAllUserProjectAssignments() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectUsers);
+}
+
+export async function setUserProjects(userId: number, projectIds: number[]) {
+  const db = await getDb();
+  if (!db) return;
+  // Remove all existing assignments for this user
+  await db.delete(projectUsers).where(eq(projectUsers.userId, userId));
+  // Add new assignments
+  if (projectIds.length > 0) {
+    await db.insert(projectUsers).values(projectIds.map(projectId => ({ projectId, userId })));
+  }
+}
+
+// ─── Deletion Logs ────────────────────────────────────────────────────────────
+export async function createDeletionLog(data: {
+  submissionId: number;
+  weekNumber: number;
+  weekYear: number;
+  companyId: number | null;
+  companyName: string | null;
+  deletedBy: number;
+  deletedByName: string | null;
+  deletedByEmail: string | null;
+  reason?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(deletionLogs).values(data as any);
+}
+
+export async function getDeletionLogs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(deletionLogs).orderBy(sql`${deletionLogs.deletedAt} DESC`);
+}
+
 // ─── Project-scoped queries ─────────────────────────────────────────────────
 
 export async function getSubmissionsByProject(projectId: number) {
@@ -723,3 +763,4 @@ export async function getCompaniesForProject(projectId: number) {
   const companyIds = associations.map(a => a.companyId);
   return db.select().from(companies).where(sql`${companies.id} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`);
 }
+import { deletionLogs } from "../drizzle/schema";

@@ -10,10 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList } from "lucide-react";
-import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban } from "lucide-react";
 import { useLocation } from "wouter";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -321,11 +321,15 @@ function UsersTab() {
   const usersQuery = trpc.users.list.useQuery();
   const companiesQuery = trpc.companies.list.useQuery();
   const invitationsQuery = trpc.invitations.list.useQuery();
+  const projectsQuery = trpc.projects.list.useQuery();
+  const userAssignmentsQuery = trpc.projects.allUserAssignments.useQuery();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCompanyId, setInviteCompanyId] = useState<string>("");
   const [inviteRole, setInviteRole] = useState<string>("");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [editingProjectsUserId, setEditingProjectsUserId] = useState<number | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
   const assignCompanyMutation = trpc.users.assignCompany.useMutation({
     onSuccess: () => {
@@ -361,6 +365,27 @@ function UsersTab() {
       utils.invitations.list.invalidate();
     },
   });
+
+  const setUserProjectsMutation = trpc.projects.setUserProjects.useMutation({
+    onSuccess: () => {
+      toast.success("Projetos atualizados");
+      utils.projects.allUserAssignments.invalidate();
+      setEditingProjectsUserId(null);
+    },
+  });
+
+  // Build a map of userId -> projectIds
+  const userProjectsMap = useMemo(() => {
+    const map = new Map<number, number[]>();
+    if (userAssignmentsQuery.data) {
+      for (const a of userAssignmentsQuery.data) {
+        const existing = map.get(a.userId) || [];
+        existing.push(a.projectId);
+        map.set(a.userId, existing);
+      }
+    }
+    return map;
+  }, [userAssignmentsQuery.data]);
 
   const handleInvite = () => {
     if (!inviteEmail || !inviteCompanyId || !inviteRole) {
@@ -450,6 +475,7 @@ function UsersTab() {
                 <TableHead>Email</TableHead>
                 <TableHead>Papel</TableHead>
                 <TableHead>Empresa</TableHead>
+                <TableHead>Projetos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -493,6 +519,76 @@ function UsersTab() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell>
+                    {editingProjectsUserId === u.id ? (
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-1">
+                          {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                            <label key={p.id} className="flex items-center gap-1 text-xs cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedProjectIds.includes(p.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedProjectIds(prev => [...prev, p.id]);
+                                  } else {
+                                    setSelectedProjectIds(prev => prev.filter(id => id !== p.id));
+                                  }
+                                }}
+                                className="rounded border-gray-300"
+                              />
+                              {p.code}
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-6 text-xs px-2"
+                            onClick={() => setUserProjectsMutation.mutate({ userId: u.id, projectIds: selectedProjectIds })}
+                            disabled={setUserProjectsMutation.isPending}
+                          >
+                            Guardar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 text-xs px-2"
+                            onClick={() => setEditingProjectsUserId(null)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 min-w-[80px]"
+                        onClick={() => {
+                          setEditingProjectsUserId(u.id);
+                          setSelectedProjectIds(userProjectsMap.get(u.id) || []);
+                        }}
+                      >
+                        {(userProjectsMap.get(u.id) || []).length > 0 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {(userProjectsMap.get(u.id) || []).map(pid => {
+                              const proj = projectsQuery.data?.find(p => p.id === pid);
+                              return proj ? (
+                                <Badge key={pid} variant="secondary" className="text-[10px] px-1 py-0">
+                                  {proj.code}
+                                </Badge>
+                              ) : null;
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <FolderKanban className="w-3 h-3" />
+                            Todos
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

@@ -11,7 +11,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
-import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle } from "lucide-react";
+import { useProject } from "@/contexts/ProjectContext";
+import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -50,6 +51,7 @@ export default function WeeklyForm() {
   const { user } = useAuth();
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
+  const { activeProject } = useProject();
   const [responses, setResponses] = useState<ResponseMap>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +69,8 @@ export default function WeeklyForm() {
     weekYear: selectedYear,
     weekStartDate: weekDates.start,
     weekEndDate: weekDates.end,
-  }), [selectedWeek, selectedYear, weekDates]);
+    projectId: activeProject?.id,
+  }), [selectedWeek, selectedYear, weekDates, activeProject?.id]);
 
   const sectionsQuery = trpc.sections.list.useQuery();
   const measuresQuery = trpc.measures.list.useQuery();
@@ -78,7 +81,19 @@ export default function WeeklyForm() {
     { id: user?.companyId! },
     { enabled: !!user?.companyId }
   );
-  const companyType = companyQuery.data?.companyType?.toUpperCase(); // "EE" or "RAP"
+  // Determine which measures to show based on user role
+  // admin → all 156, EE → measures containing "EE", RAP → measures containing "RAP", dono_obra → measures containing "DO"
+  const userRole = user?.role;
+  const measureFilterType = useMemo(() => {
+    if (userRole === "admin") return null; // show all
+    if (userRole === "dono_obra") return "DO";
+    if (userRole === "rap") return "RAP";
+    // EE, observador, raa, user → use company type or default to EE
+    const ct = companyQuery.data?.companyType?.toUpperCase();
+    if (ct === "RAP") return "RAP";
+    if (ct === "DO" || ct === "DONO_OBRA") return "DO";
+    return "EE"; // default for EE companies
+  }, [userRole, companyQuery.data?.companyType]);
   const companyName = companyQuery.data?.name ?? "Empresa não atribuída";
 
   const createOrGetMutation = trpc.submissions.createOrGet.useMutation({
@@ -148,6 +163,17 @@ export default function WeeklyForm() {
       toast.success("Ficha resubmetida com sucesso!");
       utils.submissions.mySubmissions.invalidate();
       setLocation("/historico");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const deleteMutation = trpc.submissions.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Ficha eliminada com sucesso!");
+      utils.submissions.mySubmissions.invalidate();
+      setLocation("/ficha");
     },
     onError: (err) => {
       toast.error(err.message);
@@ -268,12 +294,19 @@ export default function WeeklyForm() {
   const canEdit = subStatus === "draft" || subStatus === "rejected";
   const isReadOnly = user?.role === "observador" || (!canEdit && user?.role !== "admin" && user?.role !== "dono_obra");
 
+  // Can delete: only creator or admin, and only draft/rejected
+  const canDelete = (subStatus === "draft" || subStatus === "rejected") &&
+    (user?.role === "admin" || user?.role === "dono_obra" || submissionQuery.data?.createdBy === user?.id);
+
+  // Can submit: only creator or admin
+  const canSubmitThis = user?.role === "admin" || user?.role === "dono_obra" || submissionQuery.data?.createdBy === user?.id;
+
   // Group measures by section
   const measuresBySection = useMemo(() => {
     if (!measuresQuery.data || !sectionsQuery.data) return [];
-    // Filter measures: only show those relevant to this company type
-    const relevantMeasures = companyType
-      ? measuresQuery.data.filter((m) => m.responsible.toUpperCase().includes(companyType))
+    // Filter measures: only show those relevant to this user's role
+    const relevantMeasures = measureFilterType
+      ? measuresQuery.data.filter((m) => m.responsible.toUpperCase().includes(measureFilterType))
       : measuresQuery.data;
     const map = new Map<number, typeof relevantMeasures>();
     for (const m of relevantMeasures) {
@@ -284,7 +317,7 @@ export default function WeeklyForm() {
       section: s,
       measures: map.get(s.id) || [],
     })).filter((s) => s.measures.length > 0);
-  }, [measuresQuery.data, sectionsQuery.data, companyType]);
+  }, [measuresQuery.data, sectionsQuery.data, measureFilterType]);
 
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
@@ -325,7 +358,7 @@ export default function WeeklyForm() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <img src="/manus-storage/start_campus_logo_3e7c0dee.png" alt="Start Campus" className="h-12 object-contain" />
+              <img src="/manus-storage/start_campus_logo_be5e1215.png" alt="Start Campus" className="h-12 object-contain" />
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">{user?.name || "—"}</p>
                 <p className="text-xs text-muted-foreground">{companyName}</p>
@@ -439,14 +472,31 @@ export default function WeeklyForm() {
               </div>
               {!isReadOnly && (
                 <div className="flex gap-2">
+                  {canDelete && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Tem a certeza que pretende eliminar esta ficha? Esta ação é irreversível.")) {
+                          deleteMutation.mutate({ id: submissionId! });
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Eliminar
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleSave} disabled={saving}>
                     {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Guardar
                   </Button>
-                  <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
-                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                    {isRejected ? "Resubmeter" : "Submeter"}
-                  </Button>
+                  {canSubmitThis && (
+                    <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
+                      {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                      {isRejected ? "Resubmeter" : "Submeter"}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
+import { useProject } from "@/contexts/ProjectContext";
 import { FileText, Calendar, Download, Filter, FolderDown, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
@@ -36,6 +37,7 @@ function getSemester(month: number): number {
 export default function SubmissionHistory() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { activeProject, isAllProjects } = useProject();
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("all");
   const [filterValue, setFilterValue] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
@@ -52,6 +54,14 @@ export default function SubmissionHistory() {
   const submissionsQuery = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador"
     ? trpc.submissions.listAll.useQuery({})
     : trpc.submissions.mySubmissions.useQuery();
+
+  // Filter submissions by active project
+  const submissions = useMemo(() => {
+    const data = submissionsQuery.data || [];
+    if (isAllProjects) return data;
+    if (!activeProject) return data;
+    return data.filter((s: any) => s.projectId === activeProject.id || !s.projectId);
+  }, [submissionsQuery.data, activeProject, isAllProjects]);
 
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
@@ -108,18 +118,18 @@ export default function SubmissionHistory() {
 
   // Generate filter options based on period type
   const filterOptions = useMemo(() => {
-    if (!submissionsQuery.data || submissionsQuery.data.length === 0) return [];
+    if (!submissions || submissions.length === 0) return [];
 
     switch (filterPeriod) {
       case "week": {
         const weeksSet = new Set<string>();
-        submissionsQuery.data.forEach((s) => weeksSet.add(`${s.weekYear}-S${String(s.weekNumber).padStart(2, "0")}`));
+        submissions.forEach((s: any) => weeksSet.add(`${s.weekYear}-S${String(s.weekNumber).padStart(2, "0")}`));
         const weeks = Array.from(weeksSet).sort().reverse();
         return weeks.map((w) => ({ value: w, label: `Semana ${w.split("-S")[1]} / ${w.split("-S")[0]}` }));
       }
       case "month": {
         const monthsSet = new Set<string>();
-        submissionsQuery.data.forEach((s) => {
+        submissions.forEach((s: any) => {
           const m = getMonthFromWeek(s.weekNumber, s.weekYear);
           monthsSet.add(`${s.weekYear}-${String(m).padStart(2, "0")}`);
         });
@@ -131,7 +141,7 @@ export default function SubmissionHistory() {
       }
       case "quarter": {
         const quartersSet = new Set<string>();
-        submissionsQuery.data.forEach((s) => {
+        submissions.forEach((s: any) => {
           const m = getMonthFromWeek(s.weekNumber, s.weekYear);
           quartersSet.add(`${s.weekYear}-Q${getQuarter(m)}`);
         });
@@ -139,7 +149,7 @@ export default function SubmissionHistory() {
       }
       case "semester": {
         const semSet = new Set<string>();
-        submissionsQuery.data.forEach((s) => {
+        submissions.forEach((s: any) => {
           const m = getMonthFromWeek(s.weekNumber, s.weekYear);
           semSet.add(`${s.weekYear}-H${getSemester(m)}`);
         });
@@ -151,14 +161,14 @@ export default function SubmissionHistory() {
       default:
         return [];
     }
-  }, [submissionsQuery.data, filterPeriod]);
+  }, [submissions, filterPeriod]);
 
   // Filter submissions based on selected period and value
   const filteredSubmissions = useMemo(() => {
-    if (!submissionsQuery.data) return [];
-    if (filterPeriod === "all" || filterValue === "all") return submissionsQuery.data;
+    if (!submissions) return [];
+    if (filterPeriod === "all" || filterValue === "all") return submissions;
 
-    return submissionsQuery.data.filter((s) => {
+    return submissions.filter((s: any) => {
       const month = getMonthFromWeek(s.weekNumber, s.weekYear);
       switch (filterPeriod) {
         case "week":
@@ -173,7 +183,7 @@ export default function SubmissionHistory() {
           return true;
       }
     });
-  }, [submissionsQuery.data, filterPeriod, filterValue]);
+  }, [submissions, filterPeriod, filterValue]);
 
   // Export all filtered submissions as PDFs (download individually or as batch)
   const handleExportAll = async () => {

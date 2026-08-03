@@ -142,7 +142,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2">
-                  <img src="/manus-storage/start_campus_logo_3e7c0dee.png" alt="Start Campus" className="h-6 object-contain" />
+                  <img src="/manus-storage/start_campus_logo_be5e1215.png" alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
                     Controlo Ambiental
                   </span>

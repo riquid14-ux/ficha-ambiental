@@ -231,7 +231,7 @@ export const appRouter = router({
   submissions: router({
     // Create or get existing submission for a week
     createOrGet: protectedProcedure
-      .input(z.object({ weekNumber: z.number(), weekYear: z.number(), weekStartDate: z.string(), weekEndDate: z.string() }))
+      .input(z.object({ weekNumber: z.number(), weekYear: z.number(), weekStartDate: z.string(), weekEndDate: z.string(), projectId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         const user = ctx.user;
         if (!canSubmitForms(user.role)) {
@@ -254,10 +254,12 @@ export const appRouter = router({
         // Create new
         const { id } = await db.createWeeklySubmission({
           companyId: user.companyId,
+          projectId: input.projectId ?? null,
           weekNumber: input.weekNumber,
           weekYear: input.weekYear,
           weekStartDate: input.weekStartDate,
           weekEndDate: input.weekEndDate,
+          createdBy: user.id,
         });
 
         // Pre-fill from previous week
@@ -318,15 +320,23 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+        // Only the creator or admin can submit
+        if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode submeter esta ficha." });
         }
         // Auto-fill NA for measures not relevant to this company type
         const company = await db.getCompanyById(sub.companyId);
-        if (company) {
+        if (company && !isAdminOrDono(ctx.user.role)) {
+          // Determine filter type based on user role or company type
+          let filterType: string;
+          if (ctx.user.role === "rap") {
+            filterType = "RAP";
+          } else {
+            // Use company type for EE
+            filterType = company.companyType.toUpperCase() === "RAP" ? "RAP" : "EE";
+          }
           const allMeasures = await db.getAllMeasures();
-          const companyType = company.companyType.toUpperCase(); // "EE" or "RAP"
-          const nonRelevant = allMeasures.filter((m) => !m.responsible.toUpperCase().includes(companyType));
+          const nonRelevant = allMeasures.filter((m) => !m.responsible.toUpperCase().includes(filterType));
           if (nonRelevant.length > 0) {
             await db.bulkUpsertResponses(
               input.id,
@@ -347,10 +357,29 @@ export const appRouter = router({
         if (sub.status !== "rejected") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas rejeitadas podem ser re-submetidas." });
         }
-        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+        // Only the creator or admin can resubmit
+        if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode resubmeter esta ficha." });
         }
         await db.resubmitSubmission(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // Delete submission - only creator or admin can delete, only draft/rejected
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        // Only draft or rejected can be deleted
+        if (sub.status !== "draft" && sub.status !== "rejected") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Apenas fichas em rascunho ou rejeitadas podem ser eliminadas." });
+        }
+        // Only creator or admin can delete
+        if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode eliminar esta ficha." });
+        }
+        await db.deleteWeeklySubmission(input.id);
         return { success: true };
       }),
 
@@ -604,9 +633,17 @@ export const appRouter = router({
       if (isAdminOrDono(ctx.user.role)) {
         return allProjects;
       }
-      const userProjects = await db.getUserProjects(ctx.user.id);
-      const projectIds = new Set(userProjects.map(up => up.projectId));
-      return allProjects.filter(p => projectIds.has(p.id));
+      // Check user-level project assignments first
+      const userProjectAssocs = await db.getUserProjects(ctx.user.id);
+      const userProjectIds = new Set(userProjectAssocs.map(up => up.projectId));
+      // Also check company-level project assignments
+      if (ctx.user.companyId) {
+        const companyProjectAssocs = await db.getProjectsForCompany(ctx.user.companyId);
+        for (const cp of companyProjectAssocs) {
+          userProjectIds.add(cp.projectId);
+        }
+      }
+      return allProjects.filter(p => userProjectIds.has(p.id));
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))

@@ -282,6 +282,21 @@ export async function getDraftCountForCompany(companyId: number): Promise<number
   return result.length;
 }
 
+export async function deleteWeeklySubmission(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Delete related data first
+  const responses = await db.select().from(measureResponses).where(eq(measureResponses.submissionId, id));
+  if (responses.length > 0) {
+    const responseIds = responses.map(r => r.id);
+    await db.delete(evidenceImages).where(sql`${evidenceImages.responseId} IN (${sql.join(responseIds.map(rid => sql`${rid}`), sql`, `)})`);
+    await db.delete(measureResponses).where(eq(measureResponses.submissionId, id));
+  }
+  await db.delete(measureReviews).where(eq(measureReviews.submissionId, id));
+  await db.delete(reviewComments).where(eq(reviewComments.submissionId, id));
+  await db.delete(weeklySubmissions).where(eq(weeklySubmissions.id, id));
+}
+
 export async function reviewSubmission(id: number, userId: number, status: "approved" | "rejected", notes: string | null) {
   const db = await getDb();
   if (!db) return;
@@ -627,6 +642,12 @@ export async function getProjectCompanies(projectId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(projectCompanies).where(eq(projectCompanies.projectId, projectId));
+}
+
+export async function getProjectsForCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectCompanies).where(eq(projectCompanies.companyId, companyId));
 }
 
 export async function addCompanyToProject(projectId: number, companyId: number) {

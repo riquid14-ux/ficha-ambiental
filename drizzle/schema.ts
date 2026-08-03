@@ -79,6 +79,7 @@ export const weeklySubmissions = mysqlTable("weekly_submissions", {
   weekEndDate: varchar("weekEndDate", { length: 10 }).notNull(),
   status: mysqlEnum("status", ["draft", "submitted", "under_review", "approved", "rejected"]).default("draft").notNull(),
   submittedBy: int("submittedBy"),
+  createdBy: int("createdBy"),
   submittedAt: bigint("submittedAt", { mode: "number" }),
   reviewedBy: int("reviewedBy"),
   reviewedAt: bigint("reviewedAt", { mode: "number" }),

@@ -78,7 +78,6 @@
 - [x] Garantir que os 4 utilizadores atuais são admin (DB + autoAdminEmails corrigido para "admin")
 - [x] Proteger admin de ser demovido ao atribuir empresa (assignCompany não altera role de admins)
 - [x] Melhorar nomes dos ficheiros: evidências → Medida{id}_{data}.ext, histórico → FichaS{semana}_{ano}_{empresa}.pdf
-- [ ] Multi-projeto: tabela de projetos (SIN02, SIN03, SIN04, SIN05, SIN06, Subestação 400 kV)
 - [x] Multi-projeto: tabela de projetos (SIN02, SIN03, SIN04, SIN05, SIN06, Subestação 400 kV)
 - [x] Multi-projeto: projeto "Todos os Projetos" (main) que agrega dados de todas as obras
 - [x] Multi-projeto: associar empresas a projetos (uma empresa pode estar em vários)
@@ -87,3 +86,13 @@
 - [x] Multi-projeto: selector de projeto no frontend (sidebar ou header)
 - [x] Multi-projeto: dashboard agregado no projeto "main" (visão geral de todas as obras)
 - [x] Multi-projeto: admin pode gerir acessos por projeto na Administração
+- [ ] Favicon: usar logo Start Campus (trovão verde) como ícone do browser tab
+- [x] Favicon: usar logo Start Campus (trovão verde) como ícone do browser tab
+- [x] Ficha Semanal: botão "Eliminar" visível para criador, admin ou dono_obra (só rascunhos/rejeitadas)
+- [x] Filtragem de medidas por role: EE só vê EE, RAP só vê RAP, dono_obra só vê dono_obra, admin vê todas 156
+- [x] Edição colaborativa: qualquer membro da mesma empresa pode editar/guardar rascunho, mas só criador ou admin pode submeter/eliminar
+- [x] Campo createdBy em weekly_submissions para rastrear quem criou a ficha
+- [x] Adicionar projeto SIN07 à base de dados
+- [x] "Todos os Projetos" visível como opção explícita no selector de projetos
+- [x] Permissões por projeto: utilizadores só veem dados dos projetos atribuídos (admin/dono_obra veem todos)
+- [x] Corrigir logo Start Campus que não aparece para utilizadores (problema de URL/path)

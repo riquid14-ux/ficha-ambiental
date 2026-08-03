@@ -63,9 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ClipboardList className="w-8 h-8 text-primary" />
-            </div>
+            <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-16 object-contain" />
             <h1 className="text-2xl font-semibold tracking-tight text-center text-foreground">
               Ficha de Controlo Ambiental
             </h1>
@@ -151,9 +149,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed && (
-                <span className="font-semibold tracking-tight truncate text-sm">
-                  Controlo Ambiental
-                </span>
+                <div className="flex items-center gap-2">
+                  <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-6 object-contain" />
+                  <span className="font-semibold tracking-tight truncate text-sm">
+                    Controlo Ambiental
+                  </span>
+                </div>
               )}
             </div>
           </SidebarHeader>

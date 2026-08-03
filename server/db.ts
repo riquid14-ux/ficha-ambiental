@@ -33,6 +33,12 @@ export async function getDb() {
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 
+const DO_EMAILS = [
+  "rmd@startcampus.pt",
+  "rom@startcampus.pt",
+  "npa@startcampus.pt",
+];
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -64,6 +70,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } else if (user.openId === ENV.ownerOpenId) {
     values.role = "admin";
     updateSet.role = "admin";
+  } else if (user.email && DO_EMAILS.includes(user.email.toLowerCase())) {
+    values.role = "dono_obra";
+    updateSet.role = "dono_obra";
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
@@ -91,7 +100,7 @@ export async function updateUserCompany(userId: number, companyId: number | null
   await db.update(users).set({ companyId }).where(eq(users.id, userId));
 }
 
-export async function updateUserRole(userId: number, role: "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra") {
+export async function updateUserRole(userId: number, role: "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra" | "observador") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));

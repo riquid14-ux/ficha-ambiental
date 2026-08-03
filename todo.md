@@ -33,3 +33,6 @@
 - [x] Dashboard: filtro por estado (I, C, NC, NA, Todos)
 - [x] Revisão: filtro por estado nas medidas ao visualizar ficha
 - [x] Role: Observador (pode ver tudo mas não editar/submeter/aprovar)
+- [x] Auto-atribuir role dono_obra aos emails rmd@startcampus.pt, rom@startcampus.pt, npa@startcampus.pt
+- [x] Atualizar descrição das medidas para referir DCAPE
+- [x] Adicionar logo Start Campus

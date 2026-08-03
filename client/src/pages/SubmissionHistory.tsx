@@ -5,10 +5,15 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
-import { FileText, Calendar, Download, Filter, FolderDown } from "lucide-react";
+import { FileText, Calendar, Download, Filter, FolderDown, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type FilterPeriod = "all" | "week" | "month" | "quarter" | "semester";
 
@@ -34,6 +39,15 @@ export default function SubmissionHistory() {
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("all");
   const [filterValue, setFilterValue] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
+  const [exportMode, setExportMode] = useState<"fichas" | "medidas">("fichas");
+
+  // Per-measure export state
+  const [measureSearch, setMeasureSearch] = useState("");
+  const [selectedMeasureIds, setSelectedMeasureIds] = useState<number[]>([]);
+  const [measureStatusFilter, setMeasureStatusFilter] = useState<string>("all");
+  const [measureStartDate, setMeasureStartDate] = useState("");
+  const [measureEndDate, setMeasureEndDate] = useState("");
+  const [exportingMeasure, setExportingMeasure] = useState(false);
 
   const submissionsQuery = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador"
     ? trpc.submissions.listAll.useQuery({})
@@ -41,6 +55,56 @@ export default function SubmissionHistory() {
 
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
+
+  // Fetch measures and sections for per-measure export
+  const measuresQuery = trpc.measures.list.useQuery();
+  const sectionsQuery = trpc.sections.list.useQuery();
+
+  // Filter measures by search
+  const filteredMeasures = useMemo(() => {
+    if (!measuresQuery.data) return [];
+    if (!measureSearch) return measuresQuery.data;
+    const q = measureSearch.toLowerCase();
+    return measuresQuery.data.filter(
+      (m) => m.number.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
+    );
+  }, [measuresQuery.data, measureSearch]);
+
+  // Handle per-measure export
+  const handleExportMeasure = () => {
+    if (selectedMeasureIds.length === 0) {
+      toast.error("Selecione pelo menos uma medida para exportar.");
+      return;
+    }
+    if (!measureStartDate || !measureEndDate) {
+      toast.error("Selecione as datas de início e fim do período.");
+      return;
+    }
+    setExportingMeasure(true);
+    toast.info(`A gerar PDF de evolução para ${selectedMeasureIds.length} medida(s)...`);
+
+    const params = new URLSearchParams({
+      measureIds: selectedMeasureIds.join(","),
+      startDate: measureStartDate,
+      endDate: measureEndDate,
+    });
+    if (measureStatusFilter !== "all") {
+      params.set("status", measureStatusFilter);
+    }
+
+    const link = document.createElement("a");
+    link.href = `/api/pdf/measure?${params.toString()}`;
+    link.download = `medidas_evolucao.pdf`;
+    link.click();
+
+    setTimeout(() => setExportingMeasure(false), 2000);
+  };
+
+  const toggleMeasure = (id: number) => {
+    setSelectedMeasureIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   // Generate filter options based on period type
   const filterOptions = useMemo(() => {
@@ -134,142 +198,272 @@ export default function SubmissionHistory() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Histórico de Submissões</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {filteredSubmissions.length} ficha{filteredSubmissions.length !== 1 ? "s" : ""}
-              {filterPeriod !== "all" && filterValue !== "all" ? " (filtrado)" : ""}
-            </p>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <Select
-              value={filterPeriod}
-              onValueChange={(v) => {
-                setFilterPeriod(v as FilterPeriod);
-                setFilterValue("all");
-              }}
-            >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="week">Semana</SelectItem>
-                <SelectItem value="month">Mês</SelectItem>
-                <SelectItem value="quarter">Trimestre</SelectItem>
-                <SelectItem value="semester">Semestre</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {filterPeriod !== "all" && filterOptions.length > 0 && (
-              <Select value={filterValue} onValueChange={setFilterValue}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Selecionar..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {filterOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {/* Export All button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportAll}
-              disabled={exporting || filteredSubmissions.filter((s) => s.status === "submitted" || s.status === "approved").length === 0}
-            >
-              <FolderDown className="w-4 h-4 mr-1" />
-              {exporting ? "A exportar..." : "Exportar PDFs"}
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Histórico de Submissões</h1>
+          <p className="text-muted-foreground text-sm mt-1">Consulte e exporte fichas por período ou por medida</p>
         </div>
 
-        {submissionsQuery.isLoading ? (
-          <div className="text-muted-foreground text-sm">A carregar...</div>
-        ) : filteredSubmissions.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">
-                {submissionsQuery.data?.length === 0
-                  ? "Ainda não existem submissões."
-                  : "Nenhuma ficha encontrada para o período selecionado."}
+        <Tabs value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
+          <TabsList>
+            <TabsTrigger value="fichas">
+              <FileText className="w-4 h-4 mr-1.5" /> Por Ficha
+            </TabsTrigger>
+            <TabsTrigger value="medidas">
+              <BarChart3 className="w-4 h-4 mr-1.5" /> Por Medida
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ─── Tab: Por Ficha ─── */}
+          <TabsContent value="fichas" className="space-y-4 mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                {filteredSubmissions.length} ficha{filteredSubmissions.length !== 1 ? "s" : ""}
+                {filterPeriod !== "all" && filterValue !== "all" ? " (filtrado)" : ""}
               </p>
-              {submissionsQuery.data?.length === 0 && (
-                <Button className="mt-4" onClick={() => setLocation("/ficha")}>
-                  Criar primeira ficha
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  value={filterPeriod}
+                  onValueChange={(v) => {
+                    setFilterPeriod(v as FilterPeriod);
+                    setFilterValue("all");
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="week">Semana</SelectItem>
+                    <SelectItem value="month">Mês</SelectItem>
+                    <SelectItem value="quarter">Trimestre</SelectItem>
+                    <SelectItem value="semester">Semestre</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {filterPeriod !== "all" && filterOptions.length > 0 && (
+                  <Select value={filterValue} onValueChange={setFilterValue}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {filterOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportAll}
+                  disabled={exporting || filteredSubmissions.filter((s) => s.status === "submitted" || s.status === "approved").length === 0}
+                >
+                  <FolderDown className="w-4 h-4 mr-1" />
+                  {exporting ? "A exportar..." : "Exportar PDFs"}
                 </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3">
-            {filteredSubmissions.map((sub) => (
-              <Card key={sub.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation(`/ficha/${sub.id}`)}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">
-                        Semana {sub.weekNumber} / {sub.weekYear}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {sub.weekStartDate} a {sub.weekEndDate}
-                        {(user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador") && companyMap.get(sub.companyId) && (
-                          <span className="ml-2">— {companyMap.get(sub.companyId)?.shortName}</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(sub.status === "submitted" || sub.status === "approved") && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const link = document.createElement("a");
-                          link.href = `/api/pdf/submission/${sub.id}`;
-                          link.download = `ficha_S${sub.weekNumber}_${sub.weekYear}.pdf`;
-                          link.click();
-                          toast.success("A gerar PDF...");
-                        }}
-                      >
-                        <Download className="w-4 h-4 mr-1" /> PDF
-                      </Button>
-                    )}
-                    <Badge
-                      variant={
-                        sub.status === "approved" ? "default" :
-                        sub.status === "submitted" ? "secondary" :
-                        sub.status === "rejected" ? "destructive" :
-                        "outline"
-                      }
-                    >
-                      {sub.status === "approved" ? "Aprovada" :
-                       sub.status === "submitted" ? "Submetida" :
-                       sub.status === "rejected" ? "Rejeitada" :
-                       sub.status === "under_review" ? "Em revisão" :
-                       "Rascunho"}
-                    </Badge>
-                  </div>
+              </div>
+            </div>
+
+            {submissionsQuery.isLoading ? (
+              <div className="text-muted-foreground text-sm">A carregar...</div>
+            ) : filteredSubmissions.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    {submissionsQuery.data?.length === 0
+                      ? "Ainda não existem submissões."
+                      : "Nenhuma ficha encontrada para o período selecionado."}
+                  </p>
+                  {submissionsQuery.data?.length === 0 && (
+                    <Button className="mt-4" onClick={() => setLocation("/ficha")}>
+                      Criar primeira ficha
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="grid gap-3">
+                {filteredSubmissions.map((sub) => (
+                  <Card key={sub.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation(`/ficha/${sub.id}`)}>
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Calendar className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            Semana {sub.weekNumber} / {sub.weekYear}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {sub.weekStartDate} a {sub.weekEndDate}
+                            {(user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador") && companyMap.get(sub.companyId) && (
+                              <span className="ml-2">— {companyMap.get(sub.companyId)?.shortName}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(sub.status === "submitted" || sub.status === "approved") && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const link = document.createElement("a");
+                              link.href = `/api/pdf/submission/${sub.id}`;
+                              link.download = `ficha_S${sub.weekNumber}_${sub.weekYear}.pdf`;
+                              link.click();
+                              toast.success("A gerar PDF...");
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" /> PDF
+                          </Button>
+                        )}
+                        <Badge
+                          variant={
+                            sub.status === "approved" ? "default" :
+                            sub.status === "submitted" ? "secondary" :
+                            sub.status === "rejected" ? "destructive" :
+                            "outline"
+                          }
+                        >
+                          {sub.status === "approved" ? "Aprovada" :
+                           sub.status === "submitted" ? "Submetida" :
+                           sub.status === "rejected" ? "Rejeitada" :
+                           sub.status === "under_review" ? "Em revisão" :
+                           "Rascunho"}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ─── Tab: Por Medida ─── */}
+          <TabsContent value="medidas" className="space-y-4 mt-4">
+            <Card>
+              <CardContent className="p-5 space-y-5">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">Exportar Evolução por Medida</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Selecione uma ou mais medidas e um período para gerar um PDF com a evolução semanal (estado, observações e fotos).
+                  </p>
+                </div>
+
+                {/* Period and Status filters */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Data Início</Label>
+                    <Input
+                      type="date"
+                      value={measureStartDate}
+                      onChange={(e) => setMeasureStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Data Fim</Label>
+                    <Input
+                      type="date"
+                      value={measureEndDate}
+                      onChange={(e) => setMeasureEndDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Filtrar por Estado</Label>
+                    <Select value={measureStatusFilter} onValueChange={setMeasureStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os estados</SelectItem>
+                        <SelectItem value="I">Implementado</SelectItem>
+                        <SelectItem value="C">Conforme</SelectItem>
+                        <SelectItem value="NC">Não Conforme</SelectItem>
+                        <SelectItem value="NA">Não Aplicável</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Measure selector */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Selecionar Medidas ({selectedMeasureIds.length} selecionada{selectedMeasureIds.length !== 1 ? "s" : ""})</Label>
+                  <Input
+                    placeholder="Pesquisar medida por número ou descrição..."
+                    value={measureSearch}
+                    onChange={(e) => setMeasureSearch(e.target.value)}
+                    className="text-sm"
+                  />
+                  <div className="flex gap-2 mb-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setSelectedMeasureIds(filteredMeasures.map((m) => m.id))}
+                    >
+                      Selecionar todas
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setSelectedMeasureIds([])}
+                    >
+                      Limpar seleção
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[280px] border rounded-md p-2">
+                    <div className="space-y-1">
+                      {filteredMeasures.map((measure) => {
+                        const section = sectionsQuery.data?.find((s) => s.id === measure.sectionId);
+                        return (
+                          <div
+                            key={measure.id}
+                            className={`flex items-start gap-2 p-2 rounded hover:bg-muted/50 cursor-pointer transition-colors ${selectedMeasureIds.includes(measure.id) ? "bg-primary/5 border border-primary/20" : ""}`}
+                            onClick={() => toggleMeasure(measure.id)}
+                          >
+                            <Checkbox
+                              checked={selectedMeasureIds.includes(measure.id)}
+                              onCheckedChange={() => toggleMeasure(measure.id)}
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{measure.number}</span>
+                                <span className="text-xs text-muted-foreground">{section?.name?.substring(0, 40)}</span>
+                              </div>
+                              <p className="text-xs text-foreground mt-0.5 line-clamp-2">{measure.description}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </div>
+
+                {/* Export button */}
+                <Button
+                  onClick={handleExportMeasure}
+                  disabled={exportingMeasure || selectedMeasureIds.length === 0 || !measureStartDate || !measureEndDate}
+                  className="w-full"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {exportingMeasure
+                    ? "A gerar PDF..."
+                    : `Exportar Evolução (${selectedMeasureIds.length} medida${selectedMeasureIds.length !== 1 ? "s" : ""})`}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

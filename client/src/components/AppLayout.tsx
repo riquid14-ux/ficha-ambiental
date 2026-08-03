@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -36,6 +36,7 @@ const menuItems = [
 const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
+const profileMenuItem = { icon: UserCircle, label: "Perfil", path: "/perfil" };
 const reviewMenuItems = [
   { icon: FileSearch, label: "Revisão", path: "/revisao" },
 ];
@@ -86,6 +87,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     ...menuItems,
     ...(canReview ? reviewMenuItems : []),
     ...(canAdmin ? adminMenuItems : []),
+    profileMenuItem,
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 

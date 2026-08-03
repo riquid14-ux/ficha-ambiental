@@ -29,6 +29,13 @@
       "when": 1785746358473,
       "tag": "0003_pretty_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1785769419209,
+      "tag": "0004_foamy_solo",
+      "breakpoints": true
     }
   ]
 }

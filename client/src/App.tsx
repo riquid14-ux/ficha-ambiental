@@ -12,6 +12,7 @@ import AdminPanel from "./pages/AdminPanel";
 import SubmissionHistory from "./pages/SubmissionHistory";
 import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
+import Profile from "./pages/Profile";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/historico" component={SubmissionHistory} />
       <Route path="/admin" component={AdminPanel} />
       <Route path="/revisao" component={ReviewPage} />
+      <Route path="/perfil" component={Profile} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

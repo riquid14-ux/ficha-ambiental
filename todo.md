@@ -69,3 +69,9 @@
 - [x] Backend: callback do Autodesk OAuth agora auto-autentica o utilizador na app (cria sessão baseada no email do Autodesk)
 - [x] Frontend: Login page deteta contexto iframe (ACC) e tenta auto-login automático; mostra botão "Entrar com Autodesk" como alternativa
 - [x] Segurança: email confirmado pelo token do Autodesk (não pode ser falsificado — vem diretamente da API userinfo)
+- [x] Segurança: email confirmado pelo token do Autodesk (não pode ser falsificado — vem diretamente da API userinfo)
+- [ ] Corrigir logo Start Campus no sidebar (voltar a aparecer corretamente)
+- [x] Corrigir logo Start Campus no sidebar (voltar a aparecer corretamente)
+- [x] Administração: restringir acesso apenas a admin e dono_obra (outros roles não veem a label no menu)
+- [x] Nova página Perfil: utilizador pode editar nome completo e cargo
+- [x] Permissões de alteração de roles: apenas admin e dono_obra podem alterar permissões de utilizadores

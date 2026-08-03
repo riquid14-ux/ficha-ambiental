@@ -131,6 +131,18 @@ export async function updateUserRole(userId: number, role: "user" | "admin" | "e
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
+export async function updateUserProfile(userId: number, data: { fullName?: string | null; jobTitle?: string | null; name?: string | null }) {
+  const db = await getDb();
+  if (!db) return;
+  const updateSet: Record<string, unknown> = {};
+  if (data.fullName !== undefined) updateSet.fullName = data.fullName;
+  if (data.jobTitle !== undefined) updateSet.jobTitle = data.jobTitle;
+  if (data.name !== undefined) updateSet.name = data.name;
+  if (Object.keys(updateSet).length > 0) {
+    await db.update(users).set(updateSet).where(eq(users.id, userId));
+  }
+}
+
 // ─── Companies ───────────────────────────────────────────────────────────────
 
 export async function getAllCompanies() {

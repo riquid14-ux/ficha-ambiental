@@ -548,6 +548,38 @@ export const appRouter = router({
         return db.getAnalytics(filters);
       }),
   }),
+
+  // ─── Profile ───────────────────────────────────────────────────────────────
+  profile: router({
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const user = await db.getUserByOpenId(ctx.user.openId);
+      if (!user) return null;
+      return {
+        id: user.id,
+        name: user.name,
+        fullName: (user as any).fullName ?? null,
+        jobTitle: (user as any).jobTitle ?? null,
+        email: user.email,
+        role: user.role,
+      };
+    }),
+    update: protectedProcedure
+      .input(z.object({
+        fullName: z.string().max(255).optional(),
+        jobTitle: z.string().max(255).optional(),
+        displayName: z.string().max(100).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserByOpenId(ctx.user.openId);
+        if (!user) throw new Error("User not found");
+        await db.updateUserProfile(user.id, {
+          fullName: input.fullName ?? null,
+          jobTitle: input.jobTitle ?? null,
+          name: input.displayName ?? null,
+        });
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

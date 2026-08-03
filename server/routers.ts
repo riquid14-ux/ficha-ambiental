@@ -70,7 +70,7 @@ export const appRouter = router({
         return { success: true };
       }),
     updateRole: adminProcedure
-      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra"]) }))
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]) }))
       .mutation(async ({ input }) => {
         await db.updateUserRole(input.userId, input.role);
         return { success: true };
@@ -107,6 +107,12 @@ export const appRouter = router({
         }
         if (!user.companyId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Utilizador não está associado a nenhuma empresa." });
+        }
+
+        // Limit to 5 open drafts
+        const drafts = await db.getDraftCountForCompany(user.companyId);
+        if (drafts >= 5) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Limite de 5 fichas em rascunho atingido. Submeta ou elimine fichas existentes." });
         }
 
         // Check if already exists
@@ -182,6 +188,19 @@ export const appRouter = router({
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
         if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        // Auto-fill NA for measures not relevant to this company type
+        const company = await db.getCompanyById(sub.companyId);
+        if (company) {
+          const allMeasures = await db.getAllMeasures();
+          const companyType = company.companyType.toUpperCase(); // "EE" or "RAP"
+          const nonRelevant = allMeasures.filter((m) => !m.responsible.toUpperCase().includes(companyType));
+          if (nonRelevant.length > 0) {
+            await db.bulkUpsertResponses(
+              input.id,
+              nonRelevant.map((m) => ({ measureId: m.id, status: "NA" as const, observations: null }))
+            );
+          }
         }
         await db.submitWeeklySubmission(input.id, ctx.user.id);
         return { success: true };

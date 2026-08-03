@@ -73,6 +73,14 @@ export default function WeeklyForm() {
   const measuresQuery = trpc.measures.list.useQuery();
   const utils = trpc.useUtils();
 
+  // Fetch company info to filter measures by type
+  const companyQuery = trpc.companies.getById.useQuery(
+    { id: user?.companyId! },
+    { enabled: !!user?.companyId }
+  );
+  const companyType = companyQuery.data?.companyType?.toUpperCase(); // "EE" or "RAP"
+  const companyName = companyQuery.data?.name ?? "Empresa não atribuída";
+
   const createOrGetMutation = trpc.submissions.createOrGet.useMutation({
     onSuccess: (data) => {
       if (data && !params.id) {
@@ -246,16 +254,20 @@ export default function WeeklyForm() {
   // Group measures by section
   const measuresBySection = useMemo(() => {
     if (!measuresQuery.data || !sectionsQuery.data) return [];
-    const map = new Map<number, typeof measuresQuery.data>();
-    for (const m of measuresQuery.data) {
+    // Filter measures: only show those relevant to this company type
+    const relevantMeasures = companyType
+      ? measuresQuery.data.filter((m) => m.responsible.toUpperCase().includes(companyType))
+      : measuresQuery.data;
+    const map = new Map<number, typeof relevantMeasures>();
+    for (const m of relevantMeasures) {
       if (!map.has(m.sectionId)) map.set(m.sectionId, []);
       map.get(m.sectionId)!.push(m);
     }
     return sectionsQuery.data.map((s) => ({
       section: s,
       measures: map.get(s.id) || [],
-    }));
-  }, [measuresQuery.data, sectionsQuery.data]);
+    })).filter((s) => s.measures.length > 0);
+  }, [measuresQuery.data, sectionsQuery.data, companyType]);
 
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
@@ -299,7 +311,7 @@ export default function WeeklyForm() {
               <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-12 object-contain" />
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">{user?.name || "—"}</p>
-                <p className="text-xs text-muted-foreground">{(user as any)?.companyName || "Empresa não atribuída"}</p>
+                <p className="text-xs text-muted-foreground">{companyName}</p>
               </div>
             </div>
             <div className="border-t pt-4">

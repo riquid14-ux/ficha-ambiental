@@ -227,6 +227,16 @@ export async function getSubmissionForWeek(companyId: number, weekNumber: number
   return result[0];
 }
 
+export async function getDraftCountForCompany(companyId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select()
+    .from(weeklySubmissions)
+    .where(and(eq(weeklySubmissions.companyId, companyId), eq(weeklySubmissions.status, "draft")));
+  return result.length;
+}
+
 export async function reviewSubmission(id: number, userId: number, status: "approved" | "rejected", notes: string | null) {
   const db = await getDb();
   if (!db) return;

@@ -51,7 +51,7 @@ export default function WeeklyForm() {
   const { user } = useAuth();
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
-  const { activeProject } = useProject();
+  const { activeProject, isAllProjects } = useProject();
   const [responses, setResponses] = useState<ResponseMap>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -69,8 +69,8 @@ export default function WeeklyForm() {
     weekYear: selectedYear,
     weekStartDate: weekDates.start,
     weekEndDate: weekDates.end,
-    projectId: activeProject?.id,
-  }), [selectedWeek, selectedYear, weekDates, activeProject?.id]);
+    projectId: activeProject?.id ?? 0,
+  }), [selectedWeek, selectedYear, weekDates, activeProject]);
 
   const sectionsQuery = trpc.sections.list.useQuery();
   const measuresQuery = trpc.measures.list.useQuery();
@@ -416,9 +416,18 @@ export default function WeeklyForm() {
                   Período: <strong>{weekDates.start}</strong> a <strong>{weekDates.end}</strong>
                 </p>
               </div>
-              <Button onClick={() => setStarted(true)} size="lg" className="w-full">
-                Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
-              </Button>
+              {isAllProjects && !params.id ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>Selecione um projeto específico no menu lateral para criar uma ficha de controlo.</span>
+                  </div>
+                </div>
+              ) : (
+                <Button onClick={() => setStarted(true)} size="lg" className="w-full">
+                  Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

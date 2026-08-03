@@ -11,6 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useMemo, useCallback } from "react";
+import { useProject } from "@/contexts/ProjectContext";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send } from "lucide-react";
 import { useLocation } from "wouter";
@@ -46,6 +47,7 @@ export default function ReviewPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const { activeProject, isAllProjects } = useProject();
 
   const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra";
   const canSee = canReview || user?.role === "observador";
@@ -53,6 +55,14 @@ export default function ReviewPage() {
   const submissionsQuery = trpc.submissions.listAll.useQuery({});
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
+
+  // Filter submissions by active project
+  const filteredSubmissions = useMemo(() => {
+    const data = submissionsQuery.data || [];
+    if (isAllProjects) return data;
+    if (!activeProject) return data;
+    return data.filter((s: any) => s.projectId === activeProject.id);
+  }, [submissionsQuery.data, activeProject, isAllProjects]);
 
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -81,8 +91,8 @@ export default function ReviewPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const pendingReview = submissionsQuery.data?.filter((s) => s.status === "submitted") || [];
-  const reviewed = submissionsQuery.data?.filter((s) => s.status === "approved" || s.status === "rejected") || [];
+  const pendingReview = filteredSubmissions.filter((s) => s.status === "submitted") || [];
+  const reviewed = filteredSubmissions.filter((s) => s.status === "approved" || s.status === "rejected") || [];
 
   const handleReview = (sub: any) => {
     setSelectedSubmission(sub);

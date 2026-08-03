@@ -100,3 +100,7 @@
 - [x] Na Administração, cada linha de utilizador mostra os projetos atribuídos (editável)
 - [x] Histórico de eliminações: registar quem eliminou, quando, e que semana (tabela deletion_log)
 - [x] Histórico: botão para alternar entre "Fichas Submetidas" e "Fichas Eliminadas"
+- [x] Bloquear criação de ficha semanal quando "Todos os Projetos" está selecionado (obrigar projeto individual)
+- [x] Cada ficha criada fica associada ao projeto e só aparece nesse projeto (ou em "Todos" para consulta)
+- [x] Administração > Empresas: coluna de projetos atribuídos (editável, igual à dos utilizadores)
+- [x] Sidebar: limitar projetos visíveis com base nas atribuições da empresa/utilizador

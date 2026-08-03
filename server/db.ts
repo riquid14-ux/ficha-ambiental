@@ -255,7 +255,7 @@ export async function submitWeeklySubmission(id: number, userId: number) {
     .where(eq(weeklySubmissions.id, id));
 }
 
-export async function getSubmissionForWeek(companyId: number, weekNumber: number, weekYear: number) {
+export async function getSubmissionForWeek(companyId: number, weekNumber: number, weekYear: number, projectId?: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db
@@ -265,7 +265,8 @@ export async function getSubmissionForWeek(companyId: number, weekNumber: number
       and(
         eq(weeklySubmissions.companyId, companyId),
         eq(weeklySubmissions.weekNumber, weekNumber),
-        eq(weeklySubmissions.weekYear, weekYear)
+        eq(weeklySubmissions.weekYear, weekYear),
+        ...(projectId ? [eq(weeklySubmissions.projectId, projectId)] : [])
       )
     )
     .limit(1);
@@ -701,6 +702,23 @@ export async function getAllUserProjectAssignments() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(projectUsers);
+}
+
+export async function getAllCompanyProjectAssignments() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectCompanies);
+}
+
+export async function setCompanyProjects(companyId: number, projectIds: number[]) {
+  const db = await getDb();
+  if (!db) return;
+  // Remove all existing assignments for this company
+  await db.delete(projectCompanies).where(eq(projectCompanies.companyId, companyId));
+  // Add new assignments
+  if (projectIds.length > 0) {
+    await db.insert(projectCompanies).values(projectIds.map(projectId => ({ projectId, companyId })));
+  }
 }
 
 export async function setUserProjects(userId: number, projectIds: number[]) {

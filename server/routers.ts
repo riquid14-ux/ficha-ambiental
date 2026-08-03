@@ -231,11 +231,14 @@ export const appRouter = router({
   submissions: router({
     // Create or get existing submission for a week
     createOrGet: protectedProcedure
-      .input(z.object({ weekNumber: z.number(), weekYear: z.number(), weekStartDate: z.string(), weekEndDate: z.string(), projectId: z.number().optional() }))
+      .input(z.object({ weekNumber: z.number(), weekYear: z.number(), weekStartDate: z.string(), weekEndDate: z.string(), projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const user = ctx.user;
         if (!canSubmitForms(user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para criar fichas." });
+        }
+        if (!input.projectId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione um projeto específico para criar uma ficha." });
         }
         if (!user.companyId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Utilizador não está associado a nenhuma empresa." });
@@ -248,7 +251,7 @@ export const appRouter = router({
         }
 
         // Check if already exists
-        const existing = await db.getSubmissionForWeek(user.companyId, input.weekNumber, input.weekYear);
+        const existing = await db.getSubmissionForWeek(user.companyId, input.weekNumber, input.weekYear, input.projectId);
         if (existing) return existing;
 
         // Create new
@@ -655,6 +658,11 @@ export const appRouter = router({
           userProjectIds.add(cp.projectId);
         }
       }
+      // If no specific assignments at all (neither user nor company), show all projects
+      if (userProjectIds.size === 0) {
+        return allProjects;
+      }
+      // Otherwise, filter to only assigned projects
       return allProjects.filter(p => userProjectIds.has(p.id));
     }),
     getById: protectedProcedure
@@ -712,11 +720,22 @@ export const appRouter = router({
     allUserAssignments: adminProcedure.query(async () => {
       return db.getAllUserProjectAssignments();
     }),
+    // Get all company-project assignments (for admin panel)
+    allCompanyAssignments: adminProcedure.query(async () => {
+      return db.getAllCompanyProjectAssignments();
+    }),
     // Set user projects (replace all assignments for a user)
     setUserProjects: adminProcedure
       .input(z.object({ userId: z.number(), projectIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
         await db.setUserProjects(input.userId, input.projectIds);
+        return { success: true };
+      }),
+    // Set company projects (replace all assignments for a company)
+    setCompanyProjects: adminProcedure
+      .input(z.object({ companyId: z.number(), projectIds: z.array(z.number()) }))
+      .mutation(async ({ input }) => {
+        await db.setCompanyProjects(input.companyId, input.projectIds);
         return { success: true };
       }),
     addUser: adminProcedure

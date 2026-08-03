@@ -61,7 +61,7 @@ export default function SubmissionHistory() {
     const data = submissionsQuery.data || [];
     if (isAllProjects) return data;
     if (!activeProject) return data;
-    return data.filter((s: any) => s.projectId === activeProject.id || !s.projectId);
+    return data.filter((s: any) => s.projectId === activeProject.id);
   }, [submissionsQuery.data, activeProject, isAllProjects]);
 
   const companiesQuery = trpc.companies.list.useQuery();

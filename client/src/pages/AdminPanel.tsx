@@ -155,6 +155,32 @@ function CompaniesTab() {
   const utils = trpc.useUtils();
 
   const companiesQuery = trpc.companies.list.useQuery();
+  const projectsQuery = trpc.projects.list.useQuery();
+  const companyAssignmentsQuery = trpc.projects.allCompanyAssignments.useQuery();
+  const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
+
+  const setCompanyProjectsMutation = trpc.projects.setCompanyProjects.useMutation({
+    onSuccess: () => {
+      toast.success("Projetos da empresa atualizados");
+      utils.projects.allCompanyAssignments.invalidate();
+      setEditingCompanyId(null);
+    },
+  });
+
+  // Build a map of companyId -> projectIds
+  const companyProjectsMap = useMemo(() => {
+    const map = new Map<number, number[]>();
+    if (companyAssignmentsQuery.data) {
+      for (const a of companyAssignmentsQuery.data) {
+        const existing = map.get(a.companyId) || [];
+        existing.push(a.projectId);
+        map.set(a.companyId, existing);
+      }
+    }
+    return map;
+  }, [companyAssignmentsQuery.data]);
+
   const createMutation = trpc.companies.create.useMutation({
     onSuccess: () => {
       toast.success("Empresa criada com sucesso");
@@ -222,6 +248,7 @@ function CompaniesTab() {
               <TableHead>Nome</TableHead>
               <TableHead>Sigla</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Projetos</TableHead>
               <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
@@ -237,6 +264,76 @@ function CompaniesTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>
+                  {editingCompanyId === c.id ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1">
+                        {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                          <label key={p.id} className="flex items-center gap-1 text-xs cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedProjectIds.includes(p.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedProjectIds(prev => [...prev, p.id]);
+                                } else {
+                                  setSelectedProjectIds(prev => prev.filter(id => id !== p.id));
+                                }
+                              }}
+                              className="rounded border-gray-300"
+                            />
+                            {p.code}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-6 text-xs px-2"
+                          onClick={() => setCompanyProjectsMutation.mutate({ companyId: c.id, projectIds: selectedProjectIds })}
+                          disabled={setCompanyProjectsMutation.isPending}
+                        >
+                          Guardar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-xs px-2"
+                          onClick={() => setEditingCompanyId(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 min-w-[80px]"
+                      onClick={() => {
+                        setEditingCompanyId(c.id);
+                        setSelectedProjectIds(companyProjectsMap.get(c.id) || []);
+                      }}
+                    >
+                      {(companyProjectsMap.get(c.id) || []).length > 0 ? (
+                        <div className="flex flex-wrap gap-0.5">
+                          {(companyProjectsMap.get(c.id) || []).map(pid => {
+                            const proj = projectsQuery.data?.find(p => p.id === pid);
+                            return proj ? (
+                              <Badge key={pid} variant="secondary" className="text-[10px] px-1 py-0">
+                                {proj.code}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <FolderKanban className="w-3 h-3" />
+                          Todos
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
                   <Badge variant={c.active ? "default" : "secondary"}>
                     {c.active ? "Ativa" : "Inativa"}
                   </Badge>
@@ -245,7 +342,7 @@ function CompaniesTab() {
             ))}
             {companiesQuery.data?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   Nenhuma empresa registada
                 </TableCell>
               </TableRow>

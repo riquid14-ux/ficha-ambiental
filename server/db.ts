@@ -1,11 +1,23 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  companies,
+  evidenceImages,
+  InsertCompany,
+  InsertEvidenceImage,
+  InsertMeasureResponse,
+  InsertUser,
+  InsertWeeklySubmission,
+  measureResponses,
+  measures,
+  sections,
+  users,
+  weeklySubmissions,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -18,75 +30,373 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ───────────────────────────────────────────────────────────────────
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
-
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+  if (!db) return;
+
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+
+  const textFields = ["name", "email", "loginMethod"] as const;
+  type TextField = (typeof textFields)[number];
+  const assignNullable = (field: TextField) => {
+    const value = user[field];
+    if (value === undefined) return;
+    const normalized = value ?? null;
+    values[field] = normalized;
+    updateSet[field] = normalized;
+  };
+  textFields.forEach(assignNullable);
+
+  if (user.lastSignedIn !== undefined) {
+    values.lastSignedIn = user.lastSignedIn;
+    updateSet.lastSignedIn = user.lastSignedIn;
+  }
+  if (user.role !== undefined) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
   }
 
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
+  if (!values.lastSignedIn) values.lastSignedIn = new Date();
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users);
+}
+
+export async function updateUserCompany(userId: number, companyId: number | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ companyId }).where(eq(users.id, userId));
+}
+
+export async function updateUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// ─── Companies ───────────────────────────────────────────────────────────────
+
+export async function getAllCompanies() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(companies);
+}
+
+export async function getCompanyById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createCompany(data: InsertCompany) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(companies).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function updateCompany(id: number, data: Partial<InsertCompany>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(companies).set(data).where(eq(companies.id, id));
+}
+
+// ─── Sections & Measures ─────────────────────────────────────────────────────
+
+export async function getAllSections() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sections).orderBy(sections.orderIndex);
+}
+
+export async function getAllMeasures() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(measures).orderBy(measures.orderIndex);
+}
+
+export async function getMeasuresBySection(sectionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(measures).where(eq(measures.sectionId, sectionId)).orderBy(measures.orderIndex);
+}
+
+// ─── Weekly Submissions ──────────────────────────────────────────────────────
+
+export async function createWeeklySubmission(data: InsertWeeklySubmission) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(weeklySubmissions).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getSubmissionById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(weeklySubmissions).where(eq(weeklySubmissions.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getSubmissionsByCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(weeklySubmissions)
+    .where(eq(weeklySubmissions.companyId, companyId))
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
+}
+
+export async function getAllSubmissions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(weeklySubmissions)
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
+}
+
+export async function getLatestSubmissionForCompany(companyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(weeklySubmissions)
+    .where(and(eq(weeklySubmissions.companyId, companyId), eq(weeklySubmissions.status, "submitted")))
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber))
+    .limit(1);
+  return result[0];
+}
+
+export async function submitWeeklySubmission(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(weeklySubmissions)
+    .set({ status: "submitted", submittedBy: userId, submittedAt: Date.now() })
+    .where(eq(weeklySubmissions.id, id));
+}
+
+export async function getSubmissionForWeek(companyId: number, weekNumber: number, weekYear: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(weeklySubmissions)
+    .where(
+      and(
+        eq(weeklySubmissions.companyId, companyId),
+        eq(weeklySubmissions.weekNumber, weekNumber),
+        eq(weeklySubmissions.weekYear, weekYear)
+      )
+    )
+    .limit(1);
+  return result[0];
+}
+
+// ─── Measure Responses ───────────────────────────────────────────────────────
+
+export async function getResponsesBySubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(measureResponses).where(eq(measureResponses.submissionId, submissionId));
+}
+
+export async function upsertMeasureResponse(data: InsertMeasureResponse) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  // Check if response already exists
+  const existing = await db
+    .select()
+    .from(measureResponses)
+    .where(
+      and(
+        eq(measureResponses.submissionId, data.submissionId),
+        eq(measureResponses.measureId, data.measureId)
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(measureResponses)
+      .set({ status: data.status, observations: data.observations })
+      .where(eq(measureResponses.id, existing[0].id));
+    return { id: existing[0].id };
+  } else {
+    const result = await db.insert(measureResponses).values(data);
+    return { id: result[0].insertId };
+  }
+}
+
+export async function bulkUpsertResponses(submissionId: number, responses: { measureId: number; status: "I" | "C" | "NC" | "NA" | null; observations: string | null }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+
+  for (const r of responses) {
+    await upsertMeasureResponse({
+      submissionId,
+      measureId: r.measureId,
+      status: r.status,
+      observations: r.observations,
+    });
+  }
+}
+
+// ─── Evidence Images ─────────────────────────────────────────────────────────
+
+export async function addEvidenceImage(data: InsertEvidenceImage) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(evidenceImages).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getImagesByResponse(responseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(evidenceImages).where(eq(evidenceImages.responseId, responseId));
+}
+
+export async function getImagesBySubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const responses = await db.select().from(measureResponses).where(eq(measureResponses.submissionId, submissionId));
+  if (responses.length === 0) return [];
+  const responseIds = responses.map((r) => r.id);
+  return db.select().from(evidenceImages).where(sql`${evidenceImages.responseId} IN (${sql.join(responseIds.map(id => sql`${id}`), sql`, `)})`);
+}
+
+export async function deleteEvidenceImage(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(evidenceImages).where(eq(evidenceImages.id, id));
+}
+
+export async function getImageById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(evidenceImages).where(eq(evidenceImages.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getResponseById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(measureResponses).where(eq(measureResponses.id, id)).limit(1);
+  return result[0];
+}
+
+// ─── Dashboard Analytics ─────────────────────────────────────────────────────
+
+export async function getAnalytics(filters?: { companyId?: number; weekYear?: number; weekNumber?: number; sectionId?: number }) {
+  const db = await getDb();
+  if (!db) return { total: 0, byStatus: {}, byWeek: [], bySection: [] };
+
+  // Build conditions for submissions
+  const subConditions = [];
+  if (filters?.companyId) subConditions.push(eq(weeklySubmissions.companyId, filters.companyId));
+  if (filters?.weekYear) subConditions.push(eq(weeklySubmissions.weekYear, filters.weekYear));
+  if (filters?.weekNumber) subConditions.push(eq(weeklySubmissions.weekNumber, filters.weekNumber));
+
+  const submissionsQuery = subConditions.length > 0
+    ? db.select().from(weeklySubmissions).where(and(...subConditions))
+    : db.select().from(weeklySubmissions);
+
+  const subs = await submissionsQuery;
+  if (subs.length === 0) return { total: 0, byStatus: { I: 0, C: 0, NC: 0, NA: 0 }, byWeek: [], bySection: [] };
+
+  const subIds = subs.map((s) => s.id);
+
+  // Get all responses for these submissions
+  let allResponses = await db.select().from(measureResponses).where(
+    sql`${measureResponses.submissionId} IN (${sql.join(subIds.map(id => sql`${id}`), sql`, `)})`
+  );
+
+  // Filter by section if needed
+  if (filters?.sectionId) {
+    const sectionMeasures = await db.select().from(measures).where(eq(measures.sectionId, filters.sectionId));
+    const measureIds = new Set(sectionMeasures.map((m) => m.id));
+    allResponses = allResponses.filter((r) => measureIds.has(r.measureId));
+  }
+
+  // Count by status
+  const byStatus = { I: 0, C: 0, NC: 0, NA: 0 };
+  for (const r of allResponses) {
+    if (r.status && r.status in byStatus) {
+      byStatus[r.status as keyof typeof byStatus]++;
+    }
+  }
+
+  // Group by week
+  const weekMap = new Map<string, { I: number; C: number; NC: number; NA: number; total: number }>();
+  for (const sub of subs) {
+    const key = `${sub.weekYear}-W${String(sub.weekNumber).padStart(2, "0")}`;
+    if (!weekMap.has(key)) weekMap.set(key, { I: 0, C: 0, NC: 0, NA: 0, total: 0 });
+  }
+  for (const r of allResponses) {
+    const sub = subs.find((s) => s.id === r.submissionId);
+    if (!sub) continue;
+    const key = `${sub.weekYear}-W${String(sub.weekNumber).padStart(2, "0")}`;
+    const entry = weekMap.get(key)!;
+    if (r.status && r.status in entry) {
+      entry[r.status as keyof typeof byStatus]++;
+    }
+    entry.total++;
+  }
+
+  const byWeek = Array.from(weekMap.entries())
+    .map(([week, data]) => ({ week, ...data }))
+    .sort((a, b) => a.week.localeCompare(b.week));
+
+  // Group by section
+  const allMeasuresList = await db.select().from(measures);
+  const sectionMap = new Map<number, { I: number; C: number; NC: number; NA: number }>();
+  for (const r of allResponses) {
+    const measure = allMeasuresList.find((m) => m.id === r.measureId);
+    if (!measure) continue;
+    if (!sectionMap.has(measure.sectionId)) sectionMap.set(measure.sectionId, { I: 0, C: 0, NC: 0, NA: 0 });
+    const entry = sectionMap.get(measure.sectionId)!;
+    if (r.status && r.status in entry) {
+      entry[r.status as keyof typeof byStatus]++;
+    }
+  }
+
+  const allSections = await db.select().from(sections).orderBy(sections.orderIndex);
+  const bySection = allSections.map((s) => ({
+    sectionId: s.id,
+    sectionName: s.name,
+    ...(sectionMap.get(s.id) || { I: 0, C: 0, NC: 0, NA: 0 }),
+  }));
+
+  return {
+    total: allResponses.length,
+    byStatus,
+    byWeek,
+    bySection,
+  };
+}

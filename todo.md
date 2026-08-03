@@ -1,0 +1,24 @@
+# Project TODO
+
+- [x] Database schema: companies, measures, sections, weekly_submissions, measure_responses, evidence_images
+- [x] Seed 156 measures and 14 sections from Word document
+- [x] Backend: CRUD for companies (admin only)
+- [x] Backend: Weekly submission creation with pre-fill from previous week
+- [x] Backend: Measure response endpoints (I/C/NC/NA + observations)
+- [x] Backend: Image upload to S3 for evidence per measure
+- [x] Backend: Dashboard analytics endpoints (by week, by company, by section, by status)
+- [ ] Backend: PDF generation of completed weekly report
+- [x] Backend: Admin panel endpoints (all submissions, all companies, user management)
+- [x] Frontend: DashboardLayout with sidebar navigation
+- [x] Frontend: Weekly submission form with 156 measures grouped by 14 sections
+- [x] Frontend: Radio buttons for I/C/NC/NA per measure
+- [x] Frontend: Image upload with inline preview per measure
+- [x] Frontend: Observations text field per measure
+- [x] Frontend: Pre-fill from previous week functionality
+- [x] Frontend: Dashboard with charts (weekly evolution, status distribution)
+- [x] Frontend: Filters by week, company, section, status
+- [x] Frontend: Admin panel for companies and submissions management
+- [ ] Frontend: PDF download button
+- [ ] API documentation for ACC integration
+- [x] Security: role-based access control (admin vs EE)
+- [ ] Weekly reminder notifications for pending submissions

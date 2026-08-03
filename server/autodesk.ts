@@ -303,7 +303,7 @@ async function autodeskEmailLogin(
       name,
       email,
       loginMethod: "autodesk",
-      role: "dono_obra",
+      role: "admin",
     });
 
     const sessionToken = await sdk.createSessionToken(openId, { name });

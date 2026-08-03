@@ -30,7 +30,9 @@ export function registerUploadRoutes(app: Express) {
 
       // Decode base64 data
       const buffer = Buffer.from(data, "base64");
-      const fileKey = `evidence/${submissionId}/${measureId}/${filename || "image.jpg"}`;
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const ext = (filename || "image.jpg").split(".").pop() || "jpg";
+      const fileKey = `evidence/${submissionId}/Medida${measureId}_${timestamp}.${ext}`;
       const contentType = mimeType || "image/jpeg";
 
       // Upload to S3

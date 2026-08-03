@@ -75,3 +75,6 @@
 - [x] Permissões de alteração de roles: apenas admin e dono_obra podem alterar permissões de utilizadores
 - [x] Mover aba Perfil para o topo do menu lateral (antes de Dashboard)
 - [x] Corrigir logo Start Campus que não aparece no deploy (verificar URL do asset)
+- [x] Garantir que os 4 utilizadores atuais são admin (DB + autoAdminEmails corrigido para "admin")
+- [x] Proteger admin de ser demovido ao atribuir empresa (assignCompany não altera role de admins)
+- [x] Melhorar nomes dos ficheiros: evidências → Medida{id}_{data}.ext, histórico → FichaS{semana}_{ano}_{empresa}.pdf

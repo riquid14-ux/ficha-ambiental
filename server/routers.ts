@@ -135,6 +135,11 @@ export const appRouter = router({
         await db.updateUserCompany(input.userId, input.companyId);
         // Auto-assign role based on company type
         if (input.companyId) {
+          // Never demote an admin when assigning company
+          const targetUser = await db.getUserById(input.userId);
+          if (targetUser?.role === "admin") {
+            return { success: true };
+          }
           const company = await db.getCompanyById(input.companyId);
           if (company) {
             const roleMap: Record<string, string> = {
@@ -520,7 +525,9 @@ export const appRouter = router({
         }
 
         const buffer = Buffer.from(input.data, "base64");
-        const fileKey = `historical/${input.companyId}/S${input.weekNumber}_${input.weekYear}_${input.filename}`;
+        const company = await db.getCompanyById(input.companyId);
+        const companyName = company?.shortName || `EE${input.companyId}`;
+        const fileKey = `historical/${input.companyId}/FichaS${String(input.weekNumber).padStart(2, "0")}_${input.weekYear}_${companyName}.pdf`;
         const { key, url } = await storagePut(fileKey, buffer, input.mimeType);
 
         return db.addHistoricalPdf({

@@ -63,3 +63,9 @@
 - [x] Remover dependência do Manus OAuth no fluxo de login (redirecionar para /login em vez de startLogin)
 - [x] Mensagem de acesso negado: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt"
 - [x] WeeklyForm: mensagem sem empresa atualizada com contacto Nairana Aguiar
+- [x] WeeklyForm: mensagem sem empresa atualizada com contacto Nairana Aguiar
+- [x] Autenticação via ACC: quando app está dentro do iframe do Autodesk, auto-login usando token do Autodesk (sem inserir email)
+- [x] Backend: endpoint POST /api/autodesk/auto-login que valida token Autodesk, obtém email via userinfo, e autentica na app
+- [x] Backend: callback do Autodesk OAuth agora auto-autentica o utilizador na app (cria sessão baseada no email do Autodesk)
+- [x] Frontend: Login page deteta contexto iframe (ACC) e tenta auto-login automático; mostra botão "Entrar com Autodesk" como alternativa
+- [x] Segurança: email confirmado pelo token do Autodesk (não pode ser falsificado — vem diretamente da API userinfo)

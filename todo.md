@@ -86,7 +86,6 @@
 - [x] Multi-projeto: selector de projeto no frontend (sidebar ou header)
 - [x] Multi-projeto: dashboard agregado no projeto "main" (visão geral de todas as obras)
 - [x] Multi-projeto: admin pode gerir acessos por projeto na Administração
-- [ ] Favicon: usar logo Start Campus (trovão verde) como ícone do browser tab
 - [x] Favicon: usar logo Start Campus (trovão verde) como ícone do browser tab
 - [x] Ficha Semanal: botão "Eliminar" visível para criador, admin ou dono_obra (só rascunhos/rejeitadas)
 - [x] Filtragem de medidas por role: EE só vê EE, RAP só vê RAP, dono_obra só vê dono_obra, admin vê todas 156

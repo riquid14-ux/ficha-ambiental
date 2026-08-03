@@ -115,7 +115,7 @@ export default function Profile() {
                     <Label htmlFor="displayName">Nome de Perfil</Label>
                     <Input
                       id="displayName"
-                      placeholder="Ex: Ricardo"
+                      placeholder="Nome de perfil"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                     />
@@ -128,7 +128,7 @@ export default function Profile() {
                     <Label htmlFor="fullName">Nome Completo</Label>
                     <Input
                       id="fullName"
-                      placeholder="Ex: Ricardo Manuel Duarte"
+                      placeholder="Nome completo"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                     />
@@ -141,7 +141,7 @@ export default function Profile() {
                     <Label htmlFor="jobTitle">Cargo</Label>
                     <Input
                       id="jobTitle"
-                      placeholder="Ex: Engenheiro Ambiental"
+                      placeholder="Cargo ou função"
                       value={jobTitle}
                       onChange={(e) => setJobTitle(e.target.value)}
                     />

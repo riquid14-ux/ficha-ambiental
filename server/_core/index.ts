@@ -9,6 +9,9 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerUploadRoutes } from "../upload";
+import { registerPdfRoutes } from "../pdf";
+import { registerApiDocs } from "../api-docs";
+import { weeklyReminderHandler } from "../scheduled-reminders";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +41,10 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerUploadRoutes(app);
+  registerPdfRoutes(app);
+  registerApiDocs(app);
+  // Scheduled endpoints (Heartbeat cron callbacks)
+  app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   // tRPC API
   app.use(
     "/api/trpc",

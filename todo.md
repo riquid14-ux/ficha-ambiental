@@ -7,7 +7,7 @@
 - [x] Backend: Measure response endpoints (I/C/NC/NA + observations)
 - [x] Backend: Image upload to S3 for evidence per measure
 - [x] Backend: Dashboard analytics endpoints (by week, by company, by section, by status)
-- [ ] Backend: PDF generation of completed weekly report
+- [x] Backend: PDF generation of completed weekly report
 - [x] Backend: Admin panel endpoints (all submissions, all companies, user management)
 - [x] Frontend: DashboardLayout with sidebar navigation
 - [x] Frontend: Weekly submission form with 156 measures grouped by 14 sections
@@ -18,7 +18,9 @@
 - [x] Frontend: Dashboard with charts (weekly evolution, status distribution)
 - [x] Frontend: Filters by week, company, section, status
 - [x] Frontend: Admin panel for companies and submissions management
-- [ ] Frontend: PDF download button
-- [ ] API documentation for ACC integration
+- [x] Frontend: PDF download button
+- [x] API documentation for ACC integration
 - [x] Security: role-based access control (admin vs EE)
-- [ ] Weekly reminder notifications for pending submissions
+- [x] Weekly reminder notifications for pending submissions
+- [x] PDF includes embedded evidence images (not just counts)
+- [x] Heartbeat cron job creation for weekly reminders (requires deploy)

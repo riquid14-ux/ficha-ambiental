@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
-import { FileText, Calendar } from "lucide-react";
+import { FileText, Calendar, Download } from "lucide-react";
+import { toast } from "sonner";
 
 export default function SubmissionHistory() {
   const { user } = useAuth();
@@ -59,9 +60,27 @@ export default function SubmissionHistory() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={sub.status === "submitted" ? "default" : "secondary"}>
+                  <div className="flex items-center gap-2">
+                    {sub.status === "submitted" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const link = document.createElement("a");
+                          link.href = `/api/pdf/submission/${sub.id}`;
+                          link.download = `ficha_S${sub.weekNumber}_${sub.weekYear}.pdf`;
+                          link.click();
+                          toast.success("A gerar PDF...");
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-1" /> PDF
+                      </Button>
+                    )}
+                    <Badge variant={sub.status === "submitted" ? "default" : "secondary"}>
                     {sub.status === "submitted" ? "Submetida" : "Rascunho"}
                   </Badge>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -71,4 +90,3 @@ export default function SubmissionHistory() {
     </AppLayout>
   );
 }
-

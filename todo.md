@@ -46,3 +46,5 @@
 - [x] Integração ACC: OAuth endpoints (/api/autodesk/login, /api/autodesk/callback)
 - [x] Integração ACC: iframe-friendly headers (CSP frame-ancestors para autodesk.com)
 - [x] Integração ACC: endpoints auxiliares (health, status, hubs, projects)
+- [x] Empresas: adicionar tipos Dono de Obra, RAA e Observador além de EE/RAP
+- [x] Empresas: utilizadores atribuídos a empresas DO/RAA/Observador herdam o role correspondente

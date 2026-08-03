@@ -26,11 +26,11 @@ export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   shortName: varchar("shortName", { length: 50 }).notNull(),
-  companyType: mysqlEnum("companyType", ["ee", "rap"]).default("ee").notNull(),
+  companyType: mysqlEnum("companyType", ["ee", "rap", "dono_obra", "raa", "observador"]).default("ee").notNull(),
   logoUrl: text("logoUrl"),
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
 
 export type Company = typeof companies.$inferSelect;

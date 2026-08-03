@@ -102,7 +102,7 @@ export default function AdminPanel() {
 function CompaniesTab() {
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
-  const [newType, setNewType] = useState<"ee" | "rap">("ee");
+  const [newType, setNewType] = useState<"ee" | "rap" | "dono_obra" | "raa" | "observador">("ee");
   const [dialogOpen, setDialogOpen] = useState(false);
   const utils = trpc.useUtils();
 
@@ -122,7 +122,7 @@ function CompaniesTab() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Empresas (EE / RAP)</CardTitle>
+        <CardTitle className="text-base">Empresas / Entidades</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Empresa</Button>
@@ -142,13 +142,16 @@ function CompaniesTab() {
               </div>
               <div>
                 <Label>Tipo</Label>
-                <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "rap")}>
+                <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "rap" | "dono_obra" | "raa" | "observador")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
+                    <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                    <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
+                    <SelectItem value="observador">Observador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -181,8 +184,8 @@ function CompaniesTab() {
                 <TableCell>{c.name}</TableCell>
                 <TableCell><Badge variant="outline">{c.companyType === "rap" ? "RAP - " : ""}{c.shortName}</Badge></TableCell>
                 <TableCell>
-                  <Badge variant={c.companyType === "rap" ? "secondary" : "default"}>
-                    {c.companyType === "rap" ? "RAP" : "EE"}
+                  <Badge variant={c.companyType === "ee" ? "default" : c.companyType === "rap" ? "secondary" : "outline"}>
+                    {c.companyType === "ee" ? "EE" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
                   </Badge>
                 </TableCell>
                 <TableCell>

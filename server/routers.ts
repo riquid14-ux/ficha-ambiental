@@ -45,12 +45,12 @@ export const appRouter = router({
         return db.getCompanyById(input.id);
       }),
     create: adminProcedure
-      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "rap"]).default("ee") }))
+      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "rap", "dono_obra", "raa", "observador"]).default("ee") }))
       .mutation(async ({ input }) => {
         return db.createCompany({ name: input.name, shortName: input.shortName, companyType: input.companyType });
       }),
     update: adminProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "rap"]).optional() }))
+      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "rap", "dono_obra", "raa", "observador"]).optional() }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         await db.updateCompany(id, data);
@@ -67,6 +67,21 @@ export const appRouter = router({
       .input(z.object({ userId: z.number(), companyId: z.number().nullable() }))
       .mutation(async ({ input }) => {
         await db.updateUserCompany(input.userId, input.companyId);
+        // Auto-assign role based on company type
+        if (input.companyId) {
+          const company = await db.getCompanyById(input.companyId);
+          if (company) {
+            const roleMap: Record<string, string> = {
+              ee: "ee",
+              rap: "rap",
+              dono_obra: "dono_obra",
+              raa: "raa",
+              observador: "observador",
+            };
+            const newRole = (roleMap[company.companyType] || "user") as "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra" | "observador";
+            await db.updateUserRole(input.userId, newRole);
+          }
+        }
         return { success: true };
       }),
     updateRole: adminProcedure

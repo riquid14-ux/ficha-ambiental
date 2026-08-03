@@ -12,6 +12,7 @@ import { registerUploadRoutes } from "../upload";
 import { registerPdfRoutes } from "../pdf";
 import { registerApiDocs } from "../api-docs";
 import { weeklyReminderHandler } from "../scheduled-reminders";
+import { registerAutodeskRoutes } from "../autodesk";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,11 +39,33 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ─── ACC Iframe Support: Allow embedding in Autodesk Construction Cloud ───
+  app.use((req, res, next) => {
+    // Allow iframe embedding from Autodesk domains
+    res.setHeader("X-Frame-Options", "ALLOWALL");
+    res.removeHeader("X-Frame-Options");
+    // Content-Security-Policy: allow framing from Autodesk
+    res.setHeader(
+      "Content-Security-Policy",
+      "frame-ancestors 'self' https://*.autodesk.com https://*.autodesk.io https://acc.autodesk.com https://construction.autodesk.com"
+    );
+    // Required for cookies in cross-origin iframes
+    if (req.headers.origin && (req.headers.origin.includes("autodesk.com") || req.headers.origin.includes("autodesk.io"))) {
+      res.setHeader("Access-Control-Allow-Origin", req.headers.origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+    next();
+  });
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerUploadRoutes(app);
   registerPdfRoutes(app);
   registerApiDocs(app);
+  registerAutodeskRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   // tRPC API

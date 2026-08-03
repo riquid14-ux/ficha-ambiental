@@ -42,3 +42,7 @@
 - [x] Limite de 5 rascunhos abertos por empresa
 - [x] Histórico: filtros por semana, mês, trimestre e semestre
 - [x] Exportar PDFs em lote (ZIP) por período filtrado
+- [x] Integração ACC: credenciais ADS configuradas (Client ID + Secret)
+- [x] Integração ACC: OAuth endpoints (/api/autodesk/login, /api/autodesk/callback)
+- [x] Integração ACC: iframe-friendly headers (CSP frame-ancestors para autodesk.com)
+- [x] Integração ACC: endpoints auxiliares (health, status, hubs, projects)

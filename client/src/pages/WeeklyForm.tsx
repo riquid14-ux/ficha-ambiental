@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
+import { LOGO_URL } from "@/lib/logo";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -358,7 +359,7 @@ export default function WeeklyForm() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <img src="/manus-storage/start_campus_logo_be5e1215.png" alt="Start Campus" className="h-12 object-contain" />
+              <img src={LOGO_URL} alt="Start Campus" className="h-12 object-contain" />
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">{user?.name || "—"}</p>
                 <p className="text-xs text-muted-foreground">{companyName}</p>

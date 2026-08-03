@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { LOGO_URL } from "@/lib/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
@@ -116,7 +117,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center gap-6 mb-8">
           <img
-            src="/manus-storage/start_campus_logo_be5e1215.png"
+            src={LOGO_URL}
             alt="Start Campus"
             className="h-16 object-contain"
           />

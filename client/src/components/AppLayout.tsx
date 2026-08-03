@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import { LOGO_URL } from "@/lib/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -141,7 +142,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2">
-                  <img src="/manus-storage/start_campus_logo_be5e1215.png" alt="Start Campus" className="h-6 object-contain" />
+                  <img src={LOGO_URL} alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
                     Controlo Ambiental
                   </span>

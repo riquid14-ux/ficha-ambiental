@@ -6,6 +6,24 @@ import http from "http";
 import { sdk } from "./_core/sdk";
 import * as db from "./db";
 
+// Helper: determine which measures a user can export based on their role
+// Admin, RAA, dono_obra, observador → all measures
+// EE → only measures with "EE" in responsible
+// RAP → only measures with "RAP" in responsible
+function filterMeasuresForUser(measures: any[], user: any): any[] {
+  const role = user.role;
+  // Full access roles
+  if (role === "admin" || role === "raa" || role === "dono_obra" || role === "observador") {
+    return measures;
+  }
+  // RAP role
+  if (role === "rap") {
+    return measures.filter((m: any) => m.responsible.toUpperCase().includes("RAP"));
+  }
+  // EE and all others → only EE measures
+  return measures.filter((m: any) => m.responsible.toUpperCase().includes("EE"));
+}
+
 // Helper to fetch image buffer from URL
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   try {
@@ -43,14 +61,15 @@ export function registerPdfRoutes(app: Express) {
       }
 
       // Access control
-      if (user.role !== "admin" && sub.companyId !== user.companyId) {
+      if (user.role !== "admin" && user.role !== "dono_obra" && user.role !== "raa" && user.role !== "observador" && sub.companyId !== user.companyId) {
         return res.status(403).json({ error: "Sem permissão" });
       }
 
       // Get all data
       const company = await db.getCompanyById(sub.companyId);
       const sections = await db.getAllSections();
-      const measures = await db.getAllMeasures();
+      const allMeasures = await db.getAllMeasures();
+      const measures = filterMeasuresForUser(allMeasures, user);
       const responses = await db.getResponsesBySubmission(submissionId);
       const images = await db.getImagesBySubmission(submissionId);
 
@@ -222,7 +241,8 @@ export function registerPdfRoutes(app: Express) {
 
       // Pre-fetch shared data
       const sections = await db.getAllSections();
-      const measures = await db.getAllMeasures();
+      const allMeasures = await db.getAllMeasures();
+      const measures = filterMeasuresForUser(allMeasures, user);
 
       for (const submissionId of ids) {
         try {
@@ -300,9 +320,12 @@ export function registerPdfRoutes(app: Express) {
 
       // Get the measures info
       const allMeasures = await db.getAllMeasures();
-      const selectedMeasures = allMeasures.filter((m) => measureIds.includes(m.id));
+      // Filter measures by user role first, then by requested IDs
+      const allowedMeasures = filterMeasuresForUser(allMeasures, user);
+      const allowedIds = new Set(allowedMeasures.map((m: any) => m.id));
+      const selectedMeasures = allMeasures.filter((m) => measureIds.includes(m.id) && allowedIds.has(m.id));
       if (selectedMeasures.length === 0) {
-        return res.status(404).json({ error: "Medidas não encontradas" });
+        return res.status(403).json({ error: "Sem permissão para exportar as medidas selecionadas" });
       }
 
       const allSections = await db.getAllSections();
@@ -311,16 +334,23 @@ export function registerPdfRoutes(app: Express) {
       const { weeklySubmissions: wsTbl, measureResponses: mrTbl, evidenceImages: eiTbl } = await import("../drizzle/schema");
       const { and, gte, lte, inArray, eq } = await import("drizzle-orm");
 
+      // Build query conditions
+      const conditions: any[] = [
+        gte(wsTbl.weekStartDate, startDate),
+        lte(wsTbl.weekEndDate, endDate),
+        inArray(wsTbl.status, ["submitted", "approved"]),
+      ];
+
+      // EE/RAP can only see their own company's submissions
+      const isFullAccess = user.role === "admin" || user.role === "raa" || user.role === "dono_obra" || user.role === "observador";
+      if (!isFullAccess && user.companyId) {
+        conditions.push(eq(wsTbl.companyId, user.companyId));
+      }
+
       const submissions = await database
         .select()
         .from(wsTbl)
-        .where(
-          and(
-            gte(wsTbl.weekStartDate, startDate),
-            lte(wsTbl.weekEndDate, endDate),
-            inArray(wsTbl.status, ["submitted", "approved"])
-          )
-        )
+        .where(and(...conditions))
         .orderBy(wsTbl.weekYear, wsTbl.weekNumber);
 
       if (submissions.length === 0) {

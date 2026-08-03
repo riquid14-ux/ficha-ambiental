@@ -105,3 +105,6 @@
 - [x] Administração > Empresas: coluna de projetos atribuídos (editável, igual à dos utilizadores)
 - [x] Sidebar: limitar projetos visíveis com base nas atribuições da empresa/utilizador
 - [x] Histórico de eliminações: filtrar por projeto (ficha eliminada no SIN03 só aparece no SIN03 ou em Todos)
+- [x] Verificar que atualização do nome no Perfil reflete na Administração/Utilizadores e no ícone do sidebar
+- [x] Corrigir logo Start Campus que não carrega (solução definitiva - embed base64 inline)
+- [x] Exportação de fichas: RAA/Admin/dono_obra/observador exportam histórico completo; EE/RAP só exportam as suas medidas

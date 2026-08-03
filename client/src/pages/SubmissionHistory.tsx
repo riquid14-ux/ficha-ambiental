@@ -74,12 +74,23 @@ export default function SubmissionHistory() {
   // Filter measures by search
   const filteredMeasures = useMemo(() => {
     if (!measuresQuery.data) return [];
-    if (!measureSearch) return measuresQuery.data;
+    // First filter by role: EE/RAP only see their measures
+    let roleMeasures = measuresQuery.data;
+    const role = user?.role;
+    if (role && role !== "admin" && role !== "raa" && role !== "dono_obra" && role !== "observador") {
+      if (role === "rap") {
+        roleMeasures = roleMeasures.filter((m) => m.responsible.toUpperCase().includes("RAP"));
+      } else {
+        // EE and others
+        roleMeasures = roleMeasures.filter((m) => m.responsible.toUpperCase().includes("EE"));
+      }
+    }
+    if (!measureSearch) return roleMeasures;
     const q = measureSearch.toLowerCase();
-    return measuresQuery.data.filter(
+    return roleMeasures.filter(
       (m) => m.number.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
     );
-  }, [measuresQuery.data, measureSearch]);
+  }, [measuresQuery.data, measureSearch, user?.role]);
 
   // Handle per-measure export
   const handleExportMeasure = () => {

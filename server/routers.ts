@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
@@ -32,6 +33,71 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    emailLogin: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input, ctx }) => {
+        const email = input.email.toLowerCase().trim();
+
+        // 1. Check if user already exists with this email
+        const existingUsers = await db.getAllUsers();
+        const existingUser = existingUsers.find(
+          (u) => u.email?.toLowerCase().trim() === email
+        );
+
+        if (existingUser) {
+          // User exists — create session directly
+          const sessionToken = await sdk.createSessionToken(existingUser.openId, {
+            name: existingUser.name || email,
+          });
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, sessionToken, {
+            ...cookieOptions,
+            maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+          });
+          return { success: true, user: existingUser };
+        }
+
+        // 2. Check if there's a pending invitation for this email
+        const invitation = await db.getPendingInvitationByEmail(email);
+
+        if (invitation) {
+          // Create user from invitation
+          const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
+          await db.upsertUser({
+            openId,
+            name: email.split("@")[0],
+            email,
+            loginMethod: "email",
+            role: invitation.role as any,
+          });
+
+          // Assign company from invitation
+          const newUser = await db.getUserByOpenId(openId);
+          if (newUser && invitation.companyId) {
+            await db.updateUserCompany(newUser.id, invitation.companyId);
+          }
+          await db.acceptInvitation(invitation.id);
+
+          // Create session
+          const sessionToken = await sdk.createSessionToken(openId, {
+            name: email.split("@")[0],
+          });
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, sessionToken, {
+            ...cookieOptions,
+            maxAge: 365 * 24 * 60 * 60 * 1000,
+          });
+
+          const finalUser = await db.getUserByOpenId(openId);
+          return { success: true, user: finalUser };
+        }
+
+        // 3. No user and no invitation — deny access
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt",
+        });
+      }),
   }),
 
   // ─── Companies ───────────────────────────────────────────────────────────

@@ -58,3 +58,8 @@
 - [x] Adicionar sistema de convites na Administração (convidar por email, pré-atribuir empresa e role)
 - [x] Auto-atribuir empresa/role no primeiro login baseado no convite pendente
 - [x] UI de "Convidar Utilizador" na tab Utilizadores do AdminPanel
+- [x] UI de "Convidar Utilizador" na tab Utilizadores do AdminPanel
+- [x] Login por email sem password: utilizador insere email → sistema verifica convite/registo → concede acesso
+- [x] Remover dependência do Manus OAuth no fluxo de login (redirecionar para /login em vez de startLogin)
+- [x] Mensagem de acesso negado: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt"
+- [x] WeeklyForm: mensagem sem empresa atualizada com contacto Nairana Aguiar

@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { startLogin } from "@/const";
 import { ClipboardList, BarChart3, Shield, Upload } from "lucide-react";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -37,7 +36,7 @@ export default function Home() {
             Plataforma de acompanhamento semanal de medidas de gestão ambiental em obras.
             Registe o cumprimento das 156 medidas, anexe evidências fotográficas e acompanhe a evolução.
           </p>
-          <Button onClick={() => startLogin()} size="lg" className="mt-8 px-8">
+          <Button onClick={() => setLocation("/login")} size="lg" className="mt-8 px-8">
             Iniciar sessão
           </Button>
         </div>

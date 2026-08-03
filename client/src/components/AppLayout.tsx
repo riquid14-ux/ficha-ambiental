@@ -19,7 +19,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
+
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -46,6 +46,7 @@ const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const [, setLocation] = useLocation();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -59,28 +60,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-4">
-            <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-16 object-contain" />
-            <h1 className="text-2xl font-semibold tracking-tight text-center text-foreground">
-              Ficha de Controlo Ambiental
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Aceda à plataforma para preencher fichas de controlo de medidas ambientais semanais.
-            </p>
-          </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Iniciar sessão
-          </Button>
-        </div>
-      </div>
-    );
+    setLocation("/login");
+    return null;
   }
 
   return (

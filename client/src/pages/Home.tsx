@@ -29,9 +29,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 mb-6">
-            <ClipboardList className="w-10 h-10 text-primary" />
-          </div>
+          <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-20 object-contain mb-6" />
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
             Ficha de Controlo Ambiental
           </h1>

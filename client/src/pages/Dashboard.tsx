@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
@@ -28,6 +29,7 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { activeProject, isAllProjects } = useProject();
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedWeek, setSelectedWeek] = useState<string>("all");
@@ -56,6 +58,7 @@ export default function Dashboard() {
     sectionId: selectedSection !== "all" ? Number(selectedSection) : undefined,
     weekYear: selectedWeek !== "all" ? Number(selectedWeek.split("-")[0]) : undefined,
     weekNumber: selectedWeek !== "all" ? Number(selectedWeek.split("-")[1]) : undefined,
+    projectId: !isAllProjects && activeProject ? activeProject.id : undefined,
   });
 
   const analytics = analyticsQuery.data;

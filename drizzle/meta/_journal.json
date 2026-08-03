@@ -36,6 +36,13 @@
       "when": 1785769419209,
       "tag": "0004_foamy_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1785783613396,
+      "tag": "0005_naive_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }

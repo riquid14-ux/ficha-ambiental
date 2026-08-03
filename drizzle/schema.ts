@@ -72,6 +72,7 @@ export type InsertMeasure = typeof measures.$inferInsert;
 export const weeklySubmissions = mysqlTable("weekly_submissions", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
+  projectId: int("projectId"),
   weekNumber: int("weekNumber").notNull(),
   weekYear: int("weekYear").notNull(),
   weekStartDate: varchar("weekStartDate", { length: 10 }).notNull(),
@@ -159,6 +160,7 @@ export type InsertMeasureReview = typeof measureReviews.$inferInsert;
 export const historicalPdfs = mysqlTable("historical_pdfs", {
   id: int("id").autoincrement().primaryKey(),
   companyId: int("companyId").notNull(),
+  projectId: int("projectId"),
   weekNumber: int("weekNumber").notNull(),
   weekYear: int("weekYear").notNull(),
   fileKey: varchar("fileKey", { length: 500 }).notNull(),
@@ -190,3 +192,45 @@ export const invitations = mysqlTable("invitations", {
 
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertInvitation = typeof invitations.$inferInsert;
+
+/**
+ * Projects (obras/projetos: SIN02, SIN03, etc.)
+ */
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  active: int("active").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;
+
+/**
+ * Project-Company association (quais empresas trabalham em cada projeto)
+ */
+export const projectCompanies = mysqlTable("project_companies", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  companyId: int("companyId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProjectCompany = typeof projectCompanies.$inferSelect;
+export type InsertProjectCompany = typeof projectCompanies.$inferInsert;
+
+/**
+ * Project-User association (quais utilizadores têm acesso a cada projeto)
+ */
+export const projectUsers = mysqlTable("project_users", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProjectUser = typeof projectUsers.$inferSelect;
+export type InsertProjectUser = typeof projectUsers.$inferInsert;

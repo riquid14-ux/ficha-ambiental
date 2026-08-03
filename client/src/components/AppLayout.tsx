@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -6,6 +7,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban, Settings2 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -36,6 +44,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
+  { icon: Settings2, label: "Projetos", path: "/projetos" },
 ];
 const reviewMenuItems = [
   { icon: FileSearch, label: "Revisão", path: "/revisao" },
@@ -74,6 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 function AppLayoutContent({ children, setSidebarWidth }: { children: React.ReactNode; setSidebarWidth: (w: number) => void }) {
   const { user, logout } = useAuth();
+  const { projects, activeProject, setActiveProjectId, isAllProjects } = useProject();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -142,6 +152,36 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
+            {/* Project Selector */}
+            {!isCollapsed && projects.length > 0 && (
+              <div className="px-3 py-2 border-b">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
+                  Projeto
+                </label>
+                <Select
+                  value={isAllProjects ? "all" : String(activeProject?.id || "")}
+                  onValueChange={(val) => setActiveProjectId(val === "all" ? null : parseInt(val, 10))}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Selecionar projeto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center gap-2">
+                        <FolderKanban className="h-3 w-3" />
+                        <span>Todos os Projetos</span>
+                      </div>
+                    </SelectItem>
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        <span className="font-medium">{p.code}</span>
+                        <span className="text-muted-foreground ml-1">— {p.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <SidebarMenu className="px-2 py-1">
               {allItems.map((item) => {
                 const isActive = location.startsWith(item.path);

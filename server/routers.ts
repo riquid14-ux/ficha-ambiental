@@ -551,6 +551,7 @@ export const appRouter = router({
           weekYear: z.number().optional(),
           weekNumber: z.number().optional(),
           sectionId: z.number().optional(),
+          projectId: z.number().optional(),
         }).optional()
       )
       .query(async ({ ctx, input }) => {
@@ -591,6 +592,83 @@ export const appRouter = router({
           jobTitle: input.jobTitle ?? null,
           name: input.displayName ?? null,
         });
+        return { success: true };
+      }),
+  }),
+
+  // ─── Projects ─────────────────────────────────────────────────────────────
+  projects: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const allProjects = await db.getAllProjects();
+      // Admin/dono_obra see all projects; others see only assigned projects
+      if (isAdminOrDono(ctx.user.role)) {
+        return allProjects;
+      }
+      const userProjects = await db.getUserProjects(ctx.user.id);
+      const projectIds = new Set(userProjects.map(up => up.projectId));
+      return allProjects.filter(p => projectIds.has(p.id));
+    }),
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return db.getProjectById(input.id);
+      }),
+    create: adminProcedure
+      .input(z.object({
+        code: z.string().min(1).max(50),
+        name: z.string().min(1).max(255),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createProject(input);
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        code: z.string().min(1).max(50).optional(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
+        active: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateProject(id, data);
+        return { success: true };
+      }),
+    // Company associations
+    getCompanies: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getCompaniesForProject(input.projectId);
+      }),
+    addCompany: adminProcedure
+      .input(z.object({ projectId: z.number(), companyId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.addCompanyToProject(input.projectId, input.companyId);
+        return { success: true };
+      }),
+    removeCompany: adminProcedure
+      .input(z.object({ projectId: z.number(), companyId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.removeCompanyFromProject(input.projectId, input.companyId);
+        return { success: true };
+      }),
+    // User associations
+    getUsers: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getProjectUsers(input.projectId);
+      }),
+    addUser: adminProcedure
+      .input(z.object({ projectId: z.number(), userId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.addUserToProject(input.projectId, input.userId);
+        return { success: true };
+      }),
+    removeUser: adminProcedure
+      .input(z.object({ projectId: z.number(), userId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.removeUserFromProject(input.projectId, input.userId);
         return { success: true };
       }),
   }),

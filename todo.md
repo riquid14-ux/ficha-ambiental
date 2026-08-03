@@ -78,3 +78,12 @@
 - [x] Garantir que os 4 utilizadores atuais são admin (DB + autoAdminEmails corrigido para "admin")
 - [x] Proteger admin de ser demovido ao atribuir empresa (assignCompany não altera role de admins)
 - [x] Melhorar nomes dos ficheiros: evidências → Medida{id}_{data}.ext, histórico → FichaS{semana}_{ano}_{empresa}.pdf
+- [ ] Multi-projeto: tabela de projetos (SIN02, SIN03, SIN04, SIN05, SIN06, Subestação 400 kV)
+- [x] Multi-projeto: tabela de projetos (SIN02, SIN03, SIN04, SIN05, SIN06, Subestação 400 kV)
+- [x] Multi-projeto: projeto "Todos os Projetos" (main) que agrega dados de todas as obras
+- [x] Multi-projeto: associar empresas a projetos (uma empresa pode estar em vários)
+- [x] Multi-projeto: associar utilizadores a projetos (admin/dono_obra define acessos)
+- [x] Multi-projeto: weekly_submissions e historical_pdfs com projectId
+- [x] Multi-projeto: selector de projeto no frontend (sidebar ou header)
+- [x] Multi-projeto: dashboard agregado no projeto "main" (visão geral de todas as obras)
+- [x] Multi-projeto: admin pode gerir acessos por projeto na Administração

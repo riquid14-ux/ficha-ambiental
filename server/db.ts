@@ -17,6 +17,7 @@ import {
 import { historicalPdfs, InsertHistoricalPdf, InsertReviewComment, reviewComments } from "../drizzle/schema";
 import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
 import { invitations, InsertInvitation } from "../drizzle/schema";
+import { projects, projectCompanies, projectUsers, InsertProject, InsertProjectCompany, InsertProjectUser } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -447,7 +448,7 @@ export async function getResponseById(id: number) {
 
 // ─── Dashboard Analytics ─────────────────────────────────────────────────────
 
-export async function getAnalytics(filters?: { companyId?: number; weekYear?: number; weekNumber?: number; sectionId?: number }) {
+export async function getAnalytics(filters?: { companyId?: number; weekYear?: number; weekNumber?: number; sectionId?: number; projectId?: number }) {
   const db = await getDb();
   if (!db) return { total: 0, byStatus: {}, byWeek: [], bySection: [] };
 
@@ -456,6 +457,7 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
   if (filters?.companyId) subConditions.push(eq(weeklySubmissions.companyId, filters.companyId));
   if (filters?.weekYear) subConditions.push(eq(weeklySubmissions.weekYear, filters.weekYear));
   if (filters?.weekNumber) subConditions.push(eq(weeklySubmissions.weekNumber, filters.weekNumber));
+  if (filters?.projectId) subConditions.push(eq(weeklySubmissions.projectId, filters.projectId));
 
   const submissionsQuery = subConditions.length > 0
     ? db.select().from(weeklySubmissions).where(and(...subConditions))
@@ -589,4 +591,114 @@ export async function deleteInvitation(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(invitations).where(eq(invitations.id, id));
+}
+
+// ─── Projects ───────────────────────────────────────────────────────────────
+
+export async function getAllProjects() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projects).orderBy(projects.code);
+}
+
+export async function getProjectById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createProject(data: InsertProject) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(projects).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function updateProject(id: number, data: Partial<InsertProject>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(projects).set(data).where(eq(projects.id, id));
+}
+
+// ─── Project-Company Associations ───────────────────────────────────────────
+
+export async function getProjectCompanies(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectCompanies).where(eq(projectCompanies.projectId, projectId));
+}
+
+export async function addCompanyToProject(projectId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  // Check if already exists
+  const existing = await db.select().from(projectCompanies)
+    .where(and(eq(projectCompanies.projectId, projectId), eq(projectCompanies.companyId, companyId)))
+    .limit(1);
+  if (existing.length > 0) return;
+  await db.insert(projectCompanies).values({ projectId, companyId });
+}
+
+export async function removeCompanyFromProject(projectId: number, companyId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(projectCompanies).where(and(eq(projectCompanies.projectId, projectId), eq(projectCompanies.companyId, companyId)));
+}
+
+// ─── Project-User Associations ──────────────────────────────────────────────
+
+export async function getProjectUsers(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectUsers).where(eq(projectUsers.projectId, projectId));
+}
+
+export async function getUserProjects(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectUsers).where(eq(projectUsers.userId, userId));
+}
+
+export async function addUserToProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(projectUsers)
+    .where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, userId)))
+    .limit(1);
+  if (existing.length > 0) return;
+  await db.insert(projectUsers).values({ projectId, userId });
+}
+
+export async function removeUserFromProject(projectId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(projectUsers).where(and(eq(projectUsers.projectId, projectId), eq(projectUsers.userId, userId)));
+}
+
+// ─── Project-scoped queries ─────────────────────────────────────────────────
+
+export async function getSubmissionsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(weeklySubmissions)
+    .where(eq(weeklySubmissions.projectId, projectId))
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
+}
+
+export async function getHistoricalPdfsByProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(historicalPdfs)
+    .where(eq(historicalPdfs.projectId, projectId))
+    .orderBy(desc(historicalPdfs.weekYear), desc(historicalPdfs.weekNumber));
+}
+
+export async function getCompaniesForProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const associations = await db.select().from(projectCompanies).where(eq(projectCompanies.projectId, projectId));
+  if (associations.length === 0) return [];
+  const companyIds = associations.map(a => a.companyId);
+  return db.select().from(companies).where(sql`${companies.id} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`);
 }

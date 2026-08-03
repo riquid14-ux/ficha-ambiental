@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { ProjectProvider } from "./contexts/ProjectContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -13,6 +14,7 @@ import SubmissionHistory from "./pages/SubmissionHistory";
 import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
 import Profile from "./pages/Profile";
+import ProjectManagement from "./pages/ProjectManagement";
 
 function Router() {
   return (
@@ -26,6 +28,7 @@ function Router() {
       <Route path="/admin" component={AdminPanel} />
       <Route path="/revisao" component={ReviewPage} />
       <Route path="/perfil" component={Profile} />
+      <Route path="/projetos" component={ProjectManagement} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -37,8 +40,10 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <ProjectProvider>
+            <Toaster />
+            <Router />
+          </ProjectProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

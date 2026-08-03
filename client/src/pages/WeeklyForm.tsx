@@ -405,21 +405,34 @@ export default function WeeklyForm() {
                 {isSubmitted && <Badge className="mt-1">Submetida — Aguarda Revisão</Badge>}
                 {isApproved && <Badge className="mt-1 bg-green-600">Aprovada</Badge>}
                 {isRejected && (
-                  <div className="space-y-1">
-                    <Badge variant="destructive" className="mt-1">Rejeitada — Edite e resubmeta</Badge>
+                  <div className="mt-2 p-4 border-2 border-red-500 bg-red-50 dark:bg-red-950/40 rounded-lg shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center shrink-0 animate-pulse">
+                        <AlertTriangle className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-red-800 dark:text-red-200">AÇÃO IMEDIATA NECESSÁRIA</h3>
+                        <p className="text-xs text-red-600 dark:text-red-400">Esta ficha foi rejeitada pela RAA e requer correção prioritária.</p>
+                      </div>
+                    </div>
                     {submissionQuery.data?.reviewNotes && (
-                      <p className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/30 p-2 rounded">
-                        <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
-                      </p>
+                      <div className="mt-2 p-3 bg-white dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded">
+                        <p className="text-sm text-red-800 dark:text-red-200">
+                          <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
+                        </p>
+                      </div>
                     )}
                     {reviewFeedbackMap.size > 0 && (
-                      <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-300">
+                        <XCircle className="w-4 h-4 shrink-0" />
                         <span>
-                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong> medida(s) marcada(s) como não conforme pela RAA — veja os comentários abaixo em cada medida.
+                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong> medida(s) marcada(s) como não conforme — corrija os itens assinalados abaixo e resubmeta.
                         </span>
                       </div>
                     )}
+                    <p className="mt-2 text-xs text-red-500 dark:text-red-400 italic">
+                      As medidas com problemas estão destacadas a vermelho. Corrija e clique em "Resubmeter".
+                    </p>
                   </div>
                 )}
                 {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}

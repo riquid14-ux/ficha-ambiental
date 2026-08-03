@@ -53,3 +53,5 @@
 - [x] Ficha Semanal: mostrar feedback da RAA (marcas e comentários) em fichas rejeitadas para ação imediata
 - [x] Histórico: modo de exportação "Por Medida" — PDF com evolução de uma medida ao longo do período (estado, observações, fotos por semana)
 - [x] Histórico: filtros por medida específica e por estado no modo de exportação por medida
+- [x] Ficha Semanal: ficha rejeitada aparece com estilo "Ação Imediata" urgente (banner vermelho, ícone alerta, destaque prioritário)
+- [x] Administração: quadro explicativo dos tipos de empresa/utilizador (EE, RAP, RAA, Dono de Obra, Observador)

@@ -13,6 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat } from "lucide-react";
 import { useLocation } from "wouter";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -64,6 +65,53 @@ export default function AdminPanel() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Administração</h1>
           <p className="text-muted-foreground text-sm mt-1">Gestão de empresas, utilizadores e submissões</p>
         </div>
+
+        {/* Explanatory Roles Panel */}
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tipos de Entidade e Permissões</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+                <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
+                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+                <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">RAP — Resp. Ambiental de Projeto</p>
+                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+                <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
+                  <p className="text-xs text-muted-foreground">Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+                <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
+                  <p className="text-xs text-muted-foreground">Visão geral do projeto. Acesso de administração e supervisão.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+                <Eye className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">Observador</p>
+                  <p className="text-xs text-muted-foreground">Acesso de leitura. Pode ver dashboard, histórico e revisões.</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="companies">
           <TabsList>

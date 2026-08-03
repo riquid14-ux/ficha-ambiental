@@ -239,7 +239,16 @@ export const appRouter = router({
 
     // Review (approve/reject) - RAA/Admin/Dono can review
     review: protectedProcedure
-      .input(z.object({ id: z.number(), status: z.enum(["approved", "rejected"]), notes: z.string().nullable() }))
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["approved", "rejected"]),
+        notes: z.string().nullable(),
+        measureReviews: z.array(z.object({
+          measureId: z.number(),
+          verdict: z.enum(["ok", "nok"]),
+          comment: z.string().nullable(),
+        })).optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
         if (!canReview(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para rever fichas." });
@@ -248,6 +257,10 @@ export const appRouter = router({
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
         if (sub.status !== "submitted") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas submetidas podem ser revistas." });
+        }
+        // Save per-measure reviews if provided
+        if (input.measureReviews && input.measureReviews.length > 0) {
+          await db.bulkUpsertMeasureReviews(input.id, ctx.user.id, input.measureReviews);
         }
         await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
         return { success: true };
@@ -266,6 +279,17 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getCommentsBySubmission(input.submissionId);
+      }),
+    getMeasureReviews: protectedProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.submissionId);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        // RAA, admin, dono, the company itself, and observador can see measure reviews
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return db.getMeasureReviewsBySubmission(input.submissionId);
       }),
     add: protectedProcedure
       .input(z.object({ submissionId: z.number(), measureId: z.number().nullable(), comment: z.string().min(1) }))

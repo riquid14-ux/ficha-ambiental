@@ -134,6 +134,24 @@ export type ReviewComment = typeof reviewComments.$inferSelect;
 export type InsertReviewComment = typeof reviewComments.$inferInsert;
 
 /**
+ * Measure Reviews (veredicto por medida durante revisão RAA)
+ * verdict: "ok" = conforme, "nok" = não conforme/rejeitar
+ */
+export const measureReviews = mysqlTable("measure_reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  measureId: int("measureId").notNull(),
+  reviewerId: int("reviewerId").notNull(),
+  verdict: mysqlEnum("verdict", ["ok", "nok"]).notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MeasureReview = typeof measureReviews.$inferSelect;
+export type InsertMeasureReview = typeof measureReviews.$inferInsert;
+
+/**
  * Historical PDF uploads (fichas passadas em PDF para arquivo)
  */
 export const historicalPdfs = mysqlTable("historical_pdfs", {

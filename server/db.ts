@@ -15,6 +15,7 @@ import {
   weeklySubmissions,
 } from "../drizzle/schema";
 import { historicalPdfs, InsertHistoricalPdf, InsertReviewComment, reviewComments } from "../drizzle/schema";
+import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -262,6 +263,31 @@ export async function getCommentsBySubmission(submissionId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(reviewComments).where(eq(reviewComments.submissionId, submissionId)).orderBy(desc(reviewComments.createdAt));
+}
+
+// ─── Measure Reviews (per-measure verdicts by RAA) ────────────────────────────
+
+export async function getMeasureReviewsBySubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(measureReviews).where(eq(measureReviews.submissionId, submissionId));
+}
+
+export async function bulkUpsertMeasureReviews(submissionId: number, reviewerId: number, reviews: { measureId: number; verdict: "ok" | "nok"; comment: string | null }[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  for (const r of reviews) {
+    const existing = await db.select().from(measureReviews)
+      .where(and(eq(measureReviews.submissionId, submissionId), eq(measureReviews.measureId, r.measureId)))
+      .limit(1);
+    if (existing.length > 0) {
+      await db.update(measureReviews)
+        .set({ verdict: r.verdict, comment: r.comment, reviewerId })
+        .where(eq(measureReviews.id, existing[0].id));
+    } else {
+      await db.insert(measureReviews).values({ submissionId, measureId: r.measureId, reviewerId, verdict: r.verdict, comment: r.comment });
+    }
+  }
 }
 
 // ─── Historical PDFs ────────────────────────────────────────────────────────

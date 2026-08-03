@@ -48,3 +48,7 @@
 - [x] Integração ACC: endpoints auxiliares (health, status, hubs, projects)
 - [x] Empresas: adicionar tipos Dono de Obra, RAA e Observador além de EE/RAP
 - [x] Empresas: utilizadores atribuídos a empresas DO/RAA/Observador herdam o role correspondente
+- [ ] Revisão RAA: permitir marcar cada medida com certo/X e adicionar comentários por medida
+- [x] Revisão RAA: permitir marcar cada medida com certo/X e adicionar comentários por medida
+- [x] Revisão RAA: ficha rejeitada volta para EE/RAP com comentários da RAA visíveis
+- [x] Ficha Semanal: mostrar feedback da RAA (marcas e comentários) em fichas rejeitadas para ação imediata

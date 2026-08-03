@@ -3,15 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, MessageSquare, Eye, Filter } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send } from "lucide-react";
 import { useLocation } from "wouter";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -38,6 +39,8 @@ const MEASURE_STATUS_COLORS: Record<string, string> = {
 };
 
 type MeasureStatusFilter = "all" | "I" | "C" | "NC" | "NA";
+type MeasureVerdict = "ok" | "nok" | null;
+type VerdictMap = Record<number, { verdict: MeasureVerdict; comment: string }>;
 
 export default function ReviewPage() {
   const { user } = useAuth();
@@ -56,13 +59,14 @@ export default function ReviewPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [reviewNotes, setReviewNotes] = useState("");
   const [measureFilter, setMeasureFilter] = useState<MeasureStatusFilter>("all");
+  const [verdicts, setVerdicts] = useState<VerdictMap>({});
 
-  // Queries for detail view
+  // Queries for detail/review view
   const sectionsQuery = trpc.sections.list.useQuery();
   const measuresQuery = trpc.measures.list.useQuery();
   const responsesQuery = trpc.responses.getBySubmission.useQuery(
     { submissionId: selectedSubmission?.id! },
-    { enabled: !!selectedSubmission && detailDialogOpen }
+    { enabled: !!selectedSubmission && (detailDialogOpen || reviewDialogOpen) }
   );
 
   const reviewMutation = trpc.submissions.review.useMutation({
@@ -72,6 +76,7 @@ export default function ReviewPage() {
       setReviewDialogOpen(false);
       setSelectedSubmission(null);
       setReviewNotes("");
+      setVerdicts({});
     },
     onError: (err) => toast.error(err.message),
   });
@@ -81,6 +86,9 @@ export default function ReviewPage() {
 
   const handleReview = (sub: any) => {
     setSelectedSubmission(sub);
+    setVerdicts({});
+    setReviewNotes("");
+    setMeasureFilter("all");
     setReviewDialogOpen(true);
   };
 
@@ -90,9 +98,36 @@ export default function ReviewPage() {
     setDetailDialogOpen(true);
   };
 
+  const setVerdict = useCallback((measureId: number, verdict: MeasureVerdict) => {
+    setVerdicts((prev) => ({
+      ...prev,
+      [measureId]: { ...prev[measureId], verdict, comment: prev[measureId]?.comment || "" },
+    }));
+  }, []);
+
+  const setVerdictComment = useCallback((measureId: number, comment: string) => {
+    setVerdicts((prev) => ({
+      ...prev,
+      [measureId]: { ...prev[measureId], verdict: prev[measureId]?.verdict || null, comment },
+    }));
+  }, []);
+
   const submitReview = (status: "approved" | "rejected") => {
     if (!selectedSubmission) return;
-    reviewMutation.mutate({ id: selectedSubmission.id, status, notes: reviewNotes || null });
+    // Collect per-measure reviews (only those with a verdict set)
+    const measureReviews = Object.entries(verdicts)
+      .filter(([, v]) => v.verdict !== null)
+      .map(([measureId, v]) => ({
+        measureId: Number(measureId),
+        verdict: v.verdict as "ok" | "nok",
+        comment: v.comment || null,
+      }));
+    reviewMutation.mutate({
+      id: selectedSubmission.id,
+      status,
+      notes: reviewNotes || null,
+      measureReviews: measureReviews.length > 0 ? measureReviews : undefined,
+    });
   };
 
   // Group measures by section, filtered by status
@@ -126,6 +161,16 @@ export default function ReviewPage() {
     }
     return counts;
   }, [responsesQuery.data]);
+
+  // Count verdicts set
+  const verdictCounts = useMemo(() => {
+    let ok = 0, nok = 0;
+    Object.values(verdicts).forEach((v) => {
+      if (v.verdict === "ok") ok++;
+      if (v.verdict === "nok") nok++;
+    });
+    return { ok, nok, total: ok + nok };
+  }, [verdicts]);
 
   if (!canSee) {
     return (
@@ -228,35 +273,136 @@ export default function ReviewPage() {
           </CardContent>
         </Card>
 
-        {/* Review Dialog */}
+        {/* ═══ REVIEW DIALOG — Full per-measure review ═══ */}
         <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Rever Ficha</DialogTitle></DialogHeader>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Rever Ficha — {selectedSubmission && `S${selectedSubmission.weekNumber}/${selectedSubmission.weekYear}`}
+              </DialogTitle>
+            </DialogHeader>
             {selectedSubmission && (
-              <div className="space-y-4 pt-2">
-                <div className="text-sm">
-                  <p><strong>Empresa:</strong> {companyMap.get(selectedSubmission.companyId)?.shortName}</p>
-                  <p><strong>Semana:</strong> S{selectedSubmission.weekNumber}/{selectedSubmission.weekYear}</p>
-                  <p><strong>Período:</strong> {selectedSubmission.weekStartDate} - {selectedSubmission.weekEndDate}</p>
+              <div className="space-y-4">
+                {/* Summary info */}
+                <div className="flex flex-wrap gap-4 text-sm bg-muted/50 p-3 rounded-lg">
+                  <span><strong>Empresa:</strong> {companyMap.get(selectedSubmission.companyId)?.shortName}</span>
+                  <span><strong>Período:</strong> {selectedSubmission.weekStartDate} - {selectedSubmission.weekEndDate}</span>
+                  <span><strong>Marcadas:</strong> {verdictCounts.total} ({verdictCounts.ok} ✓ / {verdictCounts.nok} ✗)</span>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Notas / Comentários</label>
-                  <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Adicione notas sobre a revisão (opcional)..." rows={4} />
+
+                {/* Status filter */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Filtrar:</span>
+                  <Button size="sm" variant={measureFilter === "all" ? "default" : "outline"} onClick={() => setMeasureFilter("all")}>
+                    Todos ({statusCounts.total})
+                  </Button>
+                  <Button size="sm" variant={measureFilter === "I" ? "default" : "outline"} className={measureFilter === "I" ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => setMeasureFilter("I")}>
+                    I ({statusCounts.I})
+                  </Button>
+                  <Button size="sm" variant={measureFilter === "C" ? "default" : "outline"} className={measureFilter === "C" ? "bg-blue-600 hover:bg-blue-700" : ""} onClick={() => setMeasureFilter("C")}>
+                    C ({statusCounts.C})
+                  </Button>
+                  <Button size="sm" variant={measureFilter === "NC" ? "default" : "outline"} className={measureFilter === "NC" ? "bg-red-600 hover:bg-red-700" : ""} onClick={() => setMeasureFilter("NC")}>
+                    NC ({statusCounts.NC})
+                  </Button>
+                  <Button size="sm" variant={measureFilter === "NA" ? "default" : "outline"} className={measureFilter === "NA" ? "bg-slate-500 hover:bg-slate-600" : ""} onClick={() => setMeasureFilter("NA")}>
+                    NA ({statusCounts.NA})
+                  </Button>
                 </div>
-                <div className="flex gap-3">
-                  <Button className="flex-1" variant="default" onClick={() => submitReview("approved")} disabled={reviewMutation.isPending}>
-                    <CheckCircle className="w-4 h-4 mr-2" /> Aprovar
-                  </Button>
-                  <Button className="flex-1" variant="destructive" onClick={() => submitReview("rejected")} disabled={reviewMutation.isPending}>
-                    <XCircle className="w-4 h-4 mr-2" /> Rejeitar
-                  </Button>
+
+                {/* Measures grouped by section — with review controls */}
+                <Accordion type="multiple" className="space-y-2" defaultValue={filteredMeasuresBySection.map(g => String(g.section.id))}>
+                  {filteredMeasuresBySection.map(({ section, measures }) => (
+                    <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-3">
+                      <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">{section.phase}</Badge>
+                          <span className="text-left">{section.name.length > 50 ? section.name.slice(0, 50) + "..." : section.name}</span>
+                          <Badge variant="outline" className="ml-auto text-xs">{measures.length}</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-2">
+                          {measures.map((m: any) => {
+                            const v = verdicts[m.id];
+                            return (
+                              <div key={m.id} className={`p-3 border rounded-lg space-y-2 transition-colors ${v?.verdict === "ok" ? "border-green-300 bg-green-50/50 dark:bg-green-950/20" : v?.verdict === "nok" ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
+                                {/* Measure info */}
+                                <div className="flex items-start gap-2">
+                                  <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
+                                  <p className="text-sm flex-1">{m.description}</p>
+                                  {m.response?.status && (
+                                    <Badge className={`text-xs shrink-0 ${MEASURE_STATUS_COLORS[m.response.status]}`}>
+                                      {m.response.status}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {/* EE/RAP observations */}
+                                {m.response?.observations && (
+                                  <p className="text-xs text-muted-foreground ml-8 italic bg-muted/50 p-2 rounded">"{m.response.observations}"</p>
+                                )}
+                                {/* Review controls: ✓ / ✗ buttons + comment */}
+                                <div className="flex items-center gap-2 ml-8 pt-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={v?.verdict === "ok" ? "default" : "outline"}
+                                    className={`h-8 px-3 ${v?.verdict === "ok" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50 hover:border-green-300"}`}
+                                    onClick={() => setVerdict(m.id, v?.verdict === "ok" ? null : "ok")}
+                                  >
+                                    <Check className="w-4 h-4 mr-1" /> Conforme
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={v?.verdict === "nok" ? "default" : "outline"}
+                                    className={`h-8 px-3 ${v?.verdict === "nok" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-50 hover:border-red-300"}`}
+                                    onClick={() => setVerdict(m.id, v?.verdict === "nok" ? null : "nok")}
+                                  >
+                                    <XIcon className="w-4 h-4 mr-1" /> Não Conforme
+                                  </Button>
+                                  <Input
+                                    placeholder="Comentário RAA (opcional)..."
+                                    value={v?.comment || ""}
+                                    onChange={(e) => setVerdictComment(m.id, e.target.value)}
+                                    className="flex-1 h-8 text-xs"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+
+                {filteredMeasuresBySection.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8">Nenhuma medida com o estado selecionado</p>
+                )}
+
+                {/* General notes + action buttons */}
+                <div className="border-t pt-4 space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Notas gerais da revisão</label>
+                    <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Adicione notas gerais sobre a revisão (opcional)..." rows={3} />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button className="flex-1" variant="default" onClick={() => submitReview("approved")} disabled={reviewMutation.isPending}>
+                      <CheckCircle className="w-4 h-4 mr-2" /> Aprovar Ficha
+                    </Button>
+                    <Button className="flex-1" variant="destructive" onClick={() => submitReview("rejected")} disabled={reviewMutation.isPending}>
+                      <XCircle className="w-4 h-4 mr-2" /> Rejeitar Ficha
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Detail View Dialog with Status Filter */}
+        {/* ═══ DETAIL VIEW DIALOG (read-only) ═══ */}
         <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>

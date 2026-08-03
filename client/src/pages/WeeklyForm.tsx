@@ -11,7 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
-import { Save, Send, Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -105,6 +105,23 @@ export default function WeeklyForm() {
     { id: submissionId! },
     { enabled: !!submissionId }
   );
+
+  // Fetch RAA per-measure reviews (for rejected fichas)
+  const measureReviewsQuery = trpc.reviewComments.getMeasureReviews.useQuery(
+    { submissionId: submissionId! },
+    { enabled: !!submissionId }
+  );
+
+  // Map of measureId -> review verdict/comment
+  const reviewFeedbackMap = useMemo(() => {
+    const map = new Map<number, { verdict: string; comment: string | null }>();
+    if (measureReviewsQuery.data) {
+      for (const r of measureReviewsQuery.data) {
+        map.set(r.measureId, { verdict: r.verdict, comment: r.comment });
+      }
+    }
+    return map;
+  }, [measureReviewsQuery.data]);
 
   const saveMutation = trpc.responses.save.useMutation({
     onSuccess: () => {
@@ -395,6 +412,14 @@ export default function WeeklyForm() {
                         <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
                       </p>
                     )}
+                    {reviewFeedbackMap.size > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong> medida(s) marcada(s) como não conforme pela RAA — veja os comentários abaixo em cada medida.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}
@@ -429,8 +454,9 @@ export default function WeeklyForm() {
                   {measures.map((measure) => {
                     const response = responses[measure.id];
                     const images = imagesByMeasure.get(measure.id) || [];
+                    const reviewFeedback = reviewFeedbackMap.get(measure.id);
                     return (
-                      <div key={measure.id} className="p-4 border rounded-lg bg-card space-y-3">
+                      <div key={measure.id} className={`p-4 border rounded-lg space-y-3 ${reviewFeedback?.verdict === "nok" ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
                         <div className="flex items-start gap-3">
                           <span className="text-xs font-mono bg-muted px-2 py-1 rounded shrink-0">
                             {measure.number}
@@ -441,7 +467,20 @@ export default function WeeklyForm() {
                               Responsável: {measure.responsible.replace(/\|/g, " / ").replace("DO", "DO - Start Campus").replace("EE", "EE - Empresa")}
                             </p>
                           </div>
+                          {reviewFeedback && (
+                            <span className={`shrink-0 flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${reviewFeedback.verdict === "ok" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                              {reviewFeedback.verdict === "ok" ? <Check className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                              {reviewFeedback.verdict === "ok" ? "RAA: OK" : "RAA: NC"}
+                            </span>
+                          )}
                         </div>
+
+                        {/* RAA Review Feedback */}
+                        {reviewFeedback && (reviewFeedback.comment || reviewFeedback.verdict === "nok") && (
+                          <div className={`ml-8 p-2 border rounded text-xs ${reviewFeedback.verdict === "nok" ? "bg-red-100/80 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300" : "bg-green-100/80 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300"}`}>
+                            <strong>Comentário RAA:</strong> {reviewFeedback.comment || (reviewFeedback.verdict === "nok" ? "Medida marcada como não conforme — necessita correção." : "Conforme.")}
+                          </div>
+                        )}
 
                         {/* Status Radio */}
                         <RadioGroup

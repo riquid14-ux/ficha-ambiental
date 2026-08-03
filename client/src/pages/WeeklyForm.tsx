@@ -12,28 +12,36 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
-function getWeekInfo() {
+function getWeekOptions() {
   const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const days = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
-  const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+  const year = now.getFullYear();
+  const options = [];
+  for (let w = 1; w <= 53; w++) {
+    options.push({ value: w, label: `Semana ${w}` });
+  }
+  return { options, year, currentWeek: getISOWeek(now) };
+}
 
-  // Get Monday and Sunday of current week
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setDate(diff));
+function getISOWeek(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+}
+
+function getWeekDates(weekNumber: number, year: number) {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - dayOfWeek + 1 + (weekNumber - 1) * 7);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-
-  const fmt = (d: Date) => `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
-
-  return {
-    weekNumber,
-    weekYear: new Date().getFullYear(),
-    weekStartDate: fmt(monday),
-    weekEndDate: fmt(sunday),
-  };
+  const fmt = (d: Date) => `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+  return { start: fmt(monday), end: fmt(sunday) };
 }
 
 type ResponseMap = Record<number, { status: "I" | "C" | "NC" | "NA" | null; observations: string | null }>;
@@ -47,8 +55,19 @@ export default function WeeklyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingMeasure, setUploadingMeasure] = useState<number | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [started, setStarted] = useState(!!params.id);
+  const weekOpts = useMemo(() => getWeekOptions(), []);
+  const [selectedWeek, setSelectedWeek] = useState(weekOpts.currentWeek);
+  const [selectedYear, setSelectedYear] = useState(weekOpts.year);
 
-  const weekInfo = useMemo(() => getWeekInfo(), []);
+  const weekDates = useMemo(() => getWeekDates(selectedWeek, selectedYear), [selectedWeek, selectedYear]);
+
+  const weekInfo = useMemo(() => ({
+    weekNumber: selectedWeek,
+    weekYear: selectedYear,
+    weekStartDate: weekDates.start,
+    weekEndDate: weekDates.end,
+  }), [selectedWeek, selectedYear, weekDates]);
 
   const sectionsQuery = trpc.sections.list.useQuery();
   const measuresQuery = trpc.measures.list.useQuery();
@@ -112,10 +131,10 @@ export default function WeeklyForm() {
 
   // Initialize: create or get submission
   useEffect(() => {
-    if (!params.id && user?.companyId) {
+    if (!params.id && user?.companyId && started) {
       createOrGetMutation.mutate(weekInfo);
     }
-  }, [user?.companyId]);
+  }, [user?.companyId, started]);
 
   // Load existing responses
   useEffect(() => {
@@ -273,47 +292,117 @@ export default function WeeklyForm() {
   return (
     <AppLayout>
       <div className="space-y-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Ficha Semanal
-              {submissionQuery.data && (
-                <span className="text-muted-foreground font-normal text-lg ml-2">
-                  — Semana {submissionQuery.data.weekNumber}/{submissionQuery.data.weekYear}
-                </span>
-              )}
-            </h1>
-            {isSubmitted && <Badge className="mt-1">Submetida — Aguarda Revisão</Badge>}
-            {isApproved && <Badge className="mt-1 bg-green-600">Aprovada</Badge>}
-            {isRejected && (
-              <div className="space-y-1">
-                <Badge variant="destructive" className="mt-1">Rejeitada — Edite e resubmeta</Badge>
-                {submissionQuery.data?.reviewNotes && (
-                  <p className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/30 p-2 rounded">
-                    <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
-                  </p>
-                )}
+        {/* Ficha Header with Logo and Company */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-12 object-contain" />
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">{user?.name || "—"}</p>
+                <p className="text-xs text-muted-foreground">{(user as any)?.companyName || "Empresa não atribuída"}</p>
               </div>
-            )}
-            {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}
-          </div>
-          {!isReadOnly && (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Guardar
-              </Button>
-              <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                {isRejected ? "Resubmeter" : "Submeter"}
-              </Button>
             </div>
-          )}
-        </div>
+            <div className="border-t pt-4">
+              <h1 className="text-xl font-bold tracking-tight text-foreground text-center mb-1">
+                Ficha de Controlo de Medidas Ambientais
+              </h1>
+              <p className="text-xs text-muted-foreground text-center">DCAPE — Acompanhamento Semanal</p>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Measures by Section */}
-        <Accordion type="multiple" className="space-y-2">
+        {/* Date/Week Selection (before starting) */}
+        {!started && !params.id && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Selecionar Semana</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Semana</Label>
+                  <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {weekOpts.options.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Ano</Label>
+                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={String(weekOpts.year - 1)}>{weekOpts.year - 1}</SelectItem>
+                      <SelectItem value={String(weekOpts.year)}>{weekOpts.year}</SelectItem>
+                      <SelectItem value={String(weekOpts.year + 1)}>{weekOpts.year + 1}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm text-muted-foreground">
+                  Período: <strong>{weekDates.start}</strong> a <strong>{weekDates.end}</strong>
+                </p>
+              </div>
+              <Button onClick={() => setStarted(true)} size="lg" className="w-full">
+                Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Form Content (after starting or editing existing) */}
+        {(started || params.id) && (
+          <>
+            {/* Status and Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Semana {submissionQuery.data?.weekNumber || selectedWeek}/{submissionQuery.data?.weekYear || selectedYear}
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({weekDates.start} — {weekDates.end})
+                  </span>
+                </h2>
+                {isSubmitted && <Badge className="mt-1">Submetida — Aguarda Revisão</Badge>}
+                {isApproved && <Badge className="mt-1 bg-green-600">Aprovada</Badge>}
+                {isRejected && (
+                  <div className="space-y-1">
+                    <Badge variant="destructive" className="mt-1">Rejeitada — Edite e resubmeta</Badge>
+                    {submissionQuery.data?.reviewNotes && (
+                      <p className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                        <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}
+              </div>
+              {!isReadOnly && (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleSave} disabled={saving}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                    Guardar
+                  </Button>
+                  <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                    {isRejected ? "Resubmeter" : "Submeter"}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Measures by Section */}
+            <Accordion type="multiple" className="space-y-2">
           {measuresBySection.map(({ section, measures }) => (
             <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-4">
               <AccordionTrigger className="text-sm font-medium hover:no-underline">
@@ -399,7 +488,9 @@ export default function WeeklyForm() {
               </AccordionContent>
             </AccordionItem>
           ))}
-        </Accordion>
+            </Accordion>
+          </>
+        )}
       </div>
     </AppLayout>
   );

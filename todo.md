@@ -36,3 +36,9 @@
 - [x] Auto-atribuir role dono_obra aos emails rmd@startcampus.pt, rom@startcampus.pt, npa@startcampus.pt
 - [x] Atualizar descrição das medidas para referir DCAPE
 - [x] Adicionar logo Start Campus
+- [x] Ficha Semanal: logo Start Campus no header, nome da empresa, seleção de semana/data
+- [x] Filtrar medidas por tipo de empresa (EE só vê medidas EE, RAP só vê medidas RAP)
+- [x] Auto-NA para medidas não relevantes na submissão
+- [x] Limite de 5 rascunhos abertos por empresa
+- [x] Histórico: filtros por semana, mês, trimestre e semestre
+- [x] Exportar PDFs em lote (ZIP) por período filtrado

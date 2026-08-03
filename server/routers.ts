@@ -386,6 +386,7 @@ export const appRouter = router({
         const company = sub.companyId ? await db.getCompanyById(sub.companyId) : null;
         await db.createDeletionLog({
           submissionId: input.id,
+          projectId: sub.projectId || null,
           weekNumber: sub.weekNumber,
           weekYear: sub.weekYear,
           companyId: sub.companyId,

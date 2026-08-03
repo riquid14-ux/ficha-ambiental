@@ -104,3 +104,4 @@
 - [x] Cada ficha criada fica associada ao projeto e só aparece nesse projeto (ou em "Todos" para consulta)
 - [x] Administração > Empresas: coluna de projetos atribuídos (editável, igual à dos utilizadores)
 - [x] Sidebar: limitar projetos visíveis com base nas atribuições da empresa/utilizador
+- [x] Histórico de eliminações: filtrar por projeto (ficha eliminada no SIN03 só aparece no SIN03 ou em Todos)

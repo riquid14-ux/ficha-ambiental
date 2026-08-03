@@ -57,6 +57,13 @@
       "when": 1785793091765,
       "tag": "0007_acoustic_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1785795240825,
+      "tag": "0008_classy_leader",
+      "breakpoints": true
     }
   ]
 }

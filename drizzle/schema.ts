@@ -240,6 +240,7 @@ export type InsertProjectUser = typeof projectUsers.$inferInsert;
 export const deletionLogs = mysqlTable("deletion_logs", {
   id: int("id").autoincrement().primaryKey(),
   submissionId: int("submissionId").notNull(),
+  projectId: int("projectId"),
   weekNumber: int("weekNumber").notNull(),
   weekYear: int("weekYear").notNull(),
   companyId: int("companyId"),

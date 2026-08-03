@@ -735,6 +735,7 @@ export async function setUserProjects(userId: number, projectIds: number[]) {
 // ─── Deletion Logs ────────────────────────────────────────────────────────────
 export async function createDeletionLog(data: {
   submissionId: number;
+  projectId?: number | null;
   weekNumber: number;
   weekYear: number;
   companyId: number | null;

@@ -510,6 +510,7 @@ export default function SubmissionHistory() {
 
 function DeletionHistoryView() {
   const deletionLogsQuery = trpc.deletionLogs.list.useQuery();
+  const { activeProject, isAllProjects } = useProject();
 
   if (deletionLogsQuery.isLoading) {
     return (
@@ -523,7 +524,14 @@ function DeletionHistoryView() {
 
   const logs = deletionLogsQuery.data || [];
 
-  if (logs.length === 0) {
+  // Filter by active project
+  const filteredLogs = useMemo(() => {
+    if (isAllProjects) return logs;
+    if (!activeProject) return logs;
+    return logs.filter((log: any) => log.projectId === activeProject.id);
+  }, [logs, activeProject, isAllProjects]);
+
+  if (filteredLogs.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
@@ -546,7 +554,7 @@ function DeletionHistoryView() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((log: any) => (
+            {filteredLogs.map((log: any) => (
               <TableRow key={log.id}>
                 <TableCell className="font-medium">
                   S{String(log.weekNumber).padStart(2, "0")} / {log.weekYear}

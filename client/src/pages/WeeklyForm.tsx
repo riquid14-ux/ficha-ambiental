@@ -371,9 +371,9 @@ export default function WeeklyForm() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={String(weekOpts.year - 1)}>{weekOpts.year - 1}</SelectItem>
-                      <SelectItem value={String(weekOpts.year)}>{weekOpts.year}</SelectItem>
-                      <SelectItem value={String(weekOpts.year + 1)}>{weekOpts.year + 1}</SelectItem>
+                      {Array.from({ length: 8 }, (_, i) => 2025 + i).map((y) => (
+                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

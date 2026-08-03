@@ -222,7 +222,7 @@ export default function WeeklyForm() {
   const isRejected = subStatus === "rejected";
   const isUnderReview = subStatus === "under_review";
   const canEdit = subStatus === "draft" || subStatus === "rejected";
-  const isReadOnly = !canEdit && user?.role !== "admin" && user?.role !== "dono_obra";
+  const isReadOnly = user?.role === "observador" || (!canEdit && user?.role !== "admin" && user?.role !== "dono_obra");
 
   // Group measures by section
   const measuresBySection = useMemo(() => {

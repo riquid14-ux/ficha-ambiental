@@ -101,7 +101,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra";
+  const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra" || user?.role === "observador";
   const canAdmin = user?.role === "admin" || user?.role === "dono_obra";
   const allItems = [
     ...menuItems,

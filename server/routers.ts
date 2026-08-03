@@ -149,7 +149,7 @@ export const appRouter = router({
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
 
         // RAA can see all, EE/RAP can only see own company
-        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return sub;
@@ -165,7 +165,7 @@ export const appRouter = router({
     listAll: protectedProcedure
       .input(z.object({ companyId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador") {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         if (input?.companyId) {
@@ -228,7 +228,7 @@ export const appRouter = router({
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
         // RAA, admin, dono, and the company itself can see comments
-        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getCommentsBySubmission(input.submissionId);
@@ -256,7 +256,7 @@ export const appRouter = router({
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
         // RAA can view all responses
-        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getResponsesBySubmission(input.submissionId);
@@ -297,7 +297,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getImagesBySubmission(input.submissionId);
@@ -325,7 +325,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ companyId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        if (isAdminOrDono(ctx.user.role) || ctx.user.role === "raa") {
+        if (isAdminOrDono(ctx.user.role) || ctx.user.role === "raa" || ctx.user.role === "observador") {
           return db.getHistoricalPdfs(input?.companyId);
         }
         if (!ctx.user.companyId) return [];

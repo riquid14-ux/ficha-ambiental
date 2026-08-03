@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
   raa: "RAA",
   rap: "RAP",
   dono_obra: "Dono de Obra",
+  observador: "Observador",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -318,6 +319,7 @@ function UsersTab() {
                       <SelectItem value="raa">RAA</SelectItem>
                       <SelectItem value="rap">RAP</SelectItem>
                       <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="observador">Observador</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>

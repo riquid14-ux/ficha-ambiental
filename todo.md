@@ -30,3 +30,6 @@
 - [x] Workflow: EE/RAP submete → RAA revê/comenta/aprova → rejeição permite re-edição
 - [x] RAP: funciona como EE mas com label RAP-NomeEmpresa
 - [x] Upload de fichas históricas em PDF para arquivo
+- [x] Dashboard: filtro por estado (I, C, NC, NA, Todos)
+- [x] Revisão: filtro por estado nas medidas ao visualizar ficha
+- [x] Role: Observador (pode ver tudo mas não editar/submeter/aprovar)

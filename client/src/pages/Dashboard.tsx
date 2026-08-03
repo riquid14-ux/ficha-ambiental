@@ -10,35 +10,37 @@ import {
 import { useState, useMemo } from "react";
 import { CheckCircle, AlertTriangle, MinusCircle, Building2 } from "lucide-react";
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
   C: "#3b82f6",
   NC: "#ef4444",
   NA: "#94a3b8",
 };
 
-const STATUS_LABELS = {
+const STATUS_LABELS: Record<string, string> = {
   I: "Implementado",
   C: "Conforme",
   NC: "Não Conforme",
   NA: "Não Aplicável",
 };
 
+type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedWeek, setSelectedWeek] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
 
   const companiesQuery = trpc.companies.list.useQuery();
   const sectionsQuery = trpc.sections.list.useQuery();
 
-  const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
+  const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador";
   const submissionsQuery = canSeeAll
     ? trpc.submissions.listAll.useQuery({})
     : trpc.submissions.mySubmissions.useQuery();
 
-  // Extract unique weeks from submissions
   const weeks = useMemo(() => {
     const data = submissionsQuery.data || [];
     const unique = new Map<string, { weekNumber: number; weekYear: number }>();
@@ -58,15 +60,49 @@ export default function Dashboard() {
 
   const analytics = analyticsQuery.data;
 
-  // Cumulative project evolution data (from byWeek)
+  // Filter charts by selected status
+  const filteredByWeek = useMemo(() => {
+    if (!analytics?.byWeek) return [];
+    if (selectedStatus === "all") return analytics.byWeek;
+    return analytics.byWeek.map((w: any) => ({
+      ...w,
+      I: selectedStatus === "I" ? w.I : 0,
+      C: selectedStatus === "C" ? w.C : 0,
+      NC: selectedStatus === "NC" ? w.NC : 0,
+      NA: selectedStatus === "NA" ? w.NA : 0,
+    }));
+  }, [analytics, selectedStatus]);
+
+  const filteredByCompany = useMemo(() => {
+    if (!(analytics as any)?.byCompany) return [];
+    if (selectedStatus === "all") return (analytics as any).byCompany;
+    return (analytics as any).byCompany.map((c: any) => ({
+      ...c,
+      I: selectedStatus === "I" ? c.I : 0,
+      C: selectedStatus === "C" ? c.C : 0,
+      NC: selectedStatus === "NC" ? c.NC : 0,
+      NA: selectedStatus === "NA" ? c.NA : 0,
+    }));
+  }, [analytics, selectedStatus]);
+
+  const filteredBySection = useMemo(() => {
+    if (!analytics?.bySection) return [];
+    if (selectedStatus === "all") return analytics.bySection;
+    return analytics.bySection.map((s: any) => ({
+      ...s,
+      I: selectedStatus === "I" ? s.I : 0,
+      C: selectedStatus === "C" ? s.C : 0,
+      NC: selectedStatus === "NC" ? s.NC : 0,
+      NA: selectedStatus === "NA" ? s.NA : 0,
+    }));
+  }, [analytics, selectedStatus]);
+
+  // Cumulative project evolution
   const projectEvolution = useMemo(() => {
     if (!analytics?.byWeek || analytics.byWeek.length === 0) return [];
     let cumI = 0, cumC = 0, cumNC = 0, cumNA = 0;
     return analytics.byWeek.map((w: any) => {
-      cumI += w.I;
-      cumC += w.C;
-      cumNC += w.NC;
-      cumNA += w.NA;
+      cumI += w.I; cumC += w.C; cumNC += w.NC; cumNA += w.NA;
       const total = cumI + cumC + cumNC + cumNA;
       return {
         week: w.week,
@@ -76,17 +112,19 @@ export default function Dashboard() {
     });
   }, [analytics]);
 
-  // Pie data for status distribution
   const pieData = useMemo(() => {
     if (!analytics?.byStatus) return [];
-    return Object.entries(analytics.byStatus)
+    const entries = selectedStatus === "all"
+      ? Object.entries(analytics.byStatus)
+      : Object.entries(analytics.byStatus).filter(([key]) => key === selectedStatus);
+    return entries
       .filter(([, v]) => (v as number) > 0)
       .map(([key, value]) => ({
-        name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
+        name: STATUS_LABELS[key],
         value,
-        color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
+        color: STATUS_COLORS[key],
       }));
-  }, [analytics]);
+  }, [analytics, selectedStatus]);
 
   return (
     <AppLayout>
@@ -125,6 +163,18 @@ export default function Dashboard() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as StatusFilter)}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os estados</SelectItem>
+                <SelectItem value="I">Implementado</SelectItem>
+                <SelectItem value="C">Conforme</SelectItem>
+                <SelectItem value="NC">Não Conforme</SelectItem>
+                <SelectItem value="NA">Não Aplicável</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={selectedSection} onValueChange={setSelectedSection}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Secção" />
@@ -139,9 +189,9 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards - clickable to filter */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
+          <Card className={`cursor-pointer transition-all ${selectedStatus === "I" ? "ring-2 ring-green-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "I" ? "all" : "I")}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-100"><CheckCircle className="w-5 h-5 text-green-600" /></div>
               <div>
@@ -150,7 +200,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className={`cursor-pointer transition-all ${selectedStatus === "C" ? "ring-2 ring-blue-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "C" ? "all" : "C")}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-100"><CheckCircle className="w-5 h-5 text-blue-600" /></div>
               <div>
@@ -159,7 +209,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className={`cursor-pointer transition-all ${selectedStatus === "NC" ? "ring-2 ring-red-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "NC" ? "all" : "NC")}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-red-100"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
               <div>
@@ -168,7 +218,7 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className={`cursor-pointer transition-all ${selectedStatus === "NA" ? "ring-2 ring-slate-400" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "NA" ? "all" : "NA")}>
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-slate-100"><MinusCircle className="w-5 h-5 text-slate-500" /></div>
               <div>
@@ -179,39 +229,41 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Charts Row 1: Weekly Evolution + Project Evolution */}
+        {/* Active filter indicator */}
+        {selectedStatus !== "all" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+            <span>Filtro ativo:</span>
+            <span className="font-medium" style={{ color: STATUS_COLORS[selectedStatus] }}>{STATUS_LABELS[selectedStatus]}</span>
+            <button className="ml-2 underline text-xs" onClick={() => setSelectedStatus("all")}>Limpar</button>
+          </div>
+        )}
+
+        {/* Charts Row 1 */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Evolução Semanal</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Evolução Semanal</CardTitle></CardHeader>
             <CardContent>
-              {analytics?.byWeek && analytics.byWeek.length > 0 ? (
+              {filteredByWeek.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.byWeek}>
+                  <BarChart data={filteredByWeek}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
-                    <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
-                    <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />
-                    <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />
+                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                  Sem dados disponíveis
-                </div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
               )}
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Evolução do Projeto (Acumulado)</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Evolução do Projeto (Acumulado)</CardTitle></CardHeader>
             <CardContent>
               {projectEvolution.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -226,96 +278,74 @@ export default function Dashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                  Sem dados disponíveis
-                </div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts Row 2: Distribution by Company + Status Pie */}
+        {/* Charts Row 2 */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Distribuição por Entidade Executante
-              </CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" />Distribuição por Entidade Executante</CardTitle>
             </CardHeader>
             <CardContent>
-              {(analytics as any)?.byCompany && (analytics as any).byCompany.length > 0 ? (
+              {filteredByCompany.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={(analytics as any).byCompany}>
+                  <BarChart data={filteredByCompany}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                     <XAxis dataKey="companyName" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
-                    <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
-                    <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />
-                    <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />
+                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                  Sem dados disponíveis
-                </div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
               )}
             </CardContent>
           </Card>
-
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Distribuição por Estado</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Distribuição por Estado</CardTitle></CardHeader>
             <CardContent>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      {pieData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
+                      {pieData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
                     </Pie>
                     <Tooltip />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-                  Sem dados disponíveis
-                </div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* By Section */}
-        {analytics?.bySection && analytics.bySection.some((s: any) => s.I + s.C + s.NC + s.NA > 0) && (
+        {filteredBySection.some((s: any) => s.I + s.C + s.NC + s.NA > 0) && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Cumprimento por Secção</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-base">Cumprimento por Secção</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={analytics.bySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0)} layout="vertical">
+                <BarChart data={filteredBySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    type="category"
-                    dataKey="sectionName"
-                    width={200}
-                    tick={{ fontSize: 10 }}
-                    tickFormatter={(v: string) => v.length > 30 ? v.slice(0, 30) + "..." : v}
-                  />
+                  <YAxis type="category" dataKey="sectionName" width={200} tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.length > 30 ? v.slice(0, 30) + "..." : v} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
-                  <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
-                  <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />
-                  <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />
+                  {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

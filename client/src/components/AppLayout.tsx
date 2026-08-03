@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Settings, Shield } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -35,6 +35,9 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
+];
+const reviewMenuItems = [
+  { icon: FileSearch, label: "Revisão", path: "/revisao" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -98,7 +101,13 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const allItems = user?.role === "admin" ? [...menuItems, ...adminMenuItems] : menuItems;
+  const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra";
+  const canAdmin = user?.role === "admin" || user?.role === "dono_obra";
+  const allItems = [
+    ...menuItems,
+    ...(canReview ? reviewMenuItems : []),
+    ...(canAdmin ? adminMenuItems : []),
+  ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 
   useEffect(() => {

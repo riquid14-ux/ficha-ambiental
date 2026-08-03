@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import WeeklyForm from "./pages/WeeklyForm";
 import AdminPanel from "./pages/AdminPanel";
 import SubmissionHistory from "./pages/SubmissionHistory";
+import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />
       <Route path="/admin" component={AdminPanel} />
+      <Route path="/revisao" component={ReviewPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

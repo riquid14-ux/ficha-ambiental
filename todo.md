@@ -24,3 +24,9 @@
 - [x] Weekly reminder notifications for pending submissions
 - [x] PDF includes embedded evidence images (not just counts)
 - [x] Heartbeat cron job creation for weekly reminders (requires deploy)
+- [x] Dashboard: mudar "Distribuição por Estado" para "Distribuição por Entidade Executante"
+- [x] Dashboard: adicionar gráfico de evolução ao longo do projeto (acumulado)
+- [x] Roles: implementar EE, RAA, RAP, Dono de Obra com permissões diferenciadas
+- [x] Workflow: EE/RAP submete → RAA revê/comenta/aprova → rejeição permite re-edição
+- [x] RAP: funciona como EE mas com label RAP-NomeEmpresa
+- [x] Upload de fichas históricas em PDF para arquivo

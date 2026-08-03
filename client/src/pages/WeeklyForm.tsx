@@ -99,6 +99,17 @@ export default function WeeklyForm() {
     },
   });
 
+  const resubmitMutation = trpc.submissions.resubmit.useMutation({
+    onSuccess: () => {
+      toast.success("Ficha resubmetida com sucesso!");
+      utils.submissions.mySubmissions.invalidate();
+      setLocation("/historico");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
   // Initialize: create or get submission
   useEffect(() => {
     if (!params.id && user?.companyId) {
@@ -157,6 +168,19 @@ export default function WeeklyForm() {
     setSubmitting(false);
   }, [submissionId, responses]);
 
+  const handleResubmit = useCallback(async () => {
+    if (!submissionId) return;
+    setSubmitting(true);
+    const responsesList = Object.entries(responses).map(([measureId, data]) => ({
+      measureId: Number(measureId),
+      status: data.status,
+      observations: data.observations,
+    }));
+    await saveMutation.mutateAsync({ submissionId, responses: responsesList });
+    await resubmitMutation.mutateAsync({ id: submissionId });
+    setSubmitting(false);
+  }, [submissionId, responses]);
+
   const handleImageUpload = useCallback(async (measureId: number, files: FileList) => {
     if (!submissionId) return;
     setUploadingMeasure(measureId);
@@ -192,8 +216,13 @@ export default function WeeklyForm() {
     }
   }, [submissionId]);
 
-  const isSubmitted = submissionQuery.data?.status === "submitted";
-  const isReadOnly = isSubmitted && user?.role !== "admin";
+  const subStatus = submissionQuery.data?.status;
+  const isSubmitted = subStatus === "submitted";
+  const isApproved = subStatus === "approved";
+  const isRejected = subStatus === "rejected";
+  const isUnderReview = subStatus === "under_review";
+  const canEdit = subStatus === "draft" || subStatus === "rejected";
+  const isReadOnly = !canEdit && user?.role !== "admin" && user?.role !== "dono_obra";
 
   // Group measures by section
   const measuresBySection = useMemo(() => {
@@ -255,7 +284,19 @@ export default function WeeklyForm() {
                 </span>
               )}
             </h1>
-            {isSubmitted && <Badge className="mt-1">Submetida</Badge>}
+            {isSubmitted && <Badge className="mt-1">Submetida — Aguarda Revisão</Badge>}
+            {isApproved && <Badge className="mt-1 bg-green-600">Aprovada</Badge>}
+            {isRejected && (
+              <div className="space-y-1">
+                <Badge variant="destructive" className="mt-1">Rejeitada — Edite e resubmeta</Badge>
+                {submissionQuery.data?.reviewNotes && (
+                  <p className="text-xs text-muted-foreground bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                    <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
+                  </p>
+                )}
+              </div>
+            )}
+            {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}
           </div>
           {!isReadOnly && (
             <div className="flex gap-2">
@@ -263,9 +304,9 @@ export default function WeeklyForm() {
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                 Guardar
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting}>
+              <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                Submeter
+                {isRejected ? "Resubmeter" : "Submeter"}
               </Button>
             </div>
           )}

@@ -24,7 +24,7 @@ export function registerUploadRoutes(app: Express) {
       if (!sub) {
         return res.status(404).json({ error: "Submissão não encontrada" });
       }
-      if (user.role !== "admin" && sub.companyId !== user.companyId) {
+      if (user.role !== "admin" && user.role !== "dono_obra" && sub.companyId !== user.companyId) {
         return res.status(403).json({ error: "Sem permissão" });
       }
 

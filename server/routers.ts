@@ -7,6 +7,21 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import * as db from "./db";
 import { storagePut } from "./storage";
 
+// Helper: check if user has elevated permissions (admin or dono_obra)
+function isAdminOrDono(role: string) {
+  return role === "admin" || role === "dono_obra";
+}
+
+// Helper: check if user can submit forms (ee or rap)
+function canSubmitForms(role: string) {
+  return role === "ee" || role === "rap" || role === "admin" || role === "dono_obra";
+}
+
+// Helper: check if user can review forms (raa, admin, dono_obra)
+function canReview(role: string) {
+  return role === "raa" || role === "admin" || role === "dono_obra";
+}
+
 export const appRouter = router({
   system: systemRouter,
 
@@ -30,12 +45,12 @@ export const appRouter = router({
         return db.getCompanyById(input.id);
       }),
     create: adminProcedure
-      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1) }))
+      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "rap"]).default("ee") }))
       .mutation(async ({ input }) => {
-        return db.createCompany({ name: input.name, shortName: input.shortName });
+        return db.createCompany({ name: input.name, shortName: input.shortName, companyType: input.companyType });
       }),
     update: adminProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional() }))
+      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "rap"]).optional() }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         await db.updateCompany(id, data);
@@ -43,7 +58,7 @@ export const appRouter = router({
       }),
   }),
 
-  // ─── Users Management (Admin) ─────────────────────────────────────────────
+  // ─── Users Management (Admin / Dono de Obra) ──────────────────────────────
   users: router({
     list: adminProcedure.query(async () => {
       return db.getAllUsers();
@@ -55,7 +70,7 @@ export const appRouter = router({
         return { success: true };
       }),
     updateRole: adminProcedure
-      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin"]) }))
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra"]) }))
       .mutation(async ({ input }) => {
         await db.updateUserRole(input.userId, input.role);
         return { success: true };
@@ -87,6 +102,9 @@ export const appRouter = router({
       .input(z.object({ weekNumber: z.number(), weekYear: z.number(), weekStartDate: z.string(), weekEndDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const user = ctx.user;
+        if (!canSubmitForms(user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para criar fichas." });
+        }
         if (!user.companyId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Utilizador não está associado a nenhuma empresa." });
         }
@@ -130,8 +148,8 @@ export const appRouter = router({
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
 
-        // Non-admin can only see own company submissions
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        // RAA can see all, EE/RAP can only see own company
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return sub;
@@ -143,27 +161,90 @@ export const appRouter = router({
       return db.getSubmissionsByCompany(ctx.user.companyId);
     }),
 
-    // Admin: list all submissions
-    listAll: adminProcedure
+    // Admin/Dono/RAA: list all submissions
+    listAll: protectedProcedure
       .input(z.object({ companyId: z.number().optional() }).optional())
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
         if (input?.companyId) {
           return db.getSubmissionsByCompany(input.companyId);
         }
         return db.getAllSubmissions();
       }),
 
-    // Submit (finalize)
+    // Submit (finalize) - EE/RAP can submit
     submit: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         await db.submitWeeklySubmission(input.id, ctx.user.id);
         return { success: true };
+      }),
+
+    // Resubmit after rejection - EE/RAP can resubmit
+    resubmit: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.status !== "rejected") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas rejeitadas podem ser re-submetidas." });
+        }
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.resubmitSubmission(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // Review (approve/reject) - RAA/Admin/Dono can review
+    review: protectedProcedure
+      .input(z.object({ id: z.number(), status: z.enum(["approved", "rejected"]), notes: z.string().nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!canReview(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para rever fichas." });
+        }
+        const sub = await db.getSubmissionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.status !== "submitted") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas submetidas podem ser revistas." });
+        }
+        await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Review Comments ──────────────────────────────────────────────────────
+  reviewComments: router({
+    getBySubmission: protectedProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.submissionId);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        // RAA, admin, dono, and the company itself can see comments
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return db.getCommentsBySubmission(input.submissionId);
+      }),
+    add: protectedProcedure
+      .input(z.object({ submissionId: z.number(), measureId: z.number().nullable(), comment: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        if (!canReview(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para comentar." });
+        }
+        return db.addReviewComment({
+          submissionId: input.submissionId,
+          measureId: input.measureId,
+          userId: ctx.user.id,
+          comment: input.comment,
+        });
       }),
   }),
 
@@ -174,7 +255,8 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        // RAA can view all responses
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getResponsesBySubmission(input.submissionId);
@@ -196,10 +278,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (sub.status === "submitted" && ctx.user.role !== "admin") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Ficha já submetida." });
+        // Can only edit if draft or rejected
+        if (sub.status !== "draft" && sub.status !== "rejected" && !isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Ficha não pode ser editada neste estado." });
         }
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         await db.bulkUpsertResponses(input.submissionId, input.responses);
@@ -214,7 +297,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getImagesBySubmission(input.submissionId);
@@ -223,21 +306,62 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        // Verify ownership: get the image, find its response, find its submission
-        const images = await db.getImagesByResponse(0); // We need to get the specific image
-        // Actually, let's get the image directly and verify access
-        const allImages = await db.getImageById(input.id);
-        if (!allImages) throw new TRPCError({ code: "NOT_FOUND" });
-        // Check if user has access to the submission this image belongs to
-        const response = await db.getResponseById(allImages.responseId);
+        const image = await db.getImageById(input.id);
+        if (!image) throw new TRPCError({ code: "NOT_FOUND" });
+        const response = await db.getResponseById(image.responseId);
         if (!response) throw new TRPCError({ code: "NOT_FOUND" });
         const sub = await db.getSubmissionById(response.submissionId);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        if (ctx.user.role !== "admin" && sub.companyId !== ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         await db.deleteEvidenceImage(input.id);
         return { success: true };
+      }),
+  }),
+
+  // ─── Historical PDFs ──────────────────────────────────────────────────────
+  historical: router({
+    list: protectedProcedure
+      .input(z.object({ companyId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        if (isAdminOrDono(ctx.user.role) || ctx.user.role === "raa") {
+          return db.getHistoricalPdfs(input?.companyId);
+        }
+        if (!ctx.user.companyId) return [];
+        return db.getHistoricalPdfs(ctx.user.companyId);
+      }),
+    upload: protectedProcedure
+      .input(z.object({
+        companyId: z.number(),
+        weekNumber: z.number(),
+        weekYear: z.number(),
+        filename: z.string(),
+        mimeType: z.string(),
+        data: z.string(), // base64
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && !canSubmitForms(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        // EE/RAP can only upload for their own company
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.companyId !== input.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+
+        const buffer = Buffer.from(input.data, "base64");
+        const fileKey = `historical/${input.companyId}/S${input.weekNumber}_${input.weekYear}_${input.filename}`;
+        const { key, url } = await storagePut(fileKey, buffer, input.mimeType);
+
+        return db.addHistoricalPdf({
+          companyId: input.companyId,
+          weekNumber: input.weekNumber,
+          weekYear: input.weekYear,
+          fileKey: key,
+          url,
+          filename: input.filename,
+          uploadedBy: ctx.user.id,
+        });
       }),
   }),
 
@@ -253,9 +377,9 @@ export const appRouter = router({
         }).optional()
       )
       .query(async ({ ctx, input }) => {
-        // Non-admin can only see own company
+        // EE/RAP can only see own company
         const filters = { ...input };
-        if (ctx.user.role !== "admin" && ctx.user.companyId) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.companyId) {
           filters.companyId = ctx.user.companyId;
         }
         return db.getAnalytics(filters);

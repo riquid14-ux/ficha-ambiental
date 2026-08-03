@@ -14,6 +14,7 @@ import {
   users,
   weeklySubmissions,
 } from "../drizzle/schema";
+import { historicalPdfs, InsertHistoricalPdf, InsertReviewComment, reviewComments } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -90,7 +91,7 @@ export async function updateUserCompany(userId: number, companyId: number | null
   await db.update(users).set({ companyId }).where(eq(users.id, userId));
 }
 
-export async function updateUserRole(userId: number, role: "user" | "admin") {
+export async function updateUserRole(userId: number, role: "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));
@@ -215,6 +216,51 @@ export async function getSubmissionForWeek(companyId: number, weekNumber: number
     )
     .limit(1);
   return result[0];
+}
+
+export async function reviewSubmission(id: number, userId: number, status: "approved" | "rejected", notes: string | null) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(weeklySubmissions).set({ status, reviewedBy: userId, reviewedAt: Date.now(), reviewNotes: notes }).where(eq(weeklySubmissions.id, id));
+}
+
+export async function resubmitSubmission(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(weeklySubmissions).set({ status: "submitted", submittedBy: userId, submittedAt: Date.now(), reviewedBy: null, reviewedAt: null, reviewNotes: null }).where(eq(weeklySubmissions.id, id));
+}
+
+// ─── Review Comments ────────────────────────────────────────────────────────
+
+export async function addReviewComment(data: InsertReviewComment) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(reviewComments).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getCommentsBySubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviewComments).where(eq(reviewComments.submissionId, submissionId)).orderBy(desc(reviewComments.createdAt));
+}
+
+// ─── Historical PDFs ────────────────────────────────────────────────────────
+
+export async function addHistoricalPdf(data: InsertHistoricalPdf) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(historicalPdfs).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getHistoricalPdfs(companyId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (companyId) {
+    return db.select().from(historicalPdfs).where(eq(historicalPdfs.companyId, companyId)).orderBy(desc(historicalPdfs.weekYear), desc(historicalPdfs.weekNumber));
+  }
+  return db.select().from(historicalPdfs).orderBy(desc(historicalPdfs.weekYear), desc(historicalPdfs.weekNumber));
 }
 
 // ─── Measure Responses ───────────────────────────────────────────────────────
@@ -393,10 +439,24 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
     ...(sectionMap.get(s.id) || { I: 0, C: 0, NC: 0, NA: 0 }),
   }));
 
-  return {
-    total: allResponses.length,
-    byStatus,
-    byWeek,
-    bySection,
-  };
+  // Group by company
+  const companyMap2 = new Map<number, { I: number; C: number; NC: number; NA: number; total: number }>();
+  for (const sub of subs) {
+    if (!companyMap2.has(sub.companyId)) companyMap2.set(sub.companyId, { I: 0, C: 0, NC: 0, NA: 0, total: 0 });
+  }
+  for (const r of allResponses) {
+    const sub2 = subs.find((s) => s.id === r.submissionId);
+    if (!sub2) continue;
+    const entry2 = companyMap2.get(sub2.companyId)!;
+    if (r.status && r.status in entry2) { (entry2 as any)[r.status]++; }
+    entry2.total++;
+  }
+  const allCompaniesList = await db.select().from(companies);
+  const byCompany = Array.from(companyMap2.entries()).map(([cId, data]) => ({
+    companyId: cId,
+    companyName: allCompaniesList.find((c) => c.id === cId)?.shortName || "Desconhecida",
+    ...data,
+  }));
+
+  return { total: allResponses.length, byStatus, byWeek, bySection, byCompany };
 }

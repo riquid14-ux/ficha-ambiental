@@ -15,6 +15,13 @@
       "when": 1785743829190,
       "tag": "0001_sturdy_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785745442062,
+      "tag": "0002_great_sleepwalker",
+      "breakpoints": true
     }
   ]
 }

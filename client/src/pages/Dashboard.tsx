@@ -3,9 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend, PieChart, Pie, Cell,
+} from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, XCircle, MinusCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2 } from "lucide-react";
 
 const STATUS_COLORS = {
   I: "#22c55e",
@@ -29,7 +32,9 @@ export default function Dashboard() {
 
   const companiesQuery = trpc.companies.list.useQuery();
   const sectionsQuery = trpc.sections.list.useQuery();
-  const submissionsQuery = user?.role === "admin"
+
+  const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
+  const submissionsQuery = canSeeAll
     ? trpc.submissions.listAll.useQuery({})
     : trpc.submissions.mySubmissions.useQuery();
 
@@ -53,10 +58,29 @@ export default function Dashboard() {
 
   const analytics = analyticsQuery.data;
 
+  // Cumulative project evolution data (from byWeek)
+  const projectEvolution = useMemo(() => {
+    if (!analytics?.byWeek || analytics.byWeek.length === 0) return [];
+    let cumI = 0, cumC = 0, cumNC = 0, cumNA = 0;
+    return analytics.byWeek.map((w: any) => {
+      cumI += w.I;
+      cumC += w.C;
+      cumNC += w.NC;
+      cumNA += w.NA;
+      const total = cumI + cumC + cumNC + cumNA;
+      return {
+        week: w.week,
+        conformidade: total > 0 ? Math.round(((cumI + cumC) / total) * 100) : 0,
+        naoConformidade: total > 0 ? Math.round((cumNC / total) * 100) : 0,
+      };
+    });
+  }, [analytics]);
+
+  // Pie data for status distribution
   const pieData = useMemo(() => {
     if (!analytics?.byStatus) return [];
     return Object.entries(analytics.byStatus)
-      .filter(([, v]) => v > 0)
+      .filter(([, v]) => (v as number) > 0)
       .map(([key, value]) => ({
         name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
         value,
@@ -72,8 +96,8 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
             <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
           </div>
-          <div className="flex gap-3">
-            {user?.role === "admin" && (
+          <div className="flex flex-wrap gap-3">
+            {canSeeAll && (
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Empresa" />
@@ -81,7 +105,9 @@ export default function Dashboard() {
                 <SelectContent>
                   <SelectItem value="all">Todas as empresas</SelectItem>
                   {companiesQuery.data?.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.shortName}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.companyType === "rap" ? "RAP - " : ""}{c.shortName}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -153,7 +179,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Charts */}
+        {/* Charts Row 1: Weekly Evolution + Project Evolution */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -167,6 +193,65 @@ export default function Dashboard() {
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
+                    <Legend />
+                    <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
+                    <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
+                    <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />
+                    <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                  Sem dados disponíveis
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Evolução do Projeto (Acumulado)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {projectEvolution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={projectEvolution}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => `${v}%`} />
+                    <Legend />
+                    <Line type="monotone" dataKey="conformidade" name="Conformidade (I+C)" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="naoConformidade" name="Não Conformidade" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+                  Sem dados disponíveis
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row 2: Distribution by Company + Status Pie */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Distribuição por Entidade Executante
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(analytics as any)?.byCompany && (analytics as any).byCompany.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={(analytics as any).byCompany}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                    <XAxis dataKey="companyName" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
                     <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
                     <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
                     <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />
@@ -226,6 +311,7 @@ export default function Dashboard() {
                     tickFormatter={(v: string) => v.length > 30 ? v.slice(0, 30) + "..." : v}
                   />
                   <Tooltip />
+                  <Legend />
                   <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />
                   <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />
                   <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />

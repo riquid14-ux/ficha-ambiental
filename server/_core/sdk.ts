@@ -313,10 +313,13 @@ class SDKServer {
 
     await db.upsertUser({
       openId: user.openId,
+      email: user.email ?? undefined,
       lastSignedIn: signedInAt,
     });
 
-    return user;
+    // Re-fetch user after upsert to reflect any auto-assignment from invitations
+    const updatedUser = await db.getUserByOpenId(user.openId);
+    return updatedUser || user;
   }
 }
 

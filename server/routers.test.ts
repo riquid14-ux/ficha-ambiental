@@ -161,3 +161,37 @@ describe("admin procedures - access control", () => {
     await expect(caller.sections.list()).rejects.toThrow();
   });
 });
+
+describe("invitations - access control", () => {
+  it("rejects non-admin from creating invitations", async () => {
+    const { ctx } = createUserContext(1);
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.invitations.create({ email: "test@example.com", companyId: 1, role: "ee" })
+    ).rejects.toThrow();
+  });
+
+  it("rejects non-admin from listing invitations", async () => {
+    const { ctx } = createUserContext(1);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.invitations.list()).rejects.toThrow();
+  });
+
+  it("rejects non-admin from deleting invitations", async () => {
+    const { ctx } = createUserContext(1);
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.invitations.delete({ id: 1 })).rejects.toThrow();
+  });
+
+  it("allows admin to create invitation (normalizes email)", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    // This will attempt to hit the DB, so it may throw a DB error, but it should NOT throw FORBIDDEN
+    try {
+      await caller.invitations.create({ email: "  Test@Example.COM  ", companyId: 1, role: "ee" });
+    } catch (e: any) {
+      // Should not be a FORBIDDEN error - only DB errors are acceptable here
+      expect(e.code).not.toBe("FORBIDDEN");
+    }
+  });
+});

@@ -168,3 +168,23 @@ export const historicalPdfs = mysqlTable("historical_pdfs", {
 
 export type HistoricalPdf = typeof historicalPdfs.$inferSelect;
 export type InsertHistoricalPdf = typeof historicalPdfs.$inferInsert;
+
+/**
+ * Invitations (convites para utilizadores pré-atribuídos a empresas)
+ * Quando um admin convida alguém por email, cria-se um registo aqui.
+ * No primeiro login, se o email corresponder a um convite pendente,
+ * o utilizador é automaticamente atribuído à empresa e role indicados.
+ */
+export const invitations = mysqlTable("invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  companyId: int("companyId").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]).default("ee").notNull(),
+  invitedBy: int("invitedBy").notNull(),
+  status: mysqlEnum("status", ["pending", "accepted", "expired"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+});
+
+export type Invitation = typeof invitations.$inferSelect;
+export type InsertInvitation = typeof invitations.$inferInsert;

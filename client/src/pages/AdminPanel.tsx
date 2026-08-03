@@ -13,7 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList } from "lucide-react";
-import { Info, Shield, FileCheck, Eye, HardHat } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus } from "lucide-react";
 import { useLocation } from "wouter";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -320,6 +320,12 @@ function UsersTab() {
   const utils = trpc.useUtils();
   const usersQuery = trpc.users.list.useQuery();
   const companiesQuery = trpc.companies.list.useQuery();
+  const invitationsQuery = trpc.invitations.list.useQuery();
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteCompanyId, setInviteCompanyId] = useState<string>("");
+  const [inviteRole, setInviteRole] = useState<string>("");
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const assignCompanyMutation = trpc.users.assignCompany.useMutation({
     onSuccess: () => {
@@ -335,69 +341,214 @@ function UsersTab() {
     },
   });
 
+  const createInviteMutation = trpc.invitations.create.useMutation({
+    onSuccess: () => {
+      toast.success("Convite enviado com sucesso");
+      utils.invitations.list.invalidate();
+      setInviteEmail("");
+      setInviteCompanyId("");
+      setInviteRole("");
+      setShowInviteDialog(false);
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erro ao criar convite");
+    },
+  });
+
+  const deleteInviteMutation = trpc.invitations.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Convite removido");
+      utils.invitations.list.invalidate();
+    },
+  });
+
+  const handleInvite = () => {
+    if (!inviteEmail || !inviteCompanyId || !inviteRole) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+    createInviteMutation.mutate({
+      email: inviteEmail,
+      companyId: Number(inviteCompanyId),
+      role: inviteRole as any,
+    });
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Utilizadores</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Papel</TableHead>
-              <TableHead>Empresa</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {usersQuery.data?.map((u) => (
-              <TableRow key={u.id}>
-                <TableCell className="font-medium">{u.name || "-"}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>
-                <TableCell>
-                  <Select
-                    value={u.role}
-                    onValueChange={(v) => updateRoleMutation.mutate({ userId: u.id, role: v as any })}
-                  >
-                    <SelectTrigger className="w-[140px] h-8">
-                      <SelectValue />
+    <div className="space-y-6">
+      {/* Invite User Button + Dialog */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Utilizadores</CardTitle>
+          <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <UserPlus className="w-4 h-4" />
+                Convidar Utilizador
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Convidar Novo Utilizador</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    placeholder="email@empresa.pt"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Empresa</Label>
+                  <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar empresa" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">Utilizador</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="ee">EE</SelectItem>
-                      <SelectItem value="raa">RAA</SelectItem>
-                      <SelectItem value="rap">RAP</SelectItem>
-                      <SelectItem value="dono_obra">Dono de Obra</SelectItem>
-                      <SelectItem value="observador">Observador</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={u.companyId ? String(u.companyId) : "none"}
-                    onValueChange={(v) => assignCompanyMutation.mutate({ userId: u.id, companyId: v === "none" ? null : Number(v) })}
-                  >
-                    <SelectTrigger className="w-[180px] h-8">
-                      <SelectValue placeholder="Sem empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sem empresa</SelectItem>
                       {companiesQuery.data?.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {c.companyType === "rap" ? "RAP - " : ""}{c.shortName}
+                          {c.shortName} ({c.companyType.toUpperCase()})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </TableCell>
+                </div>
+                <div className="space-y-2">
+                  <Label>Papel</Label>
+                  <Select value={inviteRole} onValueChange={setInviteRole}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar papel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ee">EE — Entidade Executante</SelectItem>
+                      <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
+                      <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
+                      <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="observador">Observador</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Quando esta pessoa fizer login pela primeira vez com este email, será automaticamente associada à empresa e papel selecionados.
+                </p>
+                <Button onClick={handleInvite} className="w-full" disabled={createInviteMutation.isPending}>
+                  {createInviteMutation.isPending ? "A enviar..." : "Enviar Convite"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Papel</TableHead>
+                <TableHead>Empresa</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {usersQuery.data?.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.name || "-"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={u.role}
+                      onValueChange={(v) => updateRoleMutation.mutate({ userId: u.id, role: v as any })}
+                    >
+                      <SelectTrigger className="w-[140px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Utilizador</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="ee">EE</SelectItem>
+                        <SelectItem value="raa">RAA</SelectItem>
+                        <SelectItem value="rap">RAP</SelectItem>
+                        <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                        <SelectItem value="observador">Observador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={u.companyId ? String(u.companyId) : "none"}
+                      onValueChange={(v) => assignCompanyMutation.mutate({ userId: u.id, companyId: v === "none" ? null : Number(v) })}
+                    >
+                      <SelectTrigger className="w-[180px] h-8">
+                        <SelectValue placeholder="Sem empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem empresa</SelectItem>
+                        {companiesQuery.data?.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.companyType === "rap" ? "RAP - " : ""}{c.shortName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Pending Invitations */}
+      {invitationsQuery.data && invitationsQuery.data.filter((i) => i.status === "pending").length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Convites Pendentes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>Papel</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invitationsQuery.data.filter((i) => i.status === "pending").map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-medium">{inv.email}</TableCell>
+                    <TableCell>{inv.companyName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{ROLE_LABELS[inv.role] || inv.role}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(inv.createdAt).toLocaleDateString("pt-PT")}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteInviteMutation.mutate({ id: inv.id })}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 

@@ -92,6 +92,45 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Invitations ────────────────────────────────────────────────────────────
+  invitations: router({
+    list: adminProcedure.query(async () => {
+      const allInvitations = await db.getAllInvitations();
+      const allCompanies = await db.getAllCompanies();
+      return allInvitations.map((inv) => ({
+        ...inv,
+        companyName: allCompanies.find((c) => c.id === inv.companyId)?.shortName || "—",
+      }));
+    }),
+    create: adminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        companyId: z.number(),
+        role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Check if there's already a pending invitation for this email
+        const normalizedEmail = input.email.toLowerCase().trim();
+        const existing = await db.getPendingInvitationByEmail(normalizedEmail);
+        if (existing) {
+          throw new TRPCError({ code: "CONFLICT", message: "Já existe um convite pendente para este email." });
+        }
+        await db.createInvitation({
+          email: normalizedEmail,
+          companyId: input.companyId,
+          role: input.role,
+          invitedBy: ctx.user.id,
+        });
+        return { success: true };
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteInvitation(input.id);
+        return { success: true };
+      }),
+  }),
+
   // ─── Sections & Measures ───────────────────────────────────────────────────
   sections: router({
     list: protectedProcedure.query(async () => {

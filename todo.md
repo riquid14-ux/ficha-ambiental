@@ -55,3 +55,6 @@
 - [x] Histórico: filtros por medida específica e por estado no modo de exportação por medida
 - [x] Ficha Semanal: ficha rejeitada aparece com estilo "Ação Imediata" urgente (banner vermelho, ícone alerta, destaque prioritário)
 - [x] Administração: quadro explicativo dos tipos de empresa/utilizador (EE, RAP, RAA, Dono de Obra, Observador)
+- [x] Adicionar sistema de convites na Administração (convidar por email, pré-atribuir empresa e role)
+- [x] Auto-atribuir empresa/role no primeiro login baseado no convite pendente
+- [x] UI de "Convidar Utilizador" na tab Utilizadores do AdminPanel

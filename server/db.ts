@@ -16,6 +16,7 @@ import {
 } from "../drizzle/schema";
 import { historicalPdfs, InsertHistoricalPdf, InsertReviewComment, reviewComments } from "../drizzle/schema";
 import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
+import { invitations, InsertInvitation } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -80,6 +81,29 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
 
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+
+  // ─── Auto-assign from pending invitation on first login ───────────────
+  // Check if this user has a pending invitation by email and hasn't been
+  // assigned a company yet. If so, apply the invited company + role.
+  if (user.email) {
+    const emailLower = user.email.toLowerCase();
+    const existingUser = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
+    if (existingUser.length > 0) {
+      const dbUser = existingUser[0];
+      // Only auto-assign if user has no company yet (first login scenario)
+      if (!dbUser.companyId || dbUser.role === "user") {
+        const invitation = await getPendingInvitationByEmail(emailLower);
+        if (invitation) {
+          await db.update(users).set({
+            companyId: invitation.companyId,
+            role: invitation.role as any,
+          }).where(eq(users.openId, user.openId));
+          await acceptInvitation(invitation.id);
+          console.log(`[Invitation] Auto-assigned user ${emailLower} to company ${invitation.companyId} with role ${invitation.role}`);
+        }
+      }
+    }
+  }
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -504,4 +528,46 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
   }));
 
   return { total: allResponses.length, byStatus, byWeek, bySection, byCompany };
+}
+
+// ─── Invitations ─────────────────────────────────────────────────────────────
+
+export async function createInvitation(data: InsertInvitation) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.insert(invitations).values(data);
+  return result;
+}
+
+export async function getInvitationsByStatus(status: "pending" | "accepted" | "expired") {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(invitations).where(eq(invitations.status, status));
+}
+
+export async function getAllInvitations() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(invitations).orderBy(sql`${invitations.createdAt} DESC`);
+}
+
+export async function getPendingInvitationByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const normalizedEmail = email.toLowerCase().trim();
+  const results = await db.select().from(invitations)
+    .where(and(eq(invitations.email, normalizedEmail), eq(invitations.status, "pending")));
+  return results[0] || null;
+}
+
+export async function acceptInvitation(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(invitations).set({ status: "accepted", acceptedAt: new Date() }).where(eq(invitations.id, id));
+}
+
+export async function deleteInvitation(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(invitations).where(eq(invitations.id, id));
 }

@@ -28,7 +28,7 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
-          <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-20 object-contain mb-6" />
+          <img src="/manus-storage/start_campus_logo_3e7c0dee.png" alt="Start Campus" className="h-20 object-contain mb-6" />
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
             Ficha de Controlo Ambiental
           </h1>

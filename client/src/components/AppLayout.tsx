@@ -28,6 +28,7 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 const menuItems = [
+  { icon: UserCircle, label: "Perfil", path: "/perfil" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
@@ -36,7 +37,6 @@ const menuItems = [
 const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
-const profileMenuItem = { icon: UserCircle, label: "Perfil", path: "/perfil" };
 const reviewMenuItems = [
   { icon: FileSearch, label: "Revisão", path: "/revisao" },
 ];
@@ -87,7 +87,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     ...menuItems,
     ...(canReview ? reviewMenuItems : []),
     ...(canAdmin ? adminMenuItems : []),
-    profileMenuItem,
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 
@@ -133,7 +132,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2">
-                  <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-6 object-contain" />
+                  <img src="/manus-storage/start_campus_logo_3e7c0dee.png" alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
                     Controlo Ambiental
                   </span>

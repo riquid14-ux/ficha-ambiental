@@ -75,3 +75,7 @@
 - [x] Administração: restringir acesso apenas a admin e dono_obra (outros roles não veem a label no menu)
 - [x] Nova página Perfil: utilizador pode editar nome completo e cargo
 - [x] Permissões de alteração de roles: apenas admin e dono_obra podem alterar permissões de utilizadores
+- [x] Permissões de alteração de roles: apenas admin e dono_obra podem alterar permissões de utilizadores
+- [ ] Mover aba Perfil para o topo do menu lateral (antes de Dashboard)
+- [x] Mover aba Perfil para o topo do menu lateral (antes de Dashboard)
+- [x] Corrigir logo Start Campus que não aparece no deploy (verificar URL do asset)

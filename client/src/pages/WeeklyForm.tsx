@@ -325,7 +325,7 @@ export default function WeeklyForm() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <img src="/manus-storage/start_campus_logo_eb179749.png" alt="Start Campus" className="h-12 object-contain" />
+              <img src="/manus-storage/start_campus_logo_3e7c0dee.png" alt="Start Campus" className="h-12 object-contain" />
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">{user?.name || "—"}</p>
                 <p className="text-xs text-muted-foreground">{companyName}</p>

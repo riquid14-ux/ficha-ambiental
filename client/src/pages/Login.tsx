@@ -116,7 +116,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center gap-6 mb-8">
           <img
-            src="/manus-storage/start_campus_logo_eb179749.png"
+            src="/manus-storage/start_campus_logo_3e7c0dee.png"
             alt="Start Campus"
             className="h-16 object-contain"
           />

@@ -1,0 +1,1 @@
+ALTER TABLE `deletion_logs` ADD `createdBy` int;

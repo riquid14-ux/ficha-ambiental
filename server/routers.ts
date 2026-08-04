@@ -391,11 +391,40 @@ export const appRouter = router({
           weekYear: sub.weekYear,
           companyId: sub.companyId,
           companyName: company?.shortName || null,
+          createdBy: sub.createdBy || null,
           deletedBy: ctx.user.id,
           deletedByName: ctx.user.name || null,
           deletedByEmail: ctx.user.email || null,
         });
-        await db.deleteWeeklySubmission(input.id);
+        await db.softDeleteWeeklySubmission(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
+    // Recover a soft-deleted submission - only creator or admin, within 21 days
+    recover: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.status !== "deleted") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Esta ficha não está eliminada." });
+        }
+        // Check 21-day recovery window
+        const deletedAt = sub.deletedAt;
+        if (!deletedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Data de eliminação não encontrada." });
+        }
+        const daysSinceDeletion = (Date.now() - deletedAt) / (1000 * 60 * 60 * 24);
+        if (daysSinceDeletion > 21) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O prazo de 21 dias para recuperação expirou." });
+        }
+        // Only creator or admin can recover
+        if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode recuperar esta ficha." });
+        }
+        await db.recoverWeeklySubmission(input.id);
+        // Mark the deletion log as recovered
+        await db.markDeletionLogRecovered(input.id);
         return { success: true };
       }),
 

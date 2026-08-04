@@ -111,3 +111,8 @@
 - [x] Exportação de fichas: RAA/Admin/dono_obra/observador exportam histórico completo; EE/RAP só exportam as suas medidas
 - [x] Corrigir erro React #310 ao clicar em "Fichas Eliminadas" no Histórico (useMemo antes de early return + error handling)
 - [x] Limpar registos de deletion_logs antigos sem projectId da base de dados
+- [x] Fichas eliminadas: implementar soft-delete (status='deleted', dados mantidos 21 dias)
+- [x] Fichas eliminadas: botão "Recuperar" visível apenas para criador original ou admin, dentro do prazo de 21 dias
+- [x] Fichas eliminadas: após 21 dias, ficha não pode ser recuperada (mostra "Expirado")
+- [x] Fichas eliminadas: logs de eliminação ocultados após recuperação (recoveredAt)
+- [x] Fichas eliminadas: createdBy guardado no log para verificar permissão de recuperação

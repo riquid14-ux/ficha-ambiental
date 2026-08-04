@@ -221,7 +221,7 @@ export async function getSubmissionsByCompany(companyId: number) {
   return db
     .select()
     .from(weeklySubmissions)
-    .where(eq(weeklySubmissions.companyId, companyId))
+    .where(and(eq(weeklySubmissions.companyId, companyId), sql`${weeklySubmissions.status} != 'deleted'`))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 
@@ -231,6 +231,7 @@ export async function getAllSubmissions() {
   return db
     .select()
     .from(weeklySubmissions)
+    .where(sql`${weeklySubmissions.status} != 'deleted'`)
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 
@@ -266,6 +267,7 @@ export async function getSubmissionForWeek(companyId: number, weekNumber: number
         eq(weeklySubmissions.companyId, companyId),
         eq(weeklySubmissions.weekNumber, weekNumber),
         eq(weeklySubmissions.weekYear, weekYear),
+        sql`${weeklySubmissions.status} != 'deleted'`,
         ...(projectId ? [eq(weeklySubmissions.projectId, projectId)] : [])
       )
     )
@@ -286,7 +288,39 @@ export async function getDraftCountForCompany(companyId: number): Promise<number
 export async function deleteWeeklySubmission(id: number) {
   const db = await getDb();
   if (!db) return;
-  // Delete related data first
+  // Soft-delete: mark as deleted instead of removing data
+  await db.update(weeklySubmissions).set({
+    status: "deleted",
+    deletedAt: Date.now(),
+    deletedBy: id, // Will be overridden by caller
+  }).where(eq(weeklySubmissions.id, id));
+}
+
+export async function softDeleteWeeklySubmission(id: number, deletedByUserId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(weeklySubmissions).set({
+    status: "deleted",
+    deletedAt: Date.now(),
+    deletedBy: deletedByUserId,
+  }).where(eq(weeklySubmissions.id, id));
+}
+
+export async function recoverWeeklySubmission(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Recover to draft status
+  await db.update(weeklySubmissions).set({
+    status: "draft",
+    deletedAt: null,
+    deletedBy: null,
+  }).where(eq(weeklySubmissions.id, id));
+}
+
+export async function permanentlyDeleteWeeklySubmission(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Permanently delete - remove all related data (used for cleanup after 21 days)
   const responses = await db.select().from(measureResponses).where(eq(measureResponses.submissionId, id));
   if (responses.length > 0) {
     const responseIds = responses.map(r => r.id);
@@ -296,6 +330,12 @@ export async function deleteWeeklySubmission(id: number) {
   await db.delete(measureReviews).where(eq(measureReviews.submissionId, id));
   await db.delete(reviewComments).where(eq(reviewComments.submissionId, id));
   await db.delete(weeklySubmissions).where(eq(weeklySubmissions.id, id));
+}
+
+export async function markDeletionLogRecovered(submissionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(deletionLogs).set({ recoveredAt: Date.now() }).where(eq(deletionLogs.submissionId, submissionId));
 }
 
 export async function reviewSubmission(id: number, userId: number, status: "approved" | "rejected", notes: string | null) {
@@ -474,6 +514,9 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
   if (filters?.weekYear) subConditions.push(eq(weeklySubmissions.weekYear, filters.weekYear));
   if (filters?.weekNumber) subConditions.push(eq(weeklySubmissions.weekNumber, filters.weekNumber));
   if (filters?.projectId) subConditions.push(eq(weeklySubmissions.projectId, filters.projectId));
+
+  // Always exclude soft-deleted submissions from analytics
+  subConditions.push(sql`${weeklySubmissions.status} != 'deleted'`);
 
   const submissionsQuery = subConditions.length > 0
     ? db.select().from(weeklySubmissions).where(and(...subConditions))
@@ -740,6 +783,7 @@ export async function createDeletionLog(data: {
   weekYear: number;
   companyId: number | null;
   companyName: string | null;
+  createdBy?: number | null;
   deletedBy: number;
   deletedByName: string | null;
   deletedByEmail: string | null;
@@ -753,7 +797,7 @@ export async function createDeletionLog(data: {
 export async function getDeletionLogs() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(deletionLogs).orderBy(sql`${deletionLogs.deletedAt} DESC`);
+  return db.select().from(deletionLogs).where(sql`${deletionLogs.recoveredAt} IS NULL`).orderBy(sql`${deletionLogs.deletedAt} DESC`);
 }
 
 // ─── Project-scoped queries ─────────────────────────────────────────────────
@@ -762,7 +806,7 @@ export async function getSubmissionsByProject(projectId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(weeklySubmissions)
-    .where(eq(weeklySubmissions.projectId, projectId))
+    .where(and(eq(weeklySubmissions.projectId, projectId), sql`${weeklySubmissions.status} != 'deleted'`))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 

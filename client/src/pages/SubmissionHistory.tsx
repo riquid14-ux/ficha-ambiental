@@ -523,6 +523,16 @@ export default function SubmissionHistory() {
 function DeletionHistoryView() {
   const deletionLogsQuery = trpc.deletionLogs.list.useQuery();
   const { activeProject, isAllProjects } = useProject();
+  const { user } = useAuth();
+  const recoverMutation = trpc.submissions.recover.useMutation({
+    onSuccess: () => {
+      toast.success("Ficha recuperada com sucesso!");
+      deletionLogsQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erro ao recuperar ficha.");
+    },
+  });
 
   // Filter by active project
   const filteredLogs = useMemo(() => {
@@ -572,11 +582,17 @@ function DeletionHistoryView() {
               <TableHead>Empresa</TableHead>
               <TableHead>Eliminado por</TableHead>
               <TableHead>Data</TableHead>
+              <TableHead>Recuperar</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredLogs.map((log: any) => (
-              <TableRow key={log.id}>
+              <TableRow key={log.id}>{(() => {
+                const deletedAt = new Date(log.deletedAt).getTime();
+                const daysSince = (Date.now() - deletedAt) / (1000 * 60 * 60 * 24);
+                const canRecover = daysSince <= 21 && (user?.role === "admin" || user?.role === "dono_obra" || user?.id === log.createdBy);
+                const daysLeft = Math.max(0, Math.ceil(21 - daysSince));
+                return (<>
                 <TableCell className="font-medium">
                   S{String(log.weekNumber).padStart(2, "0")} / {log.weekYear}
                 </TableCell>
@@ -598,7 +614,26 @@ function DeletionHistoryView() {
                     minute: "2-digit",
                   })}
                 </TableCell>
-              </TableRow>
+                <TableCell>
+                  {canRecover ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-green-700 border-green-300 hover:bg-green-50"
+                      disabled={recoverMutation.isPending}
+                      onClick={() => recoverMutation.mutate({ id: log.submissionId })}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      Recuperar ({daysLeft}d)
+                    </Button>
+                  ) : daysSince > 21 ? (
+                    <span className="text-xs text-muted-foreground">Expirado</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Sem permissão</span>
+                  )}
+                </TableCell>
+                </>);
+              })()}</TableRow>
             ))}
           </TableBody>
         </Table>
@@ -606,3 +641,4 @@ function DeletionHistoryView() {
     </Card>
   );
 }
+import { RotateCcw } from "lucide-react";

@@ -77,13 +77,15 @@ export const weeklySubmissions = mysqlTable("weekly_submissions", {
   weekYear: int("weekYear").notNull(),
   weekStartDate: varchar("weekStartDate", { length: 10 }).notNull(),
   weekEndDate: varchar("weekEndDate", { length: 10 }).notNull(),
-  status: mysqlEnum("status", ["draft", "submitted", "under_review", "approved", "rejected"]).default("draft").notNull(),
+  status: mysqlEnum("status", ["draft", "submitted", "under_review", "approved", "rejected", "deleted"]).default("draft").notNull(),
   submittedBy: int("submittedBy"),
   createdBy: int("createdBy"),
   submittedAt: bigint("submittedAt", { mode: "number" }),
   reviewedBy: int("reviewedBy"),
   reviewedAt: bigint("reviewedAt", { mode: "number" }),
   reviewNotes: text("reviewNotes"),
+  deletedAt: bigint("deletedAt", { mode: "number" }),
+  deletedBy: int("deletedBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -245,11 +247,13 @@ export const deletionLogs = mysqlTable("deletion_logs", {
   weekYear: int("weekYear").notNull(),
   companyId: int("companyId"),
   companyName: varchar("companyName", { length: 255 }),
+  createdBy: int("createdBy"),
   deletedBy: int("deletedBy").notNull(),
   deletedByName: varchar("deletedByName", { length: 255 }),
   deletedByEmail: varchar("deletedByEmail", { length: 255 }),
   reason: text("reason"),
   deletedAt: timestamp("deletedAt").defaultNow().notNull(),
+  recoveredAt: bigint("recoveredAt", { mode: "number" }),
 });
 
 export type DeletionLog = typeof deletionLogs.$inferSelect;

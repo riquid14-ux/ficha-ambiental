@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 type FilterPeriod = "all" | "week" | "month" | "quarter" | "semester";
 
 function getMonthFromWeek(weekNumber: number, year: number): number {
@@ -523,6 +524,14 @@ function DeletionHistoryView() {
   const deletionLogsQuery = trpc.deletionLogs.list.useQuery();
   const { activeProject, isAllProjects } = useProject();
 
+  // Filter by active project
+  const filteredLogs = useMemo(() => {
+    const logs = deletionLogsQuery.data || [];
+    if (isAllProjects) return logs;
+    if (!activeProject) return logs;
+    return logs.filter((log: any) => log.projectId === activeProject.id);
+  }, [deletionLogsQuery.data, activeProject, isAllProjects]);
+
   if (deletionLogsQuery.isLoading) {
     return (
       <Card>
@@ -533,14 +542,15 @@ function DeletionHistoryView() {
     );
   }
 
-  const logs = deletionLogsQuery.data || [];
-
-  // Filter by active project
-  const filteredLogs = useMemo(() => {
-    if (isAllProjects) return logs;
-    if (!activeProject) return logs;
-    return logs.filter((log: any) => log.projectId === activeProject.id);
-  }, [logs, activeProject, isAllProjects]);
+  if (deletionLogsQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Não foi possível carregar o histórico de eliminações.
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (filteredLogs.length === 0) {
     return (
@@ -596,4 +606,3 @@ function DeletionHistoryView() {
     </Card>
   );
 }
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

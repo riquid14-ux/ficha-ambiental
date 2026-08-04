@@ -755,7 +755,11 @@ export const appRouter = router({
 
   // ─── Deletion Logs ──────────────────────────────────────────────────────────
   deletionLogs: router({
-    list: adminProcedure.query(async () => {
+    list: protectedProcedure.query(async ({ ctx }) => {
+      // Only admin and dono_obra can see deletion logs
+      if (ctx.user.role !== "admin" && ctx.user.role !== "dono_obra") {
+        return [];
+      }
       return db.getDeletionLogs();
     }),
   }),

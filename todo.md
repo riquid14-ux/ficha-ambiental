@@ -108,3 +108,6 @@
 - [x] Verificar que atualização do nome no Perfil reflete na Administração/Utilizadores e no ícone do sidebar
 - [x] Corrigir logo Start Campus que não carrega (solução definitiva - embed base64 inline)
 - [x] Exportação de fichas: RAA/Admin/dono_obra/observador exportam histórico completo; EE/RAP só exportam as suas medidas
+- [x] Exportação de fichas: RAA/Admin/dono_obra/observador exportam histórico completo; EE/RAP só exportam as suas medidas
+- [x] Corrigir erro React #310 ao clicar em "Fichas Eliminadas" no Histórico (useMemo antes de early return + error handling)
+- [x] Limpar registos de deletion_logs antigos sem projectId da base de dados

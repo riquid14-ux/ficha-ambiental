@@ -405,7 +405,12 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
-        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!sub) {
+          // Submission was permanently deleted before soft-delete was implemented
+          // Mark the log as irrecoverable
+          await db.markDeletionLogRecovered(input.id);
+          throw new TRPCError({ code: "NOT_FOUND", message: "Esta ficha foi eliminada permanentemente e não pode ser recuperada." });
+        }
         if (sub.status !== "deleted") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Esta ficha não está eliminada." });
         }

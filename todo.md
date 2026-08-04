@@ -116,3 +116,7 @@
 - [x] Fichas eliminadas: após 21 dias, ficha não pode ser recuperada (mostra "Expirado")
 - [x] Fichas eliminadas: logs de eliminação ocultados após recuperação (recoveredAt)
 - [x] Fichas eliminadas: createdBy guardado no log para verificar permissão de recuperação
+- [x] Corrigir NOT_FOUND ao recuperar fichas que foram apagadas antes do soft-delete (marcar logs como irrecuperáveis)
+- [x] Adicionar tab "Rascunhos" na Ficha Semanal mostrando fichas em rascunho (recuperadas + rejeitadas)
+- [x] WeeklyForm: mostrar sempre o acesso ao painel 'Rascunhos' e incluir estado vazio ('Sem rascunhos ou fichas rejeitadas neste projeto')
+- [x] WeeklyForm: adicionar estados de loading e erro para mySubmissionsQuery no painel 'Rascunhos'

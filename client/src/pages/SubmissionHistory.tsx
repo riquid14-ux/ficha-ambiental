@@ -60,9 +60,11 @@ export default function SubmissionHistory() {
   // Filter submissions by active project
   const submissions = useMemo(() => {
     const data = submissionsQuery.data || [];
-    if (isAllProjects) return data;
-    if (!activeProject) return data;
-    return data.filter((s: any) => s.projectId === activeProject.id);
+    // Exclude drafts from history - drafts belong in the WeeklyForm "Rascunhos" tab
+    const nonDrafts = data.filter((s: any) => s.status !== "draft");
+    if (isAllProjects) return nonDrafts;
+    if (!activeProject) return nonDrafts;
+    return nonDrafts.filter((s: any) => s.projectId === activeProject.id);
   }, [submissionsQuery.data, activeProject, isAllProjects]);
 
   const companiesQuery = trpc.companies.list.useQuery();

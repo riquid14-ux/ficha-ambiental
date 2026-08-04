@@ -6,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight } from "lucide-react";
+import { FilePlus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -63,7 +64,7 @@ export default function WeeklyForm() {
   const weekOpts = useMemo(() => getWeekOptions(), []);
   const [selectedWeek, setSelectedWeek] = useState(weekOpts.currentWeek);
   const [selectedYear, setSelectedYear] = useState(weekOpts.year);
-  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(params.id ? "nova" : "nova");
 
   const weekDates = useMemo(() => getWeekDates(selectedWeek, selectedYear), [selectedWeek, selectedYear]);
 
@@ -374,7 +375,7 @@ export default function WeeklyForm() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
+      <div className="space-y-4">  
         {/* Ficha Header with Logo and Company */}
         <Card>
           <CardContent className="p-6">
@@ -394,8 +395,28 @@ export default function WeeklyForm() {
           </CardContent>
         </Card>
 
-        {/* Date/Week Selection (before starting) */}
-        {!started && !params.id && (
+        {/* Tabs: Nova Ficha / Rascunhos */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="nova" className="gap-2">
+              <FilePlus className="w-4 h-4" />
+              Nova Ficha
+            </TabsTrigger>
+            <TabsTrigger value="rascunhos" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Rascunhos
+              {draftsAndRejected.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                  {draftsAndRejected.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Nova Ficha */}
+          <TabsContent value="nova" className="space-y-4 mt-4">
+            {/* Date/Week Selection (before starting) */}
+            {!started && !params.id && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Selecionar Semana</CardTitle>
@@ -635,106 +656,92 @@ export default function WeeklyForm() {
             </Accordion>
           </>
         )}
-      </div>
+        </TabsContent>
 
-      {/* Rascunhos (Drafts) Floating Button + Sheet Panel */}
-      <Sheet open={draftsOpen} onOpenChange={setDraftsOpen}>
-        <SheetTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="fixed bottom-6 right-6 z-40 shadow-lg border-primary/30 bg-background hover:bg-primary/5 gap-2"
-          >
-            <FileText className="w-4 h-4" />
-            Rascunhos
-            {draftsAndRejected.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
-                {draftsAndRejected.length}
-              </Badge>
-            )}
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right" className="w-[360px] sm:w-[400px] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Rascunhos e Rejeitadas
-            </SheetTitle>
-            <p className="text-sm text-muted-foreground">
-              Fichas em rascunho ou rejeitadas que necessitam de atenção.
-            </p>
-          </SheetHeader>
-          <div className="mt-4 space-y-3 px-1">
-            {mySubmissionsQuery.isLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">A carregar...</span>
-              </div>
-            )}
-            {mySubmissionsQuery.isError && (
-              <div className="p-4 rounded-lg border border-red-200 bg-red-50/50 text-sm text-red-600">
-                Erro ao carregar rascunhos. Tente novamente.
-              </div>
-            )}
-            {!mySubmissionsQuery.isLoading && !mySubmissionsQuery.isError && draftsAndRejected.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <FileText className="w-10 h-10 text-muted-foreground/40 mb-3" />
+          {/* Tab: Rascunhos */}
+        <TabsContent value="rascunhos" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="w-5 h-5" />
+                  Rascunhos e Rejeitadas
+                </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Sem rascunhos ou fichas rejeitadas neste projeto.
+                  Fichas em rascunho ou rejeitadas que necessitam de atenção.
                 </p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Quando criar uma nova ficha ou receber uma rejeição, ela aparecerá aqui.
-                </p>
-              </div>
-            )}
-            {draftsAndRejected.map((sub: any) => (
-              <div
-                key={sub.id}
-                className={`p-4 rounded-lg border transition-all hover:shadow-md ${
-                  sub.status === "rejected"
-                    ? "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20"
-                    : "border-border bg-card"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground">
-                      Semana {sub.weekNumber} / {sub.weekYear}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {sub.weekStartDate} — {sub.weekEndDate}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={sub.status === "rejected" ? "destructive" : "outline"}
-                    className="text-xs shrink-0"
-                  >
-                    {sub.status === "rejected" ? "Rejeitada" : "Rascunho"}
-                  </Badge>
-                </div>
-                {sub.status === "rejected" && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                    <span>Ação imediata necessária</span>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {mySubmissionsQuery.isLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">A carregar...</span>
                   </div>
                 )}
-                <Button
-                  variant={sub.status === "rejected" ? "destructive" : "default"}
-                  size="sm"
-                  className="w-full mt-3 gap-2"
-                  onClick={() => {
-                    setDraftsOpen(false);
-                    setLocation(`/ficha/${sub.id}`);
-                  }}
-                >
-                  <ArrowRight className="w-4 h-4" />
-                  Continuar
-                </Button>
-              </div>
-            ))}
-          </div>
-        </SheetContent>
-      </Sheet>
+                {mySubmissionsQuery.isError && (
+                  <div className="p-4 rounded-lg border border-red-200 bg-red-50/50 text-sm text-red-600">
+                    Erro ao carregar rascunhos. Tente novamente.
+                  </div>
+                )}
+                {!mySubmissionsQuery.isLoading && !mySubmissionsQuery.isError && draftsAndRejected.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <FileText className="w-10 h-10 text-muted-foreground/40 mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Sem rascunhos ou fichas rejeitadas neste projeto.
+                    </p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">
+                      Quando criar uma nova ficha ou receber uma rejeição, ela aparecerá aqui.
+                    </p>
+                  </div>
+                )}
+                {draftsAndRejected.map((sub: any) => (
+                  <div
+                    key={sub.id}
+                    className={`p-4 rounded-lg border transition-all hover:shadow-md ${
+                      sub.status === "rejected"
+                        ? "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-foreground">
+                          Semana {sub.weekNumber} / {sub.weekYear}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {sub.weekStartDate} — {sub.weekEndDate}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={sub.status === "rejected" ? "destructive" : "outline"}
+                        className="text-xs shrink-0"
+                      >
+                        {sub.status === "rejected" ? "Rejeitada" : "Rascunho"}
+                      </Badge>
+                    </div>
+                    {sub.status === "rejected" && (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Ação imediata necessária</span>
+                      </div>
+                    )}
+                    <Button
+                      variant={sub.status === "rejected" ? "destructive" : "default"}
+                      size="sm"
+                      className="w-full mt-3 gap-2"
+                      onClick={() => {
+                        setLocation(`/ficha/${sub.id}`);
+                      }}
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                      Continuar
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </AppLayout>
   );
 }

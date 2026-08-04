@@ -120,3 +120,6 @@
 - [x] Adicionar tab "Rascunhos" na Ficha Semanal mostrando fichas em rascunho (recuperadas + rejeitadas)
 - [x] WeeklyForm: mostrar sempre o acesso ao painel 'Rascunhos' e incluir estado vazio ('Sem rascunhos ou fichas rejeitadas neste projeto')
 - [x] WeeklyForm: adicionar estados de loading e erro para mySubmissionsQuery no painel 'Rascunhos'
+- [x] Histórico: excluir fichas com status 'draft' da lista "Fichas Submetidas" (rascunhos não são submetidos)
+- [x] Ficha Semanal: substituir botão flutuante + Sheet por tabs no topo da página ("Nova Ficha" / "Rascunhos")
+- [x] Ficha Semanal: tab "Rascunhos" mostra lista de fichas em rascunho e rejeitadas com botão "Continuar"

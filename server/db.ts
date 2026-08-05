@@ -826,4 +826,60 @@ export async function getCompaniesForProject(projectId: number) {
   const companyIds = associations.map(a => a.companyId);
   return db.select().from(companies).where(sql`${companies.id} IN (${sql.join(companyIds.map(id => sql`${id}`), sql`, `)})`);
 }
+
+// ─── Matrix Data ──────────────────────────────────────────────────────────────
+
+export async function getMatrixData(projectId?: number) {
+  const db = await getDb();
+  if (!db) return { submissions: [], companies: [], weeks: [] };
+
+  // Get relevant companies (EE and RAP only)
+  let relevantCompanies: typeof companies.$inferSelect[] = [];
+  if (projectId) {
+    relevantCompanies = await getCompaniesForProject(projectId);
+  } else {
+    const allCompanies = await db.select().from(companies).where(eq(companies.active, 1));
+    relevantCompanies = allCompanies;
+  }
+  // Filter to only EE and RAP companies
+  relevantCompanies = relevantCompanies.filter(c => c.companyType === "ee" || c.companyType === "rap");
+
+  // Get all non-deleted submissions (optionally filtered by project)
+  let subs;
+  if (projectId) {
+    subs = await db.select().from(weeklySubmissions)
+      .where(and(eq(weeklySubmissions.projectId, projectId), sql`${weeklySubmissions.status} != 'deleted'`))
+      .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
+  } else {
+    subs = await db.select().from(weeklySubmissions)
+      .where(sql`${weeklySubmissions.status} != 'deleted'`)
+      .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
+  }
+
+  // Extract unique weeks
+  const weekSet = new Set<string>();
+  for (const s of subs) {
+    weekSet.add(`${s.weekYear}-W${String(s.weekNumber).padStart(2, "0")}`);
+  }
+  const weeks = Array.from(weekSet).sort();
+
+  return {
+    submissions: subs.map(s => ({
+      id: s.id,
+      companyId: s.companyId,
+      projectId: s.projectId,
+      weekNumber: s.weekNumber,
+      weekYear: s.weekYear,
+      status: s.status,
+      weekKey: `${s.weekYear}-W${String(s.weekNumber).padStart(2, "0")}`,
+    })),
+    companies: relevantCompanies.map(c => ({
+      id: c.id,
+      name: c.name,
+      shortName: c.shortName,
+      companyType: c.companyType,
+    })),
+    weeks,
+  };
+}
 import { deletionLogs } from "../drizzle/schema";

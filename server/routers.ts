@@ -797,6 +797,16 @@ export const appRouter = router({
       return db.getDeletionLogs();
     }),
   }),
+
+  // ─── Matrix (Acompanhamento) ──────────────────────────────────────────────
+  matrix: router({
+    getData: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        // All authenticated users can view the matrix
+        return db.getMatrixData(input?.projectId);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

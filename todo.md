@@ -123,3 +123,7 @@
 - [x] Histórico: excluir fichas com status 'draft' da lista "Fichas Submetidas" (rascunhos não são submetidos)
 - [x] Ficha Semanal: substituir botão flutuante + Sheet por tabs no topo da página ("Nova Ficha" / "Rascunhos")
 - [x] Ficha Semanal: tab "Rascunhos" mostra lista de fichas em rascunho e rejeitadas com botão "Continuar"
+- [x] Matriz de Acompanhamento: nova tab no sidebar com visão por empresa × semana (cores: verde=entregue, azul=revisão, amarelo=rascunho, vermelho=rejeitada)
+- [x] Matriz: filtrável por projeto (sidebar selector) ou visão geral "Todos os Projetos"
+- [x] Matriz: contadores resumo (Entregues, Em Revisão, Rascunho, Rejeitadas)
+- [x] Matriz: tooltips com detalhes ao passar o rato sobre cada célula

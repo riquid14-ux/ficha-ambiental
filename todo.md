@@ -147,3 +147,10 @@
 - [x] Fase 7: Medidas/secções por fase (separadas das de Construção)
 - [x] Fase 7: Formulário simplificado para DO preencher medidas das novas fases
 - [x] Fase 7: Controlo de acesso por fase na Administração (definir que empresas acedem a que fase)
+- [x] Workflow: criar diagrama visual do processo de submissão (EE/RAP submete → RAA revê → aprovado/rejeitado → consequências)
+- [x] Workflow: incorporar o workflow atual na página Workflow de cada projeto
+- [x] Fases: reorganizar com nomenclatura uniforme (Pré-Licenciamento, Pré-Construção, Construção, Exploração)
+- [x] Fases: adicionar fase "Previamente ao Início da Construção" com medidas do DCAPE
+- [x] Fases: corrigir medidas da fase "Previamente ao Licenciamento" (3 medidas da pág.23 do doc)
+- [x] Planos: redesign mais user-friendly (cards visuais em vez de tabela densa)
+- [x] Timeline por projeto: visão de todas as fases com overview de cumprimento de medidas por fase

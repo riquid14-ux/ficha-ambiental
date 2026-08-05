@@ -32,7 +32,7 @@ import {
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
 import { Grid3X3, FileText, CalendarDays } from "lucide-react";
-import { BookOpen, Layers } from "lucide-react";
+import { BookOpen, Layers, GitBranch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -46,6 +46,7 @@ const menuItems = [
   { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Layers, label: "Fases", path: "/fases" },
+  { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
 ];

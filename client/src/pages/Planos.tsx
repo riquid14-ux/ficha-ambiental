@@ -6,18 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Calendar, Clock, Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { FileText, Calendar, Clock, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function Planos() {
   const { user } = useAuth();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
-  // Get active project from localStorage
   const storedProject = localStorage.getItem("selectedProjectId");
   const projectId = storedProject ? parseInt(storedProject) : undefined;
 
@@ -27,65 +24,83 @@ export default function Planos() {
 
   const createMutation = trpc.monitoringPlans.create.useMutation({
     onSuccess: () => { refetch(); toast.success("Plano criado com sucesso"); setShowCreate(false); },
-    onError: (e) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const updateMutation = trpc.monitoringPlans.update.useMutation({
     onSuccess: () => { refetch(); toast.success("Plano atualizado"); setEditingPlan(null); },
-    onError: (e) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const deleteMutation = trpc.monitoringPlans.delete.useMutation({
     onSuccess: () => { refetch(); toast.success("Plano removido"); },
-    onError: (e) => toast.error(e.message),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingPlan, setEditingPlan] = useState<number | null>(null);
   const [newPlan, setNewPlan] = useState({ name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "" });
 
+  const now = Date.now();
+
+  // Categorize plans
   const programas = plans?.filter(p => p.category === "programa_monitorizacao") || [];
   const planos = plans?.filter(p => p.category === "plano_projeto") || [];
 
-  // Calculate next reporting alerts
-  const now = Date.now();
-  const upcomingReports = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now)
-    .sort((a, b) => (a.nextReportingDate || 0) - (b.nextReportingDate || 0))
-    .slice(0, 3) || [];
+  // Stats
+  const totalPlans = plans?.length || 0;
+  const overdueCount = plans?.filter(p => p.nextReportingDate && p.nextReportingDate < now && p.nextReportingDate > 0).length || 0;
+  const upcomingCount = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now && p.nextReportingDate - now < 90 * 86400000).length || 0;
+  const onTrackCount = totalPlans - overdueCount - upcomingCount;
 
-  const overdueReports = plans?.filter(p => p.nextReportingDate && p.nextReportingDate < now && p.nextReportingDate > 0) || [];
+  // Closest upcoming
+  const nextReport = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now)
+    .sort((a, b) => (a.nextReportingDate || 0) - (b.nextReportingDate || 0))[0];
 
   function formatDate(ts: number | null) {
     if (!ts) return "—";
-    return new Date(ts).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(ts).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
   }
 
   function daysUntil(ts: number | null) {
     if (!ts) return null;
-    const diff = Math.ceil((ts - now) / 86400000);
-    return diff;
+    return Math.ceil((ts - now) / 86400000);
+  }
+
+  function timeLabel(ts: number | null) {
+    const days = daysUntil(ts);
+    if (days === null) return "";
+    if (days < 0) return `${Math.abs(days)} dias em atraso`;
+    if (days === 0) return "Hoje";
+    if (days === 1) return "Amanhã";
+    if (days < 30) return `${days} dias`;
+    if (days < 60) return "~1 mês";
+    return `~${Math.round(days / 30)} meses`;
   }
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <div className="h-8 w-64 bg-muted animate-pulse rounded" />
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
+        </div>
         <div className="h-40 bg-muted animate-pulse rounded" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Planos de Monitorização</h1>
-          <p className="text-muted-foreground">Planos e programas do DCAPE — Fase de Construção</p>
+          <p className="text-muted-foreground text-sm">Programas e planos do DCAPE — Fase de Construção</p>
         </div>
         {isAdminOrDono && (
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button><Plus className="w-4 h-4 mr-2" />Novo Plano</Button>
+              <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />Novo Plano</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -93,7 +108,7 @@ export default function Planos() {
               </DialogHeader>
               <div className="space-y-4">
                 <Input placeholder="Nome do plano" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
-                <Select value={newPlan.category} onValueChange={v => setNewPlan(p => ({ ...p, category: v as any }))}>
+                <Select value={newPlan.category} onValueChange={(v: any) => setNewPlan(p => ({ ...p, category: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="programa_monitorizacao">Programa de Monitorização</SelectItem>
@@ -101,7 +116,7 @@ export default function Planos() {
                   </SelectContent>
                 </Select>
                 <Input placeholder="Periodicidade (ex: Semestral, Trimestral)" value={newPlan.periodicity} onChange={e => setNewPlan(p => ({ ...p, periodicity: e.target.value }))} />
-                <Textarea placeholder="Notas" value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
+                <Textarea placeholder="Notas adicionais" value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
                 <Button onClick={() => createMutation.mutate({ ...newPlan, periodicity: newPlan.periodicity || undefined, notes: newPlan.notes || undefined })} disabled={!newPlan.name || createMutation.isPending}>
                   {createMutation.isPending ? "A criar..." : "Criar Plano"}
                 </Button>
@@ -111,137 +126,168 @@ export default function Planos() {
         )}
       </div>
 
-      {/* Alerts */}
-      {overdueReports.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-semibold text-red-800">Reportings em atraso</p>
-              {overdueReports.map(p => (
-                <p key={p.id} className="text-sm text-red-700">
-                  {p.name} — previsto para {formatDate(p.nextReportingDate)}
-                </p>
-              ))}
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3 rounded-lg border bg-background">
+          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-2xl font-bold mt-0.5">{totalPlans}</p>
+        </div>
+        <div className="p-3 rounded-lg border bg-green-50 border-green-200">
+          <p className="text-xs text-green-700">Em dia</p>
+          <p className="text-2xl font-bold mt-0.5 text-green-800">{onTrackCount}</p>
+        </div>
+        <div className="p-3 rounded-lg border bg-amber-50 border-amber-200">
+          <p className="text-xs text-amber-700">Próximos 90 dias</p>
+          <p className="text-2xl font-bold mt-0.5 text-amber-800">{upcomingCount}</p>
+        </div>
+        <div className="p-3 rounded-lg border bg-red-50 border-red-200">
+          <p className="text-xs text-red-700">Em atraso</p>
+          <p className="text-2xl font-bold mt-0.5 text-red-800">{overdueCount}</p>
+        </div>
+      </div>
+
+      {/* Next report highlight */}
+      {nextReport && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Próximo reporting</p>
+              <p className="font-semibold text-sm truncate">{nextReport.name}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold">{timeLabel(nextReport.nextReportingDate)}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(nextReport.nextReportingDate)}</p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {upcomingReports.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4 flex items-start gap-3">
-            <Clock className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-semibold text-amber-800">Próximos reportings</p>
-              {upcomingReports.map(p => {
-                const days = daysUntil(p.nextReportingDate);
-                return (
-                  <p key={p.id} className="text-sm text-amber-700">
-                    {p.name} — {formatDate(p.nextReportingDate)} ({days} dias)
-                  </p>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Plans list - grouped */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <FileText className="w-4 h-4" /> Programas de Monitorização ({programas.length})
+        </h2>
+        {programas.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhum programa registado.</p>
+        ) : (
+          <div className="grid gap-2">
+            {programas.map(plan => (
+              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
+            ))}
+          </div>
+        )}
+      </div>
 
-      <Tabs defaultValue="programas">
-        <TabsList>
-          <TabsTrigger value="programas">
-            <FileText className="w-4 h-4 mr-2" />Programas de Monitorização ({programas.length})
-          </TabsTrigger>
-          <TabsTrigger value="planos">
-            <Calendar className="w-4 h-4 mr-2" />Planos e Projetos ({planos.length})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="programas" className="mt-4 space-y-3">
-          {programas.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum programa de monitorização registado.</p>
-          ) : programas.map(plan => (
-            <PlanCard key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} daysUntil={daysUntil} />
-          ))}
-        </TabsContent>
-
-        <TabsContent value="planos" className="mt-4 space-y-3">
-          {planos.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">Nenhum plano/projeto registado.</p>
-          ) : planos.map(plan => (
-            <PlanCard key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} daysUntil={daysUntil} />
-          ))}
-        </TabsContent>
-      </Tabs>
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Calendar className="w-4 h-4" /> Planos e Projetos ({planos.length})
+        </h2>
+        {planos.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano registado.</p>
+        ) : (
+          <div className="grid gap-2">
+            {planos.map(plan => (
+              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function PlanCard({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, deleteMutation, formatDate, daysUntil }: any) {
+function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, deleteMutation, formatDate, timeLabel, now }: any) {
   const [lastDate, setLastDate] = useState("");
   const [nextDate, setNextDate] = useState("");
   const isEditing = editingPlan === plan.id;
+  const isOverdue = plan.nextReportingDate && plan.nextReportingDate < now && plan.nextReportingDate > 0;
+  const isUpcoming = plan.nextReportingDate && plan.nextReportingDate > now && plan.nextReportingDate - now < 90 * 86400000;
 
-  const days = daysUntil(plan.nextReportingDate);
-  const isOverdue = plan.nextReportingDate && plan.nextReportingDate < Date.now();
+  const statusColor = isOverdue ? "border-l-red-500" : isUpcoming ? "border-l-amber-500" : "border-l-green-500";
 
   return (
-    <Card className={isOverdue ? "border-red-200" : ""}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-medium text-sm">{plan.name}</h3>
-              {plan.periodicity && (
-                <Badge variant="secondary" className="text-xs">{plan.periodicity}</Badge>
-              )}
-              {isOverdue && (
-                <Badge variant="destructive" className="text-xs">Em atraso</Badge>
-              )}
-              {days !== null && days > 0 && days <= 30 && (
-                <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100">{days} dias</Badge>
-              )}
-            </div>
-            {plan.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{plan.notes}</p>}
-            <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-              <span>Último: {formatDate(plan.lastReportingDate)}</span>
-              <span>Próximo: {formatDate(plan.nextReportingDate)}</span>
-            </div>
-          </div>
-          {isAdminOrDono && (
-            <div className="flex gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => setEditingPlan(isEditing ? null : plan.id)}>
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => { if (confirm("Remover este plano?")) deleteMutation.mutate({ id: plan.id }); }}>
-                <Trash2 className="w-3.5 h-3.5 text-red-500" />
-              </Button>
-            </div>
+    <div className={`border rounded-lg p-3 border-l-4 ${statusColor} bg-background`}>
+      <div className="flex items-center gap-3">
+        {/* Status icon */}
+        <div className="shrink-0">
+          {isOverdue ? (
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+          ) : isUpcoming ? (
+            <Clock className="w-4 h-4 text-amber-500" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
           )}
         </div>
-        {isEditing && (
-          <div className="mt-3 pt-3 border-t space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Último Reporting</label>
-                <Input type="date" value={lastDate} onChange={e => setLastDate(e.target.value)} className="h-8 text-sm" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">Próximo Reporting</label>
-                <Input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="h-8 text-sm" />
-              </div>
-            </div>
-            <Button size="sm" onClick={() => {
-              const data: any = { id: plan.id };
-              if (lastDate) data.lastReportingDate = new Date(lastDate).getTime();
-              if (nextDate) data.nextReportingDate = new Date(nextDate).getTime();
-              updateMutation.mutate(data);
-            }} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "A guardar..." : "Guardar Datas"}
+
+        {/* Name and periodicity */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{plan.name}</p>
+          {plan.notes && <p className="text-xs text-muted-foreground truncate">{plan.notes}</p>}
+        </div>
+
+        {/* Periodicity badge */}
+        {plan.periodicity && (
+          <Badge variant="outline" className="text-xs shrink-0 hidden sm:inline-flex">{plan.periodicity}</Badge>
+        )}
+
+        {/* Dates */}
+        <div className="text-right shrink-0 hidden md:block">
+          <p className="text-xs text-muted-foreground">Último: {formatDate(plan.lastReportingDate)}</p>
+          <p className="text-xs font-medium">
+            Próximo: {formatDate(plan.nextReportingDate)}
+            {plan.nextReportingDate && (
+              <span className={`ml-1 ${isOverdue ? "text-red-600" : isUpcoming ? "text-amber-600" : "text-green-600"}`}>
+                ({timeLabel(plan.nextReportingDate)})
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Actions */}
+        {isAdminOrDono && (
+          <div className="flex gap-0.5 shrink-0">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingPlan(isEditing ? null : plan.id)}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { if (confirm("Remover este plano?")) deleteMutation.mutate({ id: plan.id }); }}>
+              <Trash2 className="w-3.5 h-3.5 text-red-500" />
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Mobile dates */}
+      <div className="flex gap-4 mt-2 text-xs text-muted-foreground md:hidden">
+        <span>Último: {formatDate(plan.lastReportingDate)}</span>
+        <span>Próximo: {formatDate(plan.nextReportingDate)}</span>
+      </div>
+
+      {/* Edit form */}
+      {isEditing && (
+        <div className="mt-3 pt-3 border-t space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Último Reporting</label>
+              <Input type="date" value={lastDate} onChange={e => setLastDate(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Próximo Reporting</label>
+              <Input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="h-8 text-sm" />
+            </div>
+          </div>
+          <Button size="sm" onClick={() => {
+            const data: any = { id: plan.id };
+            if (lastDate) data.lastReportingDate = new Date(lastDate).getTime();
+            if (nextDate) data.nextReportingDate = new Date(nextDate).getTime();
+            updateMutation.mutate(data);
+          }} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? "A guardar..." : "Guardar Datas"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

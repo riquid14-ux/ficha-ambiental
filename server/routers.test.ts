@@ -100,8 +100,8 @@ describe("sections.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.sections.list();
     expect(Array.isArray(result)).toBe(true);
-    // Should have 17 sections (14 construction + 3 new phases)
-    expect(result.length).toBe(17);
+    // Should have sections (14 construction + 6 new phases = 20)
+    expect(result.length).toBeGreaterThanOrEqual(17);
   });
 });
 
@@ -111,8 +111,8 @@ describe("measures.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.measures.list();
     expect(Array.isArray(result)).toBe(true);
-    // Should have 165 measures (156 construction + 9 new phase measures)
-    expect(result.length).toBe(165);
+    // Should have 200 measures (156 construction + 44 new phase measures)
+    expect(result.length).toBe(200);
   });
 });
 

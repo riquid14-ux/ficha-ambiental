@@ -127,7 +127,6 @@
 - [x] Matriz: filtrável por projeto (sidebar selector) ou visão geral "Todos os Projetos"
 - [x] Matriz: contadores resumo (Entregues, Em Revisão, Rascunho, Rejeitadas)
 - [x] Matriz: tooltips com detalhes ao passar o rato sobre cada célula
-- [ ] Fase 2: Upload de ficheiros (PDF, Word, Excel, ZIP) por medida na ficha semanal
 - [x] Fase 2: Upload de ficheiros (PDF, Word, Excel, ZIP) por medida na ficha semanal
 - [x] Fase 2: Tabela evidence_files no schema (separada de evidence_images)
 - [x] Fase 2: Backend endpoints para upload e listagem de ficheiros por medida
@@ -137,3 +136,14 @@
 - [x] Fase 3: UI de visualização do workflow em cada projeto (editável por Admin/DO)
 - [x] Fase 4: Lógica de deteção de atraso (3 semanas sem ficha por empresa/projeto)
 - [x] Fase 4: Alerta visível no Dashboard/sidebar para Admin e EE/RAP
+- [x] Fase 5: Tabela monitoring_plans no schema (nome, periodicidade, último reporting, próximo reporting)
+- [x] Fase 5: Seed dos 20 planos extraídos do DCAPE (7 programas + 13 planos)
+- [x] Fase 5: Backend CRUD para planos de monitorização (gerido por DO/Admin)
+- [x] Fase 5: UI tab "Planos" no sidebar com lista de planos, datas e periodicidade
+- [x] Fase 6: Tabela reporting_calendar ou lógica de cálculo de próximo reporting
+- [x] Fase 6: UI tab "Calendário de Reporting" com visão geral por projeto
+- [x] Fase 6: Box de alerta no topo ("Próximo reporting: projeto X daqui a Y meses")
+- [x] Fase 7: Conceito de project_phase (Prévias Licenciamento, Em Sede de Licenciamento, Exploração)
+- [x] Fase 7: Medidas/secções por fase (separadas das de Construção)
+- [x] Fase 7: Formulário simplificado para DO preencher medidas das novas fases
+- [x] Fase 7: Controlo de acesso por fase na Administração (definir que empresas acedem a que fase)

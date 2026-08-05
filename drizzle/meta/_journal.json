@@ -92,6 +92,20 @@
       "when": 1785929117309,
       "tag": "0012_small_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1785930023344,
+      "tag": "0013_red_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1785930681391,
+      "tag": "0014_foamy_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }

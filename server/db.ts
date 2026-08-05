@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   companies,
@@ -19,6 +19,7 @@ import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
 import { invitations, InsertInvitation } from "../drizzle/schema";
 import { projects, projectCompanies, projectUsers, InsertProject, InsertProjectCompany, InsertProjectUser } from "../drizzle/schema";
 import { evidenceFiles, InsertEvidenceFile } from "../drizzle/schema";
+import { monitoringPlans, InsertMonitoringPlan, projectPhases, InsertProjectPhase } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -198,6 +199,15 @@ export async function getMeasuresBySection(sectionId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(measures).where(eq(measures.sectionId, sectionId)).orderBy(measures.orderIndex);
+}
+
+export async function createMeasure(data: { number: string; description: string; responsible: string; sectionId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await db.select().from(measures).where(eq(measures.sectionId, data.sectionId)).orderBy(desc(measures.orderIndex));
+  const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 1;
+  const result = await db.insert(measures).values({ ...data, orderIndex: nextOrder });
+  return result[0].insertId;
 }
 
 // ─── Weekly Submissions ──────────────────────────────────────────────────────
@@ -929,3 +939,74 @@ export async function updateProjectWorkflow(projectId: number, workflowDescripti
   if (!db) return;
   await db.update(projects).set({ workflowDescription }).where(eq(projects.id, projectId));
 }
+
+// ─── Monitoring Plans ────────────────────────────────────────────────────────
+export async function getMonitoringPlans(projectId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  let query = db.select().from(monitoringPlans).where(eq(monitoringPlans.active, 1));
+  if (projectId) {
+    const result = await db.select().from(monitoringPlans).where(
+      and(eq(monitoringPlans.active, 1), or(eq(monitoringPlans.projectId, projectId), isNull(monitoringPlans.projectId)))
+    );
+    return result;
+  }
+  return await query;
+}
+
+export async function createMonitoringPlan(data: Omit<InsertMonitoringPlan, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) return;
+  const result = await db.insert(monitoringPlans).values(data);
+  return result[0].insertId;
+}
+
+export async function updateMonitoringPlan(id: number, data: Partial<InsertMonitoringPlan>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(monitoringPlans).set(data).where(eq(monitoringPlans.id, id));
+}
+
+export async function deleteMonitoringPlan(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(monitoringPlans).set({ active: 0 }).where(eq(monitoringPlans.id, id));
+}
+
+// ─── Project Phases ──────────────────────────────────────────────────────────
+export async function getProjectPhases(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(projectPhases)
+    .where(and(eq(projectPhases.projectId, projectId), eq(projectPhases.active, 1)))
+    .orderBy(projectPhases.orderIndex);
+}
+
+export async function getAllProjectPhases() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(projectPhases).where(eq(projectPhases.active, 1)).orderBy(projectPhases.orderIndex);
+}
+
+// ─── Phase Measure Statuses ─────────────────────────────────────────────────
+export async function getPhaseMeasureStatuses(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(phaseMeasureStatuses).where(eq(phaseMeasureStatuses.projectId, projectId));
+}
+
+export async function upsertPhaseMeasureStatus(data: { measureId: number; projectId: number; status: string; notes: string | null; updatedBy: number }) {
+  const db = await getDb();
+  if (!db) return;
+  // Check if exists
+  const existing = await db.select().from(phaseMeasureStatuses)
+    .where(and(eq(phaseMeasureStatuses.measureId, data.measureId), eq(phaseMeasureStatuses.projectId, data.projectId)));
+  if (existing.length > 0) {
+    await db.update(phaseMeasureStatuses)
+      .set({ status: data.status as any, notes: data.notes, updatedBy: data.updatedBy })
+      .where(eq(phaseMeasureStatuses.id, existing[0].id));
+  } else {
+    await db.insert(phaseMeasureStatuses).values(data as any);
+  }
+}
+import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schema";

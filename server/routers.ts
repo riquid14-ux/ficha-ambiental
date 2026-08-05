@@ -225,6 +225,20 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getMeasuresBySection(input.sectionId);
       }),
+    create: protectedProcedure
+      .input(z.object({
+        number: z.string().min(1),
+        description: z.string().min(1),
+        responsible: z.string().default("DO"),
+        sectionId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+        }
+        const id = await db.createMeasure(input);
+        return { id };
+      }),
   }),
 
   // ─── Weekly Submissions ────────────────────────────────────────────────────
@@ -988,6 +1002,113 @@ export const appRouter = router({
         }
 
         return { overdueCompanies, currentWeek, currentYear };
+      }),
+  }),
+
+  // ─── Monitoring Plans (Planos de Monitorização) ─────────────────────────────
+  monitoringPlans: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getMonitoringPlans(input?.projectId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number().optional(),
+        name: z.string().min(1),
+        category: z.enum(["programa_monitorizacao", "plano_projeto"]),
+        periodicity: z.string().optional(),
+        phase: z.string().default("construcao"),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem criar planos" });
+        }
+        const id = await db.createMonitoringPlan({
+          projectId: input.projectId ?? null,
+          name: input.name,
+          category: input.category,
+          periodicity: input.periodicity ?? null,
+          phase: input.phase,
+          notes: input.notes ?? null,
+          active: 1,
+          lastReportingDate: null,
+          nextReportingDate: null,
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        periodicity: z.string().optional(),
+        lastReportingDate: z.number().optional(),
+        nextReportingDate: z.number().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem editar planos" });
+        }
+        const { id, ...data } = input;
+        await db.updateMonitoringPlan(id, data as any);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deleteMonitoringPlan(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Project Phases ─────────────────────────────────────────────────────────
+  projectPhases: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return await db.getProjectPhases(input.projectId);
+      }),
+
+    listAll: protectedProcedure
+      .query(async ({ ctx }) => {
+        return await db.getAllProjectPhases();
+      }),
+  }),
+
+  phaseMeasures: router({
+    getStatuses: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getPhaseMeasureStatuses(input.projectId);
+      }),
+
+    updateStatus: protectedProcedure
+      .input(z.object({
+        measureId: z.number(),
+        projectId: z.number(),
+        status: z.enum(["pendente", "em_curso", "concluido"]),
+        notes: z.string().nullable().default(null),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+        }
+        await db.upsertPhaseMeasureStatus({
+          measureId: input.measureId,
+          projectId: input.projectId,
+          status: input.status,
+          notes: input.notes,
+          updatedBy: ctx.user.id,
+        });
+        return { success: true };
       }),
   }),
 });

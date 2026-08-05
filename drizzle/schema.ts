@@ -273,3 +273,50 @@ export const evidenceFiles = mysqlTable("evidence_files", {
 });
 export type EvidenceFile = typeof evidenceFiles.$inferSelect;
 export type InsertEvidenceFile = typeof evidenceFiles.$inferInsert;
+
+// ─── Monitoring Plans (Planos de Monitorização do DCAPE) ──────────────────────
+export const monitoringPlans = mysqlTable("monitoring_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId"),
+  name: varchar("name", { length: 500 }).notNull(),
+  category: mysqlEnum("category", ["programa_monitorizacao", "plano_projeto"]).default("programa_monitorizacao").notNull(),
+  periodicity: varchar("periodicity", { length: 100 }),
+  phase: varchar("phase", { length: 100 }).default("construcao").notNull(),
+  lastReportingDate: bigint("lastReportingDate", { mode: "number" }),
+  nextReportingDate: bigint("nextReportingDate", { mode: "number" }),
+  notes: text("notes"),
+  active: int("active").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type MonitoringPlan = typeof monitoringPlans.$inferSelect;
+export type InsertMonitoringPlan = typeof monitoringPlans.$inferInsert;
+
+// ─── Project Phases (Fases do Projeto - controlo por fase) ────────────────────
+export const projectPhases = mysqlTable("project_phases", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  phaseKey: varchar("phaseKey", { length: 100 }).notNull(),
+  phaseName: varchar("phaseName", { length: 255 }).notNull(),
+  active: int("active").default(1).notNull(),
+  orderIndex: int("orderIndex").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProjectPhase = typeof projectPhases.$inferSelect;
+export type InsertProjectPhase = typeof projectPhases.$inferInsert;
+
+/**
+ * Phase Measure Statuses (estado de cada medida nas novas fases, gerido pelo DO)
+ */
+export const phaseMeasureStatuses = mysqlTable("phase_measure_statuses", {
+  id: int("id").autoincrement().primaryKey(),
+  measureId: int("measureId").notNull(),
+  projectId: int("projectId").notNull(),
+  status: mysqlEnum("status", ["pendente", "em_curso", "concluido"]).default("pendente").notNull(),
+  notes: text("notes"),
+  updatedBy: int("updatedBy"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PhaseMeasureStatus = typeof phaseMeasureStatuses.$inferSelect;
+export type InsertPhaseMeasureStatus = typeof phaseMeasureStatuses.$inferInsert;

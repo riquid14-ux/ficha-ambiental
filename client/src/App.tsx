@@ -16,6 +16,9 @@ import AppLayout from "./components/AppLayout";
 import Profile from "./pages/Profile";
 import Matriz from "./pages/Matriz";
 import Workflow from "./pages/Workflow";
+import Planos from "./pages/Planos";
+import Calendario from "./pages/Calendario";
+import PhaseMeasures from "./pages/PhaseMeasures";
 
 function Router() {
   return (
@@ -25,6 +28,9 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/matriz" component={Matriz} />
       <Route path="/workflow" component={Workflow} />
+      <Route path="/planos" component={Planos} />
+      <Route path="/calendario" component={Calendario} />
+      <Route path="/fases" component={PhaseMeasures} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

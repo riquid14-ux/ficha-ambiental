@@ -31,8 +31,8 @@ import {
 
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
-import { Grid3X3 } from "lucide-react";
-import { BookOpen } from "lucide-react";
+import { Grid3X3, FileText, CalendarDays } from "lucide-react";
+import { BookOpen, Layers } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -43,6 +43,9 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Grid3X3, label: "Matriz", path: "/matriz" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
+  { icon: FileText, label: "Planos", path: "/planos" },
+  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: Layers, label: "Fases", path: "/fases" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
 ];

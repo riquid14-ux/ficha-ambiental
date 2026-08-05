@@ -127,3 +127,13 @@
 - [x] Matriz: filtrável por projeto (sidebar selector) ou visão geral "Todos os Projetos"
 - [x] Matriz: contadores resumo (Entregues, Em Revisão, Rascunho, Rejeitadas)
 - [x] Matriz: tooltips com detalhes ao passar o rato sobre cada célula
+- [ ] Fase 2: Upload de ficheiros (PDF, Word, Excel, ZIP) por medida na ficha semanal
+- [x] Fase 2: Upload de ficheiros (PDF, Word, Excel, ZIP) por medida na ficha semanal
+- [x] Fase 2: Tabela evidence_files no schema (separada de evidence_images)
+- [x] Fase 2: Backend endpoints para upload e listagem de ficheiros por medida
+- [x] Fase 2: UI de anexar ficheiro com lista de ficheiros e download
+- [x] Fase 3: Workflow explanation por projeto (campo na tabela projects ou tabela separada)
+- [x] Fase 3: Backend endpoints para ler/editar workflow description
+- [x] Fase 3: UI de visualização do workflow em cada projeto (editável por Admin/DO)
+- [x] Fase 4: Lógica de deteção de atraso (3 semanas sem ficha por empresa/projeto)
+- [x] Fase 4: Alerta visível no Dashboard/sidebar para Admin e EE/RAP

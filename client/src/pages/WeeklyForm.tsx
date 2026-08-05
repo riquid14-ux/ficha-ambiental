@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight } from "lucide-react";
-import { FilePlus } from "lucide-react";
+import { FilePlus, Paperclip, Download, File } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -137,6 +137,28 @@ export default function WeeklyForm() {
     { submissionId: submissionId! },
     { enabled: !!submissionId }
   );
+
+  const filesQuery = trpc.files.getBySubmission.useQuery(
+    { submissionId: submissionId! },
+    { enabled: !!submissionId }
+  );
+
+  const uploadFileMutation = trpc.files.upload.useMutation({
+    onSuccess: () => {
+      utils.files.getBySubmission.invalidate({ submissionId: submissionId! });
+      toast.success("Ficheiro anexado com sucesso");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Erro ao anexar ficheiro");
+    },
+  });
+
+  const deleteFileMutation = trpc.files.delete.useMutation({
+    onSuccess: () => {
+      utils.files.getBySubmission.invalidate({ submissionId: submissionId! });
+      toast.success("Ficheiro removido");
+    },
+  });
 
   const submissionQuery = trpc.submissions.getById.useQuery(
     { id: submissionId! },
@@ -358,6 +380,52 @@ export default function WeeklyForm() {
     }
     return map;
   }, [evidenceQuery.data, responsesQuery.data]);
+
+  // Group files by measure (same pattern as images)
+  const filesByMeasure = useMemo(() => {
+    if (!filesQuery.data || !responsesQuery.data) return new Map<number, any[]>();
+    const responseToMeasure = new Map<number, number>();
+    for (const r of responsesQuery.data) {
+      responseToMeasure.set(r.id, r.measureId);
+    }
+    const map = new Map<number, any[]>();
+    for (const file of filesQuery.data) {
+      const measureId = responseToMeasure.get(file.responseId);
+      if (measureId) {
+        if (!map.has(measureId)) map.set(measureId, []);
+        map.get(measureId)!.push(file);
+      }
+    }
+    return map;
+  }, [filesQuery.data, responsesQuery.data]);
+
+  const [uploadingFileMeasure, setUploadingFileMeasure] = useState<number | null>(null);
+
+  const handleFileUpload = useCallback(async (measureId: number, files: FileList) => {
+    if (!submissionId) return;
+    setUploadingFileMeasure(measureId);
+
+    for (const file of Array.from(files)) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        try {
+          await uploadFileMutation.mutateAsync({
+            submissionId,
+            measureId,
+            filename: file.name,
+            mimeType: file.type || "application/octet-stream",
+            data: base64,
+            fileSize: file.size,
+          });
+        } catch {
+          // error handled by mutation
+        }
+        setUploadingFileMeasure(null);
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [submissionId, uploadFileMutation]);
 
   if (!user?.companyId && user?.role !== "admin") {
     return (
@@ -646,6 +714,58 @@ export default function WeeklyForm() {
                             </label>
                           )}
                         </div>
+
+                        {/* Files */}
+                        {(() => {
+                          const measureFiles = filesByMeasure.get(measure.id) || [];
+                          return (
+                            <div className="space-y-1.5">
+                              {measureFiles.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {measureFiles.map((f: any) => (
+                                    <div key={f.id} className="flex items-center gap-1.5 bg-muted/50 border rounded px-2 py-1 text-xs group">
+                                      <File className="w-3 h-3 text-muted-foreground shrink-0" />
+                                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[150px]" title={f.filename}>
+                                        {f.filename}
+                                      </a>
+                                      {f.fileSize && (
+                                        <span className="text-muted-foreground">({Math.round(f.fileSize / 1024)}KB)</span>
+                                      )}
+                                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
+                                        <Download className="w-3 h-3" />
+                                      </a>
+                                      {!isReadOnly && (
+                                        <button
+                                          onClick={() => deleteFileMutation.mutate({ id: f.id })}
+                                          className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {!isReadOnly && (
+                                <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                  {uploadingFileMeasure === measure.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Paperclip className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>Anexar ficheiro</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.csv"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => e.target.files && handleFileUpload(measure.id, e.target.files)}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

@@ -807,6 +807,189 @@ export const appRouter = router({
         return db.getMatrixData(input?.projectId);
       }),
   }),
+
+  // ─── Evidence Files (ficheiros por medida) ────────────────────────────────
+  files: router({
+    upload: protectedProcedure
+      .input(z.object({
+        submissionId: z.number(),
+        measureId: z.number(),
+        filename: z.string(),
+        mimeType: z.string(),
+        data: z.string(), // base64
+        fileSize: z.number().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.submissionId);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        // Decode base64
+        const buffer = Buffer.from(input.data, "base64");
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const ext = input.filename.split(".").pop() || "bin";
+        const fileKey = `files/${input.submissionId}/Medida${input.measureId}_${timestamp}.${ext}`;
+        const contentType = input.mimeType || "application/octet-stream";
+
+        const { storagePut } = await import("./storage");
+        const { key, url } = await storagePut(fileKey, buffer, contentType);
+
+        // Ensure measure response exists
+        const { id: responseId } = await db.upsertMeasureResponse({
+          submissionId: input.submissionId,
+          measureId: input.measureId,
+          status: null,
+          observations: null,
+        });
+
+        const result = await db.addEvidenceFile({
+          responseId,
+          fileKey: key,
+          url,
+          filename: input.filename,
+          mimeType: contentType,
+          fileSize: input.fileSize || buffer.length,
+        });
+
+        return { id: result.id, url, fileKey: key, filename: input.filename };
+      }),
+
+    getBySubmission: protectedProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const sub = await db.getSubmissionById(input.submissionId);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        return db.getFilesBySubmission(input.submissionId);
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const file = await db.getFileById(input.id);
+        if (!file) throw new TRPCError({ code: "NOT_FOUND" });
+        const response = await db.getResponseById(file.responseId);
+        if (!response) throw new TRPCError({ code: "NOT_FOUND" });
+        const sub = await db.getSubmissionById(response.submissionId);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deleteEvidenceFile(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Workflow por Projeto ─────────────────────────────────────────────────
+  workflow: router({
+    get: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId);
+        if (!project) throw new TRPCError({ code: "NOT_FOUND" });
+        return { projectId: project.id, workflowDescription: project.workflowDescription || "" };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({ projectId: z.number(), workflowDescription: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem editar o workflow" });
+        }
+        await db.updateProjectWorkflow(input.projectId, input.workflowDescription);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Overdue Detection (3 semanas sem ficha) ──────────────────────────────
+  overdue: router({
+    check: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        // Only show overdue to admin, dono_obra, raa (and EE/RAP for their own company)
+        // Calculate current week
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
+        const currentWeek = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
+        const currentYear = now.getFullYear();
+
+        // Get all active EE/RAP companies (optionally filtered by project)
+        const matrixData = await db.getMatrixData(input?.projectId);
+        const { submissions, companies } = matrixData;
+
+        // For each company, find the latest submission week
+        const overdueCompanies: Array<{
+          companyId: number;
+          companyName: string;
+          companyType: string;
+          weeksBehind: number;
+          lastWeekKey: string | null;
+        }> = [];
+
+        for (const company of companies) {
+          const companySubs = submissions.filter(s => s.companyId === company.id && s.status !== "draft");
+          let lastWeekNum = 0;
+          let lastWeekYear = 0;
+          let lastWeekKey: string | null = null;
+
+          for (const sub of companySubs) {
+            if (sub.weekYear > lastWeekYear || (sub.weekYear === lastWeekYear && sub.weekNumber > lastWeekNum)) {
+              lastWeekNum = sub.weekNumber;
+              lastWeekYear = sub.weekYear;
+              lastWeekKey = sub.weekKey;
+            }
+          }
+
+          // Calculate weeks behind
+          let weeksBehind = 0;
+          if (lastWeekYear === 0) {
+            // Never submitted - only flag if there are ANY submissions in this project
+            // (meaning the project is active and others have submitted)
+            const anyProjectSubs = submissions.filter(s => s.status !== "draft");
+            if (anyProjectSubs.length === 0) {
+              continue; // Project has no submissions at all, skip
+            }
+            // Find the earliest submission in the project to determine project start
+            let earliestWeekNum = 99;
+            let earliestWeekYear = 9999;
+            for (const s of anyProjectSubs) {
+              if (s.weekYear < earliestWeekYear || (s.weekYear === earliestWeekYear && s.weekNumber < earliestWeekNum)) {
+                earliestWeekNum = s.weekNumber;
+                earliestWeekYear = s.weekYear;
+              }
+            }
+            const totalWeeksNow = currentYear * 52 + currentWeek;
+            const totalWeeksEarliest = earliestWeekYear * 52 + earliestWeekNum;
+            weeksBehind = totalWeeksNow - totalWeeksEarliest;
+          } else {
+            // Calculate difference in weeks
+            const totalWeeksNow = currentYear * 52 + currentWeek;
+            const totalWeeksLast = lastWeekYear * 52 + lastWeekNum;
+            weeksBehind = totalWeeksNow - totalWeeksLast;
+          }
+
+          if (weeksBehind >= 3) {
+            // For EE/RAP users, only show their own company
+            if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+              if (ctx.user.companyId !== company.id) continue;
+            }
+            overdueCompanies.push({
+              companyId: company.id,
+              companyName: company.shortName,
+              companyType: company.companyType,
+              weeksBehind,
+              lastWeekKey,
+            });
+          }
+        }
+
+        return { overdueCompanies, currentWeek, currentYear };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

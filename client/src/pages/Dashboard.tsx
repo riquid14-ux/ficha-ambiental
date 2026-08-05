@@ -9,7 +9,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2 } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -60,6 +60,11 @@ export default function Dashboard() {
     weekNumber: selectedWeek !== "all" ? Number(selectedWeek.split("-")[1]) : undefined,
     projectId: !isAllProjects && activeProject ? activeProject.id : undefined,
   });
+
+  // Overdue detection
+  const overdueQuery = trpc.overdue.check.useQuery(
+    !isAllProjects && activeProject ? { projectId: activeProject.id } : undefined
+  );
 
   const analytics = analyticsQuery.data;
 
@@ -137,6 +142,39 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
             <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
           </div>
+        </div>
+
+        {/* Overdue Alert */}
+        {overdueQuery.data && overdueQuery.data.overdueCompanies.length > 0 && (
+          <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50 shrink-0">
+                  <Clock className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-red-800 dark:text-red-300 text-sm">
+                    Fichas em Atraso ({overdueQuery.data.overdueCompanies.length} {overdueQuery.data.overdueCompanies.length === 1 ? "empresa" : "empresas"})
+                  </h3>
+                  <p className="text-xs text-red-700/80 dark:text-red-400/80 mt-0.5 mb-2">
+                    Empresas com mais de 3 semanas sem submeter ficha semanal.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {overdueQuery.data.overdueCompanies.map((c) => (
+                      <span key={c.companyId} className="inline-flex items-center gap-1 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 text-xs font-medium px-2 py-1 rounded">
+                        <span className="uppercase text-[10px] font-bold opacity-60">{c.companyType}</span>
+                        {c.companyName}
+                        <span className="text-red-600 dark:text-red-400 font-bold">({c.weeksBehind} sem.)</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex flex-wrap gap-3 justify-end">
           <div className="flex flex-wrap gap-3">
             {canSeeAll && (
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>

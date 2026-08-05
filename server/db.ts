@@ -18,6 +18,7 @@ import { historicalPdfs, InsertHistoricalPdf, InsertReviewComment, reviewComment
 import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
 import { invitations, InsertInvitation } from "../drizzle/schema";
 import { projects, projectCompanies, projectUsers, InsertProject, InsertProjectCompany, InsertProjectUser } from "../drizzle/schema";
+import { evidenceFiles, InsertEvidenceFile } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -883,3 +884,48 @@ export async function getMatrixData(projectId?: number) {
   };
 }
 import { deletionLogs } from "../drizzle/schema";
+
+// ─── Evidence Files ──────────────────────────────────────────────────────────
+
+export async function addEvidenceFile(data: InsertEvidenceFile) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(evidenceFiles).values(data);
+  return { id: result[0].insertId };
+}
+
+export async function getFilesByResponse(responseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(evidenceFiles).where(eq(evidenceFiles.responseId, responseId));
+}
+
+export async function getFilesBySubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const responses = await db.select().from(measureResponses).where(eq(measureResponses.submissionId, submissionId));
+  if (responses.length === 0) return [];
+  const responseIds = responses.map(r => r.id);
+  return db.select().from(evidenceFiles).where(sql`${evidenceFiles.responseId} IN (${sql.join(responseIds.map(id => sql`${id}`), sql`, `)})`);
+}
+
+export async function deleteEvidenceFile(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(evidenceFiles).where(eq(evidenceFiles.id, id));
+}
+
+export async function getFileById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(evidenceFiles).where(eq(evidenceFiles.id, id)).limit(1);
+  return result[0];
+}
+
+// ─── Project Workflow ────────────────────────────────────────────────────────
+
+export async function updateProjectWorkflow(projectId: number, workflowDescription: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(projects).set({ workflowDescription }).where(eq(projects.id, projectId));
+}

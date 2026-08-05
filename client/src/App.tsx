@@ -15,6 +15,7 @@ import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
 import Profile from "./pages/Profile";
 import Matriz from "./pages/Matriz";
+import Workflow from "./pages/Workflow";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/matriz" component={Matriz} />
+      <Route path="/workflow" component={Workflow} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

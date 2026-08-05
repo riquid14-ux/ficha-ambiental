@@ -204,6 +204,7 @@ export const projects = mysqlTable("projects", {
   code: varchar("code", { length: 50 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  workflowDescription: text("workflowDescription"),
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
@@ -258,3 +259,17 @@ export const deletionLogs = mysqlTable("deletion_logs", {
 
 export type DeletionLog = typeof deletionLogs.$inferSelect;
 export type InsertDeletionLog = typeof deletionLogs.$inferInsert;
+
+// ─── Evidence Files (ficheiros anexados por medida) ───────────────────────────
+export const evidenceFiles = mysqlTable("evidence_files", {
+  id: int("id").autoincrement().primaryKey(),
+  responseId: int("responseId").notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  url: text("url").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }),
+  fileSize: int("fileSize"),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+});
+export type EvidenceFile = typeof evidenceFiles.$inferSelect;
+export type InsertEvidenceFile = typeof evidenceFiles.$inferInsert;

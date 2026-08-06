@@ -1126,14 +1126,60 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: protectedProcedure
+    submitDocument: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        fileUrl: z.string(),
+        fileKey: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem submeter documentos" });
+        }
+        await db.updateMonitoringPlan(input.id, {
+          submissionStatus: "submitted",
+          submittedFileUrl: input.fileUrl,
+          submittedFileKey: input.fileKey,
+          submittedAt: Date.now(),
+        } as any);
+        return { success: true };
+      }),
+
+    confirmDelivery: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role)) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem confirmar entregas" });
         }
-        await db.deleteMonitoringPlan(input.id);
-        return { success: true };
+        // Get current plan to calculate next date
+        const plans = await db.getMonitoringPlans();
+        const plan = plans.find(p => p.id === input.id);
+        if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
+
+        const now = Date.now();
+        // Calculate next reporting date based on periodicity
+        let nextDate: number | null = null;
+        const periodicity = (plan.periodicity || "").toLowerCase();
+        if (periodicity.includes("anual") || periodicity.includes("annual")) {
+          nextDate = now + 365 * 24 * 60 * 60 * 1000; // +1 year
+        } else if (periodicity.includes("semestral")) {
+          nextDate = now + 182 * 24 * 60 * 60 * 1000; // +6 months
+        } else if (periodicity.includes("trimestral")) {
+          nextDate = now + 91 * 24 * 60 * 60 * 1000; // +3 months
+        } else if (periodicity.includes("trienal") || periodicity.includes("3 anos") || periodicity.includes("3 em 3")) {
+          nextDate = now + 3 * 365 * 24 * 60 * 60 * 1000; // +3 years
+        } else {
+          // Default: +1 year
+          nextDate = now + 365 * 24 * 60 * 60 * 1000;
+        }
+
+        await db.updateMonitoringPlan(input.id, {
+          submissionStatus: "delivered",
+          confirmedDeliveryAt: now,
+          lastReportingDate: now,
+          nextReportingDate: nextDate,
+        } as any);
+        return { success: true, nextReportingDate: nextDate };
       }),
   }),
 
@@ -1177,6 +1223,54 @@ export const appRouter = router({
           updatedBy: ctx.user.id,
         });
         return { success: true };
+      }),
+
+    setDeliveryDate: protectedProcedure
+      .input(z.object({
+        measureId: z.number(),
+        projectId: z.number(),
+        firstDeliveryDate: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        // Set first delivery date and calculate next (+1 year)
+        const nextDate = input.firstDeliveryDate + 365 * 24 * 60 * 60 * 1000;
+        await db.upsertPhaseMeasureStatus({
+          measureId: input.measureId,
+          projectId: input.projectId,
+          status: "pendente",
+          notes: null,
+          updatedBy: ctx.user.id,
+          firstDeliveryDate: input.firstDeliveryDate,
+          nextDeliveryDate: nextDate,
+        } as any);
+        return { success: true, nextDeliveryDate: nextDate };
+      }),
+
+    confirmAnnualDelivery: protectedProcedure
+      .input(z.object({
+        measureId: z.number(),
+        projectId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        // Mark as delivered, set next delivery date to +1 year from now
+        const now = Date.now();
+        const nextDate = now + 365 * 24 * 60 * 60 * 1000;
+        await db.upsertPhaseMeasureStatus({
+          measureId: input.measureId,
+          projectId: input.projectId,
+          status: "concluido",
+          notes: null,
+          updatedBy: ctx.user.id,
+          lastDeliveryDate: now,
+          nextDeliveryDate: nextDate,
+        } as any);
+        return { success: true, nextDeliveryDate: nextDate };
       }),
   }),
 });

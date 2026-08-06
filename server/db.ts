@@ -995,15 +995,19 @@ export async function getPhaseMeasureStatuses(projectId: number) {
   return await db.select().from(phaseMeasureStatuses).where(eq(phaseMeasureStatuses.projectId, projectId));
 }
 
-export async function upsertPhaseMeasureStatus(data: { measureId: number; projectId: number; status: string; notes: string | null; updatedBy: number }) {
+export async function upsertPhaseMeasureStatus(data: { measureId: number; projectId: number; status: string; notes: string | null; updatedBy: number; firstDeliveryDate?: number; lastDeliveryDate?: number; nextDeliveryDate?: number }) {
   const db = await getDb();
   if (!db) return;
   // Check if exists
   const existing = await db.select().from(phaseMeasureStatuses)
     .where(and(eq(phaseMeasureStatuses.measureId, data.measureId), eq(phaseMeasureStatuses.projectId, data.projectId)));
   if (existing.length > 0) {
+    const updateSet: any = { status: data.status, notes: data.notes, updatedBy: data.updatedBy };
+    if (data.firstDeliveryDate !== undefined) updateSet.firstDeliveryDate = data.firstDeliveryDate;
+    if (data.lastDeliveryDate !== undefined) updateSet.lastDeliveryDate = data.lastDeliveryDate;
+    if (data.nextDeliveryDate !== undefined) updateSet.nextDeliveryDate = data.nextDeliveryDate;
     await db.update(phaseMeasureStatuses)
-      .set({ status: data.status as any, notes: data.notes, updatedBy: data.updatedBy })
+      .set(updateSet)
       .where(eq(phaseMeasureStatuses.id, existing[0].id));
   } else {
     await db.insert(phaseMeasureStatuses).values(data as any);

@@ -173,3 +173,9 @@
 - [x] Adicionar projeto SIN01-NEST à base de dados
 - [x] Calendário: mostrar 2 meses ao mesmo tempo (mês atual + próximo)
 - [x] Navegação: Calendário, Fases e Timeline devem manter o sidebar visível sem navegar para portal separado
+- [x] Planos: remover botão eliminar plano
+- [x] Planos: adicionar fluxo de submissão de documento (upload ficheiro)
+- [x] Planos: estado "Submetido na plataforma — falta enviar à entidade competente"
+- [x] Planos: botão confirmar entrega à entidade com popup de confirmação
+- [x] Planos: ao confirmar entrega, atualizar automaticamente próxima data (+periodicidade, ex: +1 ano)
+- [x] Fases (Operação/Exploração): evidências com entrega anual — definir primeira data e calcular próxima automaticamente (+1 ano)

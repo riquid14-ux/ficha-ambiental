@@ -113,6 +113,20 @@
       "when": 1786003523466,
       "tag": "0015_dusty_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1786007822971,
+      "tag": "0016_magenta_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1786008007876,
+      "tag": "0017_yielding_invaders",
+      "breakpoints": true
     }
   ]
 }

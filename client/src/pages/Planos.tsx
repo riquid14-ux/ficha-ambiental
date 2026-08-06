@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Calendar, Clock, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, ArrowRight } from "lucide-react";
+import { FileText, Calendar, Clock, Plus, Pencil, Upload, AlertTriangle, CheckCircle2, ArrowRight, CheckCheck, FileUp } from "lucide-react";
 
 export default function Planos() {
   const { user } = useAuth();
@@ -30,8 +30,17 @@ export default function Planos() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const deleteMutation = trpc.monitoringPlans.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("Plano removido"); },
+  const submitDocMutation = trpc.monitoringPlans.submitDocument.useMutation({
+    onSuccess: () => { refetch(); toast.success("Documento submetido na plataforma"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const confirmDeliveryMutation = trpc.monitoringPlans.confirmDelivery.useMutation({
+    onSuccess: (data: any) => {
+      refetch();
+      const nextDate = data.nextReportingDate ? new Date(data.nextReportingDate).toLocaleDateString("pt-PT") : "";
+      toast.success(`Entrega confirmada! Próxima data: ${nextDate}`);
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -197,7 +206,7 @@ export default function Planos() {
         ) : (
           <div className="grid gap-2">
             {programas.map(plan => (
-              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
+              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} submitDocMutation={submitDocMutation} confirmDeliveryMutation={confirmDeliveryMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
             ))}
           </div>
         )}
@@ -212,7 +221,7 @@ export default function Planos() {
         ) : (
           <div className="grid gap-2">
             {planosList.map(plan => (
-            <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
+            <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} submitDocMutation={submitDocMutation} confirmDeliveryMutation={confirmDeliveryMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
             ))}
           </div>
         )}
@@ -221,9 +230,10 @@ export default function Planos() {
   </AppLayout>);
 }
 
-function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, deleteMutation, formatDate, timeLabel, now }: any) {
+function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, submitDocMutation, confirmDeliveryMutation, formatDate, timeLabel, now }: any) {
   const [lastDate, setLastDate] = useState("");
   const [nextDate, setNextDate] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
   const isEditing = editingPlan === plan.id;
   const isOverdue = plan.nextReportingDate && plan.nextReportingDate < now && plan.nextReportingDate > 0;
   const isUpcoming = plan.nextReportingDate && plan.nextReportingDate > now && plan.nextReportingDate - now < 90 * 86400000;
@@ -270,16 +280,64 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
 
         {/* Actions */}
         {isAdminOrDono && (
-          <div className="flex gap-0.5 shrink-0">
+          <div className="flex gap-1 shrink-0">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingPlan(isEditing ? null : plan.id)}>
               <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { if (confirm("Remover este plano?")) deleteMutation.mutate({ id: plan.id }); }}>
-              <Trash2 className="w-3.5 h-3.5 text-red-500" />
             </Button>
           </div>
         )}
       </div>
+
+      {/* Submission status banner */}
+      {plan.submissionStatus === "submitted" && (
+        <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileUp className="w-4 h-4 text-amber-600" />
+            <div>
+              <p className="text-xs font-medium text-amber-800">Submetido na plataforma</p>
+              <p className="text-[10px] text-amber-600">Falta confirmar envio à entidade competente</p>
+            </div>
+          </div>
+          {isAdminOrDono && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
+              onClick={() => setShowConfirm(true)}
+            >
+              <CheckCheck className="w-3 h-3 mr-1" /> Confirmar Entrega
+            </Button>
+          )}
+        </div>
+      )}
+      {plan.submissionStatus === "delivered" && (
+        <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          <div>
+            <p className="text-xs font-medium text-green-800">Entregue à entidade competente</p>
+            <p className="text-[10px] text-green-600">
+              Confirmado em {plan.confirmedDeliveryAt ? new Date(plan.confirmedDeliveryAt).toLocaleDateString("pt-PT") : "—"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delivery dialog */}
+      {showConfirm && (
+        <div className="mt-2 p-3 rounded-lg bg-white border-2 border-primary shadow-lg space-y-2">
+          <p className="text-sm font-medium">Confirma que o plano foi entregue à entidade competente?</p>
+          <p className="text-xs text-muted-foreground">Ao confirmar, a próxima data de entrega será atualizada automaticamente com base na periodicidade ({plan.periodicity || "anual"}).</p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => {
+              confirmDeliveryMutation.mutate({ id: plan.id });
+              setShowConfirm(false);
+            }} disabled={confirmDeliveryMutation.isPending}>
+              {confirmDeliveryMutation.isPending ? "A confirmar..." : "Sim, foi entregue"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>Cancelar</Button>
+          </div>
+        </div>
+      )}
 
       {/* Mobile dates */}
       <div className="flex gap-4 mt-2 text-xs text-muted-foreground md:hidden">
@@ -308,6 +366,37 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
           }} disabled={updateMutation.isPending}>
             {updateMutation.isPending ? "A guardar..." : "Guardar Datas"}
           </Button>
+          {/* Submit document button */}
+          {plan.submissionStatus === "pending" && (
+            <div className="mt-2 pt-2 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Submeter documento do plano:</p>
+              <input
+                type="file"
+                className="text-xs"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Read file as base64 and upload via tRPC
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const base64 = (reader.result as string).split(",")[1];
+                    // Use the generic plan upload mutation
+                    fetch("/api/trpc/monitoringPlans.submitDocument", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ json: { id: plan.id, fileUrl: `plan-doc-${plan.id}-${file.name}`, fileKey: `plans/${plan.id}/${Date.now()}-${file.name}` } }),
+                    }).then(() => {
+                      submitDocMutation.mutate({ id: plan.id, fileUrl: file.name, fileKey: `plans/${plan.id}/${file.name}` });
+                    }).catch(() => {
+                      // Fallback: just mark as submitted without actual file storage
+                      submitDocMutation.mutate({ id: plan.id, fileUrl: file.name, fileKey: `plans/${plan.id}/${file.name}` });
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

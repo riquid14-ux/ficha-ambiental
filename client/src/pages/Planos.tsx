@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,17 +99,20 @@ export default function Planos() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-        <div className="grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
+      <AppLayout>
+        <div className="p-6 space-y-4">
+          <div className="h-8 w-64 bg-muted animate-pulse rounded" />
+          <div className="grid grid-cols-3 gap-3">
+            {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
+          </div>
+          <div className="h-40 bg-muted animate-pulse rounded" />
         </div>
-        <div className="h-40 bg-muted animate-pulse rounded" />
-      </div>
+      </AppLayout>
     );
   }
 
   return (
+    <AppLayout>
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
@@ -208,13 +212,13 @@ export default function Planos() {
         ) : (
           <div className="grid gap-2">
             {planosList.map(plan => (
-              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
+            <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
             ))}
           </div>
         )}
       </div>
     </div>
-  );
+  </AppLayout>);
 }
 
 function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, deleteMutation, formatDate, timeLabel, now }: any) {

@@ -171,3 +171,5 @@
 - [x] Administração: coluna de fases visível por utilizador (admin/DO=Todas, EE/RAP=Construção)
 - [x] Administração: controlo de acesso por fase visível (coluna Fases no Admin; editável com persistência DB planeado para próxima iteração)
 - [x] Adicionar projeto SIN01-NEST à base de dados
+- [x] Calendário: mostrar 2 meses ao mesmo tempo (mês atual + próximo)
+- [x] Navegação: Calendário, Fases e Timeline devem manter o sidebar visível sem navegar para portal separado

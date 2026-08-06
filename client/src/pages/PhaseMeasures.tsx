@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -162,14 +163,17 @@ export default function PhaseMeasures() {
 
   if (!sectionsQuery.data || !measuresQuery.data) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-        <div className="h-40 bg-muted animate-pulse rounded" />
-      </div>
+      <AppLayout>
+        <div className="p-6 space-y-4">
+          <div className="h-8 w-64 bg-muted animate-pulse rounded" />
+          <div className="h-40 bg-muted animate-pulse rounded" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
+    <AppLayout>
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
@@ -305,6 +309,7 @@ export default function PhaseMeasures() {
         ))}
       </Tabs>
     </div>
+    </AppLayout>
   );
 }
 

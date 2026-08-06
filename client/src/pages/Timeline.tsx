@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -95,7 +96,7 @@ export default function Timeline() {
 
   if (!projectId) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <AppLayout><div className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
           <Layers className="w-6 h-6" /> Timeline do Projeto
         </h1>
@@ -133,12 +134,12 @@ export default function Timeline() {
         )}
 
         <p className="text-xs text-muted-foreground text-center">Selecione um projeto no menu lateral para ver o detalhe completo da timeline.</p>
-      </div>
+      </div></AppLayout>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <AppLayout><div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Layers className="w-6 h-6" /> Timeline do Projeto
@@ -256,5 +257,5 @@ export default function Timeline() {
         </div>
       )}
     </div>
-  );
+  </AppLayout>);
 }

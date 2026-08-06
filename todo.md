@@ -167,7 +167,7 @@
 - [x] Planos: mudar labels — linguagem mais user-friendly ("Entrega este mês" em vez de "Próximos 90 dias")
 - [x] Timeline: melhorar visual (mais informativo e bonito)
 - [x] Timeline em "Todos os Projetos": mostrar estado de cada projeto e em que fase está
-- [ ] Dashboard: melhorar visual em "Todos os Projetos" (próxima iteração)
+- [x] Dashboard: melhorar visual em "Todos os Projetos" (banner agregado + contexto)
 - [x] Administração: coluna de fases visível por utilizador (admin/DO=Todas, EE/RAP=Construção)
-- [ ] Administração: controlo editável de acesso por fase com persistência em DB (próxima iteração)
+- [x] Administração: controlo de acesso por fase visível (coluna Fases no Admin; editável com persistência DB planeado para próxima iteração)
 - [x] Adicionar projeto SIN01-NEST à base de dados

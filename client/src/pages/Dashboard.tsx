@@ -9,7 +9,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -140,9 +140,26 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
+          <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
           </div>
         </div>
+
+        {/* All Projects summary banner */}
+        {isAllProjects && (
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                  <FolderKanban className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Visão Agregada — Todos os Projetos</p>
+                  <p className="text-xs text-muted-foreground">Os dados abaixo representam o acumulado de todas as fichas submetidas em todos os projetos.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Overdue Alert */}
         {overdueQuery.data && overdueQuery.data.overdueCompanies.length > 0 && (

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -10,17 +10,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, FileText, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
 
 // All project lifecycle phases (excluding construction which has its own weekly form)
 const ALL_PHASES = [
-  { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1 },
-  { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2 },
-  { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3 },
-  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 5 },
-  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 6 },
-  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 7 },
+  { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-purple-500" },
+  { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2, color: "bg-blue-500" },
+  { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3, color: "bg-cyan-500" },
+  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 5, color: "bg-orange-500" },
+  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 6, color: "bg-green-500" },
+  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 7, color: "bg-gray-500" },
 ];
 
 export default function PhaseMeasures() {
@@ -34,9 +35,25 @@ export default function PhaseMeasures() {
   const projectId = activeProject?.id || 1;
 
   const statusesQuery = trpc.phaseMeasures.getStatuses.useQuery({ projectId });
+  const evidenceQuery = trpc.phaseEvidence.list.useQuery({ projectId });
 
   const updateStatusMutation = trpc.phaseMeasures.updateStatus.useMutation({
     onSuccess: () => { statusesQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const addCommentMutation = trpc.phaseEvidence.addComment.useMutation({
+    onSuccess: () => { evidenceQuery.refetch(); toast.success("Comentário adicionado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const uploadFileMutation = trpc.phaseEvidence.uploadFile.useMutation({
+    onSuccess: () => { evidenceQuery.refetch(); toast.success("Ficheiro carregado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteEvidenceMutation = trpc.phaseEvidence.delete.useMutation({
+    onSuccess: () => { evidenceQuery.refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -50,6 +67,7 @@ export default function PhaseMeasures() {
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
+  const [expandedMeasures, setExpandedMeasures] = useState<Set<number>>(new Set());
 
   // Sync persisted statuses to local state
   useEffect(() => {
@@ -86,6 +104,15 @@ export default function PhaseMeasures() {
     }
   }
 
+  function toggleMeasure(measureId: number) {
+    setExpandedMeasures(prev => {
+      const next = new Set(prev);
+      if (next.has(measureId)) next.delete(measureId);
+      else next.add(measureId);
+      return next;
+    });
+  }
+
   // Group sections and measures by all lifecycle phases
   const phaseData = useMemo(() => {
     if (!sectionsQuery.data || !measuresQuery.data) return {};
@@ -102,6 +129,18 @@ export default function PhaseMeasures() {
 
   const currentPhaseSections = phaseData[activePhase] || [];
   const currentPhaseSection = currentPhaseSections[0]?.section;
+  const currentPhaseInfo = ALL_PHASES.find(p => p.key === activePhase);
+
+  // Group evidence by measure
+  const evidenceByMeasure = useMemo(() => {
+    if (!evidenceQuery.data) return {};
+    const map: Record<number, any[]> = {};
+    for (const ev of evidenceQuery.data) {
+      if (!map[ev.measureId]) map[ev.measureId] = [];
+      map[ev.measureId].push(ev);
+    }
+    return map;
+  }, [evidenceQuery.data]);
 
   // Calculate compliance overview
   const complianceOverview = useMemo(() => {
@@ -131,156 +170,365 @@ export default function PhaseMeasures() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Ciclo de Vida do Projeto</h1>
-          <p className="text-muted-foreground">Todas as fases do processo ambiental — do licenciamento à desativação</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-full ${currentPhaseInfo?.color || "bg-gray-400"}`} />
+            Fases do Projeto
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Acompanhamento das medidas ambientais por fase do ciclo de vida — {activeProject?.name || "Projeto"}
+          </p>
         </div>
       </div>
 
       {!isAdminOrDono && (
         <Card className="border-blue-200 bg-blue-50/50">
-          <CardContent className="p-4">
+          <CardContent className="p-3">
             <p className="text-sm text-blue-800">
-              <strong>Modo de visualização.</strong> Apenas o Dono de Obra, Admin e RAA podem editar o estado das medidas nestas fases.
+              <strong>Modo de visualização.</strong> Apenas o Dono de Obra, Admin e RAA podem editar o estado das medidas.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Overview cards - clickable phase selector */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {ALL_PHASES.map(phase => {
-          const ov = complianceOverview[phase.key] || { total: 0, concluido: 0, em_curso: 0, pendente: 0 };
-          const pct = ov.total > 0 ? Math.round((ov.concluido / ov.total) * 100) : 0;
-          const isActive = activePhase === phase.key;
-          return (
-            <button
-              key={phase.key}
-              onClick={() => setActivePhase(phase.key)}
-              className={`p-3 rounded-lg border text-left transition-all ${isActive ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:border-primary/40"}`}
-            >
-              <p className="text-xs font-medium truncate">{phase.shortLabel}</p>
-              <div className="mt-1 flex items-end gap-1">
-                <span className="text-lg font-bold">{pct}%</span>
-                <span className="text-xs text-muted-foreground mb-0.5">{ov.concluido}/{ov.total}</span>
-              </div>
-              <div className="mt-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Active phase detail */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{ALL_PHASES.find(p => p.key === activePhase)?.label}</CardTitle>
-            {isAdminOrDono && (
-              <Dialog open={showAdd} onOpenChange={setShowAdd}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />Adicionar Medida</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Nova Medida — {ALL_PHASES.find(p => p.key === activePhase)?.label}</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <Input placeholder="Número (ex: PL-4)" value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
-                    <Textarea placeholder="Descrição da medida/condição" value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
-                    <Button onClick={() => {
-                      if (!currentPhaseSection) { toast.error("Secção não encontrada"); return; }
-                      addMeasureMutation?.mutate?.({
-                        number: newMeasure.number,
-                        description: newMeasure.description,
-                        responsible: "DO",
-                        sectionId: currentPhaseSection.id,
-                      });
-                    }} disabled={!newMeasure.number || !newMeasure.description}>
-                      Adicionar
-                    </Button>
+      {/* Phase tabs */}
+      <Tabs value={activePhase} onValueChange={setActivePhase}>
+        <TabsList className="w-full h-auto flex-wrap gap-1 bg-muted/50 p-1.5">
+          {ALL_PHASES.map(phase => {
+            const ov = complianceOverview[phase.key] || { total: 0, concluido: 0 };
+            const pct = ov.total > 0 ? Math.round((ov.concluido / ov.total) * 100) : 0;
+            return (
+              <TabsTrigger
+                key={phase.key}
+                value={phase.key}
+                className="flex-1 min-w-[120px] data-[state=active]:shadow-sm py-2 px-3"
+              >
+                <div className="flex flex-col items-center gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${phase.color}`} />
+                    <span className="text-xs font-medium">{phase.shortLabel}</span>
                   </div>
-                </DialogContent>
-              </Dialog>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {currentPhaseSections.map(({ section, measures }: any) => (
-            <div key={section.id} className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{section.name}</p>
-              {measures.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma medida registada nesta secção.</p>
-              ) : measures.map((measure: any) => (
-                <div key={measure.id} className="border rounded-lg p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs shrink-0">{measure.number}</Badge>
-                        <span className="text-sm">{measure.description}</span>
-                      </div>
-                    </div>
-                    <StatusBadge status={statuses[measure.id]} />
-                  </div>
-                  {isAdminOrDono && (
-                    <div className="flex items-center gap-4 pt-1">
-                      <RadioGroup
-                        value={statuses[measure.id] || ""}
-                        onValueChange={(v) => handleStatusChange(measure.id, v)}
-                        className="flex gap-3"
-                      >
-                        <div className="flex items-center gap-1">
-                          <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
-                          <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700">Concluído</Label>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                          <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700">Em Curso</Label>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                          <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500">Pendente</Label>
-                        </div>
-                      </RadioGroup>
-                      <Input
-                        placeholder="Notas..."
-                        className="h-7 text-xs flex-1"
-                        value={notes[measure.id] || ""}
-                        onChange={e => setNotes(prev => ({ ...prev, [measure.id]: e.target.value }))}
-                        onBlur={() => handleNotesBlur(measure.id)}
-                      />
-                    </div>
-                  )}
+                  <span className="text-[10px] text-muted-foreground">{pct}% ({ov.concluido}/{ov.total})</span>
                 </div>
-              ))}
-            </div>
-          ))}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-          {currentPhaseSections.every((d: any) => d.measures.length === 0) && (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhuma medida registada para esta fase.</p>
-              {isAdminOrDono && <p className="text-sm">Use o botão "Adicionar Medida" para começar.</p>}
+        {ALL_PHASES.map(phase => (
+          <TabsContent key={phase.key} value={phase.key} className="mt-4 space-y-4">
+            {/* Phase header with add button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">{phase.label}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {(complianceOverview[phase.key]?.total || 0)} medidas nesta fase
+                </p>
+              </div>
+              {isAdminOrDono && (
+                <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />Adicionar Medida</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nova Medida — {phase.label}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <Input placeholder="Número (ex: PL-4)" value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
+                      <Textarea placeholder="Descrição da medida/condição" value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
+                      <Button onClick={() => {
+                        const sec = (phaseData[phase.key] || [])[0]?.section;
+                        if (!sec) { toast.error("Secção não encontrada"); return; }
+                        addMeasureMutation?.mutate?.({
+                          number: newMeasure.number,
+                          description: newMeasure.description,
+                          responsible: "DO",
+                          sectionId: sec.id,
+                        });
+                      }} disabled={!newMeasure.number || !newMeasure.description}>
+                        Adicionar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
+            {/* Measures list */}
+            {(phaseData[phase.key] || []).map(({ section, measures }: any) => (
+              <div key={section.id} className="space-y-2">
+                {measures.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhuma medida registada nesta fase.</p>
+                    {isAdminOrDono && <p className="text-sm">Use o botão "Adicionar Medida" para começar.</p>}
+                  </div>
+                ) : measures.map((measure: any) => (
+                  <MeasureCard
+                    key={measure.id}
+                    measure={measure}
+                    status={statuses[measure.id]}
+                    notes={notes[measure.id] || ""}
+                    evidence={evidenceByMeasure[measure.id] || []}
+                    isExpanded={expandedMeasures.has(measure.id)}
+                    onToggle={() => toggleMeasure(measure.id)}
+                    onStatusChange={(s) => handleStatusChange(measure.id, s)}
+                    onNotesChange={(v) => setNotes(prev => ({ ...prev, [measure.id]: v }))}
+                    onNotesBlur={() => handleNotesBlur(measure.id)}
+                    onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content })}
+                    onUploadFile={(file, isPhoto) => {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const base64 = (reader.result as string).split(",")[1];
+                        uploadFileMutation.mutate({
+                          projectId,
+                          measureId: measure.id,
+                          filename: file.name,
+                          mimeType: file.type,
+                          data: base64,
+                          isPhoto,
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    onDeleteEvidence={(id) => deleteEvidenceMutation.mutate({ id })}
+                    isEditable={!!isAdminOrDono}
+                    phaseColor={phase.color}
+                  />
+                ))}
+              </div>
+            ))}
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
+  );
+}
+
+function MeasureCard({
+  measure, status, notes, evidence, isExpanded, onToggle,
+  onStatusChange, onNotesChange, onNotesBlur,
+  onAddComment, onUploadFile, onDeleteEvidence,
+  isEditable, phaseColor,
+}: {
+  measure: any;
+  status?: string;
+  notes: string;
+  evidence: any[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onStatusChange: (s: string) => void;
+  onNotesChange: (v: string) => void;
+  onNotesBlur: () => void;
+  onAddComment: (content: string) => void;
+  onUploadFile: (file: File, isPhoto: boolean) => void;
+  onDeleteEvidence: (id: number) => void;
+  isEditable: boolean;
+  phaseColor: string;
+}) {
+  const [commentText, setCommentText] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const comments = evidence.filter(e => e.type === "comment");
+  const photos = evidence.filter(e => e.type === "photo");
+  const files = evidence.filter(e => e.type === "file");
+  const totalAttachments = evidence.length;
+
+  const statusColor = status === "concluido" ? "border-l-green-500" : status === "em_curso" ? "border-l-amber-500" : "border-l-gray-300";
+
+  return (
+    <div className={`border rounded-lg overflow-hidden border-l-4 ${statusColor} transition-all`}>
+      {/* Header - always visible */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors text-left"
+      >
+        {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+        <Badge variant="outline" className="text-xs shrink-0 font-mono">{measure.number}</Badge>
+        <span className="text-sm flex-1 min-w-0 truncate">{measure.description}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {totalAttachments > 0 && (
+            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+              <Paperclip className="w-3 h-3" />{totalAttachments}
+            </span>
+          )}
+          <StatusBadge status={status} />
+        </div>
+      </button>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="border-t px-4 py-3 space-y-4 bg-muted/10">
+          {/* Status and notes */}
+          {isEditable && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <RadioGroup
+                value={status || ""}
+                onValueChange={onStatusChange}
+                className="flex gap-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
+                  <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Concluído</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
+                  <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Em Curso</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
+                  <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Pendente</Label>
+                </div>
+              </RadioGroup>
+              <Input
+                placeholder="Notas rápidas..."
+                className="h-8 text-xs flex-1"
+                value={notes}
+                onChange={e => onNotesChange(e.target.value)}
+                onBlur={onNotesBlur}
+              />
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Evidence sections */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Comments */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" /> Comentários ({comments.length})
+              </h4>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {comments.map(c => (
+                  <div key={c.id} className="bg-background rounded p-2 text-xs border">
+                    <p className="text-foreground">{c.content}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-muted-foreground text-[10px]">{c.createdByName} · {new Date(c.createdAt).toLocaleDateString("pt-PT")}</span>
+                      {isEditable && (
+                        <button onClick={() => onDeleteEvidence(c.id)} className="text-destructive/60 hover:text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {isEditable && (
+                <div className="flex gap-1">
+                  <Input
+                    placeholder="Adicionar comentário..."
+                    className="h-7 text-xs"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && commentText.trim()) {
+                        onAddComment(commentText.trim());
+                        setCommentText("");
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0"
+                    disabled={!commentText.trim()}
+                    onClick={() => { onAddComment(commentText.trim()); setCommentText(""); }}
+                  >
+                    <Send className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Photos */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Image className="w-3 h-3" /> Fotos ({photos.length})
+              </h4>
+              <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+                {photos.map(p => (
+                  <div key={p.id} className="relative group">
+                    <img src={p.content} alt={p.filename} className="w-full h-16 object-cover rounded border" />
+                    {isEditable && (
+                      <button
+                        onClick={() => onDeleteEvidence(p.id)}
+                        className="absolute top-0.5 right-0.5 bg-destructive/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {isEditable && (
+                <>
+                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) onUploadFile(f, true);
+                    e.target.value = "";
+                  }} />
+                  <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => photoInputRef.current?.click()}>
+                    <Image className="w-3 h-3 mr-1" /> Adicionar Foto
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Files */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Paperclip className="w-3 h-3" /> Ficheiros ({files.length})
+              </h4>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {files.map(f => (
+                  <div key={f.id} className="flex items-center gap-1.5 bg-background rounded p-1.5 border text-xs">
+                    <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <a href={f.content} target="_blank" rel="noopener" className="flex-1 truncate hover:underline text-primary">{f.filename}</a>
+                    <div className="flex gap-0.5 shrink-0">
+                      <a href={f.content} target="_blank" rel="noopener" className="text-muted-foreground hover:text-foreground">
+                        <Download className="w-3 h-3" />
+                      </a>
+                      {isEditable && (
+                        <button onClick={() => onDeleteEvidence(f.id)} className="text-destructive/60 hover:text-destructive">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {isEditable && (
+                <>
+                  <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt" className="hidden" onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) onUploadFile(f, false);
+                    e.target.value = "";
+                  }} />
+                  <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => fileInputRef.current?.click()}>
+                    <Paperclip className="w-3 h-3 mr-1" /> Anexar Ficheiro
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  if (!status) return <Badge variant="outline" className="text-xs text-gray-400">Sem estado</Badge>;
+  if (!status) return <Badge variant="outline" className="text-[10px] text-gray-400 px-1.5 py-0">—</Badge>;
   switch (status) {
     case "concluido":
-      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100"><CheckCircle2 className="w-3 h-3 mr-1" />Concluído</Badge>;
+      return <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
     case "em_curso":
-      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100"><Clock className="w-3 h-3 mr-1" />Em Curso</Badge>;
+      return <Badge className="text-[10px] bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em Curso</Badge>;
     case "pendente":
-      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100"><AlertCircle className="w-3 h-3 mr-1" />Pendente</Badge>;
+      return <Badge className="text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Pendente</Badge>;
     default:
       return null;
   }

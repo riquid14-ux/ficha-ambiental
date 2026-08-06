@@ -1010,3 +1010,30 @@ export async function upsertPhaseMeasureStatus(data: { measureId: number; projec
   }
 }
 import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schema";
+import { phaseEvidence, InsertPhaseEvidence } from "../drizzle/schema";
+
+export async function getPhaseEvidence(projectId: number, measureId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (measureId) {
+    return await db.select().from(phaseEvidence)
+      .where(and(eq(phaseEvidence.projectId, projectId), eq(phaseEvidence.measureId, measureId)))
+      .orderBy(desc(phaseEvidence.createdAt));
+  }
+  return await db.select().from(phaseEvidence)
+    .where(eq(phaseEvidence.projectId, projectId))
+    .orderBy(desc(phaseEvidence.createdAt));
+}
+
+export async function addPhaseEvidence(data: Omit<InsertPhaseEvidence, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(phaseEvidence).values(data as any).$returningId();
+  return result;
+}
+
+export async function deletePhaseEvidence(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(phaseEvidence).where(eq(phaseEvidence.id, id));
+}

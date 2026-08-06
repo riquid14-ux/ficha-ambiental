@@ -320,3 +320,21 @@ export const phaseMeasureStatuses = mysqlTable("phase_measure_statuses", {
 
 export type PhaseMeasureStatus = typeof phaseMeasureStatuses.$inferSelect;
 export type InsertPhaseMeasureStatus = typeof phaseMeasureStatuses.$inferInsert;
+
+// ─── Phase Evidence (comentários, fotos e ficheiros por medida de fase) ────────
+export const phaseEvidence = mysqlTable("phase_evidence", {
+  id: int("id").autoincrement().primaryKey(),
+  measureId: int("measureId").notNull(),
+  projectId: int("projectId").notNull(),
+  type: mysqlEnum("type", ["comment", "photo", "file"]).notNull(),
+  content: text("content"), // text for comments, URL for photos/files
+  fileKey: varchar("fileKey", { length: 500 }),
+  filename: varchar("filename", { length: 255 }),
+  mimeType: varchar("mimeType", { length: 100 }),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PhaseEvidence = typeof phaseEvidence.$inferSelect;
+export type InsertPhaseEvidence = typeof phaseEvidence.$inferInsert;

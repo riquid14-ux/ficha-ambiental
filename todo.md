@@ -154,3 +154,20 @@
 - [x] Fases: corrigir medidas da fase "Previamente ao Licenciamento" (3 medidas da pág.23 do doc)
 - [x] Planos: redesign mais user-friendly (cards visuais em vez de tabela densa)
 - [x] Timeline por projeto: visão de todas as fases com overview de cumprimento de medidas por fase
+- [x] Sidebar: menu diferente para projeto individual vs "Todos os Projetos"
+- [x] Sidebar projeto individual: manter Dashboard, Matriz, Workflow, Calendário, Fases, Timeline, Ficha Semanal, Histórico, Revisão, Administração (remover Planos)
+- [x] Sidebar "Todos os Projetos": manter Dashboard, Matriz, Planos, Calendário, Timeline, Administração (remover Workflow, Ficha Semanal, Histórico, Revisão, Fases)
+- [x] Fases: redesign user-friendly por projeto — visualizar cada fase separadamente, sem misturar fases dentro de construção
+- [x] Fases: permitir adicionar comentários, fotos e ficheiros às respostas de cada medida por fase
+- [x] Calendário: redesign tipo Outlook — calendário mensal com dias, assinalar datas de reporting (RDCD, MIRR, gases fluorados, planos)
+- [x] Calendário em "Todos os Projetos": alimentado com entregáveis de todos os projetos
+- [x] Planos: mover para "Todos os Projetos" apenas (remover de projetos individuais)
+- [x] Planos: adicionar espaço para comentários/notas por plano
+- [x] Planos: reordenar por próxima entrega (mais urgente primeiro)
+- [x] Planos: mudar labels — linguagem mais user-friendly ("Entrega este mês" em vez de "Próximos 90 dias")
+- [x] Timeline: melhorar visual (mais informativo e bonito)
+- [x] Timeline em "Todos os Projetos": mostrar estado de cada projeto e em que fase está
+- [ ] Dashboard: melhorar visual em "Todos os Projetos" (próxima iteração)
+- [x] Administração: coluna de fases visível por utilizador (admin/DO=Todas, EE/RAP=Construção)
+- [ ] Administração: controlo editável de acesso por fase com persistência em DB (próxima iteração)
+- [x] Adicionar projeto SIN01-NEST à base de dados

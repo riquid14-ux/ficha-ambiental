@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,14 +14,10 @@ import { FileText, Calendar, Clock, Plus, Pencil, Trash2, AlertTriangle, CheckCi
 
 export default function Planos() {
   const { user } = useAuth();
+  const { projects } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
-  const storedProject = localStorage.getItem("selectedProjectId");
-  const projectId = storedProject ? parseInt(storedProject) : undefined;
-
-  const { data: plans, isLoading, refetch } = trpc.monitoringPlans.list.useQuery(
-    projectId ? { projectId } : undefined
-  );
+  const { data: plans, isLoading, refetch } = trpc.monitoringPlans.list.useQuery(undefined);
 
   const createMutation = trpc.monitoringPlans.create.useMutation({
     onSuccess: () => { refetch(); toast.success("Plano criado com sucesso"); setShowCreate(false); },
@@ -43,15 +40,36 @@ export default function Planos() {
 
   const now = Date.now();
 
-  // Categorize plans
-  const programas = plans?.filter(p => p.category === "programa_monitorizacao") || [];
-  const planos = plans?.filter(p => p.category === "plano_projeto") || [];
+  // Sort plans: overdue first, then by next delivery date (soonest first), then no date
+  const sortedPlans = useMemo(() => {
+    if (!plans) return [];
+    return [...plans].sort((a, b) => {
+      const aNext = a.nextReportingDate || Infinity;
+      const bNext = b.nextReportingDate || Infinity;
+      const aOverdue = (aNext < now && aNext > 0) ? 1 : 0;
+      const bOverdue = (bNext < now && bNext > 0) ? 1 : 0;
+      if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+      return aNext - bNext;
+    });
+  }, [plans, now]);
+
+  // Categorize sorted plans
+  const programas = sortedPlans.filter(p => p.category === "programa_monitorizacao");
+  const planosList = sortedPlans.filter(p => p.category === "plano_projeto");
 
   // Stats
-  const totalPlans = plans?.length || 0;
-  const overdueCount = plans?.filter(p => p.nextReportingDate && p.nextReportingDate < now && p.nextReportingDate > 0).length || 0;
-  const upcomingCount = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now && p.nextReportingDate - now < 90 * 86400000).length || 0;
-  const onTrackCount = totalPlans - overdueCount - upcomingCount;
+  const stats = useMemo(() => {
+    if (!plans) return { total: 0, thisMonth: 0, upcoming: 0, noDate: 0 };
+    const thisMonthEnd = new Date();
+    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1, 0);
+    thisMonthEnd.setHours(23, 59, 59, 999);
+    const thisMonthTs = thisMonthEnd.getTime();
+    const total = plans.length;
+    const thisMonth = plans.filter(p => p.nextReportingDate && p.nextReportingDate > 0 && p.nextReportingDate <= thisMonthTs && p.nextReportingDate >= now).length;
+    const upcoming = plans.filter(p => p.nextReportingDate && p.nextReportingDate > thisMonthTs).length;
+    const noDate = plans.filter(p => !p.nextReportingDate || p.nextReportingDate === 0).length;
+    return { total, thisMonth, upcoming, noDate };
+  }, [plans, now]);
 
   // Closest upcoming
   const nextReport = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now)
@@ -128,21 +146,21 @@ export default function Planos() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-lg border bg-background">
+        <div className="p-3 rounded-lg border bg-background text-center">
+          <p className="text-2xl font-bold">{stats.total}</p>
           <p className="text-xs text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold mt-0.5">{totalPlans}</p>
         </div>
-        <div className="p-3 rounded-lg border bg-green-50 border-green-200">
-          <p className="text-xs text-green-700">Em dia</p>
-          <p className="text-2xl font-bold mt-0.5 text-green-800">{onTrackCount}</p>
+        <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-center">
+          <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
+          <p className="text-xs text-amber-600">Entrega este mês</p>
         </div>
-        <div className="p-3 rounded-lg border bg-amber-50 border-amber-200">
-          <p className="text-xs text-amber-700">Próximos 90 dias</p>
-          <p className="text-2xl font-bold mt-0.5 text-amber-800">{upcomingCount}</p>
+        <div className="p-3 rounded-lg border bg-blue-50 border-blue-200 text-center">
+          <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
+          <p className="text-xs text-blue-600">Próximos meses</p>
         </div>
-        <div className="p-3 rounded-lg border bg-red-50 border-red-200">
-          <p className="text-xs text-red-700">Em atraso</p>
-          <p className="text-2xl font-bold mt-0.5 text-red-800">{overdueCount}</p>
+        <div className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-center">
+          <p className="text-2xl font-bold text-muted-foreground">{stats.noDate}</p>
+          <p className="text-xs text-muted-foreground">Sem data definida</p>
         </div>
       </div>
 
@@ -168,7 +186,7 @@ export default function Planos() {
       {/* Plans list - grouped */}
       <div className="space-y-4">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <FileText className="w-4 h-4" /> Programas de Monitorização ({programas.length})
+          <FileText className="w-4 h-4" /> Programas de Monitorização ({programas.length}) — ordenados por próxima entrega
         </h2>
         {programas.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum programa registado.</p>
@@ -182,14 +200,14 @@ export default function Planos() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Calendar className="w-4 h-4" /> Planos e Projetos ({planos.length})
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mt-6">
+          <Calendar className="w-4 h-4" /> Planos e Projetos ({planosList.length}) — ordenados por próxima entrega
         </h2>
-        {planos.length === 0 ? (
+        {planosList.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano registado.</p>
         ) : (
           <div className="grid gap-2">
-            {planos.map(plan => (
+            {planosList.map(plan => (
               <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} deleteMutation={deleteMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
             ))}
           </div>

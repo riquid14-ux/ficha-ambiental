@@ -26,6 +26,74 @@ function canReview(role: string) {
 export const appRouter = router({
   system: systemRouter,
 
+  phaseEvidence: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number(), measureId: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getPhaseEvidence(input.projectId, input.measureId);
+      }),
+
+    addComment: protectedProcedure
+      .input(z.object({ projectId: z.number(), measureId: z.number(), content: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
+        }
+        const result = await db.addPhaseEvidence({
+          measureId: input.measureId,
+          projectId: input.projectId,
+          type: "comment",
+          content: input.content,
+          createdBy: ctx.user.id,
+          createdByName: ctx.user.name || ctx.user.email || "Utilizador",
+        });
+        return result;
+      }),
+
+    uploadFile: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        measureId: z.number(),
+        filename: z.string(),
+        mimeType: z.string(),
+        data: z.string(), // base64
+        isPhoto: z.boolean().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
+        }
+        const buffer = Buffer.from(input.data, "base64");
+        const ext = input.filename.split(".").pop() || "bin";
+        const timestamp = Date.now();
+        const fileKey = `phase-evidence/${input.projectId}/${input.measureId}/${timestamp}.${ext}`;
+        const { key, url } = await storagePut(fileKey, buffer, input.mimeType);
+
+        const result = await db.addPhaseEvidence({
+          measureId: input.measureId,
+          projectId: input.projectId,
+          type: input.isPhoto ? "photo" : "file",
+          content: url,
+          fileKey: key,
+          filename: input.filename,
+          mimeType: input.mimeType,
+          createdBy: ctx.user.id,
+          createdByName: ctx.user.name || ctx.user.email || "Utilizador",
+        });
+        return { id: result.id, url, filename: input.filename };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deletePhaseEvidence(input.id);
+        return { success: true };
+      }),
+  }),
+
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

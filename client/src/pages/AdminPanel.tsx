@@ -570,9 +570,10 @@ function UsersTab() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Papel</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Projetos</TableHead>
+               <TableHead>Papel</TableHead>
+               <TableHead>Empresa</TableHead>
+               <TableHead>Projetos</TableHead>
+                <TableHead>Fases</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -680,12 +681,21 @@ function UsersTab() {
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <FolderKanban className="w-3 h-3" />
-                            Todos
-                          </span>
-                        )}
-                      </div>
-                    )}
+                           <FolderKanban className="w-3 h-3" />
+                           Todos
+                         </span>
+                       )}
+                     </div>
+                   )}
+                 </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-0.5">
+                      {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700">Todas</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">Construção</Badge>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

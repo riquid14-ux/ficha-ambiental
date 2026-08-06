@@ -95,31 +95,44 @@ export default function Timeline() {
 
   if (!projectId) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
           <Layers className="w-6 h-6" /> Timeline do Projeto
         </h1>
-        <p className="text-muted-foreground mb-8">Selecione um projeto específico no menu lateral para ver a timeline e o progresso das medidas por fase.</p>
+        <p className="text-muted-foreground">Visão geral do estado de cada projeto e a fase em que se encontra.</p>
 
-        {/* Show overview of all projects */}
+        {/* All projects overview with phase indicators */}
         {projects && projects.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Projetos Disponíveis</h2>
+          <div className="space-y-2">
             {projects.map(p => (
-              <Card key={p.id} className="hover:shadow-sm transition-shadow">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Layers className="w-5 h-5 text-primary" />
+              <Card key={p.id} className="hover:shadow-sm transition-all">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-primary">{p.code?.slice(0, 4)}</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">{p.code}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">Ativo</Badge>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">Selecione no menu lateral para ver detalhes</p>
+                  {/* Phase progress mini-bar */}
+                  <div className="flex gap-1">
+                    {PHASE_DEFS.slice(0, 6).map((phase, idx) => (
+                      <div key={phase.key} className="flex-1">
+                        <div className={`h-2 rounded-full ${phase.color} opacity-30`} />
+                        <p className="text-[9px] text-center text-muted-foreground mt-0.5 truncate">{phase.shortLabel}</p>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        <p className="text-xs text-muted-foreground text-center">Selecione um projeto no menu lateral para ver o detalhe completo da timeline.</p>
       </div>
     );
   }

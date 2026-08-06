@@ -38,17 +38,27 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
-const menuItems = [
+// Menu items for individual project view
+const projectMenuItems = [
   { icon: UserCircle, label: "Perfil", path: "/perfil" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Grid3X3, label: "Matriz", path: "/matriz" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
-  { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
+];
+
+// Menu items for "Todos os Projetos" view
+const allProjectsMenuItems = [
+  { icon: UserCircle, label: "Perfil", path: "/perfil" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Grid3X3, label: "Matriz", path: "/matriz" },
+  { icon: FileText, label: "Planos", path: "/planos" },
+  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: GitBranch, label: "Timeline", path: "/timeline" },
 ];
 
 const adminMenuItems = [
@@ -101,9 +111,10 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
 
   const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra" || user?.role === "observador";
   const canAdmin = user?.role === "admin" || user?.role === "dono_obra";
+  const baseMenuItems = isAllProjects ? allProjectsMenuItems : projectMenuItems;
   const allItems = [
-    ...menuItems,
-    ...(canReview ? reviewMenuItems : []),
+    ...baseMenuItems,
+    ...(canReview && !isAllProjects ? reviewMenuItems : []),
     ...(canAdmin ? adminMenuItems : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));

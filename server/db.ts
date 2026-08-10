@@ -39,7 +39,8 @@ export async function getDb() {
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 
-const DO_EMAILS = [
+// These emails are auto-assigned admin on FIRST login only
+const AUTO_ADMIN_EMAILS = [
   "rmd@startcampus.pt",
   "rom@startcampus.pt",
   "npa@startcampus.pt",
@@ -76,9 +77,10 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } else if (user.openId === ENV.ownerOpenId) {
     values.role = "admin";
     updateSet.role = "admin";
-  } else if (user.email && DO_EMAILS.includes(user.email.toLowerCase())) {
-    values.role = "dono_obra";
-    updateSet.role = "dono_obra";
+  } else if (user.email && AUTO_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    // Only set admin on INSERT (first login), don't override on subsequent logins
+    values.role = "admin";
+    // Don't put role in updateSet — preserve whatever role was manually set
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();

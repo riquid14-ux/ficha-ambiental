@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings, Plus, Trash2, Save, X } from "lucide-react";
+import { Settings, Plus, Trash2, Save, X, Eye, EyeOff } from "lucide-react";
 
 export default function CalendarioControl() {
   const { user } = useAuth();
   const { projects } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
-  const { data: calEvents, refetch } = trpc.calendarEvents.list.useQuery(undefined);
+  const { data: calEvents, refetch } = trpc.calendarEvents.listAll.useQuery();
   const { data: users } = trpc.users.list.useQuery();
 
   const createMutation = trpc.calendarEvents.create.useMutation({
@@ -43,6 +43,7 @@ export default function CalendarioControl() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "", projectId: "" });
+  const [showHidden, setShowHidden] = useState(false);
 
   function resetNewEvent() {
     setNewEvent({ name: "", periodicity: "Anual", category: "", date: "", projectId: "" });
@@ -79,6 +80,11 @@ export default function CalendarioControl() {
 
   const now = Date.now();
 
+  // Filter events: show active or all based on toggle
+  const filteredEvents = calEvents
+    ? showHidden ? calEvents : calEvents.filter((e: any) => e.active !== 0)
+    : [];
+
   return (
     <AppLayout>
       <div className="space-y-5 max-w-6xl mx-auto">
@@ -92,9 +98,15 @@ export default function CalendarioControl() {
               Gerir todos os eventos de reporting: criar, editar datas, atribuir responsáveis, eliminar
             </p>
           </div>
-          <Button onClick={() => setShowAdd(!showAdd)}>
-            <Plus className="w-4 h-4 mr-1" /> Novo Evento
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowHidden(!showHidden)}>
+              {showHidden ? <Eye className="w-4 h-4 mr-1" /> : <EyeOff className="w-4 h-4 mr-1" />}
+              {showHidden ? "Mostrar todos" : "Mostrar ocultos"}
+            </Button>
+            <Button onClick={() => setShowAdd(!showAdd)}>
+              <Plus className="w-4 h-4 mr-1" /> Novo Evento
+            </Button>
+          </div>
         </div>
 
         {/* Add new event form */}
@@ -168,8 +180,8 @@ export default function CalendarioControl() {
                   </tr>
                 </thead>
                 <tbody>
-                  {calEvents && calEvents.length > 0 ? (
-                    [...calEvents]
+                  {filteredEvents.length > 0 ? (
+                    [...filteredEvents]
                       .sort((a: any, b: any) => (a.nextDate || 0) - (b.nextDate || 0))
                       .map((evt: any) => {
                         const isOverdue = evt.nextDate && evt.nextDate < now && evt.status === "pending";
@@ -262,6 +274,21 @@ export default function CalendarioControl() {
                                       if (confirm("Eliminar este evento?")) deleteMutation.mutate({ id: evt.id });
                                     }}>
                                       <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                      title={evt.active === 0 ? "Mostrar no calendário" : "Ocultar do calendário"}
+                                      onClick={() => {
+                                        if (evt.active === 0) {
+                                          updateMutation.mutate({ id: evt.id, name: evt.name });
+                                        } else {
+                                          deleteMutation.mutate({ id: evt.id });
+                                        }
+                                      }}
+                                    >
+                                      {evt.active === 0 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                                     </Button>
                                   </>
                                 )}

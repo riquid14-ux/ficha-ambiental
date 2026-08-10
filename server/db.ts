@@ -1018,9 +1018,15 @@ import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schem
 import { phaseEvidence, InsertPhaseEvidence } from "../drizzle/schema";
 
 // ─── Calendar Events ─────────────────────────────────────────────────────────
-export async function getCalendarEvents(projectId?: number) {
+export async function getCalendarEvents(projectId?: number, includeHidden?: boolean) {
   const db = await getDb();
   if (!db) return [];
+  if (includeHidden) {
+    if (projectId) {
+      return db.select().from(calendarEvents).where(eq(calendarEvents.projectId, projectId));
+    }
+    return db.select().from(calendarEvents);
+  }
   if (projectId) {
     return db.select().from(calendarEvents).where(and(eq(calendarEvents.active, 1), eq(calendarEvents.projectId, projectId)));
   }

@@ -1282,6 +1282,11 @@ export const appRouter = router({
         return await db.getCalendarEvents(input?.projectId);
       }),
 
+    listAll: protectedProcedure
+      .query(async () => {
+        return await db.getCalendarEvents(undefined, true);
+      }),
+
     create: protectedProcedure
       .input(z.object({
         projectId: z.number().optional(),

@@ -149,6 +149,14 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Brand hero image */}
+        <div className="relative rounded-xl overflow-hidden h-32">
+          <img src="/manus-storage/start_campus_2_66ea7ee0.jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
+            <p className="text-white font-semibold text-lg">Controlo Ambiental — Start Campus</p>
+          </div>
+        </div>
+
         {/* Operation-only project dashboard */}
         {isOperationOnly && (
           <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">

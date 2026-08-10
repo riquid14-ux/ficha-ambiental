@@ -46,7 +46,7 @@ export default function Planos() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingPlan, setEditingPlan] = useState<number | null>(null);
-  const [newPlan, setNewPlan] = useState({ name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "" });
+  const [newPlan, setNewPlan] = useState({ name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "", projectId: "" });
 
   const now = Date.now();
 
@@ -147,8 +147,17 @@ export default function Planos() {
                   </SelectContent>
                 </Select>
                 <Input placeholder="Periodicidade (ex: Semestral, Trimestral)" value={newPlan.periodicity} onChange={e => setNewPlan(p => ({ ...p, periodicity: e.target.value }))} />
+                <Select value={newPlan.projectId} onValueChange={(v) => setNewPlan(p => ({ ...p, projectId: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Projeto (opcional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Todos os projetos</SelectItem>
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Textarea placeholder="Notas adicionais" value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
-                <Button onClick={() => createMutation.mutate({ ...newPlan, periodicity: newPlan.periodicity || undefined, notes: newPlan.notes || undefined })} disabled={!newPlan.name || createMutation.isPending}>
+                <Button onClick={() => createMutation.mutate({ name: newPlan.name, category: newPlan.category, periodicity: newPlan.periodicity || undefined, notes: newPlan.notes || undefined, projectId: newPlan.projectId && newPlan.projectId !== "none" ? parseInt(newPlan.projectId) : undefined })} disabled={!newPlan.name || createMutation.isPending}>
                   {createMutation.isPending ? "A criar..." : "Criar Plano"}
                 </Button>
               </div>

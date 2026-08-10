@@ -534,9 +534,14 @@ export default function WeeklyForm() {
                   </div>
                 </div>
               ) : (
-                <Button onClick={() => setStarted(true)} size="lg" className="w-full">
-                  Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
-                </Button>
+                <div className="space-y-2">
+                  <Button onClick={() => setStarted(true)} size="lg" className="w-full">
+                    Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

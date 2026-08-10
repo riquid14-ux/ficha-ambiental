@@ -5,7 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronLeft, ChevronRight, Clock, AlertTriangle, Plus, Pencil, Trash2 } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, AlertTriangle, Plus, Pencil, Trash2, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +19,7 @@ interface CalendarEvent {
   id: number;
   name: string;
   date: Date;
-  type: "pending" | "reported" | "confirmed" | "overdue";
+  type: "pending" | "reported" | "confirmed" | "overdue" | "internal_deadline";
   periodicity?: string;
   projectName?: string;
   ownerName?: string;
@@ -72,10 +72,11 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
             return <div key={idx} className="bg-muted/30 h-16" />;
           }
           const dayEvents = eventsByDay[day] || [];
-          const hasOverdue = dayEvents.some(e => e.type === "overdue");
-          const hasPending = dayEvents.some(e => e.type === "pending");
-          const hasReported = dayEvents.some(e => e.type === "reported");
-          const hasConfirmed = dayEvents.some(e => e.type === "confirmed");
+      const hasOverdue = dayEvents.some(e => e.type === "overdue");
+      const hasPending = dayEvents.some(e => e.type === "pending");
+      const hasReported = dayEvents.some(e => e.type === "reported");
+      const hasConfirmed = dayEvents.some(e => e.type === "confirmed");
+      const hasInternal = dayEvents.some(e => e.type === "internal_deadline");
           const isSelected = selectedDay && selectedDay.getDate() === day && selectedDay.getMonth() === month && selectedDay.getFullYear() === year;
 
           return (
@@ -108,6 +109,7 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
                   {hasPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                   {hasReported && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                   {hasConfirmed && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
+                  {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />}
                 </div>
               )}
             </button>
@@ -127,9 +129,10 @@ export default function Calendario() {
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "" });
+  const [showControlRoom, setShowControlRoom] = useState(false);
 
-  const storedProject = localStorage.getItem("selectedProjectId");
-  const projectId = storedProject && storedProject !== "all" ? parseInt(storedProject) : undefined;
+  // Use activeProject from context for correct per-project filtering
+  const projectId = !isAllProjects && activeProject ? activeProject.id : undefined;
 
   const { data: plans, isLoading } = trpc.monitoringPlans.list.useQuery(
     projectId ? { projectId } : undefined
@@ -206,7 +209,23 @@ export default function Calendario() {
         }
       }
     }
-    return evts;
+    // Add internal deadline markers (14 days before each pending event)
+    const internalDeadlines: CalendarEvent[] = [];
+    for (const evt of evts) {
+      if (evt.type === "pending") {
+        const internalDate = new Date(evt.date.getTime() - 14 * 24 * 60 * 60 * 1000);
+        if (internalDate.getTime() > now) {
+          internalDeadlines.push({
+            ...evt,
+            id: evt.id + 900000,
+            date: internalDate,
+            type: "internal_deadline",
+            name: `⚡ ${evt.name} (limite interno)`,
+          });
+        }
+      }
+    }
+    return [...evts, ...internalDeadlines];
   }, [plans, calEvents, projects, now]);
 
   // Two months: current and next
@@ -273,6 +292,11 @@ export default function Calendario() {
             </p>
           </div>
           <div className="flex gap-2">
+            {isAdminOrDono && (
+              <Button size="sm" variant="outline" onClick={() => setShowControlRoom(!showControlRoom)}>
+                <Settings2 className="w-3.5 h-3.5 mr-1" /> Gerir
+              </Button>
+            )}
             {isAdminOrDono && (
               <Button size="sm" onClick={() => setShowCreateEvent(true)}>
                 <Plus className="w-3.5 h-3.5 mr-1" /> Novo Evento
@@ -402,6 +426,7 @@ export default function Calendario() {
                     <tr className="border-b text-left">
                       <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Estado por Projeto</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Próxima Data</th>
                     </tr>
@@ -445,6 +470,7 @@ export default function Calendario() {
                             <tr key={name} className="border-b last:border-0 hover:bg-muted/30">
                               <td className="py-2.5 px-2 font-medium">{name}</td>
                               <td className="py-2.5 px-2 text-muted-foreground">{periodicity}</td>
+                              <td className="py-2.5 px-2 text-xs text-muted-foreground">{evts[0]?.ownerName || "—"}</td>
                               <td className="py-2.5 px-2">
                                 {allDone ? (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200">
@@ -573,11 +599,82 @@ export default function Calendario() {
           </CardContent>
         </Card>
 
+        {/* Inline Control Room */}
+        {showControlRoom && isAdminOrDono && calEvents && (
+          <Card className="border-purple-200">
+            <CardContent className="p-4">
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Settings2 className="w-4 h-4" /> Gestão de Eventos
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Evento</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Projeto</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Periodicidade</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Data</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Responsável</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(calEvents as any[]).map((evt: any) => {
+                      const proj = projects.find(p => p.id === evt.projectId);
+                      const isEditing = editingEvent?.id === evt.id;
+                      return (
+                        <tr key={evt.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="py-2 px-2 text-xs font-medium">{evt.name}</td>
+                          <td className="py-2 px-2 text-xs text-muted-foreground">{proj?.code || "—"}</td>
+                          <td className="py-2 px-2 text-xs">{evt.periodicity || "—"}</td>
+                          <td className="py-2 px-2 text-xs">{evt.nextDate ? new Date(evt.nextDate).toLocaleDateString("pt-PT") : "—"}</td>
+                          <td className="py-2 px-2">
+                            <select
+                              className="h-6 text-[10px] border rounded px-1 w-full max-w-[120px]"
+                              value={evt.ownerId || ""}
+                              onChange={(e) => {
+                                const userId = parseInt(e.target.value);
+                                const selectedUser = users?.find((u: any) => u.id === userId);
+                                if (selectedUser) {
+                                  assignOwnerMutation.mutate({ id: evt.id, ownerId: userId, ownerName: selectedUser.fullName || selectedUser.name || selectedUser.email || "" });
+                                }
+                              }}
+                            >
+                              <option value="">—</option>
+                              {users?.map((u: any) => (
+                                <option key={u.id} value={u.id}>{u.fullName || u.name || u.email}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-2 px-2">
+                            <div className="flex gap-1">
+                              <button className="p-1 rounded hover:bg-muted" title="Editar" onClick={() => setEditingEvent(evt)}>
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button className="p-1 rounded hover:bg-red-100 text-red-600" title="Eliminar" onClick={() => { if (confirm("Eliminar este evento?")) deleteEventMutation.mutate({ id: evt.id }); }}>
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             <span>Data limite de report</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+            <span>Data limite interna</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />

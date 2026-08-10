@@ -76,7 +76,7 @@ const allProjectsMenuItems = [
 ];
 
 const adminMenuItems = [
-  { icon: Settings2, label: "Control Room", path: "/calendario-control" },
+  // Control Room is now integrated into Calendário page
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
 const reviewMenuItems = [

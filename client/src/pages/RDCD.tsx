@@ -162,7 +162,10 @@ export default function RDCD() {
             new Paragraph({ text: "6. Monitorização", heading: HeadingLevel.HEADING_1 }),
             ...(includePlans && plans ? [
               new Paragraph({ text: `Planos de monitorização em curso: ${plans.length}` }),
-              ...plans.map((p: any) => new Paragraph({ text: `• ${p.name} — Periodicidade: ${p.periodicity || "—"} — Último reporting: ${p.lastReportingDate ? new Date(p.lastReportingDate).toLocaleDateString("pt-PT") : "—"}` })),
+              ...plans.map((p: any) => new Paragraph({ text: `• ${p.name} — Periodicidade: ${p.periodicity || "—"} — Último reporting: ${p.lastReportingDate ? new Date(p.lastReportingDate).toLocaleDateString("pt-PT") : "—"} — Estado: ${p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}` })),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [new TextRun({ text: "Planos a entregar em anexo ao presente RDCD:", bold: true })] }),
+              ...plans.filter((p: any) => p.submissionStatus === "submitted" || p.submissionStatus === "delivered").map((p: any) => new Paragraph({ text: `  — ${p.name} (${p.submissionStatus === "delivered" ? "entregue à entidade competente" : "submetido na plataforma"})` })),
             ] : [new Paragraph({ text: "[Não incluído neste relatório]" })]),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "7. Auditorias de Pós-Avaliação", heading: HeadingLevel.HEADING_1 }),

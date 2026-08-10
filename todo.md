@@ -200,3 +200,12 @@
 - [x] RDCD Step 4: Pré-visualização e geração de Word (.docx)
 - [x] RDCD: Alerta/countdown no Dashboard para próximo RDCD
 - [x] RDCD: DO/Admin podem definir manualmente última semana do RDCD anterior (via Step 2 do wizard)
+- [x] Calendário: filtrar eventos por projeto activo (SIN04 só mostra SIN04, não SIN01)
+- [x] Calendário: integrar Control Room dentro da página do Calendário (remover página separada)
+- [x] Calendário: nova cor roxa "Data Limite Interna" (14 dias antes da data limite amarela)
+- [x] Calendário: mostrar coluna "Responsável" na tabela de Elementos a Reportar
+- [x] Imagens: adicionar fotos do brand Start Campus para tornar a app mais apelativa
+- [x] Ficha Semanal: opção de carregar por default a última ficha submetida pelo utilizador
+- [x] Planos: adicionar opção de associar planos relevantes a cada projeto individual
+- [x] RDCD: mencionar planos a entregar em anexo numa secção dedicada
+- [x] RDCD: auto-resumo inteligente ao selecionar medidas (combina textos das respostas escolhidas, editável)

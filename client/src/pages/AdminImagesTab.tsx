@@ -175,7 +175,7 @@ export default function ImagesTab() {
                 </Button>
               </div>
               {previewing === key && urls[key] && (
-                <div className="mt-2 rounded-lg overflow-hidden border h-32">
+                <div className="mt-2 rounded-lg overflow-hidden border h-48">
                   <img
                     src={urls[key]}
                     alt={label}

@@ -5,7 +5,12 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, ChevronLeft, ChevronRight, Clock, AlertTriangle } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Clock, AlertTriangle, Plus, Pencil, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const DAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -109,8 +114,13 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
 
 export default function Calendario() {
   const { isAllProjects, activeProject, projects } = useProject();
+  const { user } = useAuth();
+  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "" });
 
   const storedProject = localStorage.getItem("selectedProjectId");
   const projectId = storedProject && storedProject !== "all" ? parseInt(storedProject) : undefined;
@@ -119,28 +129,66 @@ export default function Calendario() {
     projectId ? { projectId } : undefined
   );
 
+  // Fetch calendar events
+  const { data: calEvents, refetch: refetchCalEvents } = trpc.calendarEvents.list.useQuery(
+    projectId ? { projectId } : undefined
+  );
+
+  const createEventMutation = trpc.calendarEvents.create.useMutation({
+    onSuccess: () => { refetchCalEvents(); setShowCreateEvent(false); setNewEvent({ name: "", periodicity: "Anual", category: "", date: "" }); toast.success("Evento criado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const updateEventMutation = trpc.calendarEvents.update.useMutation({
+    onSuccess: () => { refetchCalEvents(); setEditingEvent(null); toast.success("Evento atualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const deleteEventMutation = trpc.calendarEvents.delete.useMutation({
+    onSuccess: () => { refetchCalEvents(); toast.success("Evento removido"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const now = Date.now();
 
   const events = useMemo(() => {
-    if (!plans) return [];
     const evts: CalendarEvent[] = [];
-    for (const plan of plans) {
-      if (plan.nextReportingDate && plan.nextReportingDate > 0) {
-        const date = new Date(plan.nextReportingDate);
-        const isOverdue = plan.nextReportingDate < now;
-        const proj = projects.find(p => p.id === plan.projectId);
-        evts.push({
-          id: plan.id,
-          name: plan.name,
-          date,
-          type: isOverdue ? "overdue" : "reporting",
-          periodicity: plan.periodicity || undefined,
-          projectName: proj?.code || undefined,
-        });
+    // From monitoring plans
+    if (plans) {
+      for (const plan of plans) {
+        if (plan.nextReportingDate && plan.nextReportingDate > 0) {
+          const date = new Date(plan.nextReportingDate);
+          const isOverdue = plan.nextReportingDate < now;
+          const proj = projects.find(p => p.id === plan.projectId);
+          evts.push({
+            id: plan.id * 10000,
+            name: plan.name,
+            date,
+            type: isOverdue ? "overdue" : "reporting",
+            periodicity: plan.periodicity || undefined,
+            projectName: proj?.code || undefined,
+          });
+        }
+      }
+    }
+    // From calendar events
+    if (calEvents) {
+      for (const evt of calEvents) {
+        if (evt.nextDate && evt.nextDate > 0) {
+          const date = new Date(evt.nextDate);
+          const isOverdue = evt.nextDate < now;
+          const proj = projects.find(p => p.id === evt.projectId);
+          evts.push({
+            id: evt.id,
+            name: evt.name,
+            date,
+            type: isOverdue ? "overdue" : "reporting",
+            periodicity: evt.periodicity || undefined,
+            projectName: proj?.code || undefined,
+          });
+        }
       }
     }
     return evts;
-  }, [plans, projects, now]);
+  }, [plans, calEvents, projects, now]);
 
   // Two months: current and next
   const year1 = currentDate.getFullYear();
@@ -205,7 +253,14 @@ export default function Calendario() {
               {isAllProjects ? "Todos os projetos" : activeProject?.name || "Projeto"} — Datas de entrega de reportings
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={goToday}>Hoje</Button>
+          <div className="flex gap-2">
+            {isAdminOrDono && (
+              <Button size="sm" onClick={() => setShowCreateEvent(true)}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Novo Evento
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={goToday}>Hoje</Button>
+          </div>
         </div>
 
         {/* Hero alerts */}
@@ -312,6 +367,58 @@ export default function Calendario() {
             <span>Hoje</span>
           </div>
         </div>
+
+        {/* Create Event Dialog */}
+        {showCreateEvent && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateEvent(false)}>
+            <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold mb-4">Novo Evento de Reporting</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">Nome do evento</label>
+                  <Input value={newEvent.name} onChange={e => setNewEvent(prev => ({ ...prev, name: e.target.value }))} placeholder="Ex: Gases Fluorados - APA" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Periodicidade</label>
+                    <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(prev => ({ ...prev, periodicity: e.target.value }))}>
+                      <option value="Anual">Anual</option>
+                      <option value="Semestral">Semestral</option>
+                      <option value="Trimestral">Trimestral</option>
+                      <option value="Mensal">Mensal</option>
+                      <option value="Pontual">Pontual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Categoria</label>
+                    <Input value={newEvent.category} onChange={e => setNewEvent(prev => ({ ...prev, category: e.target.value }))} placeholder="Ex: APA, Energia" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Próxima data de entrega</label>
+                  <Input type="date" value={newEvent.date} onChange={e => setNewEvent(prev => ({ ...prev, date: e.target.value }))} />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={() => {
+                    if (!newEvent.name || !newEvent.date) { toast.error("Preencha nome e data"); return; }
+                    const dateMs = new Date(newEvent.date).getTime();
+                    createEventMutation.mutate({
+                      projectId: projectId || undefined,
+                      name: newEvent.name,
+                      periodicity: newEvent.periodicity,
+                      category: newEvent.category || undefined,
+                      firstDate: dateMs,
+                      nextDate: dateMs,
+                    });
+                  }} disabled={createEventMutation.isPending} size="sm">
+                    {createEventMutation.isPending ? "A criar..." : "Criar Evento"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowCreateEvent(false)}>Cancelar</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

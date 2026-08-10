@@ -127,6 +127,13 @@
       "when": 1786008007876,
       "tag": "0017_yielding_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1786355057169,
+      "tag": "0018_complete_mathemanic",
+      "breakpoints": true
     }
   ]
 }

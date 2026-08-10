@@ -20,6 +20,7 @@ import { invitations, InsertInvitation } from "../drizzle/schema";
 import { projects, projectCompanies, projectUsers, InsertProject, InsertProjectCompany, InsertProjectUser } from "../drizzle/schema";
 import { evidenceFiles, InsertEvidenceFile } from "../drizzle/schema";
 import { monitoringPlans, InsertMonitoringPlan, projectPhases, InsertProjectPhase } from "../drizzle/schema";
+import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -1015,6 +1016,35 @@ export async function upsertPhaseMeasureStatus(data: { measureId: number; projec
 }
 import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schema";
 import { phaseEvidence, InsertPhaseEvidence } from "../drizzle/schema";
+
+// ─── Calendar Events ─────────────────────────────────────────────────────────
+export async function getCalendarEvents(projectId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  if (projectId) {
+    return db.select().from(calendarEvents).where(and(eq(calendarEvents.active, 1), eq(calendarEvents.projectId, projectId)));
+  }
+  return db.select().from(calendarEvents).where(eq(calendarEvents.active, 1));
+}
+
+export async function createCalendarEvent(data: Omit<InsertCalendarEvent, "id">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(calendarEvents).values(data);
+  return result[0].insertId;
+}
+
+export async function updateCalendarEvent(id: number, data: Partial<InsertCalendarEvent>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(calendarEvents).set(data as any).where(eq(calendarEvents.id, id));
+}
+
+export async function deleteCalendarEvent(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(calendarEvents).set({ active: 0 }).where(eq(calendarEvents.id, id));
+}
 
 export async function getPhaseEvidence(projectId: number, measureId?: number) {
   const db = await getDb();

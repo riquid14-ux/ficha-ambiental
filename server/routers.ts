@@ -1270,7 +1270,73 @@ export const appRouter = router({
           lastDeliveryDate: now,
           nextDeliveryDate: nextDate,
         } as any);
-        return { success: true, nextDeliveryDate: nextDate };
+      return { success: true, nextDeliveryDate: nextDate };
+      }),
+  }),
+
+  // ─── Calendar Events ─────────────────────────────────────────────────────────
+  calendarEvents: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        return await db.getCalendarEvents(input?.projectId);
+      }),
+
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number().optional(),
+        name: z.string().min(1),
+        description: z.string().optional(),
+        periodicity: z.string().optional(),
+        firstDate: z.number(),
+        nextDate: z.number().optional(),
+        category: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+        }
+        const id = await db.createCalendarEvent({
+          projectId: input.projectId ?? null,
+          name: input.name,
+          description: input.description ?? null,
+          periodicity: input.periodicity ?? null,
+          firstDate: input.firstDate,
+          nextDate: input.nextDate ?? input.firstDate,
+          category: input.category ?? null,
+          createdBy: ctx.user.id,
+          active: 1,
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        description: z.string().optional(),
+        periodicity: z.string().optional(),
+        firstDate: z.number().optional(),
+        nextDate: z.number().optional(),
+        category: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const { id, ...data } = input;
+        await db.updateCalendarEvent(id, data as any);
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deleteCalendarEvent(input.id);
+        return { success: true };
       }),
   }),
 });

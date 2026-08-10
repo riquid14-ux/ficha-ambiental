@@ -38,6 +38,9 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
+// Projects that are operation-only (no construction phase)
+const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+
 // Menu items for individual project view
 const projectMenuItems = [
   { icon: UserCircle, label: "Perfil", path: "/perfil" },
@@ -49,6 +52,16 @@ const projectMenuItems = [
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
+];
+
+// Menu items for operation-only projects (no construction workflow)
+const operationProjectMenuItems = [
+  { icon: UserCircle, label: "Perfil", path: "/perfil" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: Layers, label: "Fases", path: "/fases" },
+  { icon: GitBranch, label: "Timeline", path: "/timeline" },
+  { icon: FileText, label: "Planos", path: "/planos" },
 ];
 
 // Menu items for "Todos os Projetos" view
@@ -111,10 +124,11 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
 
   const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra" || user?.role === "observador";
   const canAdmin = user?.role === "admin" || user?.role === "dono_obra";
-  const baseMenuItems = isAllProjects ? allProjectsMenuItems : projectMenuItems;
+  const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+  const baseMenuItems = isAllProjects ? allProjectsMenuItems : (isOperationOnly ? operationProjectMenuItems : projectMenuItems);
   const allItems = [
     ...baseMenuItems,
-    ...(canReview && !isAllProjects ? reviewMenuItems : []),
+    ...(canReview && !isAllProjects && !isOperationOnly ? reviewMenuItems : []),
     ...(canAdmin ? adminMenuItems : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));

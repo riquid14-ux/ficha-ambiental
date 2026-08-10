@@ -346,3 +346,22 @@ export const phaseEvidence = mysqlTable("phase_evidence", {
 
 export type PhaseEvidence = typeof phaseEvidence.$inferSelect;
 export type InsertPhaseEvidence = typeof phaseEvidence.$inferInsert;
+
+// ─── Calendar Events (eventos de reporting no calendário) ────────────────────
+export const calendarEvents = mysqlTable("calendar_events", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId"),
+  name: varchar("name", { length: 500 }).notNull(),
+  description: text("description"),
+  periodicity: varchar("periodicity", { length: 100 }),
+  firstDate: bigint("firstDate", { mode: "number" }).notNull(),
+  nextDate: bigint("nextDate", { mode: "number" }),
+  lastDeliveredDate: bigint("lastDeliveredDate", { mode: "number" }),
+  category: varchar("category", { length: 100 }),
+  active: int("active").default(1).notNull(),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;

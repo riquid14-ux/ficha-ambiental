@@ -12,6 +12,10 @@ type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
 
 // Phase definitions matching the database
+// Projects that are operation-only (no construction phase)
+const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+const OPERATION_PHASES = ["Exploração", "Desativação (Pós-Exploração)"];
+
 const PHASE_DEFS = [
   { key: "Prévias Licenciamento", label: "Pré-Licenciamento", shortLabel: "Pré-Lic.", color: "bg-purple-500", lightColor: "bg-purple-50 border-purple-200", textColor: "text-purple-700" },
   { key: "Em Sede de Licenciamento", label: "Licenciamento", shortLabel: "Lic.", color: "bg-blue-500", lightColor: "bg-blue-50 border-blue-200", textColor: "text-blue-700" },
@@ -47,7 +51,13 @@ export default function Timeline() {
     const statusMap = new Map<number, string>();
     (phaseStatuses || []).forEach(s => statusMap.set(s.measureId, s.status));
 
-    return PHASE_DEFS.map(phaseDef => {
+    // Filter phases for operation-only projects
+    const isOperationOnly = activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+    const applicablePhases = isOperationOnly
+      ? PHASE_DEFS.filter(p => OPERATION_PHASES.includes(p.key))
+      : PHASE_DEFS;
+
+    return applicablePhases.map(phaseDef => {
       // Find sections matching this phase
       const phaseSections = allSections.filter(s => s.phase === phaseDef.key);
       const sectionIds = new Set(phaseSections.map(s => s.id));

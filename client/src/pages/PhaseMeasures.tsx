@@ -15,6 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
 
+// Projects that are operation-only (no construction phase)
+const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+
 // All project lifecycle phases (excluding construction which has its own weekly form)
 const ALL_PHASES = [
   { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-purple-500" },
@@ -64,7 +67,13 @@ export default function PhaseMeasures() {
   });
 
   const [showAdd, setShowAdd] = useState(false);
-  const [activePhase, setActivePhase] = useState(ALL_PHASES[0].key);
+  // Filter phases based on project type
+  const isOperationOnly = activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+  const visiblePhases = isOperationOnly
+    ? ALL_PHASES.filter(p => p.key === "Exploração" || p.key === "Desativação (Pós-Exploração)")
+    : ALL_PHASES;
+
+  const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
@@ -200,7 +209,7 @@ export default function PhaseMeasures() {
       {/* Phase tabs */}
       <Tabs value={activePhase} onValueChange={setActivePhase}>
         <TabsList className="w-full h-auto flex-wrap gap-1 bg-muted/50 p-1.5">
-          {ALL_PHASES.map(phase => {
+          {visiblePhases.map(phase => {
             const ov = complianceOverview[phase.key] || { total: 0, concluido: 0 };
             const pct = ov.total > 0 ? Math.round((ov.concluido / ov.total) * 100) : 0;
             return (
@@ -221,7 +230,7 @@ export default function PhaseMeasures() {
           })}
         </TabsList>
 
-        {ALL_PHASES.map(phase => (
+        {visiblePhases.map(phase => (
           <TabsContent key={phase.key} value={phase.key} className="mt-4 space-y-4">
             {/* Phase header with add button */}
             <div className="flex items-center justify-between">

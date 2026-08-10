@@ -179,3 +179,10 @@
 - [x] Planos: botão confirmar entrega à entidade com popup de confirmação
 - [x] Planos: ao confirmar entrega, atualizar automaticamente próxima data (+periodicidade, ex: +1 ano)
 - [x] Fases (Operação/Exploração): evidências com entrega anual — definir primeira data e calcular próxima automaticamente (+1 ano)
+- [x] SIN01-NEST: remover Workflow, Ficha Semanal, Revisão do sidebar (projeto só de operação)
+- [x] SIN01-NEST: Fases mostrar apenas Exploração e Desativação
+- [x] SIN01-NEST: Timeline começa em Operação (não mostra fases anteriores)
+- [x] SIN01-NEST: Dashboard redesenhado para contexto de operação
+- [x] Calendário: CRUD de eventos de reporting (criar, editar, eliminar) em todos os projetos
+- [x] Calendário: seed eventos reais SIN01 (Gases APA anual, MIRR, EED, etc.)
+- [x] SIN01-NEST: entrega anual medidas Operação fixada a 15 de Janeiro

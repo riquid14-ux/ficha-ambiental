@@ -30,6 +30,11 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 export default function Dashboard() {
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
+
+  // Check if this is an operation-only project
+  const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+  const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedWeek, setSelectedWeek] = useState<string>("all");
@@ -143,6 +148,44 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
           </div>
         </div>
+
+        {/* Operation-only project dashboard */}
+        {isOperationOnly && (
+          <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-lg bg-orange-100 shrink-0">
+                  <Building2 className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Projeto em Fase de Operação</p>
+                  <p className="text-xs text-muted-foreground">{activeProject?.name} — Monitorização contínua de medidas ambientais</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="text-center p-3 bg-white rounded-lg border">
+                  <p className="text-2xl font-bold text-orange-600">15</p>
+                  <p className="text-xs text-muted-foreground">Medidas Exploração</p>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border">
+                  <p className="text-2xl font-bold text-green-600">15 Jan</p>
+                  <p className="text-xs text-muted-foreground">Entrega Anual</p>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border">
+                  <p className="text-2xl font-bold text-blue-600">1</p>
+                  <p className="text-xs text-muted-foreground">Medidas Desativação</p>
+                </div>
+                <div className="text-center p-3 bg-white rounded-lg border">
+                  <p className="text-2xl font-bold text-purple-600">Anual</p>
+                  <p className="text-xs text-muted-foreground">Periodicidade</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                As medidas de operação devem ser evidenciadas anualmente até 15 de Janeiro. Utilize a tab "Fases" para registar o cumprimento e anexar evidências.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* All Projects summary banner */}
         {isAllProjects && (

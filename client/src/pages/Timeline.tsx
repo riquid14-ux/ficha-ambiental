@@ -12,6 +12,23 @@ type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
 
 // Phase definitions matching the database
+// Construction sub-phases that should be labelled "Construção" in the all-projects view
+const CONSTRUCTION_PHASE_KEYS = ["Preparação Prévia", "Execução da Obra", "Fase Final"];
+
+// Simplified phase labels for the all-projects badge
+function getSimplifiedPhaseLabel(phaseKey: string): string {
+  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "Construção";
+  const def = PHASE_DEFS.find(p => p.key === phaseKey);
+  return def?.label || phaseKey;
+}
+
+function getPhaseColor(phaseKey: string): string {
+  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "bg-emerald-100 text-emerald-800 border-emerald-300";
+  const def = PHASE_DEFS.find(p => p.key === phaseKey);
+  if (!def) return "bg-gray-100 text-gray-800";
+  return def.lightColor + " " + def.textColor;
+}
+
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const OPERATION_PHASES = ["Exploração", "Desativação (Pós-Exploração)"];
@@ -43,6 +60,26 @@ export default function Timeline() {
     { projectId: projectId! },
     { enabled: !!projectId }
   );
+
+  // For all-projects view, we compute current phase based on PHASE_DEFS only (without per-project statuses)
+  // Since all projects start at 0% in all phases, we show "Pré-Licenciamento" as default
+  // Once a project has phase statuses, we'd need individual queries - for now use a simpler heuristic
+
+  // Compute current phase for each project in all-projects view
+  const projectCurrentPhases = useMemo(() => {
+    if (!allSections || !allMeasures) return new Map<number, string>();
+    const result = new Map<number, string>();
+
+    for (const proj of projects) {
+      if (OPERATION_ONLY_PROJECT_CODES.includes(proj.code)) {
+        result.set(proj.id, "Operação");
+        continue;
+      }
+      // Default to "Pré-Licenciamento" - will be updated when phaseStatuses are loaded per project
+      result.set(proj.id, "Pré-Licenciamento");
+    }
+    return result;
+  }, [allSections, allMeasures, projects]);
 
   // Compute compliance per phase
   const phaseData = useMemo(() => {
@@ -134,28 +171,35 @@ export default function Timeline() {
                       <p className="font-semibold">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.code}</p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? "Operação" : "Construção"}
+                    <Badge className={`text-xs border ${getPhaseColor(projectCurrentPhases.get(p.id) || "Pré-Licenciamento")}`}>
+                      {projectCurrentPhases.get(p.id) || "Pré-Licenciamento"}
                     </Badge>
                   </div>
                   {/* Phase progress mini-bar */}
                   {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
                     <div className="flex gap-1">
                       <div className="flex-1">
-                        <div className="h-2.5 rounded-full bg-orange-500 opacity-60" />
+                        <div className="h-2.5 rounded-full bg-orange-500" />
                         <p className="text-[9px] text-center text-muted-foreground mt-0.5">Operação</p>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex gap-1">
-                      <div className="flex-[2]">
-                        <div className="h-2.5 rounded-full bg-emerald-500 opacity-60" />
-                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">Construção</p>
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-2.5 rounded-full bg-orange-500 opacity-30" />
-                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">Operação</p>
-                      </div>
+                    <div className="flex gap-0.5">
+                      {PHASE_DEFS.filter(ph => ph.key !== "Desativação (Pós-Exploração)").map((phase) => {
+                        // Determine if this phase is complete, current, or future
+                        const currentLabel = projectCurrentPhases.get(p.id) || "Pré-Licenciamento";
+                        const phaseLabel = getSimplifiedPhaseLabel(phase.key);
+                        const phaseIdx = PHASE_DEFS.findIndex(pd => getSimplifiedPhaseLabel(pd.key) === currentLabel);
+                        const thisIdx = PHASE_DEFS.indexOf(phase);
+                        const isComplete = thisIdx < phaseIdx;
+                        const isCurrent = phaseLabel === currentLabel && thisIdx >= phaseIdx && thisIdx <= phaseIdx;
+                        return (
+                          <div key={phase.key} className="flex-1">
+                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-70" : "opacity-20"}`} />
+                            <p className="text-[8px] text-center text-muted-foreground mt-0.5 truncate">{phase.shortLabel}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

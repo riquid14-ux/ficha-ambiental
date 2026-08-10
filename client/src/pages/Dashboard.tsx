@@ -9,7 +9,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -203,6 +203,51 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* RDCD Countdown Alert */}
+        {!isOperationOnly && (user?.role === "admin" || user?.role === "dono_obra") && (() => {
+          // Calculate weeks since first submission or estimate next RDCD
+          const submissions = submissionsQuery.data;
+          if (!submissions || !Array.isArray(submissions) || submissions.length === 0) return null;
+          const approvedSubs = submissions.filter((s: any) => s.status === "approved");
+          if (approvedSubs.length === 0) return null;
+          // Find earliest approved submission
+          const earliest = approvedSubs.reduce((min: any, s: any) => {
+            const weekKey = s.weekYear * 100 + s.weekNumber;
+            const minKey = min.weekYear * 100 + min.weekNumber;
+            return weekKey < minKey ? s : min;
+          }, approvedSubs[0]);
+          // Calculate weeks since first submission
+          const now = new Date();
+          const currentWeek = Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+          const currentYear = now.getFullYear();
+          const weeksSinceFirst = (currentYear - earliest.weekYear) * 52 + (currentWeek - earliest.weekNumber);
+          const weeksInSemester = 26;
+          const weeksUntilNextRDCD = weeksInSemester - (weeksSinceFirst % weeksInSemester);
+          const nextRDCDWeek = currentWeek + weeksUntilNextRDCD;
+          
+          return (
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 shrink-0">
+                    <FileBarChart className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm text-blue-800">Próximo RDCD</p>
+                    <p className="text-xs text-blue-600">
+                      {weeksUntilNextRDCD <= 4
+                        ? `Faltam ${weeksUntilNextRDCD} semanas para o próximo relatório semestral`
+                        : `Próximo RDCD em ~${weeksUntilNextRDCD} semanas (Semana ${nextRDCDWeek > 52 ? nextRDCDWeek - 52 : nextRDCDWeek}/${nextRDCDWeek > 52 ? currentYear + 1 : currentYear})`
+                      }
+                    </p>
+                  </div>
+                  <a href="/rdcd" className="text-xs text-blue-700 font-medium hover:underline shrink-0">Gerar RDCD →</a>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Overdue Alert */}
         {overdueQuery.data && overdueQuery.data.overdueCompanies.length > 0 && (

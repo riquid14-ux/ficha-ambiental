@@ -12,9 +12,10 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import { Building2, Users, Plus, FileUp, ClipboardList } from "lucide-react";
+import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon } from "lucide-react";
 import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban } from "lucide-react";
 import { useLocation } from "wouter";
+import ImagesTab from "./AdminImagesTab";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
@@ -127,6 +128,9 @@ export default function AdminPanel() {
             <TabsTrigger value="historical" className="gap-2">
               <FileUp className="w-4 h-4" /> Histórico PDF
             </TabsTrigger>
+            <TabsTrigger value="images" className="gap-2">
+              <ImageIcon className="w-4 h-4" /> Imagens
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="companies" className="mt-4">
@@ -140,6 +144,9 @@ export default function AdminPanel() {
           </TabsContent>
           <TabsContent value="historical" className="mt-4">
             <HistoricalTab />
+          </TabsContent>
+          <TabsContent value="images" className="mt-4">
+            <ImagesTab />
           </TabsContent>
         </Tabs>
       </div>

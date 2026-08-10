@@ -288,9 +288,33 @@ export default function RDCD() {
                   </p>
                 </div>
               )}
-              <div className="flex items-center gap-2 mb-4">
-                <Checkbox checked={includePlans} onCheckedChange={(v) => setIncludePlans(!!v)} id="include-plans" />
-                <label htmlFor="include-plans" className="text-sm cursor-pointer">Incluir secção de Planos de Monitorização no relatório</label>
+              {/* Plans section */}
+              <div className="border rounded-lg p-4 mb-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox checked={includePlans} onCheckedChange={(v) => setIncludePlans(!!v)} id="include-plans" />
+                  <label htmlFor="include-plans" className="text-sm font-medium cursor-pointer">Incluir Planos de Monitorização no RDCD</label>
+                </div>
+                {includePlans && plans && plans.length > 0 && (
+                  <div className="ml-6 space-y-1.5">
+                    <p className="text-xs text-muted-foreground mb-2">Planos que serão referenciados no relatório:</p>
+                    {plans.map((p: any) => (
+                      <div key={p.id} className="flex items-center gap-2 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-green-500" : p.submissionStatus === "submitted" ? "bg-blue-500" : "bg-amber-500"}`} />
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-muted-foreground">— {p.periodicity || "—"}</span>
+                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-green-100 text-green-700" : p.submissionStatus === "submitted" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+                          {p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}
+                        </span>
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-muted-foreground mt-2 italic">
+                      Os planos submetidos/entregues serão mencionados como anexos no RDCD.
+                    </p>
+                  </div>
+                )}
+                {includePlans && (!plans || plans.length === 0) && (
+                  <p className="ml-6 text-xs text-muted-foreground">Nenhum plano encontrado. Crie planos na tab "Planos".</p>
+                )}
               </div>
               <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>

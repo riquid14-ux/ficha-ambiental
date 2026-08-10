@@ -112,6 +112,14 @@ export default function Timeline() {
         </h1>
         <p className="text-muted-foreground">Visão geral do estado de cada projeto e a fase em que se encontra.</p>
 
+        {/* Brand image */}
+        <div className="relative rounded-xl overflow-hidden h-28">
+          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(17).jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-end pb-4 pl-5">
+            <p className="text-white text-sm font-medium">Ciclo de vida dos projetos Start Campus</p>
+          </div>
+        </div>
+
         {/* All projects overview with phase indicators */}
         {projects && projects.length > 0 && (
           <div className="space-y-2">
@@ -126,17 +134,30 @@ export default function Timeline() {
                       <p className="font-semibold">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{p.code}</p>
                     </div>
-                    <Badge variant="secondary" className="text-xs">Ativo</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? "Operação" : "Construção"}
+                    </Badge>
                   </div>
                   {/* Phase progress mini-bar */}
-                  <div className="flex gap-1">
-                    {PHASE_DEFS.slice(0, 6).map((phase, idx) => (
-                      <div key={phase.key} className="flex-1">
-                        <div className={`h-2 rounded-full ${phase.color} opacity-30`} />
-                        <p className="text-[9px] text-center text-muted-foreground mt-0.5 truncate">{phase.shortLabel}</p>
+                  {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
+                    <div className="flex gap-1">
+                      <div className="flex-1">
+                        <div className="h-2.5 rounded-full bg-orange-500 opacity-60" />
+                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">Operação</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      <div className="flex-[2]">
+                        <div className="h-2.5 rounded-full bg-emerald-500 opacity-60" />
+                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">Construção</p>
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-2.5 rounded-full bg-orange-500 opacity-30" />
+                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">Operação</p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

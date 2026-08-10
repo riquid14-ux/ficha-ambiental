@@ -151,7 +151,7 @@ export default function Dashboard() {
 
         {/* Brand hero image */}
         <div className="relative rounded-xl overflow-hidden h-32">
-          <img src="/manus-storage/start_campus_2_66ea7ee0.jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(2).jpg" alt="Start Campus" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">Controlo Ambiental — Start Campus</p>
           </div>

@@ -209,3 +209,7 @@
 - [x] Planos: adicionar opção de associar planos relevantes a cada projeto individual
 - [x] RDCD: mencionar planos a entregar em anexo numa secção dedicada
 - [x] RDCD: auto-resumo inteligente ao selecionar medidas (combina textos das respostas escolhidas, editável)
+- [x] Fix: imagem do Dashboard não carrega em produção (usar URL externo startcampus.pt)
+- [x] Fix: Timeline estática — renomear fases para Construção/Operação, adicionar progresso real
+- [x] Fix: RDCD Step 2 — planos visíveis com lista e estados ao selecionar "incluir planos"
+- [x] Melhorar: adicionar mais imagens do brand em locais estratégicos (Timeline + Dashboard)

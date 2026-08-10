@@ -48,6 +48,13 @@ export default function ImagesTab() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const deleteMutation = trpc.appSettings.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+      toast.success("Localização eliminada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [positions, setPositions] = useState<Record<string, string>>({});
@@ -109,9 +116,7 @@ export default function ImagesTab() {
 
   function handleDeleteLocation(key: string) {
     setCustomLocations(prev => prev.filter(c => c.key !== key));
-    updateMutation.mutate({ key, value: "" });
-    updateMutation.mutate({ key: key + "_position", value: "" });
-    updateMutation.mutate({ key: key + "_page", value: "" });
+    deleteMutation.mutate({ key });
   }
 
   function handleSaveImage(key: string) {

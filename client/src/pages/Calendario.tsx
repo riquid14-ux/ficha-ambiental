@@ -381,68 +381,75 @@ export default function Calendario() {
           </Card>
         )}
 
-        {/* All Events Panel - shows all events with status management */}
+        {/* Reporting Table */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold text-sm mb-3">Todos os Eventos de Reporting</h3>
+            <h3 className="font-semibold mb-3">Elementos a Reportar</h3>
             {calEvents && calEvents.length > 0 ? (
-              <div className="space-y-2">
-                {[...calEvents]
-                  .sort((a: any, b: any) => (a.nextDate || 0) - (b.nextDate || 0))
-                  .map((evt: any) => {
-                    const isOverdue = evt.nextDate && evt.nextDate < now;
-                    const statusType = isOverdue && evt.status === "pending" ? "overdue" : evt.status;
-                    const proj = projects.find(p => p.id === evt.projectId);
-                    const statusColors: Record<string, string> = {
-                      overdue: "border-l-red-500 bg-red-50/30",
-                      pending: "border-l-amber-500 bg-amber-50/30",
-                      reported: "border-l-blue-500 bg-blue-50/30",
-                      confirmed: "border-l-green-500 bg-green-50/30",
-                    };
-                    const statusLabels: Record<string, string> = {
-                      overdue: "Em atraso",
-                      pending: "Data limite",
-                      reported: "Reportado",
-                      confirmed: "Confirmado",
-                    };
-                    const badgeColors: Record<string, string> = {
-                      overdue: "bg-red-500 text-white",
-                      pending: "bg-amber-500 text-white",
-                      reported: "bg-blue-500 text-white",
-                      confirmed: "bg-green-500 text-white",
-                    };
-                    return (
-                      <div key={evt.id} className={`flex items-center justify-between p-3 rounded-lg border border-l-4 ${statusColors[statusType] || ""}`}>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{evt.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {proj?.code && <span className="font-medium">{proj.code} · </span>}
-                            {evt.periodicity} · Data: {evt.nextDate ? new Date(evt.nextDate).toLocaleDateString("pt-PT") : "—"}
-                            {evt.ownerName && <span> · {evt.ownerName}</span>}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge className={`text-[10px] ${badgeColors[statusType] || ""}`}>
-                            {statusLabels[statusType] || statusType}
-                          </Badge>
-                          {isAdminOrDono && statusType !== "confirmed" && (
-                            <div className="flex gap-1">
-                              {(statusType === "pending" || statusType === "overdue") && (
-                                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "reported" })}>
-                                  Reportado
-                                </Button>
-                              )}
-                              {statusType === "reported" && (
-                                <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 border-green-300 text-green-700" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "confirmed" })}>
-                                  Confirmar
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Projeto</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Data Limite</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Estado</th>
+                      {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">Ação</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...calEvents]
+                      .sort((a: any, b: any) => (a.nextDate || 0) - (b.nextDate || 0))
+                      .map((evt: any) => {
+                        const isOverdue = evt.nextDate && evt.nextDate < now;
+                        const statusType = isOverdue && evt.status === "pending" ? "overdue" : evt.status;
+                        const proj = projects.find(p => p.id === evt.projectId);
+                        const badgeBg: Record<string, string> = {
+                          overdue: "bg-red-100 text-red-800 border-red-200",
+                          pending: "bg-amber-100 text-amber-800 border-amber-200",
+                          reported: "bg-blue-100 text-blue-800 border-blue-200",
+                          confirmed: "bg-green-100 text-green-800 border-green-200",
+                        };
+                        const statusLabel: Record<string, string> = {
+                          overdue: "Em atraso",
+                          pending: "Data limite",
+                          reported: "Já reportado",
+                          confirmed: "Feedback positivo",
+                        };
+                        return (
+                          <tr key={evt.id} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="py-2.5 px-2 font-medium">{evt.name}</td>
+                            <td className="py-2.5 px-2 text-muted-foreground">{proj?.code || "—"}</td>
+                            <td className="py-2.5 px-2 text-muted-foreground">{evt.periodicity || "—"}</td>
+                            <td className="py-2.5 px-2">{evt.nextDate ? new Date(evt.nextDate).toLocaleDateString("pt-PT") : "—"}</td>
+                            <td className="py-2.5 px-2 text-muted-foreground">{evt.ownerName || "—"}</td>
+                            <td className="py-2.5 px-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badgeBg[statusType] || ""}`}>
+                                {statusLabel[statusType] || statusType}
+                              </span>
+                            </td>
+                            {isAdminOrDono && (
+                              <td className="py-2.5 px-2">
+                                {statusType === "pending" || statusType === "overdue" ? (
+                                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "reported" })}>
+                                    Marcar Reportado
+                                  </Button>
+                                ) : statusType === "reported" ? (
+                                  <Button size="sm" variant="outline" className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "confirmed" })}>
+                                    Confirmar Feedback +
+                                  </Button>
+                                ) : (
+                                  <span className="text-xs text-green-600 font-medium">Concluído</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Nenhum evento de reporting criado. Use o botão "Novo Evento" para adicionar.</p>

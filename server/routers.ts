@@ -1338,6 +1338,50 @@ export const appRouter = router({
         await db.deleteCalendarEvent(input.id);
         return { success: true };
       }),
+
+    updateStatus: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["pending", "reported", "confirmed"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const updateData: any = { status: input.status };
+        // If confirmed, calculate next date based on periodicity
+        if (input.status === "confirmed") {
+          const events = await db.getCalendarEvents();
+          const evt = events.find(e => e.id === input.id);
+          if (evt) {
+            const now = Date.now();
+            let nextDate = now + 365 * 24 * 60 * 60 * 1000; // default +1 year
+            const periodicity = (evt.periodicity || "").toLowerCase();
+            if (periodicity.includes("semestral")) nextDate = now + 182 * 24 * 60 * 60 * 1000;
+            else if (periodicity.includes("trimestral")) nextDate = now + 91 * 24 * 60 * 60 * 1000;
+            else if (periodicity.includes("mensal")) nextDate = now + 30 * 24 * 60 * 60 * 1000;
+            updateData.lastDeliveredDate = now;
+            updateData.nextDate = nextDate;
+            updateData.status = "pending"; // Reset to pending for next cycle
+          }
+        }
+        await db.updateCalendarEvent(input.id, updateData);
+        return { success: true };
+      }),
+
+    assignOwner: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        ownerId: z.number(),
+        ownerName: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.updateCalendarEvent(input.id, { ownerId: input.ownerId, ownerName: input.ownerName });
+        return { success: true };
+      }),
   }),
 });
 

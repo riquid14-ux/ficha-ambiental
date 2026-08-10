@@ -186,3 +186,7 @@
 - [x] Calendário: CRUD de eventos de reporting (criar, editar, eliminar) em todos os projetos
 - [x] Calendário: seed eventos reais SIN01 (Gases APA anual, MIRR, EED, etc.)
 - [x] SIN01-NEST: entrega anual medidas Operação fixada a 15 de Janeiro
+- [x] Calendário: nova legenda de cores (Amarelo=data limite, Azul=já reportado, Verde=reportado+feedback positivo, Vermelho=em atraso)
+- [x] Calendário: cada evento tem data específica individual (não todos 15 Jan)
+- [x] Calendário: owner/responsável por evento de reporting
+- [x] Calendário: DO/Admin podem atualizar estado do evento (pendente → reportado → confirmado)

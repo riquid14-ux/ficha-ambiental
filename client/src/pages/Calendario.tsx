@@ -19,9 +19,11 @@ interface CalendarEvent {
   id: number;
   name: string;
   date: Date;
-  type: "reporting" | "overdue";
+  type: "pending" | "reported" | "confirmed" | "overdue";
   periodicity?: string;
   projectName?: string;
+  ownerName?: string;
+  rawId?: number; // actual calendarEvent id for status updates
 }
 
 function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
@@ -71,7 +73,9 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
           }
           const dayEvents = eventsByDay[day] || [];
           const hasOverdue = dayEvents.some(e => e.type === "overdue");
-          const hasReporting = dayEvents.some(e => e.type === "reporting");
+          const hasPending = dayEvents.some(e => e.type === "pending");
+          const hasReported = dayEvents.some(e => e.type === "reported");
+          const hasConfirmed = dayEvents.some(e => e.type === "confirmed");
           const isSelected = selectedDay && selectedDay.getDate() === day && selectedDay.getMonth() === month && selectedDay.getFullYear() === year;
 
           return (
@@ -88,7 +92,7 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
                   {dayEvents.slice(0, 1).map(evt => (
                     <div
                       key={evt.id}
-                      className={`text-[8px] leading-tight px-0.5 py-0 rounded truncate ${evt.type === "overdue" ? "bg-red-100 text-red-800" : "bg-emerald-100 text-emerald-800"}`}
+                      className={`text-[8px] leading-tight px-0.5 py-0 rounded truncate ${evt.type === "overdue" ? "bg-red-100 text-red-800" : evt.type === "reported" ? "bg-blue-100 text-blue-800" : evt.type === "confirmed" ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}
                     >
                       {evt.name.length > 12 ? evt.name.slice(0, 10) + "…" : evt.name}
                     </div>
@@ -101,7 +105,9 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
               {dayEvents.length > 0 && (
                 <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
                   {hasOverdue && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
-                  {hasReporting && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  {hasPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                  {hasReported && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                  {hasConfirmed && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
                 </div>
               )}
             </button>
@@ -142,6 +148,10 @@ export default function Calendario() {
     onSuccess: () => { refetchCalEvents(); setEditingEvent(null); toast.success("Evento atualizado"); },
     onError: (e: any) => toast.error(e.message),
   });
+  const updateStatusMutation = trpc.calendarEvents.updateStatus.useMutation({
+    onSuccess: () => { refetchCalEvents(); toast.success("Estado atualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const deleteEventMutation = trpc.calendarEvents.delete.useMutation({
     onSuccess: () => { refetchCalEvents(); toast.success("Evento removido"); },
     onError: (e: any) => toast.error(e.message),
@@ -162,7 +172,7 @@ export default function Calendario() {
             id: plan.id * 10000,
             name: plan.name,
             date,
-            type: isOverdue ? "overdue" : "reporting",
+            type: isOverdue ? "overdue" : "pending",
             periodicity: plan.periodicity || undefined,
             projectName: proj?.code || undefined,
           });
@@ -180,9 +190,11 @@ export default function Calendario() {
             id: evt.id,
             name: evt.name,
             date,
-            type: isOverdue ? "overdue" : "reporting",
+            type: isOverdue ? "overdue" : (evt.status === "reported" ? "reported" : evt.status === "confirmed" ? "confirmed" : "pending"),
             periodicity: evt.periodicity || undefined,
             projectName: proj?.code || undefined,
+            ownerName: evt.ownerName || undefined,
+            rawId: evt.id,
           });
         }
       }
@@ -210,7 +222,7 @@ export default function Calendario() {
   // Next upcoming event
   const nextEvent = useMemo(() => {
     return events
-      .filter(e => e.type === "reporting" && e.date.getTime() >= now)
+      .filter(e => e.type !== "overdue" && e.date.getTime() >= now)
       .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
   }, [events, now]);
 
@@ -333,17 +345,34 @@ export default function Calendario() {
               ) : (
                 <div className="space-y-2">
                   {selectedDayEvents.map(evt => (
-                    <div key={evt.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${evt.type === "overdue" ? "border-red-200 bg-red-50/50" : "border-emerald-200 bg-emerald-50/50"}`}>
+                    <div key={evt.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${evt.type === "overdue" ? "border-red-200 bg-red-50/50" : evt.type === "reported" ? "border-blue-200 bg-blue-50/50" : evt.type === "confirmed" ? "border-green-200 bg-green-50/50" : "border-amber-200 bg-amber-50/50"}`}>
                       <div>
                         <p className="font-medium text-sm">{evt.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {evt.projectName && <span className="font-medium">{evt.projectName} · </span>}
                           {evt.periodicity}
+                          {evt.ownerName && <span> · {evt.ownerName}</span>}
                         </p>
                       </div>
-                      <Badge variant={evt.type === "overdue" ? "destructive" : "default"} className="text-xs">
-                        {evt.type === "overdue" ? "Em atraso" : "Agendado"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs ${evt.type === "overdue" ? "bg-red-500 text-white" : evt.type === "reported" ? "bg-blue-500 text-white" : evt.type === "confirmed" ? "bg-green-500 text-white" : "bg-amber-500 text-white"}`}>
+                          {evt.type === "overdue" ? "Em atraso" : evt.type === "reported" ? "Reportado" : evt.type === "confirmed" ? "Confirmado" : "Data limite"}
+                        </Badge>
+                        {isAdminOrDono && evt.rawId && evt.type !== "confirmed" && (
+                          <div className="flex gap-1">
+                            {evt.type === "pending" || evt.type === "overdue" ? (
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => updateStatusMutation.mutate({ id: evt.rawId!, status: "reported" })}>
+                                Marcar Reportado
+                              </Button>
+                            ) : null}
+                            {evt.type === "reported" && (
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 border-green-300 text-green-700" onClick={() => updateStatusMutation.mutate({ id: evt.rawId!, status: "confirmed" })}>
+                                Confirmar
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -353,10 +382,18 @@ export default function Calendario() {
         )}
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>Reporting agendado</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span>Data limite de report</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            <span>Já reportado</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+            <span>Reportado + feedback positivo</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500" />

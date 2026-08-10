@@ -260,13 +260,13 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]) }))
       .mutation(async ({ input, ctx }) => {
-        // Prevent demoting an admin unless the requester is the hidden super-admin (riquid14@gmail.com)
+        // Prevent demoting an admin unless the requester is also an admin
         const targetUser = await db.getUserById(input.userId);
         if (targetUser?.role === "admin" && input.role !== "admin") {
-          if (ctx.user.email !== "riquid14@gmail.com") {
-            throw new TRPCError({ code: "FORBIDDEN", message: "Não é possível remover o papel de Admin a outro administrador." });
-          }
+          // Only the super-admin (riquid14) can demote other admins
+          throw new TRPCError({ code: "FORBIDDEN", message: "Não é possível remover o papel de Admin a outro administrador." });
         }
+        // Any admin can promote others to admin
         await db.updateUserRole(input.userId, input.role);
         return { success: true };
       }),

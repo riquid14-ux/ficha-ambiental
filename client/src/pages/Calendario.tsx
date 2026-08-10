@@ -156,6 +156,13 @@ export default function Calendario() {
     onSuccess: () => { refetchCalEvents(); toast.success("Evento removido"); },
     onError: (e: any) => toast.error(e.message),
   });
+  const assignOwnerMutation = trpc.calendarEvents.assignOwner.useMutation({
+    onSuccess: () => { refetchCalEvents(); toast.success("Responsável atribuído"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Fetch users for owner assignment
+  const { data: users } = trpc.users.list.useQuery();
 
   const now = Date.now();
 
@@ -190,7 +197,7 @@ export default function Calendario() {
             id: evt.id,
             name: evt.name,
             date,
-            type: isOverdue ? "overdue" : (evt.status === "reported" ? "reported" : evt.status === "confirmed" ? "confirmed" : "pending"),
+            type: evt.status === "reported" ? "reported" : evt.status === "confirmed" ? "confirmed" : (isOverdue ? "overdue" : "pending"),
             periodicity: evt.periodicity || undefined,
             projectName: proj?.code || undefined,
             ownerName: evt.ownerName || undefined,
@@ -424,7 +431,28 @@ export default function Calendario() {
                             <td className="py-2.5 px-2 text-muted-foreground">{proj?.code || "—"}</td>
                             <td className="py-2.5 px-2 text-muted-foreground">{evt.periodicity || "—"}</td>
                             <td className="py-2.5 px-2">{evt.nextDate ? new Date(evt.nextDate).toLocaleDateString("pt-PT") : "—"}</td>
-                            <td className="py-2.5 px-2 text-muted-foreground">{evt.ownerName || "—"}</td>
+                            <td className="py-2.5 px-2">
+                              {isAdminOrDono ? (
+                                <select
+                                  className="h-7 text-xs border rounded px-1 w-full max-w-[140px]"
+                                  value={evt.ownerId || ""}
+                                  onChange={(e) => {
+                                    const userId = parseInt(e.target.value);
+                                    const selectedUser = users?.find((u: any) => u.id === userId);
+                                    if (selectedUser) {
+                                      assignOwnerMutation.mutate({ id: evt.id, ownerId: userId, ownerName: selectedUser.fullName || selectedUser.name || selectedUser.email || "" });
+                                    }
+                                  }}
+                                >
+                                  <option value="">— Selecionar —</option>
+                                  {users?.map((u: any) => (
+                                    <option key={u.id} value={u.id}>{u.fullName || u.name || u.email}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">{evt.ownerName || "—"}</span>
+                              )}
+                            </td>
                             <td className="py-2.5 px-2">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badgeBg[statusType] || ""}`}>
                                 {statusLabel[statusType] || statusType}

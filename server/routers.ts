@@ -1354,13 +1354,15 @@ export const appRouter = router({
           const events = await db.getCalendarEvents();
           const evt = events.find(e => e.id === input.id);
           if (evt) {
-            const now = Date.now();
-            let nextDate = now + 365 * 24 * 60 * 60 * 1000; // default +1 year
+            // Calculate next date from the CURRENT nextDate (not today)
+            // e.g., if nextDate was March 2026 and periodicity is annual, next = March 2027
+            const baseDate = evt.nextDate || Date.now();
+            let nextDate = baseDate + 365 * 24 * 60 * 60 * 1000; // default +1 year
             const periodicity = (evt.periodicity || "").toLowerCase();
-            if (periodicity.includes("semestral")) nextDate = now + 182 * 24 * 60 * 60 * 1000;
-            else if (periodicity.includes("trimestral")) nextDate = now + 91 * 24 * 60 * 60 * 1000;
-            else if (periodicity.includes("mensal")) nextDate = now + 30 * 24 * 60 * 60 * 1000;
-            updateData.lastDeliveredDate = now;
+            if (periodicity.includes("semestral")) nextDate = baseDate + 182 * 24 * 60 * 60 * 1000;
+            else if (periodicity.includes("trimestral")) nextDate = baseDate + 91 * 24 * 60 * 60 * 1000;
+            else if (periodicity.includes("mensal")) nextDate = baseDate + 30 * 24 * 60 * 60 * 1000;
+            updateData.lastDeliveredDate = Date.now();
             updateData.nextDate = nextDate;
             updateData.status = "pending"; // Reset to pending for next cycle
           }

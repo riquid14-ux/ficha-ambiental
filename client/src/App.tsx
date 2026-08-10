@@ -20,6 +20,7 @@ import Planos from "./pages/Planos";
 import Calendario from "./pages/Calendario";
 import PhaseMeasures from "./pages/PhaseMeasures";
 import Timeline from "./pages/Timeline";
+import CalendarioControl from "./pages/CalendarioControl";
 
 function Router() {
   return (
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/calendario" component={Calendario} />
       <Route path="/fases" component={PhaseMeasures} />
       <Route path="/timeline" component={Timeline} />
+      <Route path="/calendario-control" component={CalendarioControl} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

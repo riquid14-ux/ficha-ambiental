@@ -31,7 +31,7 @@ import {
 
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
-import { Grid3X3, FileText, CalendarDays } from "lucide-react";
+import { Grid3X3, FileText, CalendarDays, Settings2 } from "lucide-react";
 import { BookOpen, Layers, GitBranch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -75,6 +75,7 @@ const allProjectsMenuItems = [
 ];
 
 const adminMenuItems = [
+  { icon: Settings2, label: "Control Room", path: "/calendario-control" },
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
 const reviewMenuItems = [

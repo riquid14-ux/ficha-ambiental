@@ -1349,11 +1349,11 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const updateData: any = { status: input.status };
-        // If confirmed, calculate next date based on periodicity
-        if (input.status === "confirmed") {
+        // When marked as reported OR confirmed, auto-advance date to next period
+        if (input.status === "reported" || input.status === "confirmed") {
           const events = await db.getCalendarEvents();
           const evt = events.find(e => e.id === input.id);
-          if (evt) {
+          if (evt && input.status === "reported") {
             // Calculate next date from the CURRENT nextDate (not today)
             // e.g., if nextDate was March 2026 and periodicity is annual, next = March 2027
             const baseDate = evt.nextDate || Date.now();
@@ -1364,7 +1364,7 @@ export const appRouter = router({
             else if (periodicity.includes("mensal")) nextDate = baseDate + 30 * 24 * 60 * 60 * 1000;
             updateData.lastDeliveredDate = Date.now();
             updateData.nextDate = nextDate;
-            updateData.status = "pending"; // Reset to pending for next cycle
+            updateData.status = "pending"; // Reset to pending for next cycle with new date
           }
         }
         await db.updateCalendarEvent(input.id, updateData);

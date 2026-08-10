@@ -464,12 +464,8 @@ export default function Calendario() {
                                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "reported" })}>
                                     Marcar Reportado
                                   </Button>
-                                ) : statusType === "reported" ? (
-                                  <Button size="sm" variant="outline" className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "confirmed" })}>
-                                    Confirmar Feedback +
-                                  </Button>
                                 ) : (
-                                  <span className="text-xs text-green-600 font-medium">Concluído</span>
+                                  <span className="text-xs text-muted-foreground italic">Data avançada automaticamente</span>
                                 )}
                               </td>
                             )}

@@ -391,8 +391,100 @@ export default function Calendario() {
         {/* Reporting Table */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3">Elementos a Reportar</h3>
-            {calEvents && calEvents.length > 0 ? (
+            <h3 className="font-semibold mb-3">
+              Elementos a Reportar {!projectId && <span className="text-sm font-normal text-muted-foreground">— Todos os projetos</span>}
+            </h3>
+            {/* Smart aggregation for "Todos os Projetos" */}
+            {!projectId && calEvents && calEvents.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Estado por Projeto</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Próxima Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Group events by name
+                      const grouped: Record<string, any[]> = {};
+                      for (const evt of calEvents as any[]) {
+                        const key = evt.name;
+                        if (!grouped[key]) grouped[key] = [];
+                        grouped[key].push(evt);
+                      }
+                      return Object.entries(grouped)
+                        .sort(([, a], [, b]) => {
+                          const minA = Math.min(...a.map((e: any) => e.nextDate || Infinity));
+                          const minB = Math.min(...b.map((e: any) => e.nextDate || Infinity));
+                          return minA - minB;
+                        })
+                        .map(([name, evts]) => {
+                          const reported = evts.filter((e: any) => e.status === "reported" || e.status === "confirmed");
+                          const pending = evts.filter((e: any) => e.status === "pending");
+                          const overdue = pending.filter((e: any) => e.nextDate && e.nextDate < now);
+                          const nextDate = Math.min(...evts.map((e: any) => e.nextDate || Infinity));
+                          const periodicity = evts[0]?.periodicity || "—";
+                          
+                          // Build status summary
+                          const pendingProjects = pending.map((e: any) => {
+                            const p = projects.find(pr => pr.id === e.projectId);
+                            return p?.code || "?";
+                          });
+                          const reportedProjects = reported.map((e: any) => {
+                            const p = projects.find(pr => pr.id === e.projectId);
+                            return p?.code || "?";
+                          });
+                          
+                          const allDone = pending.length === 0;
+                          const hasOverdue = overdue.length > 0;
+                          
+                          return (
+                            <tr key={name} className="border-b last:border-0 hover:bg-muted/30">
+                              <td className="py-2.5 px-2 font-medium">{name}</td>
+                              <td className="py-2.5 px-2 text-muted-foreground">{periodicity}</td>
+                              <td className="py-2.5 px-2">
+                                {allDone ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200">
+                                    Todos reportados
+                                  </span>
+                                ) : hasOverdue ? (
+                                  <span className="text-xs">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium border bg-red-100 text-red-800 border-red-200">
+                                      Falta: {pendingProjects.join(", ")}
+                                    </span>
+                                    {reportedProjects.length > 0 && (
+                                      <span className="ml-1 text-muted-foreground">({reportedProjects.length} reportados)</span>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium border bg-amber-100 text-amber-800 border-amber-200">
+                                      Pendente: {pendingProjects.join(", ")}
+                                    </span>
+                                    {reportedProjects.length > 0 && (
+                                      <span className="ml-1 text-muted-foreground">({reportedProjects.length} reportados)</span>
+                                    )}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2">
+                                {nextDate < Infinity ? (
+                                  <span className={hasOverdue ? "text-red-600 font-medium" : ""}>
+                                    {new Date(nextDate).toLocaleDateString("pt-PT")}
+                                  </span>
+                                ) : "—"}
+                              </td>
+                            </tr>
+                          );
+                        });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            ) : projectId && calEvents && calEvents.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

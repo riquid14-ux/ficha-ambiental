@@ -31,7 +31,7 @@ import {
 
 import { useIsMobile } from "@/hooks/useMobile";
 import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
-import { Grid3X3, FileText, CalendarDays, Settings2 } from "lucide-react";
+import { Grid3X3, FileText, CalendarDays, Settings2, FileBarChart } from "lucide-react";
 import { BookOpen, Layers, GitBranch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -72,6 +72,7 @@ const allProjectsMenuItems = [
   { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
+  { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
 ];
 
 const adminMenuItems = [

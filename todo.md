@@ -190,3 +190,13 @@
 - [x] Calendário: cada evento tem data específica individual (não todos 15 Jan)
 - [x] Calendário: owner/responsável por evento de reporting
 - [x] Calendário: DO/Admin podem atualizar estado do evento (pendente → reportado → confirmado)
+- [x] Calendário: tabela "Elementos a Reportar" com estado por projeto (vista agregada inteligente)
+- [x] Control Room: página de gestão completa (criar, editar, eliminar, ocultar, atribuir responsável)
+- [x] Calendário: "Marcar Reportado" avança data automaticamente sem necessidade de confirmar feedback
+- [ ] RDCD: Nova tab no sidebar "Todos os Projetos" com wizard step-by-step
+- [ ] RDCD Step 1: Selecção de projecto(s) — um, vários ou todos
+- [ ] RDCD Step 2: Definição do período (semanas) + opção incluir planos
+- [ ] RDCD Step 3: Compilação automática de medidas com selecção de evidências
+- [ ] RDCD Step 4: Pré-visualização e geração de Word (.docx)
+- [ ] RDCD: Alerta/countdown no Dashboard para próximo RDCD
+- [ ] RDCD: DO/Admin podem definir manualmente última semana do RDCD anterior

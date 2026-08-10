@@ -21,6 +21,7 @@ import Calendario from "./pages/Calendario";
 import PhaseMeasures from "./pages/PhaseMeasures";
 import Timeline from "./pages/Timeline";
 import CalendarioControl from "./pages/CalendarioControl";
+import RDCD from "./pages/RDCD";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/fases" component={PhaseMeasures} />
       <Route path="/timeline" component={Timeline} />
       <Route path="/calendario-control" component={CalendarioControl} />
+      <Route path="/rdcd" component={RDCD} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

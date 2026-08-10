@@ -446,7 +446,7 @@ export default function WeeklyForm() {
       <div className="space-y-4">  
         {/* Aerial hero image */}
         <div className="relative rounded-xl overflow-hidden h-28">
-          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(8).jpg" alt="Start Campus Sines" className="w-full h-full object-cover" />
+          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(8).jpg" alt="Start Campus Sines" className="w-full h-full object-cover object-top" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end pb-3 pl-5">
             <p className="text-white text-xs font-medium opacity-90">Start Campus — Sines, Portugal</p>
           </div>

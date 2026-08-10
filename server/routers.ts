@@ -6,6 +6,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
+import { sql } from "drizzle-orm";
 import { storagePut } from "./storage";
 
 // Helper: check if user has elevated permissions (admin or dono_obra)
@@ -90,6 +91,39 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         await db.deletePhaseEvidence(input.id);
+        return { success: true };
+      }),
+  }),
+
+  appSettings: router({
+    get: publicProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) return null;
+        const rows = await database.execute(sql`SELECT value FROM app_settings WHERE \`key\` = ${input.key}`);
+        return (rows as any)?.[0]?.[0]?.value || null;
+      }),
+    getAll: publicProcedure
+      .query(async () => {
+        const database = await db.getDb();
+        if (!database) return {};
+        const rows = await database.execute(sql`SELECT \`key\`, value FROM app_settings`);
+        const result: Record<string, string> = {};
+        for (const r of (rows as any)?.[0] || []) {
+          result[r.key] = r.value;
+        }
+        return result;
+      }),
+    update: protectedProcedure
+      .input(z.object({ key: z.string(), value: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await database.execute(sql`INSERT INTO app_settings (\`key\`, value) VALUES (${input.key}, ${input.value}) ON DUPLICATE KEY UPDATE value = ${input.value}`);
         return { success: true };
       }),
   }),
@@ -1198,6 +1232,37 @@ export const appRouter = router({
   }),
 
   phaseMeasures: router({
+    getAllProjectsProgress: protectedProcedure
+      .query(async () => {
+        // Get all projects
+        const allProjects = await db.getAllProjects();
+        // Get all phase measure statuses for all projects
+        const results: { projectId: number; code: string; phases: { key: string; total: number; concluido: number; progress: number }[] }[] = [];
+        const allSections = await db.getAllSections();
+        const allMeasures = await db.getAllMeasures();
+
+        for (const proj of allProjects) {
+          const statuses = await db.getPhaseMeasureStatuses(proj.id);
+          const statusMap = new Map<number, string>();
+          statuses.forEach((s: any) => statusMap.set(s.measureId, s.status));
+
+          const phases: { key: string; total: number; concluido: number; progress: number }[] = [];
+          const PHASE_KEYS = ["Prévias Licenciamento", "Em Sede de Licenciamento", "Pré-Construção", "Preparação Prévia", "Execução da Obra", "Fase Final", "Fase Final Construção", "Exploração", "Desativação (Pós-Exploração)"];
+
+          for (const phaseKey of PHASE_KEYS) {
+            const phaseSections = allSections.filter((s: any) => s.phase === phaseKey);
+            const sectionIds = new Set(phaseSections.map((s: any) => s.id));
+            const phaseMeasures = allMeasures.filter((m: any) => sectionIds.has(m.sectionId));
+            const total = phaseMeasures.length;
+            if (total === 0) continue;
+            const concluido = phaseMeasures.filter((m: any) => statusMap.get(m.id) === "concluido").length;
+            phases.push({ key: phaseKey, total, concluido, progress: Math.round((concluido / total) * 100) });
+          }
+          results.push({ projectId: proj.id, code: proj.code, phases });
+        }
+        return results;
+      }),
+
     getStatuses: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ input }) => {

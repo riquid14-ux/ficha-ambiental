@@ -368,3 +368,12 @@ export const calendarEvents = mysqlTable("calendar_events", {
 });
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+
+// ─── App Settings (key-value for configurable items like brand images) ────────
+export const appSettings = mysqlTable("app_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 255 }).notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type AppSetting = typeof appSettings.$inferSelect;

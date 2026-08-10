@@ -141,6 +141,13 @@
       "when": 1786355775138,
       "tag": "0019_mute_morlun",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1786380084030,
+      "tag": "0020_spooky_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

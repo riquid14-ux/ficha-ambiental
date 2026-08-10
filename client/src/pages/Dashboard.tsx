@@ -34,6 +34,7 @@ export default function Dashboard() {
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
 
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
@@ -151,7 +152,7 @@ export default function Dashboard() {
 
         {/* Brand hero image */}
         <div className="relative rounded-xl overflow-hidden h-32">
-          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(2).jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <img src={brandImages?.image_dashboard || "https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(2).jpg"} alt="Start Campus" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">Controlo Ambiental — Start Campus</p>
           </div>

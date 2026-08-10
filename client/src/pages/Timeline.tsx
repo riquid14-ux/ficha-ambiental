@@ -61,25 +61,58 @@ export default function Timeline() {
     { enabled: !!projectId }
   );
 
-  // For all-projects view, we compute current phase based on PHASE_DEFS only (without per-project statuses)
-  // Since all projects start at 0% in all phases, we show "Pré-Licenciamento" as default
-  // Once a project has phase statuses, we'd need individual queries - for now use a simpler heuristic
+  // Fetch all projects progress from backend (single endpoint)
+  const { data: allProjectsProgress } = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, {
+    enabled: !projectId, // only fetch when in all-projects view
+  });
 
-  // Compute current phase for each project in all-projects view
+  // Compute current phase for each project based on real backend data
   const projectCurrentPhases = useMemo(() => {
-    if (!allSections || !allMeasures) return new Map<number, string>();
     const result = new Map<number, string>();
+    if (!allProjectsProgress) {
+      // Default while loading
+      for (const proj of projects) {
+        if (OPERATION_ONLY_PROJECT_CODES.includes(proj.code)) {
+          result.set(proj.id, "Operação");
+        } else {
+          result.set(proj.id, "Pré-Licenciamento");
+        }
+      }
+      return result;
+    }
 
-    for (const proj of projects) {
+    for (const proj of allProjectsProgress) {
       if (OPERATION_ONLY_PROJECT_CODES.includes(proj.code)) {
-        result.set(proj.id, "Operação");
+        result.set(proj.projectId, "Operação");
         continue;
       }
-      // Default to "Pré-Licenciamento" - will be updated when phaseStatuses are loaded per project
-      result.set(proj.id, "Pré-Licenciamento");
+      // Find the first phase that is NOT at 100%
+      let currentPhase = "Operação"; // if all are 100%, project is in operation
+      for (const phase of proj.phases) {
+        if (phase.key === "Desativação (Pós-Exploração)") continue;
+        if (phase.progress < 100) {
+          currentPhase = getSimplifiedPhaseLabel(phase.key);
+          break;
+        }
+      }
+      result.set(proj.projectId, currentPhase);
     }
     return result;
-  }, [allSections, allMeasures, projects]);
+  }, [allProjectsProgress, projects]);
+
+  // Phase progress per project (for the mini-bars)
+  const projectPhaseProgress = useMemo(() => {
+    const result = new Map<number, Map<string, number>>();
+    if (!allProjectsProgress) return result;
+    for (const proj of allProjectsProgress) {
+      const phaseMap = new Map<string, number>();
+      for (const phase of proj.phases) {
+        phaseMap.set(phase.key, phase.progress);
+      }
+      result.set(proj.projectId, phaseMap);
+    }
+    return result;
+  }, [allProjectsProgress]);
 
   // Compute compliance per phase
   const phaseData = useMemo(() => {
@@ -186,16 +219,13 @@ export default function Timeline() {
                   ) : (
                     <div className="flex gap-0.5">
                       {PHASE_DEFS.filter(ph => ph.key !== "Desativação (Pós-Exploração)").map((phase) => {
-                        // Determine if this phase is complete, current, or future
-                        const currentLabel = projectCurrentPhases.get(p.id) || "Pré-Licenciamento";
-                        const phaseLabel = getSimplifiedPhaseLabel(phase.key);
-                        const phaseIdx = PHASE_DEFS.findIndex(pd => getSimplifiedPhaseLabel(pd.key) === currentLabel);
-                        const thisIdx = PHASE_DEFS.indexOf(phase);
-                        const isComplete = thisIdx < phaseIdx;
-                        const isCurrent = phaseLabel === currentLabel && thisIdx >= phaseIdx && thisIdx <= phaseIdx;
+                        // Use real progress data from backend
+                        const phaseProgress = projectPhaseProgress.get(p.id)?.get(phase.key) ?? 0;
+                        const isComplete = phaseProgress === 100;
+                        const isCurrent = phaseProgress > 0 && phaseProgress < 100;
                         return (
                           <div key={phase.key} className="flex-1">
-                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-70" : "opacity-20"}`} />
+                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`} title={`${phase.label}: ${phaseProgress}%`} />
                             <p className="text-[8px] text-center text-muted-foreground mt-0.5 truncate">{phase.shortLabel}</p>
                           </div>
                         );

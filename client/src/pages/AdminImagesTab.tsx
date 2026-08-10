@@ -15,11 +15,28 @@ const DEFAULT_IMAGE_KEYS = [
 ];
 
 const POSITION_OPTIONS = [
-  { value: "top", label: "Topo" },
-  { value: "center", label: "Centro" },
-  { value: "bottom", label: "Baixo" },
-  { value: "left", label: "Esquerda" },
-  { value: "right", label: "Direita" },
+  { value: "top", label: "Topo (0%)" },
+  { value: "center 20%", label: "20% do topo" },
+  { value: "center 30%", label: "30% do topo" },
+  { value: "center 40%", label: "40% do topo" },
+  { value: "center", label: "Centro (50%)" },
+  { value: "center 60%", label: "60% do topo" },
+  { value: "center 70%", label: "70% do topo" },
+  { value: "center 80%", label: "80% do topo" },
+  { value: "bottom", label: "Baixo (100%)" },
+];
+
+const PAGE_OPTIONS = [
+  { value: "dashboard", label: "Dashboard" },
+  { value: "timeline", label: "Timeline" },
+  { value: "ficha_semanal", label: "Ficha Semanal" },
+  { value: "calendario", label: "Calendário" },
+  { value: "planos", label: "Planos" },
+  { value: "fases", label: "Fases" },
+  { value: "rdcd", label: "RDCD" },
+  { value: "historico", label: "Histórico" },
+  { value: "perfil", label: "Perfil" },
+  { value: "login", label: "Login" },
 ];
 
 export default function ImagesTab() {
@@ -36,24 +53,26 @@ export default function ImagesTab() {
   const [positions, setPositions] = useState<Record<string, string>>({});
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [newLocationName, setNewLocationName] = useState("");
-  const [customLocations, setCustomLocations] = useState<{ key: string; label: string }[]>([]);
+  const [newLocationPage, setNewLocationPage] = useState("");
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [customLocations, setCustomLocations] = useState<{ key: string; label: string; page: string }[]>([]);
 
   useEffect(() => {
     if (settings) {
       const newUrls: Record<string, string> = {};
       const newPositions: Record<string, string> = {};
-      const extras: { key: string; label: string }[] = [];
+      const extras: { key: string; label: string; page: string }[] = [];
 
       for (const [k, v] of Object.entries(settings)) {
         if (k.endsWith("_position")) {
-          // Position setting
           const imageKey = k.replace("_position", "");
           newPositions[imageKey] = v;
         } else if (k.startsWith("image_custom_")) {
-          // Custom location
           newUrls[k] = v;
+          // Try to get page from settings
+          const page = settings[k + "_page"] || "";
           const label = k.replace("image_custom_", "").replace(/_/g, " ");
-          extras.push({ key: k, label });
+          extras.push({ key: k, label, page });
         } else {
           newUrls[k] = v;
         }
@@ -65,27 +84,34 @@ export default function ImagesTab() {
   }, [settings]);
 
   const allLocations = [
-    ...DEFAULT_IMAGE_KEYS,
-    ...customLocations.map(c => ({ key: c.key, label: c.label, description: "Localização personalizada" })),
+    ...DEFAULT_IMAGE_KEYS.map(d => ({ ...d, page: "" })),
+    ...customLocations.map(c => ({ key: c.key, label: c.label, description: `Página: ${c.page || "A definir"}`, page: c.page })),
   ];
 
   function handleAddLocation() {
-    if (!newLocationName.trim()) return;
+    if (!newLocationName.trim() || !newLocationPage) {
+      toast.error("Preencha o nome e selecione a página");
+      return;
+    }
     const key = "image_custom_" + newLocationName.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
     if (allLocations.some(l => l.key === key)) {
       toast.error("Já existe uma localização com esse nome");
       return;
     }
-    setCustomLocations(prev => [...prev, { key, label: newLocationName.trim() }]);
+    setCustomLocations(prev => [...prev, { key, label: newLocationName.trim(), page: newLocationPage }]);
+    // Save the page association
+    updateMutation.mutate({ key: key + "_page", value: newLocationPage });
     setNewLocationName("");
-    toast.success(`Localização "${newLocationName.trim()}" adicionada. Cole o URL e guarde.`);
+    setNewLocationPage("");
+    setShowNewForm(false);
+    toast.success(`Localização "${newLocationName.trim()}" adicionada para a página "${newLocationPage}". Cole o URL e guarde.`);
   }
 
   function handleDeleteLocation(key: string) {
-    // Remove from custom locations and clear the setting
     setCustomLocations(prev => prev.filter(c => c.key !== key));
     updateMutation.mutate({ key, value: "" });
     updateMutation.mutate({ key: key + "_position", value: "" });
+    updateMutation.mutate({ key: key + "_page", value: "" });
   }
 
   function handleSaveImage(key: string) {
@@ -101,10 +127,10 @@ export default function ImagesTab() {
         <CardTitle className="text-base flex items-center gap-2">
           <ImageIcon className="w-4 h-4" /> Gestão de Imagens
         </CardTitle>
-        <p className="text-xs text-muted-foreground">Cole o URL de uma imagem e ajuste a posição. Use imagens de <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a></p>
+        <p className="text-xs text-muted-foreground">Cole o URL e ajuste a posição vertical. Use imagens de <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a></p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {allLocations.map(({ key, label, description }) => {
+        {allLocations.map(({ key, label, description, page }) => {
           const isCustom = key.startsWith("image_custom_");
           return (
             <div key={key} className="space-y-2 border-b pb-4 last:border-0">
@@ -127,7 +153,7 @@ export default function ImagesTab() {
                   className="flex-1"
                 />
                 <Select value={positions[key] || "center"} onValueChange={(v) => setPositions(prev => ({ ...prev, [key]: v }))}>
-                  <SelectTrigger className="w-[110px]">
+                  <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -160,25 +186,51 @@ export default function ImagesTab() {
 
         {/* Add new location */}
         <div className="border-t pt-4">
-          <Label className="font-medium text-sm">Adicionar nova localização de imagem</Label>
-          <p className="text-xs text-muted-foreground mb-2">Crie um novo espaço para imagem (ex: "Login", "Perfil", "Relatório")</p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Nome da nova localização..."
-              value={newLocationName}
-              onChange={(e) => setNewLocationName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddLocation()}
-              className="flex-1"
-            />
-            <Button size="sm" onClick={handleAddLocation} disabled={!newLocationName.trim()}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+          {!showNewForm ? (
+            <Button variant="outline" size="sm" onClick={() => setShowNewForm(true)} className="w-full">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar nova imagem
             </Button>
-          </div>
+          ) : (
+            <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
+              <Label className="font-medium text-sm">Nova localização de imagem</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Nome</Label>
+                  <Input
+                    placeholder="Ex: Banner principal, Hero..."
+                    value={newLocationName}
+                    onChange={(e) => setNewLocationName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Página onde inserir</Label>
+                  <Select value={newLocationPage} onValueChange={setNewLocationPage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a página..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_OPTIONS.map(p => (
+                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleAddLocation} disabled={!newLocationName.trim() || !newLocationPage}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Criar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowNewForm(false); setNewLocationName(""); setNewLocationPage(""); }}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-muted/50 rounded-lg p-3">
           <p className="text-xs text-muted-foreground">
-            <strong>Dica:</strong> Vá a <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento (Topo = mostra a parte de cima da foto, Baixo = mostra a parte de baixo).
+            <strong>Dica:</strong> Vá a <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento vertical (ex: "30% do topo" mostra mais a parte superior da foto).
           </p>
         </div>
       </CardContent>

@@ -58,6 +58,16 @@ const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set"
 export default function MIRR() {
   const { user } = useAuth();
   const { activeProject } = useProject();
+  const [location] = useLocation();
+  const isMIRRPage = location === "/mirr";
+  const pageTitle = isMIRRPage ? "MIRR — Gestão de Resíduos" : "Gestão de Resíduos";
+  const pageSubtitle = isMIRRPage ? "Mapa Integrado de Registo de Resíduos" : "Gestão e rastreio de resíduos de construção";
+  const [subProject, setSubProject] = useState("all");
+  const [subProjects, setSubProjects] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`mirr-subprojects-${activeProject?.id}`);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [newSubProject, setNewSubProject] = useState("");
   const projectId = activeProject?.id;
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showAddForm, setShowAddForm] = useState(false);
@@ -176,9 +186,25 @@ export default function MIRR() {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2"><Recycle className="w-6 h-6 text-emerald-600" /> MIRR — Gestão de Resíduos</h1>
-            <p className="text-sm text-muted-foreground">Mapa Integrado de Registo de Resíduos — {activeProject?.name || "Projeto"}</p>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Recycle className="w-6 h-6 text-emerald-600" /> {pageTitle}</h1>
+            <p className="text-sm text-muted-foreground">{pageSubtitle} — {activeProject?.name || "Projeto"}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            {!isMIRRPage && subProjects.length > 0 && (
+              <Select value={subProject} onValueChange={setSubProject}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sub-projeto" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {subProjects.map(sp => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {!isMIRRPage && isAdminOrDono && (
+              <div className="flex gap-1">
+                <Input className="h-9 w-[140px] text-xs" placeholder="Novo sub-projeto..." value={newSubProject} onChange={e => setNewSubProject(e.target.value)} />
+                <Button size="sm" variant="outline" onClick={() => { if (newSubProject.trim()) { const updated = [...subProjects, newSubProject.trim()]; setSubProjects(updated); localStorage.setItem(`mirr-subprojects-${activeProject?.id}`, JSON.stringify(updated)); setNewSubProject(""); toast.success(`Sub-projeto "${newSubProject.trim()}" criado`); } }}><Plus className="w-3 h-3" /></Button>
+              </div>
+            )}
             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
               <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -390,3 +416,4 @@ export default function MIRR() {
     </AppLayout>
   );
 }
+import { useLocation } from "wouter";

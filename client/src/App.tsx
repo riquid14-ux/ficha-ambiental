@@ -39,6 +39,7 @@ function Router() {
       <Route path="/calendario-control" component={CalendarioControl} />
       <Route path="/rdcd" component={RDCD} />
       <Route path="/mirr" component={MIRR} />
+      <Route path="/residuos" component={MIRR} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

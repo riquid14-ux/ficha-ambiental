@@ -54,6 +54,7 @@ const projectMenuItems = [
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
+  { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)

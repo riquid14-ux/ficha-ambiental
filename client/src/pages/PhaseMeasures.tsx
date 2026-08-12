@@ -447,18 +447,25 @@ function MeasureCard({
           )}
 
           {/* Evidence sections */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {isOperationOnly && evidenceYear && (
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="outline" className="text-base px-3 py-1 border-emerald-300 bg-emerald-50 text-emerald-800">
+                📅 Evidências {evidenceYear}
+              </Badge>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Comments */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" /> Comentários ({comments.length})
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                <MessageSquare className="w-4 h-4" /> Comentários ({comments.length})
               </h4>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
                 {comments.map(c => (
-                  <div key={c.id} className="bg-background rounded p-2 text-xs border">
-                    <p className="text-foreground">{c.content}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-muted-foreground text-xs">{c.createdByName} · {new Date(c.createdAt).toLocaleDateString("pt-PT")}</span>
+                  <div key={c.id} className="bg-background rounded-lg p-3 text-sm border">
+                    <p className="text-foreground leading-relaxed">{c.content}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-muted-foreground text-xs">{c.createdByName} · {new Date(c.createdAt).toLocaleDateString("pt-PT")}{c.referenceYear ? ` · ${c.referenceYear}` : ""}</span>
                       {isEditable && (
                         <button onClick={() => onDeleteEvidence(c.id)} className="text-destructive/60 hover:text-destructive">
                           <Trash2 className="w-3 h-3" />
@@ -494,16 +501,15 @@ function MeasureCard({
                 </div>
               )}
             </div>
-
             {/* Photos */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Image className="w-3 h-3" /> Fotos ({photos.length})
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                <Image className="w-4 h-4" /> Fotos ({photos.length})
               </h4>
-              <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
                 {photos.map(p => (
                   <div key={p.id} className="relative group">
-                    <img src={p.content} alt={p.filename} className="w-full h-16 object-cover rounded border" />
+                    <img src={p.content} alt={p.filename} className="w-full h-24 object-cover rounded-lg border" />
                     {isEditable && (
                       <button
                         onClick={() => onDeleteEvidence(p.id)}

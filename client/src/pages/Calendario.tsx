@@ -757,7 +757,7 @@ export default function Calendario() {
                   <Input value={editingEvent.entityLink || ""} onChange={e => setEditingEvent({...editingEvent, entityLink: e.target.value})} placeholder="https://siliamb.apambiente.pt" />
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" onClick={() => { updateEventMutation.mutate({ id: editingEvent.id, name: editingEvent.name, periodicity: editingEvent.periodicity, nextDate: editingEvent.nextDate, entityToDeliver: editingEvent.entityToDeliver, entityLink: editingEvent.entityLink }); setEditingEvent(null); }}>Guardar</Button>
+                  <Button size="sm" onClick={() => { updateEventMutation.mutate({ id: editingEvent.id, name: editingEvent.name, periodicity: editingEvent.periodicity, nextDate: typeof editingEvent.nextDate === "string" ? new Date(editingEvent.nextDate).getTime() : editingEvent.nextDate, entityToDeliver: editingEvent.entityToDeliver, entityLink: editingEvent.entityLink }); setEditingEvent(null); }}>Guardar</Button>
                   <Button size="sm" variant="outline" onClick={() => setEditingEvent(null)}>Cancelar</Button>
                 </div>
               </div>

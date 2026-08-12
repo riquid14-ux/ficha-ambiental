@@ -9,9 +9,13 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useState, useMemo } from "react";
-import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pencil, Trash2, CheckCircle, XCircle, Target, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pencil, Trash2, CheckCircle, XCircle, Target, BarChart3, Users, Car, Leaf, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { toast } from "sonner";
+
+const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
+const CAT_LABELS: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", energy: "Energia", water: "Água", emissions: "Emissões", incidents: "Incidentes", other: "Outros" };
+const CAT_ICONS: Record<string, string> = { workforce: "👷", transport: "🚗", fuel: "⛽", energy: "⚡", water: "💧", incidents: "⚠️", other: "📋" };
 
 export default function KPI() {
   const { user } = useAuth();
@@ -21,6 +25,7 @@ export default function KPI() {
   const [formWeek, setFormWeek] = useState(String(getISOWeek(new Date())));
   const [formYear, setFormYear] = useState(String(new Date().getFullYear()));
   const [formValues, setFormValues] = useState<Record<number, string>>({});
+  const [formStep, setFormStep] = useState(0);
   const [editingMetric, setEditingMetric] = useState<any>(null);
   const [dashFilter, setDashFilter] = useState<"week" | "month" | "semester" | "year">("month");
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
@@ -32,7 +37,7 @@ export default function KPI() {
   const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId }, { enabled: projectId > 0 });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery();
-  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); } });
+  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success("Métrica guardada."); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success("Métrica removida."); } });
   const upsertTargetMutation = trpc.kpi.upsertTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); setEditingTarget(null); toast.success("Meta guardada."); } });
@@ -47,48 +52,47 @@ export default function KPI() {
   const companies = (companiesQuery.data || []) as any[];
   const isAdminOrDO = user?.role === "admin" || user?.role === "dono_obra";
 
-  // Week period display
+  // Categories for step-by-step form
+  const categories = useMemo(() => {
+    const cats: string[] = [];
+    for (const m of manualMetrics) { if (!cats.includes(m.category)) cats.push(m.category); }
+    return cats;
+  }, [manualMetrics]);
+
   const weekPeriod = useMemo(() => {
     const w = Number(formWeek); const y = Number(formYear);
     const jan4 = new Date(y, 0, 4);
-    const startOfWeek1 = new Date(jan4);
-    startOfWeek1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
-    const start = new Date(startOfWeek1);
-    start.setDate(start.getDate() + (w - 1) * 7);
+    const s1 = new Date(jan4); s1.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1);
+    const start = new Date(s1); start.setDate(s1.getDate() + (w - 1) * 7);
     const end = new Date(start); end.setDate(start.getDate() + 6);
     return `${start.toLocaleDateString("pt-PT")} a ${end.toLocaleDateString("pt-PT")}`;
   }, [formWeek, formYear]);
 
-  // Totals
   const totals = useMemo(() => {
-    const result: Record<number, number> = {};
-    for (const v of allValues) { result[v.metricId] = (result[v.metricId] || 0) + (parseFloat(v.value) || 0); }
+    const r: Record<number, number> = {};
+    for (const v of allValues) { r[v.metricId] = (r[v.metricId] || 0) + (parseFloat(v.value) || 0); }
     for (const m of calculatedMetrics) {
-      if (m.formulaType === "fuel_to_co2" && m.formulaSourceMetricId) {
-        result[m.id] = (result[m.formulaSourceMetricId] || 0) * (parseFloat(m.density) || 0) * (parseFloat(m.pci) || 0) * (parseFloat(m.emissionFactor) || 0) / 1000;
-      } else if (m.formulaType === "sum_co2") {
-        let sum = 0;
-        for (const cm of calculatedMetrics) { if (cm.formulaType === "fuel_to_co2") sum += (result[cm.id] || 0); }
-        result[m.id] = sum;
-      }
+      if (m.formulaType === "fuel_to_co2" && m.formulaSourceMetricId) r[m.id] = (r[m.formulaSourceMetricId] || 0) * (parseFloat(m.density) || 0) * (parseFloat(m.pci) || 0) * (parseFloat(m.emissionFactor) || 0) / 1000;
+      else if (m.formulaType === "sum_co2") { let s = 0; for (const cm of calculatedMetrics) { if (cm.formulaType === "fuel_to_co2") s += (r[cm.id] || 0); } r[m.id] = s; }
     }
-    return result;
+    return r;
   }, [allValues, calculatedMetrics]);
 
-  // Dashboard chart data
   const chartData = useMemo(() => {
-    const byWeek = new Map<string, Record<string, number>>();
+    const byWeek = new Map<string, any>();
     for (const v of allValues) {
       const key = `S${v.weekNumber}`;
-      if (!byWeek.has(key)) byWeek.set(key, { week: v.weekNumber, year: v.weekYear });
+      if (!byWeek.has(key)) byWeek.set(key, { name: key, week: v.weekNumber, year: v.weekYear });
       const entry = byWeek.get(key)!;
       const metric = metrics.find((m: any) => m.id === v.metricId);
-      if (metric) { entry[metric.category] = (entry[metric.category] || 0) + (parseFloat(v.value) || 0); }
+      if (metric) {
+        entry[metric.category] = (entry[metric.category] || 0) + (parseFloat(v.value) || 0);
+        entry[`m_${v.metricId}`] = (entry[`m_${v.metricId}`] || 0) + (parseFloat(v.value) || 0);
+      }
     }
-    return Array.from(byWeek.entries()).map(([key, data]) => ({ name: key, ...data })).sort((a, b) => ((a as any).year - (b as any).year) || ((a as any).week - (b as any).week));
+    return Array.from(byWeek.values()).sort((a: any, b: any) => (a.year - b.year) || (a.week - b.week));
   }, [allValues, metrics]);
 
-  // Matrix
   const matrixWeeks = useMemo(() => {
     const weeks = new Map<string, { weekNumber: number; weekYear: number }>();
     for (const s of matrixData) { const key = `${s.weekYear}-${s.weekNumber}`; if (!weeks.has(key)) weeks.set(key, { weekNumber: s.weekNumber, weekYear: s.weekYear }); }
@@ -103,14 +107,9 @@ export default function KPI() {
   }, [matrixData, companies]);
 
   const findMetric = (cat: string, name: string) => metrics.find((m: any) => m.category === cat && m.name.toLowerCase().includes(name.toLowerCase()));
-  const incidentsMetric = findMetric("incidents", "Incidentes Ambientais");
-  const waterMetric = findMetric("water", "Água de Construção");
-  const dieselMetric = findMetric("emissions", "Consumo Total");
-  const hvoMetric = findMetric("emissions", "HVO");
-  const electricityMetric = findMetric("energy", "Eletricidade");
 
   const handleSubmit = () => {
-    if (!user?.companyId || !projectId) { toast.error("Selecione um projeto e verifique a sua empresa."); return; }
+    if (!user?.companyId || !projectId) { toast.error("Verifique a sua empresa e projeto."); return; }
     const values = Object.entries(formValues).filter(([, v]) => v.trim() !== "").map(([metricId, value]) => ({ metricId: Number(metricId), value }));
     if (values.length === 0) { toast.error("Preencha pelo menos um campo."); return; }
     submitMutation.mutate({ projectId, companyId: user.companyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values });
@@ -122,10 +121,13 @@ export default function KPI() {
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.csv`; a.click(); URL.revokeObjectURL(url);
-    toast.success("Exportado!");
   };
 
   if (isAllProjects) return <AppLayout><div className="p-6 text-center text-muted-foreground">Selecione um projeto individual para ver os KPI's.</div></AppLayout>;
+
+  // Current category for step form
+  const currentCat = categories[formStep] || categories[0];
+  const currentCatMetrics = manualMetrics.filter((m: any) => m.category === currentCat);
 
   return (
     <AppLayout>
@@ -143,24 +145,22 @@ export default function KPI() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <SummaryCard icon={<AlertTriangle className="w-4 h-4 text-red-500" />} label="Incidentes Ambientais" value={String(incidentsMetric ? (totals[incidentsMetric.id] || 0) : 0)} color="red" />
-          <SummaryCard icon={<Droplets className="w-4 h-4 text-blue-500" />} label="Água Construção" value={`${waterMetric ? formatNumber(totals[waterMetric.id] || 0) : "0"} L`} color="blue" />
-          <SummaryCard icon={<Fuel className="w-4 h-4 text-amber-500" />} label="Combustível" value={`${dieselMetric ? formatNumber(totals[dieselMetric.id] || 0) : "0"} KgCO2e`} color="amber" />
-          <SummaryCard icon={<Fuel className="w-4 h-4 text-green-500" />} label="HVO" value={`${hvoMetric ? formatNumber(totals[hvoMetric.id] || 0) : "0"} KgCO2e`} color="green" />
-          <SummaryCard icon={<Zap className="w-4 h-4 text-purple-500" />} label="Eletricidade" value={`${electricityMetric ? formatNumber(totals[electricityMetric.id] || 0) : "0"} kWh`} color="purple" />
+          <Card className="border-l-4 border-l-red-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Incidentes Ambientais</p><p className="text-xl font-bold text-red-600">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p></CardContent></Card>
+          <Card className="border-l-4 border-l-blue-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Água Construção</p><p className="text-xl font-bold text-blue-600">{formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L</p></CardContent></Card>
+          <Card className="border-l-4 border-l-amber-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Combustível Total</p><p className="text-xl font-bold text-amber-600">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
+          <Card className="border-l-4 border-l-green-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">HVO</p><p className="text-xl font-bold text-green-600">{formatNumber(totals[findMetric("emissions", "HVO")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
+          <Card className="border-l-4 border-l-purple-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Eletricidade</p><p className="text-xl font-bold text-purple-600">{formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh</p></CardContent></Card>
         </div>
 
-        {/* Settings Panel */}
+        {/* Settings */}
         {showSettings && user?.role === "admin" && (
           <Card className="border-amber-200 bg-amber-50/50">
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Settings className="w-4 h-4" /> Definições de Métricas</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid gap-1 max-h-48 overflow-y-auto">
+            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="w-4 h-4 inline mr-1" />Definições</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid gap-1 max-h-40 overflow-y-auto text-xs">
                 {metrics.map((m: any) => (
-                  <div key={m.id} className="flex items-center gap-2 p-1.5 rounded border bg-white text-xs">
-                    <span className="flex-1 truncate">{m.name}</span>
-                    <Badge variant="outline" className="text-[9px]">{m.unit}</Badge>
-                    <Badge variant={m.inputType === "manual" ? "default" : "secondary"} className="text-[9px]">{m.inputType === "manual" ? "Manual" : "Calc"}</Badge>
+                  <div key={m.id} className="flex items-center gap-2 p-1 rounded border bg-white">
+                    <span className="flex-1 truncate">{m.name}</span><Badge variant="outline" className="text-[9px]">{m.unit}</Badge>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setEditingMetric(m)}><Pencil className="w-3 h-3" /></Button>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-500" onClick={() => { if (confirm("Remover?")) deleteMetricMutation.mutate({ id: m.id }); }}><Trash2 className="w-3 h-3" /></Button>
                   </div>
@@ -170,18 +170,12 @@ export default function KPI() {
               {editingMetric && (
                 <div className="p-3 border rounded bg-white space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Nome (PT)" value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
+                    <Input placeholder="Nome" value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
                     <Input placeholder="Unidade" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" />
-                    <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="workforce">Mão de Obra</SelectItem><SelectItem value="transport">Transporte</SelectItem><SelectItem value="fuel">Combustível</SelectItem><SelectItem value="energy">Energia</SelectItem><SelectItem value="water">Água</SelectItem><SelectItem value="emissions">Emissões</SelectItem><SelectItem value="incidents">Incidentes</SelectItem><SelectItem value="other">Outros</SelectItem></SelectContent></Select>
+                    <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
                     <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">Manual</SelectItem><SelectItem value="calculated">Calculado</SelectItem></SelectContent></Select>
                   </div>
-                  {editingMetric.inputType === "calculated" && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <Input placeholder="PCI" value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="text-sm" />
-                      <Input placeholder="FE (KgCO2e/tep)" value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="text-sm" />
-                      <Input placeholder="Densidade" value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="text-sm" />
-                    </div>
-                  )}
+                  {editingMetric.inputType === "calculated" && <div className="grid grid-cols-3 gap-2"><Input placeholder="PCI" value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="text-sm" /><Input placeholder="FE" value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="text-sm" /><Input placeholder="Densidade" value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="text-sm" /></div>}
                   <div className="flex gap-2"><Button size="sm" onClick={() => upsertMetricMutation.mutate(editingMetric)}>Guardar</Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>Cancelar</Button></div>
                 </div>
               )}
@@ -192,145 +186,148 @@ export default function KPI() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="overview">Matriz</TabsTrigger>
-            <TabsTrigger value="submit">Submeter Dados</TabsTrigger>
-            {isAdminOrDO && <TabsTrigger value="dashboard"><BarChart3 className="w-3 h-3 mr-1" /> Dashboard</TabsTrigger>}
-            {user?.role === "admin" && <TabsTrigger value="metas"><Target className="w-3 h-3 mr-1" /> Metas</TabsTrigger>}
+            <TabsTrigger value="submit">Submeter</TabsTrigger>
+            {isAdminOrDO && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
+            {user?.role === "admin" && <TabsTrigger value="metas">Metas</TabsTrigger>}
           </TabsList>
 
           {/* Matrix */}
           <TabsContent value="overview">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Matriz de Submissão — EE × Semana</CardTitle></CardHeader>
-              <CardContent>
-                {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sem submissões de KPI neste projeto.</p> : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead><tr className="border-b"><th className="text-left p-2 font-medium">Empresa</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center font-medium">S{w.weekNumber}</th>)}</tr></thead>
-                      <tbody>{matrixCompanies.map(([compId, compName]) => (
-                        <tr key={compId} className="border-b hover:bg-muted/30">
-                          <td className="p-2 font-medium">{compName}</td>
-                          {matrixWeeks.map(w => { const sub = matrixData.find((s: any) => s.companyId === compId && s.weekNumber === w.weekNumber && s.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{sub ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}
-                        </tr>
-                      ))}</tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Matriz de Submissão</CardTitle></CardHeader><CardContent>
+              {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sem submissões.</p> : (
+                <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">Empresa</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
+                  <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
+                ))}</tbody></table></div>
+              )}
+            </CardContent></Card>
           </TabsContent>
 
-          {/* Submit */}
+          {/* Submit - Card-based step form */}
           <TabsContent value="submit">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Submeter KPIs Semanais</CardTitle>
-                <div className="flex flex-wrap gap-4 items-end mt-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Semana</label>
-                    <Select value={formWeek} onValueChange={setFormWeek}>
-                      <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                      <SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Ano</label>
-                    <Select value={formYear} onValueChange={setFormYear}>
-                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                      <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
+                <div className="flex flex-wrap gap-4 items-end">
+                  <div><label className="text-xs text-muted-foreground block mb-1">Semana</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
+                  <div><label className="text-xs text-muted-foreground block mb-1">Ano</label><Select value={formYear} onValueChange={setFormYear}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
                 </div>
-                <div className="mt-2 px-3 py-1.5 bg-muted/50 rounded text-xs text-muted-foreground">Período: <strong>{weekPeriod}</strong></div>
+                <p className="text-xs text-muted-foreground mt-2 bg-muted/50 px-3 py-1.5 rounded">Período: <strong>{weekPeriod}</strong></p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {["workforce", "transport", "fuel", "energy", "water", "incidents", "other"].map(cat => {
-                  const catMetrics = manualMetrics.filter((m: any) => m.category === cat);
-                  if (catMetrics.length === 0) return null;
-                  const catLabel: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", energy: "Energia", water: "Água", incidents: "Incidentes", other: "Outros" };
-                  return (
-                    <div key={cat}>
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 border-b pb-1">{catLabel[cat]}</h3>
-                      <div className="rounded border overflow-hidden">
-                        {catMetrics.map((m: any, idx: number) => (
-                          <div key={m.id} className={`flex items-center gap-3 px-3 py-2 ${idx % 2 === 0 ? "bg-white" : "bg-muted/30"} hover:bg-primary/5 transition-colors focus-within:bg-primary/10 focus-within:ring-1 focus-within:ring-primary/20`}>
-                            <label className="text-sm flex-1 min-w-0">{m.name} <span className="text-muted-foreground text-xs">({m.unit})</span></label>
-                            <Input type="number" step="any" placeholder="0" value={formValues[m.id] || ""} onChange={e => setFormValues({ ...formValues, [m.id]: e.target.value })} className="w-28 text-right text-sm h-8" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {calculatedMetrics.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 border-b pb-1">Valores Calculados (automático)</h3>
-                    <div className="rounded border overflow-hidden">
-                      {calculatedMetrics.map((m: any, idx: number) => {
-                        let cv = 0;
-                        if (m.formulaType === "fuel_to_co2" && m.formulaSourceMetricId) { cv = (parseFloat(formValues[m.formulaSourceMetricId] || "0")) * (parseFloat(m.density) || 0) * (parseFloat(m.pci) || 0) * (parseFloat(m.emissionFactor) || 0) / 1000; }
-                        else if (m.formulaType === "sum_co2") { for (const cm of calculatedMetrics) { if (cm.formulaType === "fuel_to_co2" && cm.formulaSourceMetricId) cv += (parseFloat(formValues[cm.formulaSourceMetricId] || "0")) * (parseFloat(cm.density) || 0) * (parseFloat(cm.pci) || 0) * (parseFloat(cm.emissionFactor) || 0) / 1000; } }
-                        return (
-                          <div key={m.id} className={`flex items-center gap-3 px-3 py-2 ${idx % 2 === 0 ? "bg-emerald-50/50" : "bg-emerald-50/30"}`}>
-                            <label className="text-sm flex-1 min-w-0 text-muted-foreground">{m.name}</label>
-                            <span className="text-sm font-mono w-28 text-right font-medium">{cv.toFixed(1)} {m.unit}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+              <CardContent>
+                {/* Step navigation */}
+                <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+                  {categories.map((cat, idx) => (
+                    <Button key={cat} size="sm" variant={formStep === idx ? "default" : "outline"} onClick={() => setFormStep(idx)} className="text-xs whitespace-nowrap">
+                      {CAT_ICONS[cat]} {CAT_LABELS[cat] || cat}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Current category cards */}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {currentCatMetrics.map((m: any) => (
+                    <Card key={m.id} className={`transition-all ${formValues[m.id] ? "border-primary/40 bg-primary/5" : "hover:border-primary/20"}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium">{m.name}</p>
+                          <Badge variant="outline" className="text-[10px]">{m.unit}</Badge>
+                        </div>
+                        <Input type="number" step="any" placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => setFormValues({ ...formValues, [m.id]: e.target.value })} className="text-lg h-10 font-mono" />
+                        {m.target && m.target !== "N/A" && <p className="text-[10px] text-muted-foreground mt-1">Meta: {m.target}</p>}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Calculated values preview */}
+                {formStep === categories.length - 1 && calculatedMetrics.length > 0 && (
+                  <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <p className="text-xs font-semibold text-emerald-700 mb-2">Valores Calculados Automaticamente</p>
+                    {calculatedMetrics.map((m: any) => {
+                      let cv = 0;
+                      if (m.formulaType === "fuel_to_co2" && m.formulaSourceMetricId) cv = (parseFloat(formValues[m.formulaSourceMetricId] || "0")) * (parseFloat(m.density) || 0) * (parseFloat(m.pci) || 0) * (parseFloat(m.emissionFactor) || 0) / 1000;
+                      else if (m.formulaType === "sum_co2") { for (const cm of calculatedMetrics) { if (cm.formulaType === "fuel_to_co2" && cm.formulaSourceMetricId) cv += (parseFloat(formValues[cm.formulaSourceMetricId] || "0")) * (parseFloat(cm.density) || 0) * (parseFloat(cm.pci) || 0) * (parseFloat(cm.emissionFactor) || 0) / 1000; } }
+                      return <div key={m.id} className="flex justify-between text-sm py-1"><span>{m.name}</span><strong>{cv.toFixed(1)} {m.unit}</strong></div>;
+                    })}
                   </div>
                 )}
-                <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="w-full"><Send className="w-4 h-4 mr-2" /> {submitMutation.isPending ? "A submeter..." : "Submeter KPIs"}</Button>
+
+                {/* Navigation + Submit */}
+                <div className="flex justify-between mt-4">
+                  <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>← Anterior</Button>
+                  {formStep < categories.length - 1 ? (
+                    <Button onClick={() => setFormStep(formStep + 1)}>Seguinte →</Button>
+                  ) : (
+                    <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending ? "A submeter..." : "Submeter KPIs"}</Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Dashboard (Admin/DO) */}
+          {/* Dashboard (16 charts) */}
           {isAdminOrDO && (
             <TabsContent value="dashboard" className="space-y-4">
-              <div className="flex gap-2 items-center">
-                <span className="text-sm text-muted-foreground">Filtrar:</span>
+              <div className="flex gap-2 items-center mb-2">
+                <span className="text-sm text-muted-foreground">Período:</span>
                 {(["week", "month", "semester", "year"] as const).map(f => (
-                  <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs">{f === "week" ? "Semana" : f === "month" ? "Mês" : f === "semester" ? "Semestre" : "Ano"}</Button>
+                  <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs h-7">{f === "week" ? "Semana" : f === "month" ? "Mês" : f === "semester" ? "Semestre" : "Ano"}</Button>
                 ))}
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Consumo de Combustível (KgCO2e)</CardTitle></CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="fuel" fill="#f59e0b" name="Combustível (L)" /></BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* 1. Fuel consumption bar */}
+                <ChartCard title="Consumo Combustível (L)" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="fuel" fill="#f59e0b" /></BarChart></ChartCard>
+                {/* 2. Water consumption */}
+                <ChartCard title="Consumo Água (L)" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" /></BarChart></ChartCard>
+                {/* 3. Workforce evolution */}
+                <ChartCard title="Trabalhadores em Obra" h="h-48"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ChartCard>
+                {/* 4. Incidents */}
+                <ChartCard title="Incidentes Ambientais" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
+                {/* 5. Energy */}
+                <ChartCard title="Eletricidade (kWh)" h="h-48"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="energy" fill="#a855f7" stroke="#7c3aed" fillOpacity={0.3} /></AreaChart></ChartCard>
+                {/* 6. Transport */}
+                <ChartCard title="Transporte" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="transport" fill="#06b6d4" /></BarChart></ChartCard>
+                {/* 7. CO2 Emissions pie */}
+                <ChartCard title="Repartição Emissões CO2" h="h-48">
+                  <PieChart><Pie data={[{ name: "Diesel", value: totals[findMetric("emissions", "Diesel")?.id || 0] || 0 }, { name: "HVO", value: totals[findMetric("emissions", "HVO")?.id || 0] || 0 }]} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>{COLORS.map((c, i) => <Cell key={i} fill={c} />)}</Pie><Tooltip /></PieChart>
+                </ChartCard>
+                {/* 8. Water breakdown pie */}
+                <ChartCard title="Repartição Água" h="h-48">
+                  <PieChart><Pie data={metrics.filter((m: any) => m.category === "water" && m.inputType === "manual" && (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart>
+                </ChartCard>
+                {/* 9. Cumulative CO2 */}
+                <ChartCard title="CO2 Acumulado" h="h-48"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumFuel || 0; acc.push({ ...d, cumFuel: prev + (d.fuel || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumFuel" fill="#f59e0b" stroke="#d97706" fillOpacity={0.2} /></AreaChart></ChartCard>
+                {/* 10. Cumulative Water */}
+                <ChartCard title="Água Acumulada" h="h-48"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumWater || 0; acc.push({ ...d, cumWater: prev + (d.water || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumWater" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} /></AreaChart></ChartCard>
+                {/* 11. Workers vs Hours */}
+                <ChartCard title="Trabalhadores vs Horas" h="h-48"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Legend /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" name="Trabalhadores" /><Line type="monotone" dataKey={`m_${findMetric("workforce", "horas")?.id || 0}`} stroke="#06b6d4" name="Horas (÷100)" /></LineChart></ChartCard>
+                {/* 12. Toolbox & Suggestions */}
+                <ChartCard title="Toolbox Ambientais" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="other" fill="#84cc16" name="Toolbox/Outros" /></BarChart></ChartCard>
+                {/* 13-16: KPI summary cards */}
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50">
+                  <Leaf className="w-8 h-8 text-emerald-500 mb-2" />
+                  <p className="text-2xl font-bold text-emerald-700">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)}</p>
+                  <p className="text-xs text-muted-foreground">KgCO2e Total Emitido</p>
                 </Card>
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Consumo de Água (L)</CardTitle></CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" name="Água (L)" /></BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-sky-50">
+                  <Droplets className="w-8 h-8 text-blue-500 mb-2" />
+                  <p className="text-2xl font-bold text-blue-700">{formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))}</p>
+                  <p className="text-xs text-muted-foreground">Litros Água Total</p>
                 </Card>
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Mão de Obra</CardTitle></CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Legend /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" name="Trabalhadores" /></LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-purple-50 to-violet-50">
+                  <Users className="w-8 h-8 text-purple-500 mb-2" />
+                  <p className="text-2xl font-bold text-purple-700">{totals[findMetric("workforce", "Trabalhadores em obra")?.id || 0] || 0}</p>
+                  <p className="text-xs text-muted-foreground">Último Registo Trabalhadores</p>
                 </Card>
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Incidentes Ambientais</CardTitle></CardHeader>
-                  <CardContent className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" name="Incidentes" /></BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-orange-50">
+                  <Activity className="w-8 h-8 text-amber-500 mb-2" />
+                  <p className="text-2xl font-bold text-amber-700">{chartData.length}</p>
+                  <p className="text-xs text-muted-foreground">Semanas com Dados</p>
                 </Card>
               </div>
             </TabsContent>
           )}
 
-          {/* Metas (Admin) */}
+          {/* Metas */}
           {user?.role === "admin" && (
             <TabsContent value="metas" className="space-y-4">
               <div className="flex items-center gap-3">
@@ -339,48 +336,31 @@ export default function KPI() {
                 <Button size="sm" onClick={() => setEditingTarget({ metricId: metrics[0]?.id || 1, projectId, targetType: "monthly", targetValue: "", targetDirection: "max", year: targetYear })}><Plus className="w-3 h-3 mr-1" /> Nova Meta</Button>
               </div>
               {editingTarget && (
-                <Card className="border-emerald-200 bg-emerald-50/30">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <Select value={String(editingTarget.metricId)} onValueChange={v => setEditingTarget({ ...editingTarget, metricId: Number(v) })}><SelectTrigger className="text-sm"><SelectValue placeholder="Métrica" /></SelectTrigger><SelectContent>{metrics.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
-                      <Input placeholder="Valor meta" value={editingTarget.targetValue} onChange={e => setEditingTarget({ ...editingTarget, targetValue: e.target.value })} className="text-sm" />
-                      <Select value={editingTarget.targetDirection} onValueChange={v => setEditingTarget({ ...editingTarget, targetDirection: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="max">Máximo (não exceder)</SelectItem><SelectItem value="min">Mínimo (atingir)</SelectItem></SelectContent></Select>
-                      <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Mensal</SelectItem><SelectItem value="annual">Anual</SelectItem></SelectContent></Select>
-                    </div>
-                    <div className="flex gap-2"><Button size="sm" onClick={() => upsertTargetMutation.mutate(editingTarget)}>Guardar</Button><Button size="sm" variant="outline" onClick={() => setEditingTarget(null)}>Cancelar</Button></div>
-                  </CardContent>
-                </Card>
+                <Card className="border-emerald-200 bg-emerald-50/30"><CardContent className="p-4 space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <Select value={String(editingTarget.metricId)} onValueChange={v => setEditingTarget({ ...editingTarget, metricId: Number(v) })}><SelectTrigger className="text-sm"><SelectValue placeholder="Métrica" /></SelectTrigger><SelectContent>{metrics.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
+                    <Input placeholder="Valor" value={editingTarget.targetValue} onChange={e => setEditingTarget({ ...editingTarget, targetValue: e.target.value })} className="text-sm" />
+                    <Select value={editingTarget.targetDirection} onValueChange={v => setEditingTarget({ ...editingTarget, targetDirection: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="max">Não exceder</SelectItem><SelectItem value="min">Atingir</SelectItem></SelectContent></Select>
+                    <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Mensal</SelectItem><SelectItem value="annual">Anual</SelectItem></SelectContent></Select>
+                  </div>
+                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertTargetMutation.mutate(editingTarget)}>Guardar</Button><Button size="sm" variant="outline" onClick={() => setEditingTarget(null)}>Cancelar</Button></div>
+                </CardContent></Card>
               )}
-              <div className="grid gap-3">
-                {targets.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sem metas definidas para {targetYear}.</p> : targets.map((t: any) => {
-                  const metric = metrics.find((m: any) => m.id === t.metricId);
-                  const current = totals[t.metricId] || 0;
-                  const target = parseFloat(t.targetValue) || 0;
-                  const progress = target > 0 ? (current / target) * 100 : 0;
-                  const isGood = t.targetDirection === "max" ? current <= target : current >= target;
-                  return (
-                    <Card key={t.id} className={`border-l-4 ${isGood ? "border-l-green-500" : "border-l-red-500"}`}>
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{metric?.name || `Métrica #${t.metricId}`}</p>
-                          <p className="text-xs text-muted-foreground">{t.targetType === "monthly" ? "Meta Mensal" : "Meta Anual"} • {t.targetDirection === "max" ? "Não exceder" : "Atingir"} {t.targetValue} {metric?.unit}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-lg font-bold ${isGood ? "text-green-600" : "text-red-600"}`}>{formatNumber(current)}</p>
-                          <p className="text-[10px] text-muted-foreground">de {t.targetValue} {metric?.unit}</p>
-                        </div>
-                        <div className="w-20">
-                          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                            <div className={`h-full rounded-full ${isGood ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} />
-                          </div>
-                          <p className="text-[10px] text-center mt-0.5">{progress.toFixed(0)}%</p>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => { if (confirm("Eliminar meta?")) deleteTargetMutation.mutate({ id: t.id }); }}><Trash2 className="w-3 h-3" /></Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              {targets.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sem metas para {targetYear}.</p> : targets.map((t: any) => {
+                const metric = metrics.find((m: any) => m.id === t.metricId);
+                const current = totals[t.metricId] || 0;
+                const target = parseFloat(t.targetValue) || 0;
+                const progress = target > 0 ? (current / target) * 100 : 0;
+                const isGood = t.targetDirection === "max" ? current <= target : current >= target;
+                return (
+                  <Card key={t.id} className={`border-l-4 ${isGood ? "border-l-green-500" : "border-l-red-500"}`}><CardContent className="p-4 flex items-center gap-4">
+                    <div className="flex-1"><p className="text-sm font-medium">{metric?.name || "—"}</p><p className="text-xs text-muted-foreground">{t.targetType === "monthly" ? "Mensal" : "Anual"} • {t.targetDirection === "max" ? "Não exceder" : "Atingir"} {t.targetValue} {metric?.unit}</p></div>
+                    <div className="text-right"><p className={`text-lg font-bold ${isGood ? "text-green-600" : "text-red-600"}`}>{formatNumber(current)}</p><p className="text-[10px] text-muted-foreground">de {t.targetValue}</p></div>
+                    <div className="w-16"><div className="h-2 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${isGood ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div><p className="text-[10px] text-center">{progress.toFixed(0)}%</p></div>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => { if (confirm("Eliminar?")) deleteTargetMutation.mutate({ id: t.id }); }}><Trash2 className="w-3 h-3" /></Button>
+                  </CardContent></Card>
+                );
+              })}
             </TabsContent>
           )}
         </Tabs>
@@ -389,16 +369,8 @@ export default function KPI() {
   );
 }
 
-function SummaryCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
-  return (
-    <Card className={`border-${color}-100`}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-1">{icon}<span className="text-xs text-muted-foreground">{label}</span></div>
-        <p className={`text-xl font-bold text-${color}-600`}>{value}</p>
-        <p className="text-[10px] text-muted-foreground">acumulado</p>
-      </CardContent>
-    </Card>
-  );
+function ChartCard({ title, children, h = "h-48" }: { title: string; children: React.ReactNode; h?: string }) {
+  return <Card><CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-xs text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className={`${h} px-2 pb-2`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
 }
 
 function getISOWeek(date: Date): number {

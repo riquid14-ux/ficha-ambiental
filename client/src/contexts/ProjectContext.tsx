@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 interface Project {
   id: number;
@@ -28,7 +29,10 @@ const ProjectContext = createContext<ProjectContextType>({
 const PROJECT_STORAGE_KEY = "active-project-id";
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const { data: projects = [], isLoading } = trpc.projects.list.useQuery();
+  const { user } = useAuth();
+  const { data: projects = [], isLoading } = trpc.projects.list.useQuery(undefined, {
+    enabled: !!user,
+  });
   const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
     const saved = localStorage.getItem(PROJECT_STORAGE_KEY);
     return saved ? parseInt(saved, 10) : null;

@@ -128,7 +128,7 @@ export default function Calendario() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
-  const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "" });
+  const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "", entityLink: "" });
   const [showControlRoom, setShowControlRoom] = useState(false);
 
   // Use activeProject from context for correct per-project filtering
@@ -144,7 +144,7 @@ export default function Calendario() {
   );
 
   const createEventMutation = trpc.calendarEvents.create.useMutation({
-    onSuccess: () => { refetchCalEvents(); setShowCreateEvent(false); setNewEvent({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "" }); toast.success("Evento criado"); },
+    onSuccess: () => { refetchCalEvents(); setShowCreateEvent(false); setNewEvent({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "", entityLink: "" }); toast.success("Evento criado"); },
     onError: (e: any) => toast.error(e.message),
   });
   const updateEventMutation = trpc.calendarEvents.update.useMutation({
@@ -520,7 +520,7 @@ export default function Calendario() {
                       <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Data Limite</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Entidade a Entregar</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Entidade</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Estado</th>
                       {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">Ação</th>}
                     </tr>
@@ -572,7 +572,7 @@ export default function Calendario() {
                                 <span className="text-muted-foreground text-xs">{evt.ownerName || "—"}</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-2 text-muted-foreground text-xs">{evt.entityToDeliver || "—"}</td>
+                            <td className="py-2.5 px-2 text-xs">{evt.entityToDeliver ? (evt.entityLink ? <a href={evt.entityLink} target="_blank" className="text-primary underline hover:text-primary/80">{evt.entityToDeliver}</a> : <span className="text-muted-foreground">{evt.entityToDeliver}</span>) : "—"}</td>
                             <td className="py-2.5 px-2">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badgeBg[statusType] || ""}`}>
                                 {statusLabel[statusType] || statusType}
@@ -756,8 +756,12 @@ export default function Calendario() {
                   <Input type="date" value={newEvent.date} onChange={e => setNewEvent(prev => ({ ...prev, date: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Entidade a Entregar</label>
+                  <label className="text-xs text-muted-foreground">Entidade</label>
                   <Input value={newEvent.entityToDeliver} onChange={e => setNewEvent(prev => ({ ...prev, entityToDeliver: e.target.value }))} placeholder="Ex: APA, CCDR, Câmara Municipal" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Link da Entidade (URL do portal)</label>
+                  <Input value={newEvent.entityLink} onChange={e => setNewEvent(prev => ({ ...prev, entityLink: e.target.value }))} placeholder="https://siliamb.apambiente.pt" />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button onClick={() => {
@@ -771,6 +775,7 @@ export default function Calendario() {
                       firstDate: dateMs,
                       nextDate: dateMs,
                       entityToDeliver: newEvent.entityToDeliver || undefined,
+                      entityLink: newEvent.entityLink || undefined,
                     });
                   }} disabled={createEventMutation.isPending} size="sm">
                     {createEventMutation.isPending ? "A criar..." : "Criar Evento"}

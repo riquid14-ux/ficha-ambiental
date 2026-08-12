@@ -342,6 +342,7 @@ export const phaseEvidence = mysqlTable("phase_evidence", {
   createdBy: int("createdBy").notNull(),
   createdByName: varchar("createdByName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  referenceYear: int("referenceYear"),
 });
 
 export type PhaseEvidence = typeof phaseEvidence.$inferSelect;
@@ -362,6 +363,7 @@ export const calendarEvents = mysqlTable("calendar_events", {
   ownerId: int("ownerId"),
   ownerName: varchar("ownerName", { length: 255 }),
   entityToDeliver: varchar("entityToDeliver", { length: 500 }),
+  entityLink: varchar("entityLink", { length: 1000 }),
   active: int("active").default(1).notNull(),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

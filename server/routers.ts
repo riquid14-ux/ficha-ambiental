@@ -35,7 +35,7 @@ export const appRouter = router({
       }),
 
     addComment: protectedProcedure
-      .input(z.object({ projectId: z.number(), measureId: z.number(), content: z.string().min(1) }))
+      .input(z.object({ projectId: z.number(), measureId: z.number(), content: z.string().min(1), referenceYear: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
@@ -47,6 +47,7 @@ export const appRouter = router({
           content: input.content,
           createdBy: ctx.user.id,
           createdByName: ctx.user.name || ctx.user.email || "Utilizador",
+          referenceYear: input.referenceYear ?? null,
         });
         return result;
       }),
@@ -1374,6 +1375,7 @@ export const appRouter = router({
         nextDate: z.number().optional(),
         category: z.string().optional(),
         entityToDeliver: z.string().optional(),
+        entityLink: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role)) {
@@ -1388,6 +1390,7 @@ export const appRouter = router({
           nextDate: input.nextDate ?? input.firstDate,
           category: input.category ?? null,
           entityToDeliver: input.entityToDeliver ?? null,
+          entityLink: input.entityLink ?? null,
           createdBy: ctx.user.id,
           active: 1,
         });

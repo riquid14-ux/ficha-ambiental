@@ -73,6 +73,7 @@ export default function PhaseMeasures() {
     ? ALL_PHASES.filter(p => p.key === "Exploração" || p.key === "Desativação (Pós-Exploração)")
     : ALL_PHASES;
 
+  const [evidenceYear, setEvidenceYear] = useState(new Date().getFullYear() - 1);
   const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [statuses, setStatuses] = useState<Record<number, string>>({});
@@ -291,7 +292,7 @@ export default function PhaseMeasures() {
                     onStatusChange={(s) => handleStatusChange(measure.id, s)}
                     onNotesChange={(v) => setNotes(prev => ({ ...prev, [measure.id]: v }))}
                     onNotesBlur={() => handleNotesBlur(measure.id)}
-                    onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content })}
+                    onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content, referenceYear: isOperationOnly ? evidenceYear : undefined })}
                     onUploadFile={(file, isPhoto) => {
                       const reader = new FileReader();
                       reader.onload = () => {

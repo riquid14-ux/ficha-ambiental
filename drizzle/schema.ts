@@ -361,6 +361,7 @@ export const calendarEvents = mysqlTable("calendar_events", {
   status: mysqlEnum("status", ["pending", "reported", "confirmed"]).default("pending").notNull(),
   ownerId: int("ownerId"),
   ownerName: varchar("ownerName", { length: 255 }),
+  entityToDeliver: varchar("entityToDeliver", { length: 500 }),
   active: int("active").default(1).notNull(),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

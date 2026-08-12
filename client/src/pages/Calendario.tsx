@@ -105,11 +105,11 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
               )}
               {dayEvents.length > 0 && (
                 <div className="absolute bottom-0.5 right-0.5 flex gap-0.5">
-                  {hasOverdue && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
-                  {hasPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                  {hasReported && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                  {hasConfirmed && <span className="w-1.5 h-1.5 rounded-full bg-green-500" />}
-                  {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />}
+                  {hasOverdue && <span className="w-1.5 h-1.5 rounded-full bg-red-600" />}
+                  {hasPending && <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />}
+                  {hasReported && <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />}
+                  {hasConfirmed && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />}
+                  {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
                 </div>
               )}
             </button>
@@ -128,7 +128,7 @@ export default function Calendario() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
-  const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "" });
+  const [newEvent, setNewEvent] = useState({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "" });
   const [showControlRoom, setShowControlRoom] = useState(false);
 
   // Use activeProject from context for correct per-project filtering
@@ -144,7 +144,7 @@ export default function Calendario() {
   );
 
   const createEventMutation = trpc.calendarEvents.create.useMutation({
-    onSuccess: () => { refetchCalEvents(); setShowCreateEvent(false); setNewEvent({ name: "", periodicity: "Anual", category: "", date: "" }); toast.success("Evento criado"); },
+    onSuccess: () => { refetchCalEvents(); setShowCreateEvent(false); setNewEvent({ name: "", periodicity: "Anual", category: "", date: "", entityToDeliver: "" }); toast.success("Evento criado"); },
     onError: (e: any) => toast.error(e.message),
   });
   const updateEventMutation = trpc.calendarEvents.update.useMutation({
@@ -386,8 +386,8 @@ export default function Calendario() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={`text-xs ${evt.type === "overdue" ? "bg-red-500 text-white" : evt.type === "reported" ? "bg-blue-500 text-white" : evt.type === "confirmed" ? "bg-green-500 text-white" : "bg-amber-500 text-white"}`}>
-                          {evt.type === "overdue" ? "Em atraso" : evt.type === "reported" ? "Reportado" : evt.type === "confirmed" ? "Confirmado" : "Data limite"}
+                        <Badge className={`text-xs ${evt.type === "overdue" ? "bg-red-600 text-white" : evt.type === "reported" ? "bg-sky-400 text-white" : evt.type === "confirmed" ? "bg-emerald-600 text-white" : evt.type === "internal_deadline" ? "bg-indigo-400 text-white" : "bg-slate-400 text-white"}`}>
+                          {evt.type === "overdue" ? "Em Incumprimento" : evt.type === "reported" ? "Submetido" : evt.type === "confirmed" ? "Validado" : evt.type === "internal_deadline" ? "Prazo Interno" : "Prazo Regulatório"}
                         </Badge>
                         {isAdminOrDono && evt.rawId && evt.type !== "confirmed" && (
                           <div className="flex gap-1">
@@ -520,6 +520,7 @@ export default function Calendario() {
                       <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Data Limite</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">Entidade a Entregar</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Estado</th>
                       {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">Ação</th>}
                     </tr>
@@ -533,15 +534,15 @@ export default function Calendario() {
                         const proj = projects.find(p => p.id === evt.projectId);
                         const badgeBg: Record<string, string> = {
                           overdue: "bg-red-100 text-red-800 border-red-200",
-                          pending: "bg-amber-100 text-amber-800 border-amber-200",
-                          reported: "bg-blue-100 text-blue-800 border-blue-200",
-                          confirmed: "bg-green-100 text-green-800 border-green-200",
+                          pending: "bg-slate-100 text-slate-800 border-slate-200",
+                          reported: "bg-sky-100 text-sky-800 border-sky-200",
+                          confirmed: "bg-emerald-100 text-emerald-800 border-emerald-200",
                         };
                         const statusLabel: Record<string, string> = {
-                          overdue: "Em atraso",
-                          pending: "Data limite",
-                          reported: "Já reportado",
-                          confirmed: "Feedback positivo",
+                          overdue: "Em Incumprimento",
+                          pending: "Prazo Regulatório",
+                          reported: "Submetido",
+                          confirmed: "Validado pela Entidade",
                         };
                         return (
                           <tr key={evt.id} className="border-b last:border-0 hover:bg-muted/30">
@@ -571,6 +572,7 @@ export default function Calendario() {
                                 <span className="text-muted-foreground text-xs">{evt.ownerName || "—"}</span>
                               )}
                             </td>
+                            <td className="py-2.5 px-2 text-muted-foreground text-xs">{evt.entityToDeliver || "—"}</td>
                             <td className="py-2.5 px-2">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${badgeBg[statusType] || ""}`}>
                                 {statusLabel[statusType] || statusType}
@@ -667,30 +669,59 @@ export default function Calendario() {
         )}
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className="font-medium text-muted-foreground">Legenda:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
+                <span>Prazo Regulatório de Submissão</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-indigo-400 border border-indigo-500" />
+                <span>Prazo Interno de Preparação</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-sky-400" />
+                <span>Submetido</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-emerald-600" />
+                <span>Validado pela Entidade</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-red-600" />
+                <span>Em Incumprimento</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[9px] font-bold">H</span>
+                <span>Hoje</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="hidden">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Data limite de report</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+            <span>Prazo Regulatório de Submissão</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-            <span>Data limite interna</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+            <span>Prazo Interno de Preparação</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span>Já reportado</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+            <span>Submetido</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            <span>Reportado + feedback positivo</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+            <span>Validado pela Entidade</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span>Em atraso</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[10px] font-bold">H</span>
-            <span>Hoje</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+            <span>Em Incumprimento</span>
           </div>
         </div>
 
@@ -724,6 +755,10 @@ export default function Calendario() {
                   <label className="text-xs text-muted-foreground">Próxima data de entrega</label>
                   <Input type="date" value={newEvent.date} onChange={e => setNewEvent(prev => ({ ...prev, date: e.target.value }))} />
                 </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Entidade a Entregar</label>
+                  <Input value={newEvent.entityToDeliver} onChange={e => setNewEvent(prev => ({ ...prev, entityToDeliver: e.target.value }))} placeholder="Ex: APA, CCDR, Câmara Municipal" />
+                </div>
                 <div className="flex gap-2 pt-2">
                   <Button onClick={() => {
                     if (!newEvent.name || !newEvent.date) { toast.error("Preencha nome e data"); return; }
@@ -735,6 +770,7 @@ export default function Calendario() {
                       category: newEvent.category || undefined,
                       firstDate: dateMs,
                       nextDate: dateMs,
+                      entityToDeliver: newEvent.entityToDeliver || undefined,
                     });
                   }} disabled={createEventMutation.isPending} size="sm">
                     {createEventMutation.isPending ? "A criar..." : "Criar Evento"}

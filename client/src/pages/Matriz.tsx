@@ -95,24 +95,25 @@ export default function Matriz() {
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <span className="font-medium text-muted-foreground">Legenda:</span>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-emerald-500" />
-                <span>Entregue</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-blue-400" />
-                <span>Em Revisão</span>
+                <div className="w-4 h-4 rounded bg-muted border border-border" />
+                <span>Sem ficha</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-amber-400" />
                 <span>Criada (Rascunho)</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-red-500" />
-                <span>Rejeitada</span>
+                <div className="w-4 h-4 rounded bg-blue-400" />
+                <span>Em Revisão</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-muted border border-border" />
-                <span>Sem ficha</span>
+                <div className="w-4 h-4 rounded bg-emerald-500" />
+                <span>Entregue</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-4 rounded bg-red-500" />
+                <span>Rejeitada</span>
               </div>
             </div>
           </CardContent>

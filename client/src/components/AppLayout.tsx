@@ -43,7 +43,6 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 
 // Menu items for individual project view
 const projectMenuItems = [
-  { icon: UserCircle, label: "Perfil", path: "/perfil" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Grid3X3, label: "Matriz", path: "/matriz" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
@@ -56,7 +55,6 @@ const projectMenuItems = [
 
 // Menu items for operation-only projects (no construction workflow)
 const operationProjectMenuItems = [
-  { icon: UserCircle, label: "Perfil", path: "/perfil" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Layers, label: "Fases", path: "/fases" },
@@ -66,7 +64,6 @@ const operationProjectMenuItems = [
 
 // Menu items for "Todos os Projetos" view
 const allProjectsMenuItems = [
-  { icon: UserCircle, label: "Perfil", path: "/perfil" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Grid3X3, label: "Matriz", path: "/matriz" },
   { icon: FileText, label: "Planos", path: "/planos" },
@@ -253,6 +250,10 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setLocation("/perfil")} className="cursor-pointer">
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  <span>Perfil</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Terminar sessão</span>

@@ -1373,6 +1373,7 @@ export const appRouter = router({
         firstDate: z.number(),
         nextDate: z.number().optional(),
         category: z.string().optional(),
+        entityToDeliver: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role)) {
@@ -1386,6 +1387,7 @@ export const appRouter = router({
           firstDate: input.firstDate,
           nextDate: input.nextDate ?? input.firstDate,
           category: input.category ?? null,
+          entityToDeliver: input.entityToDeliver ?? null,
           createdBy: ctx.user.id,
           active: 1,
         });

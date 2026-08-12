@@ -1079,3 +1079,27 @@ export async function deletePhaseEvidence(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(phaseEvidence).where(eq(phaseEvidence.id, id));
 }
+
+// ─── Waste e-GARs (MIRR) ─────────────────────────────────────────────────────
+import { wasteEgars, InsertWasteEgar } from "../drizzle/schema";
+
+export async function getWasteEgars(projectId: number, year?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(wasteEgars.projectId, projectId)];
+  if (year) conditions.push(eq(wasteEgars.year, year));
+  return db.select().from(wasteEgars).where(and(...conditions)).orderBy(desc(wasteEgars.date));
+}
+
+export async function createWasteEgar(data: Omit<InsertWasteEgar, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(wasteEgars).values(data as any).$returningId();
+  return result;
+}
+
+export async function deleteWasteEgar(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(wasteEgars).where(eq(wasteEgars.id, id));
+}

@@ -1469,6 +1469,51 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  wasteEgars: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number(), year: z.number().optional() }))
+      .query(async ({ input }) => {
+        return await db.getWasteEgars(input.projectId, input.year);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        date: z.number(),
+        egarId: z.string().optional(),
+        egarLink: z.string().optional(),
+        operator: z.string().optional(),
+        lerCode: z.string().min(1),
+        designation: z.string().min(1),
+        quantity: z.string().min(1),
+        destination: z.enum(["recycled", "incinerated", "landfill"]).optional(),
+        month: z.number(),
+        year: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+        }
+        const result = await db.createWasteEgar({
+          ...input,
+          egarId: input.egarId ?? null,
+          egarLink: input.egarLink ?? null,
+          operator: input.operator ?? null,
+          destination: input.destination ?? "recycled",
+          createdBy: ctx.user.id,
+        });
+        return result;
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        await db.deleteWasteEgar(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

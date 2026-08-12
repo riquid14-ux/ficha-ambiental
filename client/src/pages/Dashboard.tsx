@@ -160,37 +160,37 @@ export default function Dashboard() {
 
         {/* Operation-only project dashboard */}
         {isOperationOnly && (
-          <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+          <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-orange-100 shrink-0">
-                  <Building2 className="w-5 h-5 text-orange-600" />
+                <div className="p-2 rounded-lg bg-emerald-100 shrink-0">
+                  <Building2 className="w-5 h-5 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Projeto em Fase de Operação</p>
-                  <p className="text-xs text-muted-foreground">{activeProject?.name} — Monitorização contínua de medidas ambientais</p>
+                  <p className="font-semibold text-emerald-900">Fase de Operação — {activeProject?.name}</p>
+                  <p className="text-xs text-muted-foreground">Monitorização contínua de medidas ambientais e gestão de resíduos</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-orange-600">15</p>
+                  <p className="text-2xl font-bold text-emerald-600">15</p>
                   <p className="text-xs text-muted-foreground">Medidas Exploração</p>
                 </div>
                 <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-green-600">15 Jan</p>
-                  <p className="text-xs text-muted-foreground">Entrega Anual</p>
+                  <p className="text-2xl font-bold text-sky-600">15 Jan</p>
+                  <p className="text-xs text-muted-foreground">Próxima Entrega DCAPE</p>
                 </div>
                 <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-blue-600">1</p>
-                  <p className="text-xs text-muted-foreground">Medidas Desativação</p>
+                  <p className="text-2xl font-bold text-amber-600">8</p>
+                  <p className="text-xs text-muted-foreground">Reportings Anuais</p>
                 </div>
                 <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-purple-600">Anual</p>
-                  <p className="text-xs text-muted-foreground">Periodicidade</p>
+                  <p className="text-2xl font-bold text-indigo-600">MIRR</p>
+                  <p className="text-xs text-muted-foreground">Gestão de Resíduos</p>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                As medidas de operação devem ser evidenciadas anualmente até 15 de Janeiro. Utilize a tab "Fases" para registar o cumprimento e anexar evidências.
+                Utilize as tabs "Fases" para evidenciar medidas, "MIRR" para gestão de resíduos, e "Calendário" para acompanhar prazos regulatórios.
               </p>
             </CardContent>
           </Card>

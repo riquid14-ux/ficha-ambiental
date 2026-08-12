@@ -377,4 +377,25 @@ export const appSettings = mysqlTable("app_settings", {
   value: text("value"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 });
-export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertAppSetting = typeof appSettings.$inferInsert;
+
+// ─── Waste e-GARs (MIRR - Mapa Integrado de Registo de Resíduos) ────────────
+export const wasteEgars = mysqlTable("waste_egars", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  date: bigint("date", { mode: "number" }).notNull(),
+  egarId: varchar("egarId", { length: 100 }),
+  egarLink: varchar("egarLink", { length: 500 }),
+  operator: varchar("operator", { length: 255 }),
+  lerCode: varchar("lerCode", { length: 20 }).notNull(),
+  designation: varchar("designation", { length: 500 }).notNull(),
+  quantity: varchar("quantity", { length: 50 }).notNull(), // tonnes as string for precision
+  destination: mysqlEnum("destination", ["recycled", "incinerated", "landfill"]).default("recycled"),
+  month: int("month").notNull(), // 1-12
+  year: int("year").notNull(),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type WasteEgar = typeof wasteEgars.$inferSelect;
+export type InsertWasteEgar = typeof wasteEgars.$inferInsert;

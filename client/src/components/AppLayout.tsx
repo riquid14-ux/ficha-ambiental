@@ -57,6 +57,7 @@ const projectMenuItems = [
 const operationProjectMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileText, label: "Planos", path: "/planos" },
@@ -285,3 +286,4 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     </>
   );
 }
+import { Recycle } from "lucide-react";

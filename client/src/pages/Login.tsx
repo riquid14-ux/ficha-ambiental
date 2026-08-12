@@ -97,8 +97,8 @@ export default function Login() {
   }, [loading, user, autoLoginAttempted]);
 
   useEffect(() => {
-    if (!loading && user) setLocation("/dashboard");
-  }, [loading, user, setLocation]);
+    if (!loading && user && viewMode === "login") setLocation("/dashboard");
+  }, [loading, user, setLocation, viewMode]);
 
   if (loading || autoLoginLoading) {
     return (
@@ -111,7 +111,7 @@ export default function Login() {
     );
   }
 
-  if (user) return null;
+  if (user && viewMode === "login") return null;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

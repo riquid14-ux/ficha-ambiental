@@ -1406,6 +1406,8 @@ export const appRouter = router({
         firstDate: z.number().optional(),
         nextDate: z.number().optional(),
         category: z.string().optional(),
+        entityToDeliver: z.string().optional(),
+        entityLink: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role)) {

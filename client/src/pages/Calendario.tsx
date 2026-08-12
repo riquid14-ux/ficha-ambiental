@@ -307,6 +307,62 @@ export default function Calendario() {
         </div>
 
         {/* Hero alerts */}
+        {/* Legend */}
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className="font-medium text-muted-foreground">Legenda:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
+                <span>Prazo Regulatório de Submissão</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-indigo-400 border border-indigo-500" />
+                <span>Prazo Interno de Preparação</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-sky-400" />
+                <span>Submetido</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-emerald-600" />
+                <span>Validado pela Entidade</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-red-600" />
+                <span>Em Incumprimento</span>
+              </div>
+              <span className="text-muted-foreground">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[9px] font-bold">H</span>
+                <span>Hoje</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="hidden">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+            <span>Prazo Regulatório de Submissão</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+            <span>Prazo Interno de Preparação</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+            <span>Submetido</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+            <span>Validado pela Entidade</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+            <span>Em Incumprimento</span>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {nextEvent && (
             <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50">
@@ -668,63 +724,46 @@ export default function Calendario() {
           </Card>
         )}
 
-        {/* Legend */}
-        <Card className="mb-4">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">Legenda:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
-                <span>Prazo Regulatório de Submissão</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-indigo-400 border border-indigo-500" />
-                <span>Prazo Interno de Preparação</span>
-              </div>
-              <span className="text-muted-foreground">|</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-sky-400" />
-                <span>Submetido</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-600" />
-                <span>Validado pela Entidade</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-600" />
-                <span>Em Incumprimento</span>
-              </div>
-              <span className="text-muted-foreground">|</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[9px] font-bold">H</span>
-                <span>Hoje</span>
+
+        
+        {/* Edit Event Dialog */}
+        {editingEvent && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingEvent(null)}>
+            <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold mb-4">Editar Evento</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">Nome</label>
+                  <Input value={editingEvent.name} onChange={e => setEditingEvent({...editingEvent, name: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Periodicidade</label>
+                    <select className="w-full h-9 border rounded-md px-2 text-sm" value={editingEvent.periodicity || "Anual"} onChange={e => setEditingEvent({...editingEvent, periodicity: e.target.value})}>
+                      <option value="Anual">Anual</option><option value="Semestral">Semestral</option><option value="Trimestral">Trimestral</option><option value="Mensal">Mensal</option><option value="Pontual">Pontual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Data</label>
+                    <Input type="date" value={editingEvent.nextDate ? new Date(editingEvent.nextDate).toISOString().split("T")[0] : ""} onChange={e => setEditingEvent({...editingEvent, nextDate: e.target.value})} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Entidade (nome)</label>
+                  <Input value={editingEvent.entityToDeliver || ""} onChange={e => setEditingEvent({...editingEvent, entityToDeliver: e.target.value})} placeholder="Ex: APA, CCDR Alentejo" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Link da Entidade (URL do portal de submissão)</label>
+                  <Input value={editingEvent.entityLink || ""} onChange={e => setEditingEvent({...editingEvent, entityLink: e.target.value})} placeholder="https://siliamb.apambiente.pt" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" onClick={() => { updateEventMutation.mutate({ id: editingEvent.id, name: editingEvent.name, periodicity: editingEvent.periodicity, nextDate: editingEvent.nextDate, entityToDeliver: editingEvent.entityToDeliver, entityLink: editingEvent.entityLink }); setEditingEvent(null); }}>Guardar</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingEvent(null)}>Cancelar</Button>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <div className="hidden">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <span>Prazo Regulatório de Submissão</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-            <span>Prazo Interno de Preparação</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-            <span>Submetido</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-            <span>Validado pela Entidade</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
-            <span>Em Incumprimento</span>
-          </div>
-        </div>
-
+        )}
         {/* Create Event Dialog */}
         {showCreateEvent && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateEvent(false)}>

@@ -393,6 +393,7 @@ export const wasteEgars = mysqlTable("waste_egars", {
   designation: varchar("designation", { length: 500 }).notNull(),
   quantity: varchar("quantity", { length: 50 }).notNull(), // tonnes as string for precision
   destination: mysqlEnum("destination", ["recycled", "incinerated", "landfill"]).default("recycled"),
+  correctedQuantity: varchar("correctedQuantity", { length: 50 }), // dados corrigidos prevalece sobre quantity
   month: int("month").notNull(), // 1-12
   year: int("year").notNull(),
   createdBy: int("createdBy"),

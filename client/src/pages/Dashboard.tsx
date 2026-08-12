@@ -258,8 +258,8 @@ export default function Dashboard() {
           );
         })()}
 
-        {/* Overdue Alert */}
-        {overdueQuery.data && overdueQuery.data.overdueCompanies.length > 0 && (
+        {/* Overdue Alert - only for construction projects */}
+        {!isOperationOnly && overdueQuery.data && overdueQuery.data.overdueCompanies.length > 0 && (
           <Card className="border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-800">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -288,6 +288,7 @@ export default function Dashboard() {
           </Card>
         )}
 
+        {!isOperationOnly && (<>
         <div className="flex flex-wrap gap-3 justify-end">
           <div className="flex flex-wrap gap-3">
             {canSeeAll && (
@@ -506,6 +507,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+        </>)}
       </div>
     </AppLayout>
   );

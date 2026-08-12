@@ -13,7 +13,7 @@ import { Plus, Trash2, Download, Recycle, Flame, Mountain } from "lucide-react";
 import ExcelJS from "exceljs";
 
 const LER_CODES = [
-  { code: "20107", name: "Green Waste", hazardous: false },
+  { code: "20107", name: "Resíduos Verdes", hazardous: false },
   { code: "80111", name: "Paint and varnish waste (hazardous)", hazardous: true },
   { code: "110111", name: "Aqueous washing liquids (hazardous)", hazardous: true },
   { code: "130701", name: "Fuel oil and diesel", hazardous: true },
@@ -28,14 +28,14 @@ const LER_CODES = [
   { code: "150203", name: "Absorbents non-hazardous", hazardous: false },
   { code: "160103", name: "Used Tyres", hazardous: false },
   { code: "160216", name: "Toner", hazardous: false },
-  { code: "170101", name: "Concrete", hazardous: false },
+  { code: "170101", name: "Betão", hazardous: false },
   { code: "170107", name: "Mixtures of concrete/bricks/tiles", hazardous: false },
-  { code: "170201", name: "Wood", hazardous: false },
-  { code: "170203", name: "Plastic", hazardous: false },
+  { code: "170201", name: "Madeira", hazardous: false },
+  { code: "170203", name: "Plástico", hazardous: false },
   { code: "170301", name: "Bituminous (hazardous)", hazardous: true },
   { code: "170302", name: "Bituminous mixtures non-hazardous", hazardous: false },
   { code: "170405", name: "Iron and Steel", hazardous: false },
-  { code: "170411", name: "Cables", hazardous: false },
+  { code: "170411", name: "Cabos", hazardous: false },
   { code: "170503", name: "Soils with hazardous substances", hazardous: true },
   { code: "170604", name: "Insulation material", hazardous: false },
   { code: "170802", name: "Gypsum-based materials", hazardous: false },
@@ -80,7 +80,7 @@ export default function MIRR() {
     const byMonth: Record<number, { recycled: number; incinerated: number; landfill: number; total: number }> = {};
     for (let m = 1; m <= 12; m++) byMonth[m] = { recycled: 0, incinerated: 0, landfill: 0, total: 0 };
     egars.forEach((e: any) => {
-      const qty = parseFloat(e.quantity) || 0;
+      const qty = parseFloat(e.correctedQuantity || e.quantity) || 0;
       byMonth[e.month].total += qty;
       if (e.destination === "recycled") byMonth[e.month].recycled += qty;
       else if (e.destination === "incinerated") byMonth[e.month].incinerated += qty;
@@ -97,21 +97,21 @@ export default function MIRR() {
   async function handleExportExcel() {
     if (!egars || egars.length === 0) return;
     const wb = new ExcelJS.Workbook();
-    const ws1 = wb.addWorksheet("Main Page");
+    const ws1 = wb.addWorksheet("Página Principal");
     ws1.addRow(["", "", "", "", "", "", "", selectedYear]);
-    ws1.addRow(["", "Waste Tonnes", ...MONTHS_PT]);
-    ws1.addRow(["", "Diverted from landfill", ...monthlySummary.map(m => m.recycled + m.incinerated)]);
-    ws1.addRow(["", "Incinerated", ...monthlySummary.map(m => m.incinerated)]);
-    ws1.addRow(["", "Other waste sent to landfill", ...monthlySummary.map(m => m.landfill)]);
+    ws1.addRow(["", "Resíduos (Toneladas)", ...MONTHS_PT]);
+    ws1.addRow(["", "Desviado de aterro", ...monthlySummary.map(m => m.recycled + m.incinerated)]);
+    ws1.addRow(["", "Incinerado", ...monthlySummary.map(m => m.incinerated)]);
+    ws1.addRow(["", "Outros resíduos enviados para aterro", ...monthlySummary.map(m => m.landfill)]);
     ws1.addRow([]);
-    ws1.addRow(["", "Waste produced monthly (tonnes)", ...monthlySummary.map(m => m.total)]);
+    ws1.addRow(["", "Resíduos produzidos mensalmente (t)", ...monthlySummary.map(m => m.total)]);
     ws1.addRow(["", "Total", totalWaste.toFixed(3)]);
-    ws1.addRow(["", "% Diverted from landfill", diversionRate + "%"]);
+    ws1.addRow(["", "% Desviado de aterro", diversionRate + "%"]);
     const ws2 = wb.addWorksheet("Egars");
-    ws2.addRow(["DATA", "E GAR ID", "Link", "Operador", "LER CODE", "DESIGNATION", "QUANTITY (T)"]);
-    egars.forEach((e: any) => { ws2.addRow([e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "", e.egarId || "", e.egarLink || "", e.operator || "", e.lerCode, e.designation, parseFloat(e.quantity)]); });
-    const ws3 = wb.addWorksheet("Waste Recycled");
-    const destHeader = ["", "LER CODE", "DESIGNATION"];
+    ws2.addRow(["DATA", "E GAR ID", "Link", "Operador", "CÓDIGO LER", "DESIGNAÇÃO", "QUANTIDADE (T)"]);
+    egars.forEach((e: any) => { ws2.addRow([e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "", e.egarId || "", e.egarLink || "", e.operator || "", e.lerCode, e.designation, parseFloat(e.correctedQuantity || e.quantity)]); });
+    const ws3 = wb.addWorksheet("Resíduos Reciclados");
+    const destHeader = ["", "CÓDIGO LER", "DESIGNAÇÃO"];
     MONTHS_PT.forEach(m => { destHeader.push(m + " Rec%", m + " Inc%", m + " Lan%"); });
     ws3.addRow(destHeader);
     const lerUsed = Array.from(new Set(egars.map((e: any) => e.lerCode)));
@@ -120,22 +120,22 @@ export default function MIRR() {
       const row: any[] = ["", code, ler?.name || ""];
       for (let m = 1; m <= 12; m++) {
         const me = egars.filter((e: any) => e.lerCode === code && e.month === m);
-        const tot = me.reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        const tot = me.reduce((s: number, e: any) => s + parseFloat(e.correctedQuantity || e.quantity), 0);
         if (tot === 0) { row.push("", "", ""); continue; }
-        const rec = me.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
-        const inc = me.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
-        const lan = me.filter((e: any) => e.destination === "landfill").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        const rec = me.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + parseFloat(e.correctedQuantity || e.quantity), 0);
+        const inc = me.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + parseFloat(e.correctedQuantity || e.quantity), 0);
+        const lan = me.filter((e: any) => e.destination === "landfill").reduce((s: number, e: any) => s + parseFloat(e.correctedQuantity || e.quantity), 0);
         row.push(((rec/tot)*100).toFixed(0)+"%", ((inc/tot)*100).toFixed(0)+"%", ((lan/tot)*100).toFixed(0)+"%");
       }
       ws3.addRow(row);
     });
-    const ws4 = wb.addWorksheet("Project");
-    ws4.addRow(["", "LER CODE", "DESIGNATION", ...MONTHS_PT, "TOTAL (t)"]);
+    const ws4 = wb.addWorksheet("Projeto");
+    ws4.addRow(["", "CÓDIGO LER", "DESIGNAÇÃO", ...MONTHS_PT, "TOTAL (t)"]);
     lerUsed.forEach(code => {
       const ler = LER_CODES.find(l => l.code === code);
       const row: any[] = ["", code, ler?.name || ""];
       let yt = 0;
-      for (let m = 1; m <= 12; m++) { const mt = egars.filter((e: any) => e.lerCode === code && e.month === m).reduce((s: number, e: any) => s + parseFloat(e.quantity), 0); row.push(mt > 0 ? mt.toFixed(3) : ""); yt += mt; }
+      for (let m = 1; m <= 12; m++) { const mt = egars.filter((e: any) => e.lerCode === code && e.month === m).reduce((s: number, e: any) => s + parseFloat(e.correctedQuantity || e.quantity), 0); row.push(mt > 0 ? mt.toFixed(3) : ""); yt += mt; }
       row.push(yt.toFixed(3));
       ws4.addRow(row);
     });
@@ -143,7 +143,7 @@ export default function MIRR() {
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `MIRR_WasteMap_${activeProject?.code || "Project"}_${selectedYear}.xlsx`; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `MIRR_WasteMap_${activeProject?.code || "Projeto"}_${selectedYear}.xlsx`; a.click();
     URL.revokeObjectURL(url);
     toast.success("Excel exportado com sucesso");
   }
@@ -178,7 +178,7 @@ export default function MIRR() {
             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
               <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {[2024, 2025, 2026, 2027, 2028].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
             </Select>
             {isAdminOrDono && <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>}
@@ -309,7 +309,7 @@ export default function MIRR() {
                         <td className="py-2 px-2 text-muted-foreground">{e.operator || "—"}</td>
                         <td className="py-2 px-2"><Badge variant="outline" className="text-xs">{e.lerCode}</Badge></td>
                         <td className="py-2 px-2">{e.designation}</td>
-                        <td className="py-2 px-2 font-medium">{parseFloat(e.quantity).toFixed(3)}</td>
+                        <td className="py-2 px-2 font-medium">{parseFloat(e.correctedQuantity || e.quantity).toFixed(3)}</td>
                         <td className="py-2 px-2">
                           {e.destination === "recycled" && <Badge className="bg-emerald-100 text-emerald-800 text-xs"><Recycle className="w-3 h-3 mr-1" />Reciclagem</Badge>}
                           {e.destination === "incinerated" && <Badge className="bg-amber-100 text-amber-800 text-xs"><Flame className="w-3 h-3 mr-1" />Incineração</Badge>}

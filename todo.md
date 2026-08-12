@@ -214,10 +214,10 @@
 - [x] Fix: RDCD Step 2 — planos visíveis com lista e estados ao selecionar "incluir planos"
 - [x] Melhorar: adicionar mais imagens do brand em locais estratégicos (Timeline + Dashboard)
 - [x] SIN01-NEST Dashboard: remover referências a fichas semanais, adaptar para métricas de operação
-- [ ] MIRR tab (SIN01-NEST): criar nova tab lateral para gestão de resíduos (e-GARs, LER codes, tracking mensal)
-- [ ] MIRR: input de e-GARs (data, ID, link, operador, LER code, designação, quantidade)
-- [ ] MIRR: tracking mensal por LER code com totais (reciclado, incinerado, aterro)
-- [ ] MIRR: exportar Excel organizado com 4 sheets (Main Page, Egars, Waste Recycled, Project)
-- [ ] RDCD: permitir inserir/editar draft com secções customizáveis (planos + medida a medida)
-- [ ] Preparar integração SharePoint: estrutura de código para enviar documentos via Microsoft Graph API
-- [ ] Preparar integração ACC: estrutura de código para enviar fichas via Autodesk Data Management API
+- [x] MIRR tab (SIN01-NEST): criar nova tab lateral para gestão de resíduos (e-GARs, LER codes, tracking mensal)
+- [x] MIRR: input de e-GARs (data, ID, link, operador, LER code, designação, quantidade)
+- [x] MIRR: tracking mensal por LER code com totais (reciclado, incinerado, aterro)
+- [x] MIRR: exportar Excel organizado com 4 sheets (Main Page, Egars, Waste Recycled, Project)
+- [x] RDCD: permitir inserir/editar draft com secções customizáveis (planos + medida a medida)
+- [x] Preparar integração SharePoint: estrutura de código para enviar documentos via Microsoft Graph API
+- [x] Preparar integração ACC: estrutura de código para enviar fichas via Autodesk Data Management API

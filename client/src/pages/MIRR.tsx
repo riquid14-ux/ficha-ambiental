@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Download, Recycle, Flame, Mountain } from "lucide-react";
+import ExcelJS from "exceljs";
 
 const LER_CODES = [
   { code: "20107", name: "Green Waste", hazardous: false },
@@ -92,6 +93,61 @@ export default function MIRR() {
   const totalRecycled = monthlySummary.reduce((s, m) => s + m.recycled, 0);
   const diversionRate = totalWaste > 0 ? ((totalRecycled / totalWaste) * 100).toFixed(1) : "0.0";
 
+
+  async function handleExportExcel() {
+    if (!egars || egars.length === 0) return;
+    const wb = new ExcelJS.Workbook();
+    const ws1 = wb.addWorksheet("Main Page");
+    ws1.addRow(["", "", "", "", "", "", "", selectedYear]);
+    ws1.addRow(["", "Waste Tonnes", ...MONTHS_PT]);
+    ws1.addRow(["", "Diverted from landfill", ...monthlySummary.map(m => m.recycled + m.incinerated)]);
+    ws1.addRow(["", "Incinerated", ...monthlySummary.map(m => m.incinerated)]);
+    ws1.addRow(["", "Other waste sent to landfill", ...monthlySummary.map(m => m.landfill)]);
+    ws1.addRow([]);
+    ws1.addRow(["", "Waste produced monthly (tonnes)", ...monthlySummary.map(m => m.total)]);
+    ws1.addRow(["", "Total", totalWaste.toFixed(3)]);
+    ws1.addRow(["", "% Diverted from landfill", diversionRate + "%"]);
+    const ws2 = wb.addWorksheet("Egars");
+    ws2.addRow(["DATA", "E GAR ID", "Link", "Operador", "LER CODE", "DESIGNATION", "QUANTITY (T)"]);
+    egars.forEach((e: any) => { ws2.addRow([e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "", e.egarId || "", e.egarLink || "", e.operator || "", e.lerCode, e.designation, parseFloat(e.quantity)]); });
+    const ws3 = wb.addWorksheet("Waste Recycled");
+    const destHeader = ["", "LER CODE", "DESIGNATION"];
+    MONTHS_PT.forEach(m => { destHeader.push(m + " Rec%", m + " Inc%", m + " Lan%"); });
+    ws3.addRow(destHeader);
+    const lerUsed = Array.from(new Set(egars.map((e: any) => e.lerCode)));
+    lerUsed.forEach(code => {
+      const ler = LER_CODES.find(l => l.code === code);
+      const row: any[] = ["", code, ler?.name || ""];
+      for (let m = 1; m <= 12; m++) {
+        const me = egars.filter((e: any) => e.lerCode === code && e.month === m);
+        const tot = me.reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        if (tot === 0) { row.push("", "", ""); continue; }
+        const rec = me.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        const inc = me.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        const lan = me.filter((e: any) => e.destination === "landfill").reduce((s: number, e: any) => s + parseFloat(e.quantity), 0);
+        row.push(((rec/tot)*100).toFixed(0)+"%", ((inc/tot)*100).toFixed(0)+"%", ((lan/tot)*100).toFixed(0)+"%");
+      }
+      ws3.addRow(row);
+    });
+    const ws4 = wb.addWorksheet("Project");
+    ws4.addRow(["", "LER CODE", "DESIGNATION", ...MONTHS_PT, "TOTAL (t)"]);
+    lerUsed.forEach(code => {
+      const ler = LER_CODES.find(l => l.code === code);
+      const row: any[] = ["", code, ler?.name || ""];
+      let yt = 0;
+      for (let m = 1; m <= 12; m++) { const mt = egars.filter((e: any) => e.lerCode === code && e.month === m).reduce((s: number, e: any) => s + parseFloat(e.quantity), 0); row.push(mt > 0 ? mt.toFixed(3) : ""); yt += mt; }
+      row.push(yt.toFixed(3));
+      ws4.addRow(row);
+    });
+    ws4.addRow(["", "", "TOTAL", ...monthlySummary.map(m => m.total > 0 ? m.total.toFixed(3) : ""), totalWaste.toFixed(3)]);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = `MIRR_WasteMap_${activeProject?.code || "Project"}_${selectedYear}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Excel exportado com sucesso");
+  }
+
   function handleCreate() {
     if (!projectId || !newEgar.lerCode || !newEgar.quantity) { toast.error("Preencha LER Code e Quantidade"); return; }
     const ler = LER_CODES.find(l => l.code === newEgar.lerCode);
@@ -126,6 +182,7 @@ export default function MIRR() {
               </SelectContent>
             </Select>
             {isAdminOrDono && <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>}
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> Exportar Excel</Button>
           </div>
         </div>
 

@@ -131,6 +131,7 @@ export default function AdminPanel() {
             <TabsTrigger value="images" className="gap-2">
               <ImageIcon className="w-4 h-4" /> Imagens
             <TabsTrigger value="melhorias" className="gap-2">
+          <TabsTrigger value="pedidos">Pedidos de Acesso</TabsTrigger>
               💡 Melhorias
             </TabsTrigger>
             </TabsTrigger>
@@ -151,6 +152,7 @@ export default function AdminPanel() {
           <TabsContent value="images" className="mt-4">
             <ImagesTab />
           </TabsContent>
+          <TabsContent value="pedidos" className="mt-4"><PendingAccountsTab /></TabsContent>
           <TabsContent value="melhorias" className="mt-4">
             <MelhoriasTab />
           </TabsContent>
@@ -927,6 +929,33 @@ function MelhoriasTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Pending Accounts Tab ───────────────────────────────────────────────────
+function PendingAccountsTab() {
+  const pendingQuery = trpc.auth.pendingAccounts.useQuery();
+  const approveMutation = trpc.auth.approveAccount.useMutation({
+    onSuccess: () => { pendingQuery.refetch(); },
+  });
+  const pending = (pendingQuery.data || []) as any[];
+  if (pending.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum pedido de acesso pendente.</div>;
+  return (
+    <div className="space-y-3">
+      <h3 className="text-lg font-semibold">Pedidos de Acesso Pendentes</h3>
+      {pending.map((p: any) => (
+        <div key={p.id} className="flex items-center justify-between p-4 border rounded-lg">
+          <div>
+            <p className="font-medium">{p.name}</p>
+            <p className="text-sm text-muted-foreground">{p.email}</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>Aprovar</button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>Rejeitar</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -23,6 +23,32 @@ export default function Profile() {
   const { user } = useAuth();
   const profileQuery = trpc.profile.get.useQuery();
   const utils = trpc.useUtils();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
+
+  const changePasswordMutation = trpc.auth.changePassword.useMutation({
+    onSuccess: () => { toast.success("Palavra-passe alterada com sucesso"); setCurrentPassword(""); setNewPassword(""); setConfirmNewPassword(""); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const setup2FAMutation = trpc.auth.setup2FA.useMutation({
+    onSuccess: (data) => { setQrData({ qrCode: data.qrCode, secret: data.secret }); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const confirm2FAMutation = trpc.auth.confirm2FA.useMutation({
+    onSuccess: () => { toast.success("2FA ativado com sucesso!"); setQrData(null); setTotpCode(""); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const disable2FAMutation = trpc.auth.disable2FA.useMutation({
+    onSuccess: () => { toast.success("2FA desativado"); },
+    onError: (err) => toast.error(err.message),
+  });
+
   const updateMutation = trpc.profile.update.useMutation({
     onSuccess: () => {
       toast.success("Perfil atualizado com sucesso");
@@ -174,7 +200,80 @@ export default function Profile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Password Change */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Lock className="h-5 w-5" />
+              Alterar Palavra-passe
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Palavra-passe actual</Label>
+              <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Palavra-passe actual" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nova palavra-passe</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova palavra-passe (min. 6 caracteres)" />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar nova palavra-passe</Label>
+              <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="Confirmar nova palavra-passe" />
+            </div>
+            <Button onClick={() => {
+              if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+              if (newPassword !== confirmNewPassword) { toast.error("As palavras-passe não coincidem"); return; }
+              changePasswordMutation.mutate({ currentPassword, newPassword });
+            }} disabled={changePasswordMutation.isPending || !currentPassword || !newPassword}>
+              {changePasswordMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Lock className="h-4 w-4 mr-2" />}
+              Alterar Palavra-passe
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* 2FA Setup */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Shield className="h-5 w-5" />
+              Autenticação de Dois Fatores (2FA)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Adicione uma camada extra de segurança à sua conta usando o Google Authenticator ou Microsoft Authenticator.
+            </p>
+            {!qrData ? (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setup2FAMutation.mutate()} disabled={setup2FAMutation.isPending}>
+                  <ShieldCheck className="h-4 w-4 mr-2" /> Configurar 2FA
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => disable2FAMutation.mutate()} disabled={disable2FAMutation.isPending}>
+                  Desativar 2FA
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm font-medium">1. Digitalize o QR code com o seu Authenticator:</p>
+                <div className="flex justify-center">
+                  <img src={qrData.qrCode} alt="QR Code 2FA" className="w-48 h-48 border rounded" />
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Chave manual: {qrData.secret}</p>
+                <p className="text-sm font-medium">2. Introduza o código de 6 dígitos para confirmar:</p>
+                <div className="flex gap-2">
+                  <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="font-mono text-lg tracking-widest" maxLength={6} />
+                  <Button onClick={() => confirm2FAMutation.mutate({ code: totpCode })} disabled={totpCode.length !== 6 || confirm2FAMutation.isPending}>
+                    Confirmar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
 }
+import { Lock, Shield, ShieldCheck } from "lucide-react";

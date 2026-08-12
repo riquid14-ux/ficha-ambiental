@@ -8,6 +8,9 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import * as db from "./db";
 import { sql } from "drizzle-orm";
 import { storagePut } from "./storage";
+import bcrypt from "bcryptjs";
+import { TOTP, Secret } from "otpauth";
+import QRCode from "qrcode";
 
 // Helper: check if user has elevated permissions (admin or dono_obra)
 function isAdminOrDono(role: string) {
@@ -148,70 +151,189 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+
+    // ─── Login with email + password ────────────────────────────────────────
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        const email = input.email.toLowerCase().trim();
+        const existingUsers = await db.getAllUsers();
+        const user = existingUsers.find((u) => u.email?.toLowerCase().trim() === email);
+        if (!user) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou palavra-passe incorretos." });
+        }
+        if ((user as any).accountStatus === "pending") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "A sua conta está pendente de aprovação. Contacte Nairana Aguiar npa@startcampus.pt" });
+        }
+        if ((user as any).accountStatus === "rejected") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "O seu pedido de acesso foi rejeitado. Contacte Nairana Aguiar npa@startcampus.pt" });
+        }
+        // Verify password
+        const passwordHash = (user as any).passwordHash;
+        if (!passwordHash) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Conta sem palavra-passe definida. Contacte o administrador." });
+        }
+        const passwordValid = await bcrypt.compare(input.password, passwordHash);
+        if (!passwordValid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou palavra-passe incorretos." });
+        }
+        // Check if 2FA is enabled
+        if ((user as any).totpEnabled) {
+          return { success: true, requires2FA: true, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
+        }
+        // Create session
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || email });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+        return { success: true, requires2FA: false, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
+      }),
+
+    // ─── Verify 2FA code ────────────────────────────────────────────────────
+    verify2FA: publicProcedure
+      .input(z.object({ userId: z.number(), code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(input.userId);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const totpSecret = (user as any).totpSecret;
+        if (!totpSecret) throw new TRPCError({ code: "BAD_REQUEST", message: "2FA não configurado." });
+        const totp = new TOTP({ secret: Secret.fromBase32(totpSecret), algorithm: "SHA1", digits: 6, period: 30 });
+        const valid = totp.validate({ token: input.code, window: 1 }) !== null;
+        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido. Tente novamente." });
+        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "" });
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+        return { success: true, mustChangePassword: !!(user as any).mustChangePassword };
+      }),
+
+    // ─── Register (creates pending account) ─────────────────────────────────
+    register: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(6), name: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const email = input.email.toLowerCase().trim();
+        const existingUsers = await db.getAllUsers();
+        if (existingUsers.find((u) => u.email?.toLowerCase().trim() === email)) {
+          throw new TRPCError({ code: "CONFLICT", message: "Este email já está registado." });
+        }
+        const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        await db.upsertUser({ openId, name: input.name, email, loginMethod: "email", role: "user" });
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = 'pending' WHERE openId = ${openId}`);
+        }
+        return { success: true, message: "Conta criada com sucesso. Aguarde aprovação do administrador." };
+      }),
+
+    // ─── Change password ────────────────────────────────────────────────────
+    changePassword: protectedProcedure
+      .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const passwordHash = (user as any).passwordHash;
+        if (passwordHash) {
+          const valid = await bcrypt.compare(input.currentPassword, passwordHash);
+          if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Palavra-passe actual incorreta." });
+        }
+        const newHash = await bcrypt.hash(input.newPassword, 10);
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET passwordHash = ${newHash}, mustChangePassword = 0 WHERE id = ${ctx.user.id}`);
+        }
+        return { success: true };
+      }),
+
+    // ─── Setup 2FA ──────────────────────────────────────────────────────────
+    setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
+      const secret = new Secret({ size: 20 });
+      const totp = new TOTP({ issuer: "Controlo Ambiental", label: ctx.user.email || ctx.user.name || "user", secret, algorithm: "SHA1", digits: 6, period: 30 });
+      const uri = totp.toString();
+      const qrCode = await QRCode.toDataURL(uri);
+      // Save secret temporarily (not enabled yet)
+      const database = await db.getDb();
+      if (database) {
+        await database.execute(sql`UPDATE users SET totpSecret = ${secret.base32} WHERE id = ${ctx.user.id}`);
+      }
+      return { qrCode, secret: secret.base32, uri };
+    }),
+
+    // ─── Confirm 2FA setup ──────────────────────────────────────────────────
+    confirm2FA: protectedProcedure
+      .input(z.object({ code: z.string().length(6) }))
+      .mutation(async ({ input, ctx }) => {
+        const user = await db.getUserById(ctx.user.id);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND" });
+        const totpSecret = (user as any).totpSecret;
+        if (!totpSecret) throw new TRPCError({ code: "BAD_REQUEST", message: "Configure primeiro o 2FA." });
+        const totp = new TOTP({ secret: Secret.fromBase32(totpSecret), algorithm: "SHA1", digits: 6, period: 30 });
+        const valid = totp.validate({ token: input.code, window: 1 }) !== null;
+        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido." });
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET totpEnabled = 1 WHERE id = ${ctx.user.id}`);
+        }
+        return { success: true };
+      }),
+
+    // ─── Disable 2FA ────────────────────────────────────────────────────────
+    disable2FA: protectedProcedure.mutation(async ({ ctx }) => {
+      const database = await db.getDb();
+      if (database) {
+        await database.execute(sql`UPDATE users SET totpEnabled = 0, totpSecret = NULL WHERE id = ${ctx.user.id}`);
+      }
+      return { success: true };
+    }),
+
+    // ─── Admin: reset user password ─────────────────────────────────────────
+    adminResetPassword: protectedProcedure
+      .input(z.object({ userId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const tempPassword = Math.random().toString(36).slice(-8);
+        const hash = await bcrypt.hash(tempPassword, 10);
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET passwordHash = ${hash}, mustChangePassword = 1 WHERE id = ${input.userId}`);
+        }
+        return { success: true, tempPassword };
+      }),
+
+    // ─── Admin: approve/reject pending accounts ─────────────────────────────
+    approveAccount: protectedProcedure
+      .input(z.object({ userId: z.number(), approve: z.boolean() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const status = input.approve ? "active" : "rejected";
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET accountStatus = ${status} WHERE id = ${input.userId}`);
+        }
+        return { success: true };
+      }),
+
+    // ─── List pending accounts (for admin) ──────────────────────────────────
+    pendingAccounts: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin") return [];
+      const database = await db.getDb();
+      if (!database) return [];
+      const rows = await database.execute(sql`SELECT id, name, email, createdAt FROM users WHERE accountStatus = 'pending'`);
+      return (rows as any)?.[0] || [];
+    }),
+
+    // ─── Legacy emailLogin (for ACC iframe auto-login) ──────────────────────
     emailLogin: publicProcedure
       .input(z.object({ email: z.string().email() }))
       .mutation(async ({ input, ctx }) => {
         const email = input.email.toLowerCase().trim();
-
-        // 1. Check if user already exists with this email
         const existingUsers = await db.getAllUsers();
-        const existingUser = existingUsers.find(
-          (u) => u.email?.toLowerCase().trim() === email
-        );
-
-        if (existingUser) {
-          // User exists — create session directly
-          const sessionToken = await sdk.createSessionToken(existingUser.openId, {
-            name: existingUser.name || email,
-          });
+        const existingUser = existingUsers.find((u) => u.email?.toLowerCase().trim() === email);
+        if (existingUser && (existingUser as any).accountStatus === "active") {
+          const sessionToken = await sdk.createSessionToken(existingUser.openId, { name: existingUser.name || email });
           const cookieOptions = getSessionCookieOptions(ctx.req);
-          ctx.res.cookie(COOKIE_NAME, sessionToken, {
-            ...cookieOptions,
-            maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-          });
+          ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
           return { success: true, user: existingUser };
         }
-
-        // 2. Check if there's a pending invitation for this email
-        const invitation = await db.getPendingInvitationByEmail(email);
-
-        if (invitation) {
-          // Create user from invitation
-          const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
-          await db.upsertUser({
-            openId,
-            name: email.split("@")[0],
-            email,
-            loginMethod: "email",
-            role: invitation.role as any,
-          });
-
-          // Assign company from invitation
-          const newUser = await db.getUserByOpenId(openId);
-          if (newUser && invitation.companyId) {
-            await db.updateUserCompany(newUser.id, invitation.companyId);
-          }
-          await db.acceptInvitation(invitation.id);
-
-          // Create session
-          const sessionToken = await sdk.createSessionToken(openId, {
-            name: email.split("@")[0],
-          });
-          const cookieOptions = getSessionCookieOptions(ctx.req);
-          ctx.res.cookie(COOKIE_NAME, sessionToken, {
-            ...cookieOptions,
-            maxAge: 365 * 24 * 60 * 60 * 1000,
-          });
-
-          const finalUser = await db.getUserByOpenId(openId);
-          return { success: true, user: finalUser };
-        }
-
-        // 3. No user and no invitation — deny access
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt",
-        });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt" });
       }),
   }),
 

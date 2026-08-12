@@ -213,6 +213,23 @@ export async function createMeasure(data: { number: string; description: string;
   return result[0].insertId;
 }
 
+export async function updateMeasure(id: number, data: { number?: string; description?: string; responsible?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const updates: any = {};
+  if (data.number !== undefined) updates.number = data.number;
+  if (data.description !== undefined) updates.description = data.description;
+  if (data.responsible !== undefined) updates.responsible = data.responsible;
+  if (Object.keys(updates).length === 0) return;
+  await db.update(measures).set(updates).where(eq(measures.id, id));
+}
+
+export async function deleteMeasure(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(measures).where(eq(measures.id, id));
+}
+
 // ─── Weekly Submissions ──────────────────────────────────────────────────────
 
 export async function createWeeklySubmission(data: InsertWeeklySubmission) {

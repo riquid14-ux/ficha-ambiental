@@ -477,11 +477,34 @@ export const appRouter = router({
         sectionId: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
-        if (!isAdminOrDono(ctx.user.role)) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+       if (!isAdminOrDono(ctx.user.role)) {
+         throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+       }
+       const id = await db.createMeasure(input);
+       return { id };
+     }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        number: z.string().optional(),
+        description: z.string().optional(),
+        responsible: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode editar medidas" });
         }
-        const id = await db.createMeasure(input);
-        return { id };
+        await db.updateMeasure(input.id, { number: input.number, description: input.description, responsible: input.responsible });
+        return { success: true };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode eliminar medidas" });
+        }
+        await db.deleteMeasure(input.id);
+        return { success: true };
       }),
   }),
 

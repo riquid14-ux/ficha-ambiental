@@ -78,6 +78,20 @@ export default function PhaseMeasures() {
   const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [statuses, setStatuses] = useState<Record<number, string>>({});
+  const [showSettings, setShowSettings] = useState(false);
+  const [editingMeasure, setEditingMeasure] = useState<{ id: number; number: string; description: string; responsible: string } | null>(null);
+
+  const updateMeasureMutation = trpc.measures.update.useMutation({
+    onSuccess: () => { measuresQuery.refetch(); toast.success("Medida atualizada"); setEditingMeasure(null); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const deleteMeasureMutation = trpc.measures.delete.useMutation({
+    onSuccess: () => { measuresQuery.refetch(); toast.success("Medida eliminada"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const isAdmin = user?.role === "admin";
+
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [expandedMeasures, setExpandedMeasures] = useState<Set<number>>(new Set());
 
@@ -258,35 +272,86 @@ export default function PhaseMeasures() {
                   {(complianceOverview[phase.key]?.total || 0)} medidas nesta fase
                 </p>
               </div>
-              {isAdminOrDono && (
-                <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />Adicionar Medida</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Nova Medida — {phase.label}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                      <Input placeholder="Número (ex: PL-4)" value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
-                      <Textarea placeholder="Descrição da medida/condição" value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
-                      <Button onClick={() => {
-                        const sec = (phaseData[phase.key] || [])[0]?.section;
-                        if (!sec) { toast.error("Secção não encontrada"); return; }
-                        addMeasureMutation?.mutate?.({
-                          number: newMeasure.number,
-                          description: newMeasure.description,
-                          responsible: "DO",
-                          sectionId: sec.id,
-                        });
-                      }} disabled={!newMeasure.number || !newMeasure.description}>
-                        Adicionar
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
+              <div className="flex items-center gap-2">
+                {isAdminOrDono && (
+                  <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />Adicionar Medida</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Nova Medida — {phase.label}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <Input placeholder="Número (ex: PL-4)" value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
+                        <Textarea placeholder="Descrição da medida/condição" value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
+                        <Button onClick={() => {
+                          const sec = (phaseData[phase.key] || [])[0]?.section;
+                          if (!sec) { toast.error("Secção não encontrada"); return; }
+                          addMeasureMutation?.mutate?.({
+                            number: newMeasure.number,
+                            description: newMeasure.description,
+                            responsible: "DO",
+                            sectionId: sec.id,
+                          });
+                        }} disabled={!newMeasure.number || !newMeasure.description}>
+                          Adicionar
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                {isAdmin && (
+                  <Button size="sm" variant={showSettings ? "default" : "ghost"} onClick={() => setShowSettings(!showSettings)} title="Definições (Admin)">
+                    <SettingsGear className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </div>
+
+            {/* Admin Settings Panel */}
+            {isAdmin && showSettings && (
+              <Card className="border-amber-200 bg-amber-50/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <SettingsGear className="w-4 h-4 text-amber-600" />
+                    Definições de Medidas (Admin)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-xs text-muted-foreground mb-3">Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.</p>
+                  {(phaseData[phase.key] || []).map(({ measures: phaseMeasures }: any) =>
+                    phaseMeasures.map((m: any) => (
+                      <div key={m.id} className="flex items-center gap-2 p-2 rounded border bg-white">
+                        {editingMeasure?.id === m.id ? (
+                          <>
+                            <Input className="w-20 h-8 text-xs" value={editingMeasure!.number} onChange={e => setEditingMeasure({ ...editingMeasure!, number: e.target.value })} />
+                            <Input className="flex-1 h-8 text-xs" value={editingMeasure!.description} onChange={e => setEditingMeasure({ ...editingMeasure!, description: e.target.value })} />
+                            <Button size="sm" variant="default" className="h-7 px-2 text-xs" onClick={() => updateMeasureMutation.mutate({ id: editingMeasure!.id, number: editingMeasure!.number, description: editingMeasure!.description, responsible: editingMeasure!.responsible })}>
+                              Guardar
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure(null)}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Badge variant="outline" className="text-xs font-mono shrink-0">{m.number}</Badge>
+                            <span className="text-xs flex-1 truncate">{m.description}</span>
+                            <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure({ id: m.id, number: m.number, description: m.description, responsible: m.responsible })}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => { if (confirm(`Eliminar medida ${m.number}?`)) deleteMeasureMutation.mutate({ id: m.id }); }}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Measures list */}
             {(phaseData[phase.key] || []).map(({ section, measures }: any) => (
@@ -592,3 +657,4 @@ function StatusBadge({ status }: { status?: string }) {
       return null;
   }
 }
+import { Settings2 as SettingsGear, Pencil, X } from "lucide-react";

@@ -223,3 +223,5 @@
 - [x] Preparar integração ACC: estrutura de código para enviar fichas via Autodesk Data Management API
 - [x] Full auth system: email+password+2FA, registration with admin approval, profile password change
 - [x] 2FA enforcement: blocking overlay after 7 days without 2FA configured (blocks all actions until configured, even in ACC iframe)
+- [x] Admin tabs fix: Pedidos de Acesso and Melhorias properly separated in Administration panel
+- [x] Fases: admin-only settings gear (⚙️) to edit measure number/description, add new measures, or delete measures

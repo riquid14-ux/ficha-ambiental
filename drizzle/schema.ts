@@ -472,3 +472,20 @@ export const kpiValues = mysqlTable("kpi_values", {
 });
 export type KpiValue = typeof kpiValues.$inferSelect;
 export type InsertKpiValue = typeof kpiValues.$inferInsert;
+
+// KPI Targets (Metas)
+export const kpiTargets = mysqlTable("kpi_targets", {
+  id: serial("id").primaryKey(),
+  metricId: int("metricId").notNull(),
+  projectId: int("projectId").notNull(),
+  targetType: varchar("targetType", { length: 20 }).notNull().default("monthly"),
+  targetValue: varchar("targetValue", { length: 255 }).notNull(),
+  targetDirection: varchar("targetDirection", { length: 10 }).notNull().default("max"),
+  year: int("year").notNull(),
+  month: int("month"),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type KpiTarget = typeof kpiTargets.$inferSelect;
+export type InsertKpiTarget = typeof kpiTargets.$inferInsert;

@@ -1757,6 +1757,34 @@ export const appRouter = router({
       await database.execute(sql`UPDATE kpi_metrics SET active = 0 WHERE id = ${input.id}`);
       return { success: true };
     }),
+    // KPI Targets (Metas)
+    targets: protectedProcedure.input(z.object({ projectId: z.number(), year: z.number().optional() })).query(async ({ input }) => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      let q = sql`SELECT * FROM kpi_targets WHERE projectId = ${input.projectId}`;
+      if (input.year) q = sql`${q} AND year = ${input.year}`;
+      const rows = await database.execute(q);
+      return (rows as any)[0] || [];
+    }),
+    upsertTarget: protectedProcedure.input(z.object({ id: z.number().optional(), metricId: z.number(), projectId: z.number(), targetType: z.string(), targetValue: z.string(), targetDirection: z.string(), year: z.number(), month: z.number().optional() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.id) {
+        await database.execute(sql`UPDATE kpi_targets SET targetValue=${input.targetValue}, targetDirection=${input.targetDirection}, targetType=${input.targetType}, month=${input.month||null} WHERE id=${input.id}`);
+        return { success: true, id: input.id };
+      } else {
+        const result = await database.execute(sql`INSERT INTO kpi_targets (metricId, projectId, targetType, targetValue, targetDirection, year, month, createdBy) VALUES (${input.metricId}, ${input.projectId}, ${input.targetType}, ${input.targetValue}, ${input.targetDirection}, ${input.year}, ${input.month||null}, ${ctx.user.id})`);
+        return { success: true, id: (result as any)[0].insertId };
+      }
+    }),
+    deleteTarget: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await database.execute(sql`DELETE FROM kpi_targets WHERE id = ${input.id}`);
+      return { success: true };
+    }),
   }),
 });
 

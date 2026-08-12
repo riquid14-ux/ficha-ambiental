@@ -1688,6 +1688,76 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
+
+  // ─── KPI's de Sustentabilidade ──────────────────────────────────────────
+  kpi: router({
+    metrics: protectedProcedure.query(async () => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await database.execute(sql`SELECT * FROM kpi_metrics WHERE active = 1 ORDER BY sortOrder ASC`);
+      return (rows as any)[0] || [];
+    }),
+    matrix: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ input }) => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await database.execute(sql`SELECT ks.id, ks.companyId, ks.weekNumber, ks.weekYear, ks.status, ks.createdAt, c.name as companyName, c.shortName FROM kpi_submissions ks JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId} ORDER BY ks.weekYear DESC, ks.weekNumber DESC`);
+      return (rows as any)[0] || [];
+    }),
+    values: protectedProcedure.input(z.object({ submissionId: z.number() })).query(async ({ input }) => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await database.execute(sql`SELECT * FROM kpi_values WHERE submissionId = ${input.submissionId}`);
+      return (rows as any)[0] || [];
+    }),
+    allValues: protectedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional() })).query(async ({ input }) => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId}`;
+      if (input.weekYear) q = sql`${q} AND ks.weekYear = ${input.weekYear}`;
+      if (input.weekNumber) q = sql`${q} AND ks.weekNumber = ${input.weekNumber}`;
+      const rows = await database.execute(q);
+      return (rows as any)[0] || [];
+    }),
+    submit: protectedProcedure.input(z.object({ projectId: z.number(), companyId: z.number(), weekNumber: z.number(), weekYear: z.number(), values: z.array(z.object({ metricId: z.number(), value: z.string() })) })).mutation(async ({ ctx, input }) => {
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const existing = await database.execute(sql`SELECT id FROM kpi_submissions WHERE projectId = ${input.projectId} AND companyId = ${input.companyId} AND weekNumber = ${input.weekNumber} AND weekYear = ${input.weekYear}`);
+      let submissionId: number;
+      if ((existing as any)[0]?.length > 0) {
+        submissionId = (existing as any)[0][0].id;
+        await database.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
+        await database.execute(sql`UPDATE kpi_submissions SET userId = ${ctx.user.id}, updatedAt = NOW() WHERE id = ${submissionId}`);
+      } else {
+        const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, userId, weekNumber, weekYear) VALUES (${input.projectId}, ${input.companyId}, ${ctx.user.id}, ${input.weekNumber}, ${input.weekYear})`);
+        submissionId = (result as any)[0].insertId;
+      }
+      for (const v of input.values) {
+        if (v.value && v.value.trim() !== "") {
+          await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${v.metricId}, ${v.value})`);
+        }
+      }
+      return { success: true, submissionId };
+    }),
+    upsertMetric: protectedProcedure.input(z.object({ id: z.number().optional(), name: z.string(), nameEn: z.string().optional(), unit: z.string(), target: z.string().optional(), category: z.string(), inputType: z.string().default("manual"), formulaType: z.string().optional(), formulaSourceMetricId: z.number().optional(), pci: z.string().optional(), emissionFactor: z.string().optional(), density: z.string().optional(), sortOrder: z.number().optional() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.id) {
+        await database.execute(sql`UPDATE kpi_metrics SET name=${input.name}, nameEn=${input.nameEn||null}, unit=${input.unit}, target=${input.target||null}, category=${input.category}, inputType=${input.inputType}, formulaType=${input.formulaType||null}, formulaSourceMetricId=${input.formulaSourceMetricId||null}, pci=${input.pci||null}, emissionFactor=${input.emissionFactor||null}, density=${input.density||null}, sortOrder=${input.sortOrder||0} WHERE id=${input.id}`);
+        return { success: true, id: input.id };
+      } else {
+        const result = await database.execute(sql`INSERT INTO kpi_metrics (name, nameEn, unit, target, category, inputType, formulaType, formulaSourceMetricId, pci, emissionFactor, density, sortOrder) VALUES (${input.name}, ${input.nameEn||null}, ${input.unit}, ${input.target||null}, ${input.category}, ${input.inputType}, ${input.formulaType||null}, ${input.formulaSourceMetricId||null}, ${input.pci||null}, ${input.emissionFactor||null}, ${input.density||null}, ${input.sortOrder||0})`);
+        return { success: true, id: (result as any)[0].insertId };
+      }
+    }),
+    deleteMetric: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await database.execute(sql`UPDATE kpi_metrics SET active = 0 WHERE id = ${input.id}`);
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

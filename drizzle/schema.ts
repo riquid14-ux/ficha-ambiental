@@ -423,3 +423,52 @@ export const userFeedback = mysqlTable("user_feedback", {
   createdAt: timestamp("createdAt").defaultNow(),
 });
 export type UserFeedback = typeof userFeedback.$inferSelect;
+
+// ─── KPI's de Sustentabilidade ──────────────────────────────────────────────
+
+// Definições de métricas KPI (configuráveis pelo admin)
+export const kpiMetrics = mysqlTable("kpi_metrics", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 500 }).notNull(),
+  nameEn: varchar("nameEn", { length: 500 }),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  target: varchar("target", { length: 255 }),
+  category: varchar("category", { length: 100 }).notNull(),
+  inputType: varchar("inputType", { length: 20 }).notNull().default("manual"),
+  formulaType: varchar("formulaType", { length: 50 }),
+  formulaSourceMetricId: int("formulaSourceMetricId"),
+  pci: varchar("pci", { length: 50 }),
+  emissionFactor: varchar("emissionFactor", { length: 50 }),
+  density: varchar("density", { length: 50 }),
+  sortOrder: int("sortOrder").default(0),
+  active: int("active").default(1),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+export type KpiMetric = typeof kpiMetrics.$inferSelect;
+export type InsertKpiMetric = typeof kpiMetrics.$inferInsert;
+
+// Submissões semanais de KPIs por empresa/projeto
+export const kpiSubmissions = mysqlTable("kpi_submissions", {
+  id: serial("id").primaryKey(),
+  projectId: int("projectId").notNull(),
+  companyId: int("companyId").notNull(),
+  userId: int("userId"),
+  weekNumber: int("weekNumber").notNull(),
+  weekYear: int("weekYear").notNull(),
+  status: varchar("status", { length: 20 }).default("submitted"),
+  createdAt: timestamp("createdAt").defaultNow(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+});
+export type KpiSubmission = typeof kpiSubmissions.$inferSelect;
+export type InsertKpiSubmission = typeof kpiSubmissions.$inferInsert;
+
+// Valores individuais por métrica por submissão
+export const kpiValues = mysqlTable("kpi_values", {
+  id: serial("id").primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  metricId: int("metricId").notNull(),
+  value: varchar("value", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+export type KpiValue = typeof kpiValues.$inferSelect;
+export type InsertKpiValue = typeof kpiValues.$inferInsert;

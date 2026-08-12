@@ -225,3 +225,13 @@
 - [x] 2FA enforcement: blocking overlay after 7 days without 2FA configured (blocks all actions until configured, even in ACC iframe)
 - [x] Admin tabs fix: Pedidos de Acesso and Melhorias properly separated in Administration panel
 - [x] Fases: admin-only settings gear (⚙️) to edit measure number/description, add new measures, or delete measures
+- [x] Fases: admin-only settings gear (⚙️) to edit measure number/description, add new measures, or delete measures
+- [x] KPI's tab for construction projects (SIN02-SIN07, Subestação)
+- [x] KPI metrics DB schema (manual vs calculated fields)
+- [x] KPI weekly submission form per EE with units
+- [x] KPI submission matrix (EE x week) showing who submitted
+- [x] KPI summary cards (Environmental Incidents, Water, Fuel, HVO, Electricity)
+- [x] KPI auto-calculations (L→KgCO2e using PCI, FE, density)
+- [x] KPI settings panel (add/edit metrics, units, conversion factors)
+- [x] KPI Excel export (consolidated totals)
+- [x] KPI filter by week/month

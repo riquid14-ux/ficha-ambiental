@@ -35,6 +35,7 @@ import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, Fil
 import { Grid3X3, FileText, CalendarDays, Settings2, FileBarChart } from "lucide-react";
 import { BookOpen, Layers, GitBranch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
+import { BarChart3 } from "lucide-react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +59,7 @@ const projectMenuItems = [
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: History, label: "Histórico", path: "/historico" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
+  { icon: BarChart3, label: "KPI's", path: "/kpi" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)

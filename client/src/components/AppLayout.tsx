@@ -59,7 +59,6 @@ const operationProjectMenuItems = [
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
-  { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileText, label: "Planos", path: "/planos" },
 ];
 

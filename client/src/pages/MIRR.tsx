@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Download, Recycle, Flame, Mountain } from "lucide-react";
+import { Plus, Trash2, Download, Upload, Recycle, Flame, Mountain } from "lucide-react";
 import ExcelJS from "exceljs";
 
 const LER_CODES = [
@@ -178,11 +178,14 @@ export default function MIRR() {
             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
               <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
             </Select>
-            {isAdminOrDono && <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>}
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> Exportar Excel</Button>
+            {isAdminOrDono && <>
+            <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>
+            <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info("Importação de e-GAR via ficheiro em desenvolvimento. Registe manualmente por agora."); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> Importar e-GAR</Button>
+            </>}
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> Exportar Excel MIRR</Button>
           </div>
         </div>
 

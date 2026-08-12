@@ -327,7 +327,7 @@ function MeasureCard({
   measure, status, notes, evidence, isExpanded, onToggle,
   onStatusChange, onNotesChange, onNotesBlur,
   onAddComment, onUploadFile, onDeleteEvidence,
-  isEditable, phaseColor,
+  isEditable, phaseColor, isOperationOnly, evidenceYear,
 }: {
   measure: any;
   status?: string;
@@ -343,6 +343,8 @@ function MeasureCard({
   onDeleteEvidence: (id: number) => void;
   isEditable: boolean;
   phaseColor: string;
+  isOperationOnly?: boolean;
+  evidenceYear?: number;
 }) {
   const [commentText, setCommentText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -386,18 +388,37 @@ function MeasureCard({
                 onValueChange={onStatusChange}
                 className="flex gap-3"
               >
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
-                  <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Concluído</Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                  <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Em Curso</Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                  <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Pendente</Label>
-                </div>
+                {isOperationOnly ? (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
+                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Reportado {evidenceYear}</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
+                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Pendente {evidenceYear}</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Não Aplicável</Label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
+                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Concluído</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
+                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Em Curso</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Pendente</Label>
+                    </div>
+                  </>
+                )}
               </RadioGroup>
               <Input
                 placeholder="Notas rápidas..."

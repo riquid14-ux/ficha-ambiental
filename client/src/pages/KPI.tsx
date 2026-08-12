@@ -275,68 +275,35 @@ export default function KPI() {
                 ))}
               </div>
               <div className="flex gap-1 mb-3 flex-wrap">
-                  {["Energia & CO2", "Água", "Workforce", "Resumo"].map((p, i) => (
+                  {["Energia & CO2", "Água", "Trabalhadores", "Incidentes"].map((p, i) => (
                     <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="text-xs h-7">{p}</Button>
                   ))}
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                 {dashPage === 0 && <>
-                {/* 1. Fuel consumption bar */}
-                <ChartCard title="Consumo Combustível (L)" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="fuel" fill="#f59e0b" /></BarChart></ChartCard>
-                {/* 2. Water consumption */}
-                <ChartCard title="Consumo Água (L)" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" /></BarChart></ChartCard>
-                {/* 3. Workforce evolution */}
-                <ChartCard title="Trabalhadores em Obra" h="h-48"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ChartCard>
-                {/* 4. Incidents */}
-                <ChartCard title="Incidentes Ambientais" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
-                {/* 5. Energy */}
-                <ChartCard title="Eletricidade (kWh)" h="h-48"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="energy" fill="#a855f7" stroke="#7c3aed" fillOpacity={0.3} /></AreaChart></ChartCard>
-</>}
+                <ChartCard title="Consumo Combustível (L)"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="fuel" fill="#f59e0b" /></BarChart></ChartCard>
+                <ChartCard title="Eletricidade (kWh)"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="energy" fill="#a855f7" stroke="#7c3aed" fillOpacity={0.3} /></AreaChart></ChartCard>
+                <ChartCard title="Repartição Emissões CO2"><PieChart><Pie data={[{ name: "Diesel", value: totals[findMetric("emissions", "Diesel")?.id || 0] || 0 }, { name: "HVO", value: totals[findMetric("emissions", "HVO")?.id || 0] || 0 }]} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>{COLORS.map((c, i) => <Cell key={i} fill={c} />)}</Pie><Tooltip /></PieChart></ChartCard>
+                <ChartCard title="CO2 Acumulado"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumFuel || 0; acc.push({ ...d, cumFuel: prev + (d.fuel || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumFuel" fill="#f59e0b" stroke="#d97706" fillOpacity={0.2} /></AreaChart></ChartCard>
+                </>}
                 {dashPage === 1 && <>
-                {/* 6. Transport - actually water page */}
-                <ChartCard title="Transporte" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="transport" fill="#06b6d4" /></BarChart></ChartCard>
-                {/* 7. CO2 Emissions pie */}
-                <ChartCard title="Repartição Emissões CO2" h="h-48">
-                  <PieChart><Pie data={[{ name: "Diesel", value: totals[findMetric("emissions", "Diesel")?.id || 0] || 0 }, { name: "HVO", value: totals[findMetric("emissions", "HVO")?.id || 0] || 0 }]} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>{COLORS.map((c, i) => <Cell key={i} fill={c} />)}</Pie><Tooltip /></PieChart>
-                </ChartCard>
-                {/* 8. Water breakdown pie */}
-                <ChartCard title="Repartição Água" h="h-48">
-                  <PieChart><Pie data={metrics.filter((m: any) => m.category === "water" && m.inputType === "manual" && (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart>
-                </ChartCard>
-</>}
+                <ChartCard title="Consumo Água (L)"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" /></BarChart></ChartCard>
+                <ChartCard title="Água Acumulada"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumWater || 0; acc.push({ ...d, cumWater: prev + (d.water || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumWater" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} /></AreaChart></ChartCard>
+                <ChartCard title="Repartição por Tipo de Água"><PieChart><Pie data={metrics.filter((m: any) => m.category === "water" && m.inputType === "manual" && (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ChartCard>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-sky-50"><Droplets className="w-8 h-8 text-blue-500 mb-2" /><p className="text-2xl font-bold text-blue-700">{formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))} L</p><p className="text-xs text-muted-foreground">Total Água Consumida</p></Card>
+                </>}
                 {dashPage === 2 && <>
-                {/* 9. Cumulative CO2 - workforce page */}
-                <ChartCard title="CO2 Acumulado" h="h-48"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumFuel || 0; acc.push({ ...d, cumFuel: prev + (d.fuel || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumFuel" fill="#f59e0b" stroke="#d97706" fillOpacity={0.2} /></AreaChart></ChartCard>
-                {/* 10. Cumulative Water */}
-                <ChartCard title="Água Acumulada" h="h-48"><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumWater || 0; acc.push({ ...d, cumWater: prev + (d.water || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumWater" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} /></AreaChart></ChartCard>
-                {/* 11. Workers vs Hours */}
-                <ChartCard title="Trabalhadores vs Horas" h="h-48"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Legend /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" name="Trabalhadores" /><Line type="monotone" dataKey={`m_${findMetric("workforce", "horas")?.id || 0}`} stroke="#06b6d4" name="Horas (÷100)" /></LineChart></ChartCard>
-                {/* 12. Toolbox & Suggestions */}
-                <ChartCard title="Toolbox Ambientais" h="h-48"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="other" fill="#84cc16" name="Toolbox/Outros" /></BarChart></ChartCard>
-</>}
+                <ChartCard title="Trabalhadores em Obra"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ChartCard>
+                <ChartCard title="Trabalhadores vs Horas"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Legend /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" name="Trabalhadores" /><Line type="monotone" dataKey={`m_${findMetric("workforce", "horas")?.id || 0}`} stroke="#06b6d4" name="Horas" /></LineChart></ChartCard>
+                <ChartCard title="Transporte"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="transport" fill="#06b6d4" /></BarChart></ChartCard>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-violet-50 to-purple-50"><Users className="w-8 h-8 text-purple-500 mb-2" /><p className="text-2xl font-bold text-purple-700">{(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em obra')?.id || 0] || 1; return tec + ' / ' + total; })()}</p><p className="text-xs text-muted-foreground">Técnicos Ambiente / Total Trabalhadores</p><p className="text-[10px] text-emerald-600 font-medium mt-1">Rácio: {(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em obra')?.id || 0] || 1; return ((tec / Math.max(total, 1)) * 100).toFixed(1); })()}%</p></Card>
+                </>}
                 {dashPage === 3 && <>
-                {/* 13-16: KPI summary cards */}
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50">
-                  <Leaf className="w-8 h-8 text-emerald-500 mb-2" />
-                  <p className="text-2xl font-bold text-emerald-700">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)}</p>
-                  <p className="text-xs text-muted-foreground">KgCO2e Total Emitido</p>
-                </Card>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-sky-50">
-                  <Droplets className="w-8 h-8 text-blue-500 mb-2" />
-                  <p className="text-2xl font-bold text-blue-700">{formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))}</p>
-                  <p className="text-xs text-muted-foreground">Litros Água Total</p>
-                </Card>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-purple-50 to-violet-50">
-                  <Users className="w-8 h-8 text-purple-500 mb-2" />
-                  <p className="text-2xl font-bold text-purple-700">{totals[findMetric("workforce", "Trabalhadores em obra")?.id || 0] || 0}</p>
-                  <p className="text-xs text-muted-foreground">Último Registo Trabalhadores</p>
-                </Card>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-orange-50">
-                  <Activity className="w-8 h-8 text-amber-500 mb-2" />
-                  <p className="text-2xl font-bold text-amber-700">{chartData.length}</p>
-                  <p className="text-xs text-muted-foreground">Semanas com Dados</p>
-                </Card>
-              </>}
+                <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Derrames</p></Card>
+                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50"><Leaf className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
+                </>}
               </div>
             </TabsContent>
           )}

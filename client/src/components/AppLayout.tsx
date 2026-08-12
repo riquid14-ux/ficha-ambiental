@@ -309,7 +309,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </SidebarInset>
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (

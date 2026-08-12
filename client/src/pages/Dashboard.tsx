@@ -157,7 +157,7 @@ export default function Dashboard() {
         <div className="relative rounded-xl overflow-hidden h-48">
           <img src={brandImages?.image_dashboard || "https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(2).jpg"} alt="Start Campus" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
-            <p className="text-white font-semibold text-lg">Controlo Ambiental — Start Campus</p>
+            <p className="text-white font-semibold text-lg">Plataforma Ambiental — Start Campus</p>
           </div>
         </div>
 

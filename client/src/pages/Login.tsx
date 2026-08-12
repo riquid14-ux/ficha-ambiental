@@ -148,7 +148,7 @@ export default function Login() {
           <img src={LOGO_URL} alt="Start Campus" className="h-16 object-contain" />
           <div className="text-center">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Ficha de Controlo Ambiental
+              Plataforma Ambiental
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}

@@ -31,7 +31,7 @@ export default function Home() {
         <div className="text-center mb-16">
           <img src={LOGO_URL} alt="Start Campus" className="h-20 object-contain mb-6" />
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
-            Ficha de Controlo Ambiental
+            Plataforma Ambiental - Start Campus
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Plataforma de acompanhamento semanal de medidas de gestão ambiental em obras.

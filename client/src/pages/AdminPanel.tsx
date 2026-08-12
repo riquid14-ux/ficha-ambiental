@@ -130,10 +130,12 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <ImageIcon className="w-4 h-4" /> Imagens
-            <TabsTrigger value="melhorias" className="gap-2">
-          <TabsTrigger value="pedidos">Pedidos de Acesso</TabsTrigger>
-              💡 Melhorias
             </TabsTrigger>
+            <TabsTrigger value="pedidos" className="gap-2">
+              🔑 Pedidos de Acesso
+            </TabsTrigger>
+            <TabsTrigger value="melhorias" className="gap-2">
+              💡 Melhorias
             </TabsTrigger>
           </TabsList>
 

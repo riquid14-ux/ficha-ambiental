@@ -198,6 +198,7 @@ export default function PhaseMeasures() {
         </div>
         {isOperationOnly && (
           <div className="flex items-center gap-2">
+            <div className="text-lg font-bold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
             <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>

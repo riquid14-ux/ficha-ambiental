@@ -60,8 +60,8 @@ export default function MIRR() {
   const { activeProject } = useProject();
   const [location] = useLocation();
   const isMIRRPage = location === "/mirr";
-  const pageTitle = isMIRRPage ? "MIRR — Gestão de Resíduos" : "Gestão de Resíduos";
-  const pageSubtitle = isMIRRPage ? "Mapa Integrado de Registo de Resíduos" : "Gestão e rastreio de resíduos de construção";
+  const pageTitle = isMIRRPage ? "MIRR" : "Gestão de Resíduos";
+  const pageSubtitle = isMIRRPage ? "Mapa Integrado de Registo de Resíduos — Operação" : "Gestão e rastreio de resíduos de construção";
   const [subProject, setSubProject] = useState("all");
   const [subProjects, setSubProjects] = useState<string[]>(() => {
     const saved = localStorage.getItem(`mirr-subprojects-${activeProject?.id}`);
@@ -185,7 +185,6 @@ export default function MIRR() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Recycle className="w-6 h-6 text-emerald-600" /> MIRR — Gestão de Resíduos</h1>
             <h1 className="text-2xl font-bold flex items-center gap-2"><Recycle className="w-6 h-6 text-emerald-600" /> {pageTitle}</h1>
             <p className="text-sm text-muted-foreground">{pageSubtitle} — {activeProject?.name || "Projeto"}</p>
           </div>

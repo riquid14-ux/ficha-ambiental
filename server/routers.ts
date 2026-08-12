@@ -273,13 +273,20 @@ export const appRouter = router({
     updateRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]) }))
       .mutation(async ({ input, ctx }) => {
+        // Only admin can promote to admin or dono_obra
+        if ((input.role === "admin" || input.role === "dono_obra") && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem atribuir o papel de Admin ou Dono de Obra." });
+        }
         // Prevent demoting an admin unless the requester is also an admin
         const targetUser = await db.getUserById(input.userId);
         if (targetUser?.role === "admin" && input.role !== "admin") {
           // Only the super-admin (riquid14) can demote other admins
           throw new TRPCError({ code: "FORBIDDEN", message: "Não é possível remover o papel de Admin a outro administrador." });
         }
-        // Any admin can promote others to admin
+        // Prevent dono_obra from changing another dono_obra
+        if (targetUser?.role === "dono_obra" && ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o papel de um Dono de Obra." });
+        }
         await db.updateUserRole(input.userId, input.role);
         return { success: true };
       }),

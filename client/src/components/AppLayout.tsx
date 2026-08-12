@@ -40,6 +40,9 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Recycle } from "lucide-react";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -118,6 +121,21 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const { user, logout } = useAuth();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
+
+  const setup2FAMutation = trpc.auth.setup2FA.useMutation({
+    onSuccess: (data) => { setQrData({ qrCode: data.qrCode, secret: data.secret }); },
+  });
+  const confirm2FAMutation = trpc.auth.confirm2FA.useMutation({
+    onSuccess: () => { setShow2FASetup(false); setQrData(null); setTotpCode(""); window.location.reload(); },
+  });
+
+  // Check if 2FA enforcement is needed (7 days after account creation without 2FA)
+  const needs2FA = user && !(user as any).totpEnabled && user.createdAt &&
+    (Date.now() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+
   const { projects, activeProject, setActiveProjectId, isAllProjects } = useProject();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
@@ -291,6 +309,45 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         )}
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>
+      {/* 2FA Enforcement Overlay */}
+      {needs2FA && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100]">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="h-5 w-5 text-orange-500" />
+                Autenticação de Dois Fatores Obrigatória
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Para garantir a segurança dos dados ambientais, é obrigatório configurar a autenticação de dois fatores (2FA).
+                Não poderá utilizar a plataforma até completar esta configuração.
+              </p>
+              {!qrData ? (
+                <Button className="w-full" onClick={() => setup2FAMutation.mutate()} disabled={setup2FAMutation.isPending}>
+                  <Shield className="h-4 w-4 mr-2" /> Configurar 2FA Agora
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm font-medium">1. Digitalize com o Google/Microsoft Authenticator:</p>
+                  <div className="flex justify-center">
+                    <img src={qrData.qrCode} alt="QR Code 2FA" className="w-40 h-40 border rounded" />
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center break-all">Chave: {qrData.secret}</p>
+                  <p className="text-sm font-medium">2. Introduza o código de 6 dígitos:</p>
+                  <div className="flex gap-2">
+                    <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="font-mono text-lg tracking-widest" maxLength={6} />
+                    <Button onClick={() => confirm2FAMutation.mutate({ code: totpCode })} disabled={totpCode.length !== 6 || confirm2FAMutation.isPending}>
+                      Confirmar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
@@ -307,4 +364,3 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     </>
   );
 }
-import { Recycle } from "lucide-react";

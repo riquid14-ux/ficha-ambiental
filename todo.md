@@ -221,3 +221,5 @@
 - [x] RDCD: permitir inserir/editar draft com secções customizáveis (planos + medida a medida)
 - [x] Preparar integração SharePoint: estrutura de código para enviar documentos via Microsoft Graph API
 - [x] Preparar integração ACC: estrutura de código para enviar fichas via Autodesk Data Management API
+- [x] Full auth system: email+password+2FA, registration with admin approval, profile password change
+- [x] 2FA enforcement: blocking overlay after 7 days without 2FA configured (blocks all actions until configured, even in ACC iframe)

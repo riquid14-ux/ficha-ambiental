@@ -216,9 +216,6 @@ export default function Login() {
                 <UserPlus className="w-3 h-3 inline mr-1" /> Criar conta
               </button>
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              Palavra-passe inicial: 123456 (será obrigado a alterar no primeiro acesso)
-            </p>
           </>
         )}
 

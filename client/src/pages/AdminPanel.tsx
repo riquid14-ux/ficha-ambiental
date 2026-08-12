@@ -130,6 +130,9 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <ImageIcon className="w-4 h-4" /> Imagens
+            <TabsTrigger value="melhorias" className="gap-2">
+              💡 Melhorias
+            </TabsTrigger>
             </TabsTrigger>
           </TabsList>
 
@@ -147,6 +150,9 @@ export default function AdminPanel() {
           </TabsContent>
           <TabsContent value="images" className="mt-4">
             <ImagesTab />
+          </TabsContent>
+          <TabsContent value="melhorias" className="mt-4">
+            <MelhoriasTab />
           </TabsContent>
         </Tabs>
       </div>
@@ -887,6 +893,40 @@ function HistoricalTab() {
           </Table>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function MelhoriasTab() {
+  const { data: feedbacks, refetch } = trpc.feedback.list.useQuery();
+  const updateMutation = trpc.feedback.updateStatus.useMutation({ onSuccess: () => refetch() });
+  
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold">Feedback e Melhorias dos Utilizadores</h3>
+      {!feedbacks || feedbacks.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Sem feedback recebido. Os utilizadores podem enviar sugestões pelo menu do perfil.</p>
+      ) : (
+        <div className="space-y-3">
+          {feedbacks.map((fb: any) => (
+            <div key={fb.id} className={`border rounded-lg p-4 ${fb.status === "implementado" ? "border-green-200 bg-green-50/30" : fb.status === "rejeitado" ? "border-red-200 bg-red-50/30" : "border-gray-200"}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium">{fb.userName || fb.userEmail || "Anónimo"}</p>
+                  <p className="text-xs text-muted-foreground">{fb.createdAt ? new Date(fb.createdAt).toLocaleDateString("pt-PT") : ""}</p>
+                </div>
+                <select className="text-xs border rounded px-2 py-1" value={fb.status || "pendente"} onChange={e => updateMutation.mutate({ id: fb.id, status: e.target.value })}>
+                  <option value="pendente">Pendente</option>
+                  <option value="em_analise">Em Análise</option>
+                  <option value="implementado">Implementado</option>
+                  <option value="rejeitado">Rejeitado</option>
+                </select>
+              </div>
+              <p className="text-sm mt-2">{fb.content}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

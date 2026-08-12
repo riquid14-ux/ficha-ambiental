@@ -254,6 +254,39 @@ export default function Dashboard() {
                 })()}
               </CardContent>
             </Card>
+          
+            {/* Waste summary */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Resíduos ({new Date().getFullYear()})</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const waste = wasteQuery?.data;
+                  if (!waste || waste.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem e-GARs registadas. Vá ao MIRR para registar.</p>;
+                  const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
+                  const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
+                  const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
+                  const landfill = total - recycled - incinerated;
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Total: <strong>{total.toFixed(3)} t</strong></span>
+                        <span className="text-sm text-green-600">Desvio aterro: <strong>{total > 0 ? ((recycled / total) * 100).toFixed(0) : 0}%</strong></span>
+                      </div>
+                      <div className="h-4 rounded-full overflow-hidden flex bg-gray-100">
+                        {recycled > 0 && <div className="bg-emerald-400 h-full" style={{ width: `${(recycled/total)*100}%` }} />}
+                        {incinerated > 0 && <div className="bg-amber-400 h-full" style={{ width: `${(incinerated/total)*100}%` }} />}
+                        {landfill > 0 && <div className="bg-red-400 h-full" style={{ width: `${(landfill/total)*100}%` }} />}
+                      </div>
+                      <div className="flex gap-4 text-xs">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400" /> Reciclado ({recycled.toFixed(2)}t)</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-400" /> Incinerado ({incinerated.toFixed(2)}t)</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-400" /> Aterro ({landfill.toFixed(2)}t)</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
           </div>
         )}
 

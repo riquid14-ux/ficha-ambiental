@@ -1519,6 +1519,23 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  feedback: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "admin" && ctx.user.role !== "dono_obra") return [];
+      const database = await db.getDb(); if (!database) return []; const result = await database.execute(sql`SELECT * FROM user_feedback ORDER BY createdAt DESC`);
+      return (result as any)[0] as any[];
+    }),
+    create: protectedProcedure.input(z.object({ content: z.string().min(1), category: z.string().optional() })).mutation(async ({ ctx, input }) => {
+      const database2 = await db.getDb(); if (!database2) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" }); await database2.execute(sql`INSERT INTO user_feedback (userId, userName, userEmail, content, category) VALUES (${ctx.user.id}, ${ctx.user.name}, ${ctx.user.email}, ${input.content}, ${input.category || "melhoria"})`);
+      return { success: true };
+    }),
+    updateStatus: protectedProcedure.input(z.object({ id: z.number(), status: z.string(), adminNotes: z.string().optional() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const database3 = await db.getDb(); if (!database3) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" }); await database3.execute(sql`UPDATE user_feedback SET status = ${input.status}, adminNotes = ${input.adminNotes || null} WHERE id = ${input.id}`);
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,3 +1,4 @@
+import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
@@ -30,12 +31,14 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban , MessageSquare} from "lucide-react";
 import { Grid3X3, FileText, CalendarDays, Settings2, FileBarChart } from "lucide-react";
 import { BookOpen, Layers, GitBranch } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 
 // Projects that are operation-only (no construction phase)
@@ -59,7 +62,6 @@ const operationProjectMenuItems = [
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
-  { icon: FileText, label: "Planos", path: "/planos" },
 ];
 
 // Menu items for "Todos os Projetos" view
@@ -113,6 +115,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 function AppLayoutContent({ children, setSidebarWidth }: { children: React.ReactNode; setSidebarWidth: (w: number) => void }) {
   const { user, logout } = useAuth();
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
   const { projects, activeProject, setActiveProjectId, isAllProjects } = useProject();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
@@ -254,6 +258,10 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   <UserCircle className="mr-2 h-4 w-4" />
                   <span>Perfil</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  <span>Deixar Feedback</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Terminar sessão</span>
@@ -282,6 +290,19 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         )}
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>
+      {showFeedback && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2">Deixar Feedback</h3>
+            <p className="text-sm text-muted-foreground mb-4">Partilhe sugestões de melhoria ou reporte problemas.</p>
+            <textarea className="w-full border rounded-md p-3 text-sm min-h-[120px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+            <div className="flex gap-2 justify-end">
+              <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>Cancelar</button>
+              <button className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

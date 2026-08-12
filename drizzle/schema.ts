@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, serial } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -402,3 +402,17 @@ export const wasteEgars = mysqlTable("waste_egars", {
 });
 export type WasteEgar = typeof wasteEgars.$inferSelect;
 export type InsertWasteEgar = typeof wasteEgars.$inferInsert;
+
+// User feedback / melhorias
+export const userFeedback = mysqlTable("user_feedback", {
+  id: serial("id").primaryKey(),
+  userId: int("userId"),
+  userName: varchar("userName", { length: 255 }),
+  userEmail: varchar("userEmail", { length: 255 }),
+  content: text("content").notNull(),
+  category: varchar("category", { length: 50 }).default("melhoria"),
+  status: varchar("status", { length: 50 }).default("pendente"),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+export type UserFeedback = typeof userFeedback.$inferSelect;

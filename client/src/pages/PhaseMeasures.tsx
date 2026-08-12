@@ -240,7 +240,7 @@ export default function PhaseMeasures() {
                     <span className={`w-2 h-2 rounded-full ${phase.color}`} />
                     <span className="text-xs font-medium">{phase.shortLabel}</span>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">{pct}% ({ov.concluido}/{ov.total})</span>
+                  <span className="text-sm text-muted-foreground">{pct}% ({ov.concluido}/{ov.total})</span>
                 </div>
               </TabsTrigger>
             );
@@ -458,7 +458,7 @@ function MeasureCard({
                   <div key={c.id} className="bg-background rounded p-2 text-xs border">
                     <p className="text-foreground">{c.content}</p>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-muted-foreground text-[10px]">{c.createdByName} · {new Date(c.createdAt).toLocaleDateString("pt-PT")}</span>
+                      <span className="text-muted-foreground text-xs">{c.createdByName} · {new Date(c.createdAt).toLocaleDateString("pt-PT")}</span>
                       {isEditable && (
                         <button onClick={() => onDeleteEvidence(c.id)} className="text-destructive/60 hover:text-destructive">
                           <Trash2 className="w-3 h-3" />
@@ -573,14 +573,14 @@ function MeasureCard({
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  if (!status) return <Badge variant="outline" className="text-[10px] text-gray-400 px-1.5 py-0">—</Badge>;
+  if (!status) return <Badge variant="outline" className="text-xs text-gray-400 px-1.5 py-0">—</Badge>;
   switch (status) {
     case "concluido":
-      return <Badge className="text-[10px] bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
+      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
     case "em_curso":
-      return <Badge className="text-[10px] bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em Curso</Badge>;
+      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em Curso</Badge>;
     case "pendente":
-      return <Badge className="text-[10px] bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Pendente</Badge>;
+      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Pendente</Badge>;
     default:
       return null;
   }

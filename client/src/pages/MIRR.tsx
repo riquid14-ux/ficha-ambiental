@@ -88,6 +88,7 @@ export default function MIRR() {
   });
 
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
+  const isAdmin = user?.role === "admin";
 
   const monthlySummary = useMemo(() => {
     if (!egars) return [];
@@ -187,7 +188,7 @@ export default function MIRR() {
             {isAdminOrDono && <>
               <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>
               <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info("Importação de e-GAR via ficheiro em desenvolvimento."); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> Importar e-GAR</Button>
-              <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> Definições</Button>
+              {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> Definições</Button>}
             </>}
             <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> Exportar Excel MIRR</Button>
           </div>

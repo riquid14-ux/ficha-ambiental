@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -195,6 +196,21 @@ export default function PhaseMeasures() {
             Acompanhamento das medidas ambientais por fase do ciclo de vida — {activeProject?.name || "Projeto"}
           </p>
         </div>
+        {isOperationOnly && (
+          <div className="flex items-center gap-2">
+            <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 11 }, (_, i) => 2023 + i).map(y => (
+                  <SelectItem key={y} value={String(y)}>Evidências {y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={() => toast.info(`Exportação Word "Exploração ${evidenceYear}" em desenvolvimento.`)}>
+              <Download className="w-4 h-4 mr-1" /> Criar Doc {evidenceYear}
+            </Button>
+          </div>
+        )}
       </div>
 
       {!isAdminOrDono && (

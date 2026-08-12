@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
@@ -73,6 +74,8 @@ export default function Dashboard() {
   );
 
   const analytics = analyticsQuery.data;
+  const calendarEventsQuery = trpc.calendarEvents.list.useQuery(isOperationOnly && activeProject?.id ? { projectId: activeProject.id } : { projectId: 0 });
+  const wasteQuery = trpc.wasteEgars.list.useQuery({ projectId: activeProject?.id || 0, year: new Date().getFullYear() });
 
   // Filter charts by selected status
   const filteredByWeek = useMemo(() => {
@@ -160,40 +163,98 @@ export default function Dashboard() {
 
         {/* Operation-only project dashboard */}
         {isOperationOnly && (
-          <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-emerald-100 shrink-0">
-                  <Building2 className="w-5 h-5 text-emerald-600" />
+          <div className="space-y-4">
+            {/* Operation header */}
+            <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-100 shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-emerald-900">Fase de Operação — {activeProject?.name}</p>
+                    <p className="text-xs text-muted-foreground">Monitorização contínua de medidas ambientais e gestão de resíduos</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-emerald-900">Fase de Operação — {activeProject?.name}</p>
-                  <p className="text-xs text-muted-foreground">Monitorização contínua de medidas ambientais e gestão de resíduos</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-emerald-600">15</p>
-                  <p className="text-xs text-muted-foreground">Medidas Exploração</p>
-                </div>
-                <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-sky-600">15 Jan</p>
-                  <p className="text-xs text-muted-foreground">Próxima Entrega DCAPE</p>
-                </div>
-                <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-amber-600">8</p>
-                  <p className="text-xs text-muted-foreground">Reportings Anuais</p>
-                </div>
-                <div className="text-center p-3 bg-white rounded-lg border">
-                  <p className="text-2xl font-bold text-indigo-600">MIRR</p>
-                  <p className="text-xs text-muted-foreground">Gestão de Resíduos</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                Utilize as tabs "Fases" para evidenciar medidas, "MIRR" para gestão de resíduos, e "Calendário" para acompanhar prazos regulatórios.
-              </p>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            {/* Dynamic cards row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Card><CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-600">15</p>
+                <p className="text-xs text-muted-foreground">Medidas Exploração</p>
+              </CardContent></Card>
+              <Card className="cursor-pointer hover:border-sky-300" onClick={() => window.location.href = "/calendario"}>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold text-sky-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents || calEvents.length === 0) return "—"; const next = calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) > new Date()).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate))[0]; return next ? new Date(Number(next.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</p>
+                  <p className="text-xs text-muted-foreground">Próximo Reporting</p>
+                </CardContent>
+              </Card>
+              <Card className="cursor-pointer hover:border-amber-300" onClick={() => window.location.href = "/mirr"}>
+                <CardContent className="p-4 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{wasteQuery?.data?.length || 0}</p>
+                  <p className="text-xs text-muted-foreground">e-GARs ({new Date().getFullYear()})</p>
+                </CardContent>
+              </Card>
+              <Card><CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-indigo-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) < new Date()).length; })()}</p>
+                <p className="text-xs text-muted-foreground">Em Incumprimento</p>
+              </CardContent></Card>
+            </div>
+            {/* Reporting timeline */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Próximos Reportings</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const calEvents = calendarEventsQuery?.data;
+                  if (!calEvents || calEvents.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem eventos de reporting configurados.</p>;
+                  const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5);
+                  return (
+                    <div className="space-y-2">
+                      {upcoming.map((evt: any) => {
+                        const date = new Date(Number(evt.nextDate));
+                        const isOverdue = date < new Date();
+                        return (
+                          <div key={evt.id} className={`flex items-center justify-between p-2 rounded border ${isOverdue ? "border-red-200 bg-red-50" : "border-gray-100"}`}>
+                            <div>
+                              <p className="text-sm font-medium">{evt.name}</p>
+                              <p className="text-xs text-muted-foreground">{evt.ownerName || "Sem responsável"}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-medium ${isOverdue ? "text-red-600" : ""}`}>{date.toLocaleDateString("pt-PT")}</p>
+                              {isOverdue && <Badge variant="destructive" className="text-[10px]">Em atraso</Badge>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+            {/* Responsible persons */}
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Responsáveis pelo Reporting</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const calEvents = calendarEventsQuery?.data;
+                  if (!calEvents) return null;
+                  const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {});
+                  if (Object.keys(owners).length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Atribua responsáveis no Calendário → Gerir.</p>;
+                  return (
+                    <div className="space-y-2">
+                      {Object.entries(owners).map(([name, events]) => (
+                        <div key={name} className="flex items-center justify-between p-2 rounded border border-gray-100">
+                          <p className="text-sm font-medium">{name}</p>
+                          <p className="text-xs text-muted-foreground">{(events as string[]).length} reportings atribuídos</p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* All Projects summary banner */}

@@ -319,9 +319,9 @@ export default function KPI() {
                 <Card className="col-span-2"><CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold">Registo de Incidentes</p>
-                    {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>+ Adicionar</Button>}
+                    {isAdminOrDO && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>+ Adicionar</Button>}
                   </div>
-                  {showIncidentForm && isAdmin && (
+                  {showIncidentForm && isAdminOrDO && (
                     <div className="grid grid-cols-5 gap-2 mb-3 p-3 bg-muted/30 rounded-lg">
                       <Input placeholder="Nome do incidente" value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
                       <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm({...incidentForm, date: e.target.value})} />
@@ -339,7 +339,7 @@ export default function KPI() {
                   )}
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
-                      <thead><tr className="border-b"><th className="text-left p-2">Incidente</th><th className="p-2">Data</th><th className="p-2">Status</th><th className="p-2">Grau</th><th className="p-2">Link</th>{isAdmin && <th className="p-2"></th>}</tr></thead>
+                      <thead><tr className="border-b"><th className="text-left p-2">Incidente</th><th className="p-2">Data</th><th className="p-2">Status</th><th className="p-2">Grau</th><th className="p-2">Link</th>{isAdminOrDO && <th className="p-2"></th>}</tr></thead>
                       <tbody>
                         {(incidentsQuery.data || []).map((inc: any) => (
                           <tr key={inc.id} className="border-b hover:bg-muted/20">
@@ -348,7 +348,7 @@ export default function KPI() {
                             <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === "resolvido" || inc.status === "encerrado" ? "bg-green-100 text-green-700" : inc.status === "em_investigacao" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{inc.status}</span></td>
                             <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.severity === "critico" ? "bg-red-200 text-red-800" : inc.severity === "alto" ? "bg-orange-100 text-orange-700" : inc.severity === "medio" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>{inc.severity}</span></td>
                             <td className="p-2 text-center">{inc.link ? <a href={inc.link} target="_blank" rel="noopener" className="text-blue-600 underline">Ver</a> : "—"}</td>
-                            {isAdmin && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
+                            {isAdminOrDO && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
                           </tr>
                         ))}
                         {(!incidentsQuery.data || incidentsQuery.data.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem incidentes registados</td></tr>}

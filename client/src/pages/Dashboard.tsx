@@ -360,7 +360,7 @@ export default function Dashboard() {
                     const projCode = proj.code;
                     const matchedProject = projects.find((p: any) => p.code === projCode);
                     return (
-                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => { if (matchedProject) { const sel = document.querySelector('[data-project-selector]') as any; if (sel) sel.value = matchedProject.id; window.location.href = `/projeto/${matchedProject.id}/dashboard`; } }}>
+                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => { if (matchedProject) { localStorage.setItem("activeProjectId", String(matchedProject.id)); window.location.reload(); } }}>
                         <div className={`w-2.5 h-10 rounded-full ${colorClass}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold">{proj.code}</p>

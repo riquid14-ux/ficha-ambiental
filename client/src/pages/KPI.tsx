@@ -29,9 +29,7 @@ export default function KPI() {
   const [editingMetric, setEditingMetric] = useState<any>(null);
   const [dashFilter, setDashFilter] = useState<"week" | "month" | "semester" | "year">("month");
   const [dashPage, setDashPage] = useState(0);
-  const [projectFilter, setProjectFilter] = useState<string>("all");
-  const projectsQuery = trpc.projects.list.useQuery();
-  const constructionProjects = (projectsQuery.data || []).filter((p: any) => !["SIN01"].includes(p.code?.split("-")[0]));
+  
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
   const [editingTarget, setEditingTarget] = useState<any>(null);
 
@@ -283,12 +281,7 @@ export default function KPI() {
                 ))}
               </div>
               <div className="flex gap-1 mb-3 flex-wrap">
-                  <div className="flex items-center gap-2 mb-2">
-                    <select className="border rounded px-2 py-1 text-xs" value={projectFilter} onChange={e => setProjectFilter(e.target.value)}>
-                      <option value="all">Todos os Projetos</option>
-                      {constructionProjects.map((p: any) => <option key={p.id} value={p.id}>{p.code}</option>)}
-                    </select>
-                  </div>
+
                   {["Energia & CO2", "Água", "Trabalhadores", "Incidentes"].map((p, i) => (
                     <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="text-xs h-7">{p}</Button>
                   ))}
@@ -313,10 +306,13 @@ export default function KPI() {
                 <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-violet-50 to-purple-50"><Users className="w-8 h-8 text-purple-500 mb-2" /><p className="text-2xl font-bold text-purple-700">{(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em obra')?.id || 0] || 1; return tec + ' / ' + total; })()}</p><p className="text-xs text-muted-foreground">Técnicos Ambiente / Total Trabalhadores</p><p className="text-[10px] text-emerald-600 font-medium mt-1">Rácio: {(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em obra')?.id || 0] || 1; return ((tec / Math.max(total, 1)) * 100).toFixed(1); })()}%</p></Card>
                 </>}
                 {dashPage === 3 && <>
-                <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Derrames</p></Card>
-                <Card className="col-span-2"><CardContent className="p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
+                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
+                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Derrames</p></Card>
+                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-green-50"><Activity className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.filter(d => Object.values(d).some(v => typeof v === "number" && v > 0)).length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
+                </div>
+                <Card className="mt-3"><CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold">Registo de Incidentes</p>
                     {isAdminOrDO && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>+ Adicionar</Button>}
@@ -356,7 +352,6 @@ export default function KPI() {
                     </table>
                   </div>
                 </CardContent></Card>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50"><Leaf className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
                 </>}
               </div>
             </TabsContent>

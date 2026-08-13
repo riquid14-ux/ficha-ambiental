@@ -32,7 +32,6 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { activeProject, isAllProjects, projects } = useProject();
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
-  const calendarEventsQuery = trpc.calendarEvents.list.useQuery({ projectId: 0 }, { enabled: isAllProjects });
 
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];

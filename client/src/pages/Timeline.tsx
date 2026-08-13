@@ -52,6 +52,8 @@ export default function Timeline() {
   const { user } = useAuth();
   const { activeProject, isAllProjects, projects } = useProject();
 
+  const [showSettings, setShowSettings] = useState(false);
+  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); } });
   const projectId = activeProject?.id;
 
   // Fetch all sections and measures

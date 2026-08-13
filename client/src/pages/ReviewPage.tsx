@@ -184,16 +184,11 @@ export default function ReviewPage(props: any) {
   }, [verdicts]);
 
   if (!canSee) {
-    return (
-      <AppLayout>
-        <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">Acesso restrito.</p></CardContent></Card>
-      </AppLayout>
-    );
+    const restricted = <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">Acesso restrito.</p></CardContent></Card>;
+    return embedded ? restricted : <AppLayout>{restricted}</AppLayout>;
   }
 
-  return (
-    <>{embedded ? null : null}{/* conditional layout */}
-    {(() => { const inner = (
+  const mainContent = (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Revisão de Fichas</h1>
@@ -489,6 +484,6 @@ export default function ReviewPage(props: any) {
         </Dialog>
       </div>
     </div>
-    ); return embedded ? inner : <AppLayout>{inner}</AppLayout>; })()}</>
   );
+  return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }

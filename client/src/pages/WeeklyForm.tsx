@@ -18,6 +18,7 @@ import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Chec
 import { FilePlus, Paperclip, Download, File, Grid3X3, History } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MatrizFull from "./Matriz";
+import ReviewPageFull from "./ReviewPage";
 import SubmissionHistoryFull from "./SubmissionHistory";
 import { Input } from "@/components/ui/input";
 
@@ -475,7 +476,7 @@ export default function WeeklyForm() {
 
         {/* Tabs: Nova Ficha / Rascunhos */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="nova" className="gap-1 text-xs">
               <FilePlus className="w-3.5 h-3.5" />
               Nova Ficha
@@ -496,6 +497,10 @@ export default function WeeklyForm() {
             <TabsTrigger value="historico" className="gap-1 text-xs">
               <History className="w-3.5 h-3.5" />
               Histórico
+            </TabsTrigger>
+            <TabsTrigger value="revisao" className="gap-1 text-xs">
+              <FileText className="w-3.5 h-3.5" />
+              Revisão
             </TabsTrigger>
           </TabsList>
 
@@ -892,6 +897,11 @@ export default function WeeklyForm() {
           {/* Tab: Histórico */}
           <TabsContent value="historico" className="mt-4">
             <HistoricoEmbedded />
+          </TabsContent>
+
+          {/* Tab: Revisão */}
+          <TabsContent value="revisao" className="mt-4">
+            <ReviewPageFull embedded />
           </TabsContent>
 
         </Tabs>

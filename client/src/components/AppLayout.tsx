@@ -51,13 +51,11 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 // Menu items for individual project view
 const projectMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Grid3X3, label: "Matriz", path: "/matriz" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
-  { icon: History, label: "Histórico", path: "/historico" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
   { icon: BarChart3, label: "KPI's", path: "/kpi" },
 ];
@@ -84,8 +82,7 @@ const adminMenuItems = [
   // Control Room is now integrated into Calendário page
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
-const reviewMenuItems = [
-  { icon: FileSearch, label: "Revisão", path: "/revisao" },
+const reviewMenuItems: typeof projectMenuItems = [
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

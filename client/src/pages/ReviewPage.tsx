@@ -43,7 +43,8 @@ type MeasureStatusFilter = "all" | "I" | "C" | "NC" | "NA";
 type MeasureVerdict = "ok" | "nok" | null;
 type VerdictMap = Record<number, { verdict: MeasureVerdict; comment: string }>;
 
-export default function ReviewPage() {
+export default function ReviewPage(props: any) {
+  const embedded = props?.embedded;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
@@ -191,7 +192,8 @@ export default function ReviewPage() {
   }
 
   return (
-    <AppLayout>
+    <>{embedded ? null : null}{/* conditional layout */}
+    {(() => { const inner = (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Revisão de Fichas</h1>
@@ -486,6 +488,7 @@ export default function ReviewPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>
+    </div>
+    ); return embedded ? inner : <AppLayout>{inner}</AppLayout>; })()}</>
   );
 }

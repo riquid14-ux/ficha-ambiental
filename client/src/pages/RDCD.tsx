@@ -30,6 +30,7 @@ export default function RDCD() {
   const [startWeek, setStartWeek] = useState("");
   const [endWeek, setEndWeek] = useState("");
   const [includePlans, setIncludePlans] = useState(true);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const [measureSelections, setMeasureSelections] = useState<Record<number, { status: string; selectedWeeks: string[]; notes: string }>>({});
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -296,9 +297,18 @@ export default function RDCD() {
                 </div>
                 {includePlans && plans && plans.length > 0 && (
                   <div className="ml-6 space-y-1.5">
-                    <p className="text-xs text-muted-foreground mb-2">Planos que serão referenciados no relatório:</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-muted-foreground">Selecione os planos a incluir:</p>
+                      <button className="text-[10px] text-blue-600 hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
+                        {selectedPlanIds.length === plans.length ? "Desselecionar todos" : "Selecionar todos"}
+                      </button>
+                    </div>
                     {plans.map((p: any) => (
                       <div key={p.id} className="flex items-center gap-2 text-xs">
+                        <Checkbox
+                          checked={selectedPlanIds.includes(p.id)}
+                          onCheckedChange={(v) => setSelectedPlanIds(v ? [...selectedPlanIds, p.id] : selectedPlanIds.filter(id => id !== p.id))}
+                        />
                         <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-green-500" : p.submissionStatus === "submitted" ? "bg-blue-500" : "bg-amber-500"}`} />
                         <span className="font-medium">{p.name}</span>
                         <span className="text-muted-foreground">— {p.periodicity || "—"}</span>
@@ -308,7 +318,7 @@ export default function RDCD() {
                       </div>
                     ))}
                     <p className="text-[10px] text-muted-foreground mt-2 italic">
-                      Os planos submetidos/entregues serão mencionados como anexos no RDCD.
+                      {selectedPlanIds.length} de {plans.length} planos selecionados para o RDCD.
                     </p>
                   </div>
                 )}
@@ -458,7 +468,7 @@ export default function RDCD() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">Planos de Monitorização</p>
-                  <p className="text-sm">{includePlans ? `Incluídos (${plans?.length || 0} planos)` : "Não incluídos"}</p>
+                  <p className="text-sm">{includePlans ? `Incluídos (${selectedPlanIds.length} de ${plans?.length || 0} planos)` : "Não incluídos"}</p>
                 </div>
               </div>
 

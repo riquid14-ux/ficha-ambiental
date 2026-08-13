@@ -360,17 +360,14 @@ export default function Dashboard() {
                     const projCode = proj.code;
                     const matchedProject = projects.find((p: any) => p.code === projCode);
                     return (
-                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => matchedProject && setLocation(`/projeto/${matchedProject.id}/dashboard`)}>
+                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => { if (matchedProject) { const sel = document.querySelector('[data-project-selector]') as any; if (sel) sel.value = matchedProject.id; window.location.href = `/projeto/${matchedProject.id}/dashboard`; } }}>
                         <div className={`w-2.5 h-10 rounded-full ${colorClass}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold">{proj.code}</p>
                           <p className="text-[10px] text-muted-foreground">{currentPhase?.key || "Pré-Licenciamento"}</p>
                         </div>
-                        <div className="w-28 text-right">
-                          <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${Math.max(overallProgress, 3)}%` }} />
-                          </div>
-                          <p className={`text-[10px] mt-0.5 ${colorClass === "bg-red-500" ? "text-red-600 font-semibold" : colorClass === "bg-amber-500" ? "text-amber-600" : "text-muted-foreground"}`}>{statusText} · {overallProgress}%</p>
+                        <div className="text-right">
+                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-gray-500"}`}>{statusText}</p>
                         </div>
                       </div>
                     );

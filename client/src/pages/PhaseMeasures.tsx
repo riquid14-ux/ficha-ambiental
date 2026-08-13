@@ -24,9 +24,12 @@ const ALL_PHASES = [
   { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-purple-500" },
   { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2, color: "bg-blue-500" },
   { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3, color: "bg-cyan-500" },
-  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 5, color: "bg-orange-500" },
-  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 6, color: "bg-green-500" },
-  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 7, color: "bg-gray-500" },
+  { key: "Preparação Prévia", label: "Preparação Prévia à Construção", shortLabel: "Preparação Prévia", order: 4, color: "bg-teal-500" },
+  { key: "Execução da Obra", label: "Execução da Obra", shortLabel: "Execução", order: 5, color: "bg-amber-500" },
+  { key: "Fase Final", label: "Fase Final", shortLabel: "Fase Final", order: 6, color: "bg-rose-500" },
+  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 7, color: "bg-orange-500" },
+  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 8, color: "bg-green-500" },
+  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-gray-500" },
 ];
 
 export default function PhaseMeasures() {
@@ -38,6 +41,8 @@ export default function PhaseMeasures() {
   const measuresQuery = trpc.measures.list.useQuery();
 
   const projectId = activeProject?.id || 1;
+  const projectPhasesQuery = trpc.projectPhases.list.useQuery({ projectId });
+  const hiddenPhaseKeys = new Set((projectPhasesQuery.data || []).filter((pp: any) => pp.hidden).map((pp: any) => pp.phaseKey || pp.phaseName));
 
   const statusesQuery = trpc.phaseMeasures.getStatuses.useQuery({ projectId });
   const evidenceQuery = trpc.phaseEvidence.list.useQuery({ projectId });
@@ -70,9 +75,9 @@ export default function PhaseMeasures() {
   const [showAdd, setShowAdd] = useState(false);
   // Filter phases based on project type
   const isOperationOnly = activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
-  const visiblePhases = isOperationOnly
+  const visiblePhases = (isOperationOnly
     ? ALL_PHASES.filter(p => p.key === "Exploração" || p.key === "Desativação (Pós-Exploração)")
-    : ALL_PHASES;
+    : ALL_PHASES).filter(p => !hiddenPhaseKeys.has(p.key) && !hiddenPhaseKeys.has(p.label));
 
   const [evidenceYear, setEvidenceYear] = useState(new Date().getFullYear() - 1);
   const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);

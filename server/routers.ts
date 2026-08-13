@@ -6,7 +6,8 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
+import * as schema from "../drizzle/schema";
 import { storagePut } from "./storage";
 import bcrypt from "bcryptjs";
 import { TOTP, Secret } from "otpauth";
@@ -1412,12 +1413,14 @@ export const appRouter = router({
         // Get all projects
         const allProjects = await db.getAllProjects();
         // Get all phase measure statuses for all projects
-        const results: { projectId: number; code: string; phases: { key: string; total: number; concluido: number; progress: number }[] }[] = [];
+        const results: any[] = [];
         const allSections = await db.getAllSections();
         const allMeasures = await db.getAllMeasures();
 
+        const ppDb = await db.getDb(); const allProjectPhases = ppDb ? await ppDb.select().from(schema.projectPhases) : [];
         for (const proj of allProjects) {
           const statuses = await db.getPhaseMeasureStatuses(proj.id);
+          const projPhases = allProjectPhases.filter((pp: any) => pp.projectId === proj.id);
           const statusMap = new Map<number, string>();
           statuses.forEach((s: any) => statusMap.set(s.measureId, s.status));
 
@@ -1431,7 +1434,8 @@ export const appRouter = router({
             const total = phaseMeasures.length;
             if (total === 0) continue;
             const concluido = phaseMeasures.filter((m: any) => statusMap.get(m.id) === "concluido").length;
-            phases.push({ key: phaseKey, total, concluido, progress: Math.round((concluido / total) * 100) });
+            const ppMatch = projPhases.find((pp: any) => pp.phaseKey === phaseKey || pp.phaseName === phaseKey);
+            phases.push({ key: phaseKey, total, concluido, progress: Math.round((concluido / total) * 100), endDate: ppMatch?.endDate || null });
           }
           results.push({ projectId: proj.id, code: proj.code, phases });
         }
@@ -1795,6 +1799,35 @@ export const appRouter = router({
       await database.execute(sql`DELETE FROM kpi_targets WHERE id = ${input.id}`);
       return { success: true };
     }),
+    // KPI Incidents
+    listIncidents: protectedProcedure
+      .input(z.object({ projectId: z.number().optional() }))
+      .query(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        let query = database.select().from(schema.kpiIncidents);
+        if (input.projectId) {
+          query = query.where(eq(schema.kpiIncidents.projectId, input.projectId)) as any;
+        }
+        return await query;
+      }),
+    createIncident: protectedProcedure
+      .input(z.object({ projectId: z.number(), name: z.string(), date: z.string(), status: z.string(), severity: z.string(), link: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!isAdminOrDono(ctx.user as any)) throw new TRPCError({ code: "FORBIDDEN" });
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await database.insert(schema.kpiIncidents).values({ ...input, createdBy: ctx.user.email });
+        return { success: true };
+      }),
+    deleteIncident: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await database.delete(schema.kpiIncidents).where(eq(schema.kpiIncidents.id, input.id));
+        return { success: true };
+      }),
   }),
 });
 

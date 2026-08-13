@@ -493,3 +493,17 @@ export const kpiTargets = mysqlTable("kpi_targets", {
 });
 export type KpiTarget = typeof kpiTargets.$inferSelect;
 export type InsertKpiTarget = typeof kpiTargets.$inferInsert;
+
+// KPI Incidents Log
+export const kpiIncidents = mysqlTable("kpi_incidents", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 500 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("aberto"),
+  severity: varchar("severity", { length: 50 }).notNull().default("baixo"),
+  link: varchar("link", { length: 1000 }),
+  createdBy: varchar("createdBy", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KpiIncident = typeof kpiIncidents.$inferSelect;

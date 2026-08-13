@@ -115,6 +115,15 @@ export default function Matriz(props: any) {
                 <div className="w-4 h-4 rounded bg-red-500" />
                 <span>Rejeitada</span>
               </div>
+              {isAllProjects && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded bg-purple-400" />
+                    <span>Parcialmente entregue</span>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -123,8 +132,9 @@ export default function Matriz(props: any) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">
-              {isAllProjects ? "Todos os Projetos" : activeProject?.name || "Projeto"}
+              {isAllProjects ? "Visão Agregada por Projeto" : activeProject?.name || "Projeto"}
             </CardTitle>
+            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">Cada linha representa um projeto. Verde = todas as fichas entregues nessa semana.</p>}
           </CardHeader>
           <CardContent className="p-0">
             {matrixQuery.isLoading && (

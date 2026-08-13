@@ -29,6 +29,9 @@ export default function KPI() {
   const [editingMetric, setEditingMetric] = useState<any>(null);
   const [dashFilter, setDashFilter] = useState<"week" | "month" | "semester" | "year">("month");
   const [dashPage, setDashPage] = useState(0);
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const projectsQuery = trpc.projects.list.useQuery();
+  const constructionProjects = (projectsQuery.data || []).filter((p: any) => !["SIN01"].includes(p.code?.split("-")[0]));
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
   const [editingTarget, setEditingTarget] = useState<any>(null);
 
@@ -41,6 +44,11 @@ export default function KPI() {
   const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success("Métrica guardada."); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success("Métrica removida."); } });
+  const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
+  const createIncidentMut = trpc.kpi.createIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });
+  const deleteIncidentMut = trpc.kpi.deleteIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });
+  const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [incidentForm, setIncidentForm] = useState({ name: "", date: "", status: "aberto", severity: "baixo", link: "" });
   const upsertTargetMutation = trpc.kpi.upsertTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); setEditingTarget(null); toast.success("Meta guardada."); } });
   const deleteTargetMutation = trpc.kpi.deleteTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); toast.success("Meta removida."); } });
 
@@ -275,6 +283,12 @@ export default function KPI() {
                 ))}
               </div>
               <div className="flex gap-1 mb-3 flex-wrap">
+                  <div className="flex items-center gap-2 mb-2">
+                    <select className="border rounded px-2 py-1 text-xs" value={projectFilter} onChange={e => setProjectFilter(e.target.value)}>
+                      <option value="all">Todos os Projetos</option>
+                      {constructionProjects.map((p: any) => <option key={p.id} value={p.id}>{p.code}</option>)}
+                    </select>
+                  </div>
                   {["Energia & CO2", "Água", "Trabalhadores", "Incidentes"].map((p, i) => (
                     <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="text-xs h-7">{p}</Button>
                   ))}
@@ -302,6 +316,46 @@ export default function KPI() {
                 <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
                 <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
                 <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Derrames</p></Card>
+                <Card className="col-span-2"><CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold">Registo de Incidentes</p>
+                    {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>+ Adicionar</Button>}
+                  </div>
+                  {showIncidentForm && isAdmin && (
+                    <div className="grid grid-cols-5 gap-2 mb-3 p-3 bg-muted/30 rounded-lg">
+                      <Input placeholder="Nome do incidente" value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
+                      <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm({...incidentForm, date: e.target.value})} />
+                      <select className="border rounded px-2 py-1 text-sm" value={incidentForm.status} onChange={e => setIncidentForm({...incidentForm, status: e.target.value})}>
+                        <option value="aberto">Aberto</option><option value="em_investigacao">Em Investigação</option><option value="resolvido">Resolvido</option><option value="encerrado">Encerrado</option>
+                      </select>
+                      <select className="border rounded px-2 py-1 text-sm" value={incidentForm.severity} onChange={e => setIncidentForm({...incidentForm, severity: e.target.value})}>
+                        <option value="baixo">Baixo</option><option value="medio">Médio</option><option value="alto">Alto</option><option value="critico">Crítico</option>
+                      </select>
+                      <div className="flex gap-1">
+                        <Input placeholder="Link (opcional)" value={incidentForm.link} onChange={e => setIncidentForm({...incidentForm, link: e.target.value})} className="flex-1" />
+                        <Button size="sm" onClick={() => { if (incidentForm.name && incidentForm.date && activeProject) { createIncidentMut.mutate({ projectId: activeProject.id, ...incidentForm, link: incidentForm.link || undefined }); setIncidentForm({ name: "", date: "", status: "aberto", severity: "baixo", link: "" }); setShowIncidentForm(false); } }}>✓</Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead><tr className="border-b"><th className="text-left p-2">Incidente</th><th className="p-2">Data</th><th className="p-2">Status</th><th className="p-2">Grau</th><th className="p-2">Link</th>{isAdmin && <th className="p-2"></th>}</tr></thead>
+                      <tbody>
+                        {(incidentsQuery.data || []).map((inc: any) => (
+                          <tr key={inc.id} className="border-b hover:bg-muted/20">
+                            <td className="p-2 font-medium">{inc.name}</td>
+                            <td className="p-2 text-center">{inc.date}</td>
+                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === "resolvido" || inc.status === "encerrado" ? "bg-green-100 text-green-700" : inc.status === "em_investigacao" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{inc.status}</span></td>
+                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.severity === "critico" ? "bg-red-200 text-red-800" : inc.severity === "alto" ? "bg-orange-100 text-orange-700" : inc.severity === "medio" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>{inc.severity}</span></td>
+                            <td className="p-2 text-center">{inc.link ? <a href={inc.link} target="_blank" rel="noopener" className="text-blue-600 underline">Ver</a> : "—"}</td>
+                            {isAdmin && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
+                          </tr>
+                        ))}
+                        {(!incidentsQuery.data || incidentsQuery.data.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem incidentes registados</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent></Card>
                 <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50"><Leaf className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
                 </>}
               </div>

@@ -335,19 +335,40 @@ export default function Dashboard() {
                   {allProjectsProgressQuery.data ? allProjectsProgressQuery.data.map((proj: any) => {
                     const currentPhase = proj.phases.find((p: any) => p.progress < 100) || proj.phases[proj.phases.length - 1];
                     const overallProgress = proj.phases.length > 0 ? Math.round(proj.phases.reduce((s: number, p: any) => s + p.progress, 0) / proj.phases.length) : 0;
-                    const isOnTrack = overallProgress >= 40;
+                    // Color logic based on endDate of current phase
+                    const now = new Date();
+                    const endDateStr = currentPhase?.endDate;
+                    let colorClass = "bg-emerald-500"; // default green = on track
+                    let statusText = "No prazo";
+                    if (endDateStr) {
+                      const endDate = new Date(endDateStr);
+                      const diffMs = endDate.getTime() - now.getTime();
+                      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+                      if (diffDays < 0 && currentPhase.progress < 100) {
+                        colorClass = "bg-red-500"; // overdue
+                        statusText = "Em atraso";
+                      } else if (diffDays < 30 && currentPhase.progress < 100) {
+                        colorClass = "bg-amber-500"; // less than 1 month
+                        statusText = "< 1 mês";
+                      }
+                    } else if (overallProgress === 0) {
+                      colorClass = "bg-gray-300";
+                      statusText = "Sem data";
+                    }
+                    const projCode = proj.code;
+                    const matchedProject = projects.find((p: any) => p.code === projCode);
                     return (
-                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors">
-                        <div className={`w-2.5 h-10 rounded-full ${isOnTrack ? "bg-emerald-500" : overallProgress > 0 ? "bg-amber-500" : "bg-red-500"}`} />
+                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => matchedProject && setLocation(`/projeto/${matchedProject.id}/dashboard`)}>
+                        <div className={`w-2.5 h-10 rounded-full ${colorClass}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold">{proj.code}</p>
                           <p className="text-[10px] text-muted-foreground">{currentPhase?.key || "Pré-Licenciamento"}</p>
                         </div>
                         <div className="w-28 text-right">
                           <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div className={`h-full rounded-full transition-all ${isOnTrack ? "bg-emerald-500" : overallProgress > 0 ? "bg-amber-500" : "bg-red-400"}`} style={{ width: `${Math.max(overallProgress, 3)}%` }} />
+                            <div className={`h-full rounded-full transition-all ${colorClass}`} style={{ width: `${Math.max(overallProgress, 3)}%` }} />
                           </div>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{overallProgress}% concluído</p>
+                          <p className={`text-[10px] mt-0.5 ${colorClass === "bg-red-500" ? "text-red-600 font-semibold" : colorClass === "bg-amber-500" ? "text-amber-600" : "text-muted-foreground"}`}>{statusText} · {overallProgress}%</p>
                         </div>
                       </div>
                     );

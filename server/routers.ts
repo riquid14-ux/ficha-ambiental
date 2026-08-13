@@ -1399,7 +1399,8 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const { id, ...data } = input;
-        await db.pool.query("UPDATE project_phases SET startDate = ?, endDate = ?, hidden = COALESCE(?, hidden), progress = COALESCE(?, progress) WHERE id = ?", [data.startDate || null, data.endDate || null, data.hidden ?? null, data.progress ?? null, id]);
+        const database = await db.getDb();
+        await database.execute(sql`UPDATE project_phases SET startDate = ${data.startDate || null}, endDate = ${data.endDate || null}, hidden = COALESCE(${data.hidden ?? null}, hidden), progress = COALESCE(${data.progress ?? null}, progress) WHERE id = ${id}`);
         return { success: true };
       }),
   }),

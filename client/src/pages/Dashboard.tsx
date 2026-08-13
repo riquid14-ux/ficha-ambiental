@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +31,7 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const { activeProject, isAllProjects, projects } = useProject();
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
 

@@ -24,7 +24,8 @@ function getStatusDisplay(status: string) {
   }
 }
 
-export default function Matriz() {
+export default function Matriz(props: any) {
+  const embedded = props?.embedded;
   const { activeProject, isAllProjects } = useProject();
 
   const matrixQuery = trpc.matrix.getData.useQuery(
@@ -71,8 +72,7 @@ export default function Matriz() {
     return `Semana ${parseInt(parts[1], 10)} / ${parts[0]}`;
   }
 
-  return (
-    <AppLayout>
+  const inner = (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -258,6 +258,7 @@ export default function Matriz() {
           </Card>
         )}
       </div>
-    </AppLayout>
   );
+  if (embedded) return inner;
+  return <AppLayout>{inner}</AppLayout>;
 }

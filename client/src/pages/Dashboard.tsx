@@ -291,9 +291,189 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* All Projects summary banner */}
+        {/* All Projects Professional Dashboard */}
         {isAllProjects && (
           <>
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-emerald-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "approved").length; })()}</p>
+                <p className="text-[11px] text-emerald-600 font-medium mt-1">Fichas Aprovadas</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-blue-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "submitted" || s.status === "under_review").length; })()}</p>
+                <p className="text-[11px] text-blue-600 font-medium mt-1">Em Revisão</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-amber-700">{projects.length}</p>
+                <p className="text-[11px] text-amber-600 font-medium mt-1">Projetos Ativos</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-red-50 to-red-100/50 border-red-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-red-700">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return (calEvents as any[]).filter((e: any) => e.status === "pending" && e.nextDate && Number(e.nextDate) < Date.now()).length; })()}</p>
+                <p className="text-[11px] text-red-600 font-medium mt-1">Em Incumprimento</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Compliance by Project + Calendar Deadlines side by side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Project Compliance */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Cumprimento por Projeto</p>
+                  <Badge variant="outline" className="text-[10px]">{projects.length} projetos</Badge>
+                </div>
+                <div className="space-y-2">
+                  {allProjectsProgressQuery.data ? allProjectsProgressQuery.data.map((proj: any) => {
+                    const currentPhase = proj.phases.find((p: any) => p.progress < 100) || proj.phases[proj.phases.length - 1];
+                    const overallProgress = proj.phases.length > 0 ? Math.round(proj.phases.reduce((s: number, p: any) => s + p.progress, 0) / proj.phases.length) : 0;
+                    const isOnTrack = overallProgress >= 40;
+                    return (
+                      <div key={proj.projectId} className="flex items-center gap-3 p-2.5 border rounded-lg hover:bg-muted/30 transition-colors">
+                        <div className={`w-2.5 h-10 rounded-full ${isOnTrack ? "bg-emerald-500" : overallProgress > 0 ? "bg-amber-500" : "bg-red-500"}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold">{proj.code}</p>
+                          <p className="text-[10px] text-muted-foreground">{currentPhase?.key || "Pré-Licenciamento"}</p>
+                        </div>
+                        <div className="w-28 text-right">
+                          <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${isOnTrack ? "bg-emerald-500" : overallProgress > 0 ? "bg-amber-500" : "bg-red-400"}`} style={{ width: `${Math.max(overallProgress, 3)}%` }} />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{overallProgress}% concluído</p>
+                        </div>
+                      </div>
+                    );
+                  }) : <p className="text-xs text-muted-foreground">A carregar...</p>}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Deadlines & Reporting */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-sm font-semibold">Entregáveis & Prazos</p>
+                {calendarEventsQuery.data && (() => {
+                  const events = (calendarEventsQuery.data as any[]) || [];
+                  const now = Date.now();
+                  const overdue = events.filter((e: any) => e.nextDate && Number(e.nextDate) < now && e.status !== "reported" && e.status !== "validated");
+                  const upcoming = events.filter((e: any) => e.nextDate && Number(e.nextDate) >= now && Number(e.nextDate) < now + 60 * 24 * 60 * 60 * 1000).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate));
+                  const validated = events.filter((e: any) => e.status === "validated" || e.status === "reported");
+                  return (
+                    <div className="space-y-3">
+                      {overdue.length > 0 && (
+                        <div className="p-2.5 rounded-lg bg-red-50 border border-red-200">
+                          <p className="text-[11px] font-semibold text-red-700 mb-1.5">Em Incumprimento ({overdue.length})</p>
+                          {overdue.slice(0, 4).map((e: any) => (
+                            <div key={e.id} className="flex justify-between text-[10px] text-red-600 py-0.5">
+                              <span className="truncate flex-1">{e.name}</span>
+                              <span className="ml-2 shrink-0">{e.projectCode || "Geral"}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {upcoming.length > 0 && (
+                        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                          <p className="text-[11px] font-semibold text-amber-700 mb-1.5">Próximos 60 dias ({upcoming.length})</p>
+                          {upcoming.slice(0, 4).map((e: any) => (
+                            <div key={e.id} className="flex justify-between text-[10px] text-amber-600 py-0.5">
+                              <span className="truncate flex-1">{e.name}</span>
+                              <span className="ml-2 shrink-0">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-3 text-center pt-1">
+                        <div className="flex-1 p-2 rounded bg-emerald-50 border border-emerald-100">
+                          <p className="text-lg font-bold text-emerald-700">{validated.length}</p>
+                          <p className="text-[9px] text-emerald-600">Validados</p>
+                        </div>
+                        <div className="flex-1 p-2 rounded bg-blue-50 border border-blue-100">
+                          <p className="text-lg font-bold text-blue-700">{events.length}</p>
+                          <p className="text-[9px] text-blue-600">Total Eventos</p>
+                        </div>
+                        <div className="flex-1 p-2 rounded bg-red-50 border border-red-100">
+                          <p className="text-lg font-bold text-red-700">{overdue.length}</p>
+                          <p className="text-[9px] text-red-600">Atrasados</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Submission Activity + Overdue Companies */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Weekly Activity Chart placeholder */}
+            <Card className="lg:col-span-2">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-sm font-semibold">Actividade de Submissão (últimas 12 semanas)</p>
+                <div className="grid grid-cols-12 gap-1 h-24 items-end">
+                  {(() => {
+                    const subs = submissionsQuery.data;
+                    if (!subs || !Array.isArray(subs)) return null;
+                    const now = new Date();
+                    const currentWeek = Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+                    const currentYear = now.getFullYear();
+                    const bars = [];
+                    for (let i = 11; i >= 0; i--) {
+                      let w = currentWeek - i;
+                      let y = currentYear;
+                      if (w <= 0) { w += 52; y--; }
+                      const count = subs.filter((s: any) => s.weekNumber === w && s.weekYear === y && s.status !== "deleted" && s.status !== "draft").length;
+                      const maxH = 80;
+                      const h = Math.max(count * 12, 4);
+                      bars.push(
+                        <div key={`${y}-${w}`} className="flex flex-col items-center gap-0.5">
+                          <div className="w-full rounded-t bg-primary/70 hover:bg-primary transition-colors" style={{ height: `${Math.min(h, maxH)}px` }} title={`S${w}: ${count} fichas`} />
+                          <span className="text-[8px] text-muted-foreground">S{w}</span>
+                        </div>
+                      );
+                    }
+                    return bars;
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-sm font-semibold">Resumo Geral</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                    <span className="text-xs">Total de Fichas</span>
+                    <span className="text-sm font-bold">{(() => { const s = submissionsQuery.data; return s && Array.isArray(s) ? s.filter((x: any) => x.status !== "deleted").length : 0; })()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                    <span className="text-xs">Taxa de Aprovação</span>
+                    <span className="text-sm font-bold text-emerald-600">{(() => { const s = submissionsQuery.data; if (!s || !Array.isArray(s)) return "—"; const total = s.filter((x: any) => x.status !== "deleted" && x.status !== "draft").length; const approved = s.filter((x: any) => x.status === "approved").length; return total > 0 ? `${Math.round(approved / total * 100)}%` : "—"; })()}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                    <span className="text-xs">Empresas Ativas</span>
+                    <span className="text-sm font-bold">{companiesQuery.data?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
+                    <span className="text-xs">Próximo RDCD</span>
+                    <span className="text-sm font-bold text-blue-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          </>
+        )}
+        {/* Keep existing individual project content below */}
+        {isAllProjects && (
           <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -301,76 +481,17 @@ export default function Dashboard() {
                   <FolderKanban className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">Visão Agregada — Todos os Projetos</p>
-                  <p className="text-xs text-muted-foreground">Os dados abaixo representam o acumulado de todas as fichas submetidas em todos os projetos.</p>
+                  <p className="font-semibold text-sm">Visão Agregada — Fichas de Controlo</p>
+                  <p className="text-xs text-muted-foreground">Filtros e gráficos de evolução das fichas submetidas.</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Compliance Overview */}
-          {allProjectsProgressQuery.data && (
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <p className="text-sm font-semibold">Estado de Cumprimento por Projeto</p>
-                <div className="space-y-2">
-                  {allProjectsProgressQuery.data.map((proj: any) => {
-                    const currentPhase = proj.phases.find((p: any) => p.progress < 100) || proj.phases[proj.phases.length - 1];
-                    const overallProgress = proj.phases.length > 0 ? Math.round(proj.phases.reduce((s: number, p: any) => s + p.progress, 0) / proj.phases.length) : 0;
-                    const isOnTrack = overallProgress >= 50;
-                    return (
-                      <div key={proj.projectId} className="flex items-center gap-3 p-2 border rounded">
-                        <div className={`w-2 h-8 rounded-full ${isOnTrack ? "bg-green-500" : "bg-red-500"}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium">{proj.code}</p>
-                          <p className="text-[10px] text-muted-foreground">Fase actual: {currentPhase?.key || "—"}</p>
-                        </div>
-                        <div className="w-24">
-                          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                            <div className={`h-full ${isOnTrack ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${overallProgress}%` }} />
-                          </div>
-                          <p className="text-[10px] text-center mt-0.5">{overallProgress}%</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Calendar Deadlines */}
-          {calendarEventsQuery.data && (() => {
-            const events = (calendarEventsQuery.data as any[]) || [];
-            const now = Date.now();
-            const overdue = events.filter((e: any) => e.nextDate && e.nextDate < now && e.status !== "reported" && e.status !== "validated");
-            const upcoming = events.filter((e: any) => e.nextDate && e.nextDate >= now && e.nextDate < now + 30 * 24 * 60 * 60 * 1000).sort((a: any, b: any) => a.nextDate - b.nextDate);
-            if (overdue.length === 0 && upcoming.length === 0) return null;
-            return (
-              <Card className={overdue.length > 0 ? "border-red-200 bg-red-50/30" : "border-amber-200 bg-amber-50/30"}>
-                <CardContent className="p-4 space-y-2">
-                  {overdue.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-red-700 mb-1">Em Incumprimento ({overdue.length})</p>
-                      {overdue.slice(0, 5).map((e: any) => (
-                        <p key={e.id} className="text-[10px] text-red-600">• {e.name} — {e.projectCode || "Todos"}</p>
-                      ))}
-                    </div>
-                  )}
-                  {upcoming.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-amber-700 mb-1">Próximos 30 dias ({upcoming.length})</p>
-                      {upcoming.slice(0, 5).map((e: any) => (
-                        <p key={e.id} className="text-[10px] text-amber-600">• {e.name} — {new Date(e.nextDate).toLocaleDateString("pt-PT")}</p>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })()}
-          </>
         )}
+
+
+
+
 
         {/* RDCD Countdown Alert */}
         {!isOperationOnly && (user?.role === "admin" || user?.role === "dono_obra") && (() => {

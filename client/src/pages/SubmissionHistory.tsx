@@ -35,7 +35,8 @@ function getSemester(month: number): number {
   return month <= 6 ? 1 : 2;
 }
 
-export default function SubmissionHistory() {
+export default function SubmissionHistory(props: any) {
+  const embedded = props?.embedded;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects } = useProject();
@@ -220,8 +221,7 @@ export default function SubmissionHistory() {
     setTimeout(() => setExporting(false), 2000);
   };
 
-  return (
-    <AppLayout>
+  const inner = (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Histórico de Submissões</h1>
@@ -518,8 +518,9 @@ export default function SubmissionHistory() {
         </Tabs>
         )}
       </div>
-    </AppLayout>
   );
+  if (embedded) return inner;
+  return <AppLayout>{inner}</AppLayout>;
 }
 
 function DeletionHistoryView() {

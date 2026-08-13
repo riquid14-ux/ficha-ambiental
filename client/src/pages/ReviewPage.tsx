@@ -483,7 +483,6 @@ export default function ReviewPage(props: any) {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
   );
   return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }

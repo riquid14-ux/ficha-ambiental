@@ -1400,6 +1400,7 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const { id, ...data } = input;
         const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await database.execute(sql`UPDATE project_phases SET startDate = ${data.startDate || null}, endDate = ${data.endDate || null}, hidden = COALESCE(${data.hidden ?? null}, hidden), progress = COALESCE(${data.progress ?? null}, progress) WHERE id = ${id}`);
         return { success: true };
       }),

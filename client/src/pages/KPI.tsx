@@ -276,7 +276,7 @@ export default function KPI() {
             <TabsContent value="dashboard" className="space-y-4">
               <div className="flex gap-2 items-center mb-2">
                 <span className="text-sm text-muted-foreground">Período:</span>
-                {(["week", "month", "semester", "year"] as const).map(f => (
+                {(["week", "month", "semester", "year", "project"] as const).map(f => (
                   <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs h-7">{f === "week" ? "Semana" : f === "month" ? "Mês" : f === "semester" ? "Semestre" : f === "year" ? "Ano" : "Projeto"}</Button>
                 ))}
               </div>

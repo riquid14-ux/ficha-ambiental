@@ -53,7 +53,7 @@ export default function Timeline() {
   const { activeProject, isAllProjects, projects } = useProject();
 
   const [showSettings, setShowSettings] = useState(false);
-  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); } });
+  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); projectPhasesQuery.refetch(); } });
   const projectId = activeProject?.id;
 
   // Fetch all sections and measures
@@ -65,6 +65,11 @@ export default function Timeline() {
     { projectId: projectId! },
     { enabled: !!projectId }
   );
+  const projectPhasesQuery = trpc.projectPhases.list.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId }
+  );
+  const projectPhasesData = projectPhasesQuery.data || [];
 
   // Fetch all projects progress from backend (single endpoint)
   const { data: allProjectsProgress } = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, {
@@ -159,6 +164,8 @@ export default function Timeline() {
       const isComplete = concluido === total;
       const hasActivity = concluido > 0 || emCurso > 0;
 
+      // Merge DB data (hidden, dates, dbId)
+      const dbPhase = projectPhasesData.find((pp: any) => pp.phaseName === phaseDef.key || pp.phaseKey === phaseDef.key);
       return {
       ...phaseDef,
       total,
@@ -168,15 +175,20 @@ export default function Timeline() {
       progress,
       isComplete,
       hasActivity,
+      dbId: dbPhase?.id || 0,
+      hidden: dbPhase?.hidden || false,
+      startDate: dbPhase?.startDate || null,
+      endDate: dbPhase?.endDate || null,
     };
     }).filter(Boolean) as PhaseDataItem[];
-  }, [allSections, allMeasures, phaseStatuses]);
+  }, [allSections, allMeasures, phaseStatuses, projectPhasesData]);
 
   // Overall stats
-  const totalMeasures = phaseData.reduce((sum, p) => sum + p.total, 0);
-  const totalConcluido = phaseData.reduce((sum, p) => sum + p.concluido, 0);
-  const totalEmCurso = phaseData.reduce((sum, p) => sum + p.emCurso, 0);
-  const totalPendente = phaseData.reduce((sum, p) => sum + p.pendente, 0);
+  const visiblePhaseData = phaseData.filter((p: any) => !p.hidden);
+  const totalMeasures = visiblePhaseData.reduce((sum, p) => sum + p.total, 0);
+  const totalConcluido = visiblePhaseData.reduce((sum, p) => sum + p.concluido, 0);
+  const totalEmCurso = visiblePhaseData.reduce((sum, p) => sum + p.emCurso, 0);
+  const totalPendente = visiblePhaseData.reduce((sum, p) => sum + p.pendente, 0);
   const overallProgress = totalMeasures > 0 ? Math.round((totalConcluido / totalMeasures) * 100) : 0;
 
   if (!projectId) {
@@ -322,7 +334,7 @@ export default function Timeline() {
 
         {/* Horizontal pipeline for desktop */}
         <div className="hidden lg:flex items-center gap-1 overflow-x-auto pb-2">
-          {phaseData.map((phase, idx) => (
+          {visiblePhaseData.map((phase, idx) => (
             <div key={phase.key} className="flex items-center">
               <div className={`relative px-3 py-2 rounded-lg border min-w-[110px] text-center ${phase.lightColor} ${phase.isComplete ? "ring-2 ring-green-400" : ""}`}>
                 <p className="text-xs font-medium truncate">{phase.shortLabel}</p>
@@ -334,7 +346,7 @@ export default function Timeline() {
                   </div>
                 )}
               </div>
-              {idx < phaseData.length - 1 && (
+              {idx < visiblePhaseData.length - 1 && (
                 <ArrowRight className="w-4 h-4 text-muted-foreground/50 shrink-0 mx-0.5" />
               )}
             </div>
@@ -345,7 +357,7 @@ export default function Timeline() {
       {/* Detailed phase cards */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Detalhe por Fase</h2>
-        {phaseData.map(phase => (
+        {visiblePhaseData.map(phase => (
           <Card key={phase.key} className={`overflow-hidden ${phase.isComplete ? "border-green-200" : ""}`}>
             <CardContent className="p-0">
               <div className="flex items-stretch">
@@ -390,7 +402,7 @@ export default function Timeline() {
         ))}
       </div>
 
-      {phaseData.length === 0 && (
+      {visiblePhaseData.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <Layers className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>Nenhuma fase com medidas encontrada.</p>

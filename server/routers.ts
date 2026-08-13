@@ -1394,6 +1394,14 @@ export const appRouter = router({
       .query(async ({ ctx }) => {
         return await db.getAllProjectPhases();
       }),
+    updateSettings: protectedProcedure
+      .input(z.object({ id: z.number(), startDate: z.string().optional(), endDate: z.string().optional(), hidden: z.number().optional(), progress: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { id, ...data } = input;
+        await db.pool.query("UPDATE project_phases SET startDate = ?, endDate = ?, hidden = COALESCE(?, hidden), progress = COALESCE(?, progress) WHERE id = ?", [data.startDate || null, data.endDate || null, data.hidden ?? null, data.progress ?? null, id]);
+        return { success: true };
+      }),
   }),
 
   phaseMeasures: router({

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -6,7 +6,10 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers, Settings, EyeOff, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
@@ -246,14 +249,44 @@ export default function Timeline() {
   return (
     <AppLayout><div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Layers className="w-6 h-6" /> Timeline do Projeto
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Visão geral do cumprimento de medidas por fase — {activeProject?.name}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Layers className="w-6 h-6" /> Timeline do Projeto
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Visão geral do cumprimento de medidas por fase — {activeProject?.name}
+            </p>
+          </div>
+          {user?.role === "admin" && (
+            <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
+              <Settings className="w-4 h-4 mr-1" /> Definições
+            </Button>
+          )}
+        </div>
       </div>
 
+      {/* Admin Settings Panel */}
+      {showSettings && user?.role === "admin" && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold flex items-center gap-1"><Settings className="w-4 h-4" /> Definições da Timeline</p>
+            <p className="text-xs text-muted-foreground">Ocultar fases, definir datas de início/fim (sincroniza com calendário)</p>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {phaseData.map((phase: any) => (
+                <div key={phase.key} className="flex items-center gap-2 p-2 border rounded bg-white text-xs">
+                  <button onClick={() => updatePhaseMutation.mutate({ id: phase.dbId || 0, hidden: phase.hidden ? 0 : 1 })} className="shrink-0">
+                    {phase.hidden ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-green-600" />}
+                  </button>
+                  <span className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}>{phase.label}</span>
+                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.startDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, startDate: e.target.value || undefined })} placeholder="Início" />
+                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.endDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, endDate: e.target.value || undefined })} placeholder="Fim" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Overall progress card */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
         <CardContent className="p-5">

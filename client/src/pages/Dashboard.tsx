@@ -30,7 +30,9 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { activeProject, isAllProjects } = useProject();
+  const { activeProject, isAllProjects, projects } = useProject();
+  const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
+  const calendarEventsQuery = trpc.calendarEvents.list.useQuery({ projectId: 0 }, { enabled: isAllProjects });
 
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -292,6 +294,7 @@ export default function Dashboard() {
 
         {/* All Projects summary banner */}
         {isAllProjects && (
+          <>
           <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -305,6 +308,69 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Compliance Overview */}
+          {allProjectsProgressQuery.data && (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <p className="text-sm font-semibold">Estado de Cumprimento por Projeto</p>
+                <div className="space-y-2">
+                  {allProjectsProgressQuery.data.map((proj: any) => {
+                    const currentPhase = proj.phases.find((p: any) => p.progress < 100) || proj.phases[proj.phases.length - 1];
+                    const overallProgress = proj.phases.length > 0 ? Math.round(proj.phases.reduce((s: number, p: any) => s + p.progress, 0) / proj.phases.length) : 0;
+                    const isOnTrack = overallProgress >= 50;
+                    return (
+                      <div key={proj.projectId} className="flex items-center gap-3 p-2 border rounded">
+                        <div className={`w-2 h-8 rounded-full ${isOnTrack ? "bg-green-500" : "bg-red-500"}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium">{proj.code}</p>
+                          <p className="text-[10px] text-muted-foreground">Fase actual: {currentPhase?.key || "—"}</p>
+                        </div>
+                        <div className="w-24">
+                          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                            <div className={`h-full ${isOnTrack ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${overallProgress}%` }} />
+                          </div>
+                          <p className="text-[10px] text-center mt-0.5">{overallProgress}%</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Calendar Deadlines */}
+          {calendarEventsQuery.data && (() => {
+            const events = (calendarEventsQuery.data as any[]) || [];
+            const now = Date.now();
+            const overdue = events.filter((e: any) => e.nextDate && e.nextDate < now && e.status !== "reported" && e.status !== "validated");
+            const upcoming = events.filter((e: any) => e.nextDate && e.nextDate >= now && e.nextDate < now + 30 * 24 * 60 * 60 * 1000).sort((a: any, b: any) => a.nextDate - b.nextDate);
+            if (overdue.length === 0 && upcoming.length === 0) return null;
+            return (
+              <Card className={overdue.length > 0 ? "border-red-200 bg-red-50/30" : "border-amber-200 bg-amber-50/30"}>
+                <CardContent className="p-4 space-y-2">
+                  {overdue.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-red-700 mb-1">Em Incumprimento ({overdue.length})</p>
+                      {overdue.slice(0, 5).map((e: any) => (
+                        <p key={e.id} className="text-[10px] text-red-600">• {e.name} — {e.projectCode || "Todos"}</p>
+                      ))}
+                    </div>
+                  )}
+                  {upcoming.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-700 mb-1">Próximos 30 dias ({upcoming.length})</p>
+                      {upcoming.slice(0, 5).map((e: any) => (
+                        <p key={e.id} className="text-[10px] text-amber-600">• {e.name} — {new Date(e.nextDate).toLocaleDateString("pt-PT")}</p>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+          </>
         )}
 
         {/* RDCD Countdown Alert */}

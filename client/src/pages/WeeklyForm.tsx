@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight } from "lucide-react";
-import { FilePlus, Paperclip, Download, File } from "lucide-react";
+import { FilePlus, Paperclip, Download, File, Grid3X3, History } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 
@@ -473,19 +473,27 @@ export default function WeeklyForm() {
 
         {/* Tabs: Nova Ficha / Rascunhos */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="nova" className="gap-2">
-              <FilePlus className="w-4 h-4" />
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="nova" className="gap-1 text-xs">
+              <FilePlus className="w-3.5 h-3.5" />
               Nova Ficha
             </TabsTrigger>
-            <TabsTrigger value="rascunhos" className="gap-2">
-              <FileText className="w-4 h-4" />
+            <TabsTrigger value="rascunhos" className="gap-1 text-xs">
+              <FileText className="w-3.5 h-3.5" />
               Rascunhos
               {draftsAndRejected.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0">
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
                   {draftsAndRejected.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="matriz" className="gap-1 text-xs">
+              <Grid3X3 className="w-3.5 h-3.5" />
+              Matriz
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-1 text-xs">
+              <History className="w-3.5 h-3.5" />
+              Histórico
             </TabsTrigger>
           </TabsList>
 
@@ -873,8 +881,81 @@ export default function WeeklyForm() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Tab: Matriz */}
+          <TabsContent value="matriz" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Matriz de Acompanhamento</CardTitle>
+                <p className="text-xs text-muted-foreground">Estado de submissão por empresa e semana</p>
+              </CardHeader>
+              <CardContent>
+                <MatrizInline projectId={activeProject?.id || 0} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Tab: Histórico */}
+          <TabsContent value="historico" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Histórico de Submissões</CardTitle>
+                <p className="text-xs text-muted-foreground">Fichas submetidas e aprovadas</p>
+              </CardHeader>
+              <CardContent>
+                <HistoricoInline projectId={activeProject?.id || 0} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout>
+  );
+}
+
+function MatrizInline({ projectId }: { projectId: number }) {
+  const matrixQuery = trpc.submissions.listAll.useQuery(undefined);
+  const companiesQuery = trpc.companies.list.useQuery();
+  const submissions = ((matrixQuery.data || []) as any[]).filter((s: any) => s.projectId === projectId);
+  const companies = (companiesQuery.data || []) as any[];
+  const weeks = Array.from(new Set(submissions.map((s: any) => `${s.weekYear}-${s.weekNumber}`))).sort().slice(-12).map(k => {
+    const [y, w] = k.split("-"); return { weekYear: Number(y), weekNumber: Number(w) };
+  });
+  const eeCompanies = companies.filter((c: any) => c.companyType === "ee" || c.companyType === "rap");
+  if (weeks.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem dados de submissão.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">Empresa</th>{weeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead>
+      <tbody>{eeCompanies.map((c: any) => (
+        <tr key={c.id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{c.shortName}</td>
+        {weeks.map(w => { const sub = submissions.find((s: any) => s.companyId === c.id && s.weekNumber === w.weekNumber && s.weekYear === w.weekYear && s.status !== "deleted"); const color = !sub ? "bg-gray-100" : sub.status === "approved" ? "bg-green-100 text-green-700" : sub.status === "submitted" || sub.status === "under_review" ? "bg-amber-100 text-amber-700" : sub.status === "rejected" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"; const label = !sub ? "—" : sub.status === "approved" ? "✓" : sub.status === "rejected" ? "✗" : sub.status === "submitted" || sub.status === "under_review" ? "⏳" : "📝"; return <td key={`${w.weekYear}-${w.weekNumber}`} className={`p-2 text-center rounded ${color}`}>{label}</td>; })}
+        </tr>))}</tbody></table>
+      <div className="flex gap-3 mt-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-100 border" /> Entregue</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-100 border" /> Em Revisão</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-100 border" /> Criada</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 border" /> Rejeitada</span>
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-100 border" /> Sem ficha</span>
+      </div>
+    </div>
+  );
+}
+
+function HistoricoInline({ projectId }: { projectId: number }) {
+  const histQuery = trpc.submissions.listAll.useQuery(undefined);
+  const submissions = ((histQuery.data || []) as any[]).filter((s: any) => s.projectId === projectId && (s.status === "approved" || s.status === "submitted" || s.status === "under_review")).sort((a: any, b: any) => (b.weekYear - a.weekYear) || (b.weekNumber - a.weekNumber));
+  if (submissions.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem fichas submetidas.</p>;
+  return (
+    <div className="space-y-2 max-h-80 overflow-y-auto">
+      {submissions.map((s: any) => (
+        <div key={s.id} className="flex items-center justify-between p-2 border rounded hover:bg-muted/30">
+          <div><p className="text-sm font-medium">Semana {s.weekNumber}/{s.weekYear}</p><p className="text-[10px] text-muted-foreground">{s.companyName || "—"} • {s.weekStartDate} a {s.weekEndDate}</p></div>
+          <span className={`text-xs px-2 py-0.5 rounded ${s.status === "approved" ? "bg-green-100 text-green-700" : s.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+            {s.status === "approved" ? "Aprovada" : s.status === "rejected" ? "Rejeitada" : "Em Revisão"}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }

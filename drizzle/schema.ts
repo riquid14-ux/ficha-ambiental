@@ -312,6 +312,10 @@ export const projectPhases = mysqlTable("project_phases", {
   phaseName: varchar("phaseName", { length: 255 }).notNull(),
   active: int("active").default(1).notNull(),
   orderIndex: int("orderIndex").default(0).notNull(),
+  startDate: varchar("startDate", { length: 10 }),
+  endDate: varchar("endDate", { length: 10 }),
+  hidden: int("hidden").default(0).notNull(),
+  progress: int("progress").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ProjectPhase = typeof projectPhases.$inferSelect;

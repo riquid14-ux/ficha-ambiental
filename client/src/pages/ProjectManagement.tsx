@@ -217,7 +217,7 @@ function ProjectUsersTab({ projectId }: { projectId: number }) {
 
   const assignedUserIds = new Set(projectUserAssocs.map(u => u.userId));
   // Filter out the hidden system admin
-  const visibleUsers = allUsers.filter(u => u.email !== "riquid14@gmail.com");
+  const visibleUsers = allUsers;
 
   return (
     <div className="space-y-2">

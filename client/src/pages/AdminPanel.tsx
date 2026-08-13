@@ -594,7 +594,7 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersQuery.data?.filter((u) => u.email !== "riquid14@gmail.com").map((u) => (
+              {usersQuery.data?.map((u) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>

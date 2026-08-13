@@ -402,7 +402,7 @@ export const appRouter = router({
         // Prevent demoting an admin unless the requester is also an admin
         const targetUser = await db.getUserById(input.userId);
         if (targetUser?.role === "admin" && input.role !== "admin") {
-          // Only the super-admin (riquid14) can demote other admins
+          // Only admins can manage other admin roles
           throw new TRPCError({ code: "FORBIDDEN", message: "Não é possível remover o papel de Admin a outro administrador." });
         }
         // Prevent dono_obra from changing another dono_obra

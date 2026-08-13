@@ -1424,7 +1424,7 @@ export const appRouter = router({
           const statusMap = new Map<number, string>();
           statuses.forEach((s: any) => statusMap.set(s.measureId, s.status));
 
-          const phases: { key: string; total: number; concluido: number; progress: number }[] = [];
+          const phases: any[] = [];
           const PHASE_KEYS = ["Prévias Licenciamento", "Em Sede de Licenciamento", "Pré-Construção", "Preparação Prévia", "Execução da Obra", "Fase Final", "Fase Final Construção", "Exploração", "Desativação (Pós-Exploração)"];
 
           for (const phaseKey of PHASE_KEYS) {

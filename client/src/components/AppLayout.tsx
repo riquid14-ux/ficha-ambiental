@@ -66,6 +66,7 @@ const operationProjectMenuItems = [
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
+  { icon: FileBarChart, label: "Certificações", path: "/certificacoes" },
 ];
 
 // Menu items for "Todos os Projetos" view

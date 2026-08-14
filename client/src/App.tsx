@@ -42,6 +42,7 @@ function Router() {
       <Route path="/mirr" component={MIRR} />
       <Route path="/residuos" component={MIRR} />
       <Route path="/kpi" component={KPI} />
+            <Route path="/certificacoes" component={Certifications} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

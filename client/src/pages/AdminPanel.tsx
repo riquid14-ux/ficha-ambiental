@@ -496,6 +496,7 @@ function SubmissionsTab() {
 
 function UsersTab() {
   const utils = trpc.useUtils();
+  const { user } = useAuth();
   const usersQuery = trpc.users.list.useQuery();
   const companiesQuery = trpc.companies.list.useQuery();
   const invitationsQuery = trpc.invitations.list.useQuery();

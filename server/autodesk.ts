@@ -137,7 +137,7 @@ export function registerAutodeskRoutes(app: Express) {
         return res.json({ success: true, email, name: userInfo.name });
       } else {
         return res.status(403).json({
-          error: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt",
+          error: "Não tem acesso. Contacte apoioamb@startcampus.pt",
           email,
         });
       }

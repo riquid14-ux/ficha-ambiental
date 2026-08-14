@@ -289,19 +289,57 @@ class SDKServer {
     const signedInAt = new Date();
     let user = await db.getUserByOpenId(sessionUserId);
 
-    // If user not in DB, sync from OAuth server automatically
+    // If user not in DB, check if they have an invitation or are pre-approved
     if (!user) {
       try {
         const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
+        const email = (userInfo.email || "").toLowerCase().trim();
+        // Check if this email exists in users table or has a pending invitation
+        const allUsers = await db.getAllUsers();
+        const existingByEmail = allUsers.find(u => u.email?.toLowerCase().trim() === email);
+        if (existingByEmail) {
+          // User exists by email but different openId - link them
+          await db.upsertUser({
+            openId: userInfo.openId,
+            name: existingByEmail.name || userInfo.name || null,
+            email: email,
+            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+            lastSignedIn: signedInAt,
+            role: existingByEmail.role as any,
+          });
+          user = await db.getUserByOpenId(userInfo.openId);
+        } else {
+          // Check for pending invitation
+          const invitation = await db.getPendingInvitationByEmail(email);
+          if (invitation) {
+            await db.upsertUser({
+              openId: userInfo.openId,
+              name: userInfo.name || null,
+              email: email,
+              loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+              lastSignedIn: signedInAt,
+              role: invitation.role as any,
+            });
+            user = await db.getUserByOpenId(userInfo.openId);
+          } else {
+            // BLOCK: unknown email - log the access attempt
+            console.log("[Auth] Access denied for unknown email:", email);
+            // Store as pending account request
+            try {
+              await db.upsertUser({
+                openId: userInfo.openId,
+                name: userInfo.name || email.split("@")[0],
+                email: email,
+                loginMethod: "oauth_attempt",
+                lastSignedIn: signedInAt,
+                accountStatus: "pending",
+              });
+            } catch (e) { /* ignore duplicate */ }
+            throw ForbiddenError("Email nao registado no sistema. Contacte apoioamb@startcampus.pt");
+          }
+        }
+      } catch (error: any) {
+        if (error?.message?.includes("nao registado")) throw error;
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
       }

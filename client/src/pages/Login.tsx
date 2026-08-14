@@ -74,7 +74,7 @@ export default function Login() {
     const params = new URLSearchParams(searchString);
     if (params.get("error") === "no_access") {
       const emailParam = params.get("email") || "";
-      setError(`O email ${emailParam} não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt`);
+      setError(`O email ${emailParam} não tem acesso. Contacte apoioamb@startcampus.pt`);
       setAutoLoginAttempted(true);
     }
   }, [searchString]);
@@ -234,7 +234,7 @@ export default function Login() {
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setTotpCode(""); setError(""); setUserId(null); }}>
               ← Voltar ao login
             </button>
-            <p className="text-xs text-muted-foreground text-center">Não tem acesso ao autenticador? Contacte <strong>npa@startcampus.pt</strong></p>
+            <p className="text-xs text-muted-foreground text-center">Não tem acesso ao autenticador? Contacte <strong>apoioamb@startcampus.pt</strong></p>
           </form>
         )}
 

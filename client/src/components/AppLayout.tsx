@@ -138,6 +138,21 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     };
     return map[pt] || pt;
   };
+  // Password verification for OAuth-authenticated users
+  const [passwordVerified, setPasswordVerified] = useState(() => sessionStorage.getItem("pw_verified") === "1");
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState("");
+  const verifyPasswordMutation = trpc.auth.login.useMutation({
+    onSuccess: (data: any) => {
+      if (data.success) {
+        sessionStorage.setItem("pw_verified", "1");
+        setPasswordVerified(true);
+      }
+    },
+    onError: () => setPwError("Palavra-passe incorreta"),
+  });
+  const needsPasswordCheck = user && !passwordVerified && (user as any).passwordHash;
+
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
@@ -360,6 +375,32 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         )}
         <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </SidebarInset>
+      {/* Password Verification Overlay */}
+      {needsPasswordCheck && (
+        <div className="fixed inset-0 z-[101] bg-black/70 backdrop-blur-sm flex items-center justify-center">
+          <Card className="w-full max-w-md mx-4">
+            <CardContent className="p-6 space-y-4">
+              <div className="text-center">
+                <Shield className="w-12 h-12 text-green-600 mx-auto mb-3" />
+                <h2 className="text-xl font-bold">Palavra-passe</h2>
+                <p className="text-sm text-muted-foreground mt-1">Introduza a sua palavra-passe para continuar</p>
+              </div>
+              <div className="space-y-3">
+                <Input type="password" placeholder="Palavra-passe" value={pwInput} onChange={e => { setPwInput(e.target.value); setPwError(""); }} onKeyDown={e => { if (e.key === "Enter" && pwInput) verifyPasswordMutation.mutate({ email: user?.email || "", password: pwInput }); }} />
+                {pwError && <p className="text-xs text-red-500">{pwError}</p>}
+                <Button className="w-full bg-green-700 hover:bg-green-800" onClick={() => { if (pwInput) verifyPasswordMutation.mutate({ email: user?.email || "", password: pwInput }); }} disabled={!pwInput || verifyPasswordMutation.isPending}>
+                  {verifyPasswordMutation.isPending ? "A verificar..." : "Confirmar"}
+                </Button>
+              </div>
+              <div className="pt-2 border-t text-center">
+                <button type="button" className="text-sm text-red-500 hover:underline" onClick={() => { window.location.href = "/api/auth/logout"; }}>
+                  Terminar Sessao
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100]">
@@ -396,7 +437,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 </div>
               )}
               <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Não consegue aceder ao autenticador? Contacte <strong>npa@startcampus.pt</strong></p>
+                <p className="text-xs text-muted-foreground mb-2">Não consegue aceder ao autenticador? Contacte <strong>apoioamb@startcampus.pt</strong></p>
                 <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { window.location.href = "/api/auth/logout"; }}>
                   Terminar Sessão
                 </button>

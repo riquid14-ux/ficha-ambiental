@@ -436,7 +436,7 @@ export default function WeeklyForm() {
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">
-              A sua conta ainda não está associada a nenhuma empresa. Contacte Nairana Aguiar (npa@startcampus.pt).
+              A sua conta ainda não está associada a nenhuma empresa. Contacte apoioamb@startcampus.pt.
             </p>
           </CardContent>
         </Card>

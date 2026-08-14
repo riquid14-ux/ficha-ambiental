@@ -146,7 +146,12 @@ export const appRouter = router({
   }),
 
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query((opts) => {
+      const u = opts.ctx.user;
+      if (!u) return null;
+      const { passwordHash, totpSecret, ...safe } = u as any;
+      return { ...safe, passwordHash: !!passwordHash, totpEnabled: !!(u as any).totpEnabled };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -164,10 +169,10 @@ export const appRouter = router({
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou palavra-passe incorretos." });
         }
         if ((user as any).accountStatus === "pending") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "A sua conta está pendente de aprovação. Contacte Nairana Aguiar npa@startcampus.pt" });
+          throw new TRPCError({ code: "FORBIDDEN", message: "A sua conta está pendente de aprovação. Contacte apoioamb@startcampus.pt" });
         }
         if ((user as any).accountStatus === "rejected") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "O seu pedido de acesso foi rejeitado. Contacte Nairana Aguiar npa@startcampus.pt" });
+          throw new TRPCError({ code: "FORBIDDEN", message: "O seu pedido de acesso foi rejeitado. Contacte apoioamb@startcampus.pt" });
         }
         // Verify password
         const passwordHash = (user as any).passwordHash;
@@ -334,7 +339,7 @@ export const appRouter = router({
           ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
           return { success: true, user: existingUser };
         }
-        throw new TRPCError({ code: "FORBIDDEN", message: "Não tem acesso. Contacte Nairana Aguiar npa@startcampus.pt" });
+        throw new TRPCError({ code: "FORBIDDEN", message: "Não tem acesso. Contacte apoioamb@startcampus.pt" });
       }),
   }),
 

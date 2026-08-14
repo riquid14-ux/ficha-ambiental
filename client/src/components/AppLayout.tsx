@@ -348,7 +348,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       </SidebarInset>
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (
-        <div className="fixed inset-0 bg-white flex items-center justify-center z-[100]">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100]">
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">

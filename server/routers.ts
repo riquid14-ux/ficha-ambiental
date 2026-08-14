@@ -1837,16 +1837,13 @@ export const appRouter = router({
       userId: z.number().optional(),
       action: z.string().optional(),
     })).query(async ({ ctx, input }) => {
-      if (!isAdminOrDono(ctx.user)) throw new TRPCError({ code: "FORBIDDEN" });
+      if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      let query = `SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ?`;
-      const params: any[] = [input.limit];
-      if (input.userId) {
-        query = `SELECT * FROM audit_log WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`;
-        params.unshift(input.userId);
-      }
-      const [rows] = await database.execute(query, params);
+      const query = input.userId 
+        ? `SELECT * FROM audit_log WHERE userId = ${input.userId} ORDER BY createdAt DESC LIMIT ${input.limit}`
+        : `SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ${input.limit}`;
+      const [rows] = await database.execute(query);
       return rows as any[];
     }),
   },

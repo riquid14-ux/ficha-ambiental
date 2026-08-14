@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { CheckCircle2, Circle, FileText, AlertTriangle, Upload, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
 
 // === LEED O&M v4.1 Data ===
 const LEED_CATEGORIES = [
@@ -127,11 +128,13 @@ export default function Certifications() {
               <span className="text-xs text-muted-foreground">{item.granularity}</span>
             </div>
           </div>
-          {isAdmin && (
-            <Button variant="ghost" size="sm" className="shrink-0 text-xs h-7">
-              <Upload className="w-3 h-3 mr-1" /> Submeter
-            </Button>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {isAdmin && (
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => toast.info("Submissão: texto, documento ou imagem aceites. Funcionalidade de upload disponível quando ligada ao SharePoint.")}>
+                <Upload className="w-3 h-3 mr-1" /> Submeter
+              </Button>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -186,11 +189,21 @@ export default function Certifications() {
           </Card>
         </div>
 
+        {/* Admin Note */}
+        {isAdmin && (
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-3 flex items-start gap-3">
+              <FileText className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-blue-800">Itens estáticos (informação que não muda anualmente) podem ser submetidos uma vez e ficam validados permanentemente. Ao submeter, pode incluir texto descritivo, documentos (PDF/Word) ou imagens como evidência.</p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Shared Data Note */}
         <Card className="bg-amber-50 border-amber-200">
           <CardContent className="p-3 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800">Dados sobrepostos entre certificações (energia, água) são submetidos uma vez e partilhados automaticamente. O mapeamento completo está documentado na Secção C do referencial.</p>
+            <p className="text-xs text-amber-800">Dados comuns entre certificações (ex: consumo de energia, água) são submetidos uma única vez e partilhados automaticamente entre LEED, EED e CELE.</p>
           </CardContent>
         </Card>
 

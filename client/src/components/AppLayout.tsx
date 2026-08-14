@@ -50,39 +50,39 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 
 // Menu items for individual project view
 const projectMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: BookOpen, label: "Workflow", path: "/workflow" },
-  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: Layers, label: "Fases", path: "/fases" },
-  { icon: GitBranch, label: "Timeline", path: "/timeline" },
-  { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
-  { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
-  { icon: BarChart3, label: "KPI's", path: "/kpi" },
+  { icon: LayoutDashboard, label: t("Dashboard", "Dashboard"), path: "/dashboard" },
+  { icon: BookOpen, label: t("Workflow", "Workflow"), path: "/workflow" },
+  { icon: CalendarDays, label: t("Calendário", "Calendar"), path: "/calendario" },
+  { icon: Layers, label: t("Fases", "Phases"), path: "/fases" },
+  { icon: GitBranch, label: t("Timeline", "Timeline"), path: "/timeline" },
+  { icon: ClipboardList, label: t("Ficha Semanal", "Weekly Form"), path: "/ficha" },
+  { icon: Recycle, label: t("Gestão de Resíduos", "Waste Management"), path: "/residuos" },
+  { icon: BarChart3, label: t("KPI's", "KPI's"), path: "/kpi" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)
 const operationProjectMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: Recycle, label: "MIRR", path: "/mirr" },
-  { icon: Layers, label: "Fases", path: "/fases" },
-  { icon: FileBarChart, label: "Certificações", path: "/certificacoes" },
+  { icon: LayoutDashboard, label: t("Dashboard", "Dashboard"), path: "/dashboard" },
+  { icon: CalendarDays, label: t("Calendário", "Calendar"), path: "/calendario" },
+  { icon: Recycle, label: t("MIRR", "MIRR"), path: "/mirr" },
+  { icon: Layers, label: t("Fases", "Phases"), path: "/fases" },
+  { icon: FileBarChart, label: t("Certificações", "Certifications"), path: "/certificacoes" },
 ];
 
 // Menu items for "Todos os Projetos" view
 const allProjectsMenuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Grid3X3, label: "Matriz", path: "/matriz" },
-  { icon: FileText, label: "Planos", path: "/planos" },
-  { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: GitBranch, label: "Timeline", path: "/timeline" },
-  { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
-  { icon: Heart, label: "GAMMA", path: "/gamma" },
+  { icon: LayoutDashboard, label: t("Dashboard", "Dashboard"), path: "/dashboard" },
+  { icon: Grid3X3, label: t("Matriz", "Tracking Matrix"), path: "/matriz" },
+  { icon: FileText, label: t("Planos", "Plans"), path: "/planos" },
+  { icon: CalendarDays, label: t("Calendário", "Calendar"), path: "/calendario" },
+  { icon: GitBranch, label: t("Timeline", "Timeline"), path: "/timeline" },
+  { icon: FileBarChart, label: t("RDCD", "RDCD Report"), path: "/rdcd" },
+  { icon: Heart, label: t("GAMMA", "GAMMA"), path: "/gamma" },
 ];
 
 const adminMenuItems = [
   // Control Room is now integrated into Calendário page
-  { icon: Shield, label: "Administração", path: "/admin" },
+  { icon: Shield, label: t("Administração", "Administration"), path: "/admin" },
 ];
 const reviewMenuItems: typeof projectMenuItems = [
 ];
@@ -124,6 +124,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
   const [language, setLanguage] = useState<"pt" | "en">("pt");
+
+  const t = (pt: string, en: string) => language === "en" ? en : pt;
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
@@ -137,7 +139,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
 
   // Check if 2FA enforcement is needed (7 days after account creation without 2FA)
   const needs2FA = user && !(user as any).totpEnabled && user.createdAt &&
-    (Date.now() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000);
+    (Date.now() - new Date(user.createdAt).getTime() > 30 * 24 * 60 * 60 * 1000);
 
   const { projects, activeProject, setActiveProjectId, isAllProjects } = useProject();
   const [location, setLocation] = useLocation();
@@ -183,7 +185,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const allItems = [
     ...baseMenuItems,
     ...(canAdmin ? adminMenuItems : []),
-    ...(canAdminOrDO && !canAdmin ? [{ icon: Shield, label: "Administração", path: "/admin" }] : []),
+    ...(canAdminOrDO && !canAdmin ? [{ icon: Shield, label: t("Administração", "Administration"), path: "/admin" }] : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 

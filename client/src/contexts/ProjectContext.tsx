@@ -12,6 +12,7 @@ interface Project {
 
 interface ProjectContextType {
   projects: Project[];
+  canSeeAllProjects: boolean;
   activeProject: Project | null;
   setActiveProjectId: (id: number | null) => void;
   isAllProjects: boolean;
@@ -20,6 +21,7 @@ interface ProjectContextType {
 
 const ProjectContext = createContext<ProjectContextType>({
   projects: [],
+  canSeeAllProjects: false,
   activeProject: null,
   setActiveProjectId: () => {},
   isAllProjects: false,
@@ -30,9 +32,12 @@ const PROJECT_STORAGE_KEY = "active-project-id";
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const canSeeAllProjects = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
+
   const { data: projects = [], isLoading } = trpc.projects.list.useQuery(undefined, {
     enabled: !!user,
   });
+
   const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
     const saved = localStorage.getItem(PROJECT_STORAGE_KEY);
     return saved ? parseInt(saved, 10) : null;
@@ -46,24 +51,30 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, [activeProjectId]);
 
-  // If saved project is not in list, reset to null (all projects)
+  useEffect(() => {
+    if (!isLoading && projects.length > 0 && !canSeeAllProjects && activeProjectId === null) {
+      setActiveProjectId(projects[0].id);
+    }
+  }, [projects, isLoading, canSeeAllProjects, activeProjectId]);
+
   useEffect(() => {
     if (!isLoading && projects.length > 0 && activeProjectId !== null) {
       const exists = projects.some(p => p.id === activeProjectId);
-      if (!exists) setActiveProjectId(null);
+      if (!exists) setActiveProjectId(canSeeAllProjects ? null : projects[0]?.id ?? null);
     }
-  }, [projects, isLoading, activeProjectId]);
+  }, [projects, isLoading, activeProjectId, canSeeAllProjects]);
 
   const activeProject = activeProjectId !== null
     ? projects.find(p => p.id === activeProjectId) || null
     : null;
 
-  const isAllProjects = activeProjectId === null;
+  const isAllProjects = activeProjectId === null && canSeeAllProjects;
 
   return (
     <ProjectContext.Provider value={{
       projects,
       activeProject,
+      canSeeAllProjects,
       setActiveProjectId,
       isAllProjects,
       loading: isLoading,

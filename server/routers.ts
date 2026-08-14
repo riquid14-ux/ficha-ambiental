@@ -213,7 +213,7 @@ export const appRouter = router({
 
     // ─── Register (creates pending account) ─────────────────────────────────
     register: publicProcedure
-      .input(z.object({ email: z.string().email(), password: z.string().min(6), name: z.string().min(1) }))
+      .input(z.object({ email: z.string().email(), password: z.string().min(6), name: z.string().min(1), companyName: z.string().optional() }))
       .mutation(async ({ input }) => {
         const email = input.email.toLowerCase().trim();
         const existingUsers = await db.getAllUsers();
@@ -222,7 +222,8 @@ export const appRouter = router({
         }
         const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
         const passwordHash = await bcrypt.hash(input.password, 10);
-        await db.upsertUser({ openId, name: input.name, email, loginMethod: "email", role: "user" });
+        const displayName = input.companyName ? `${input.name} (${input.companyName})` : input.name;
+        await db.upsertUser({ openId, name: displayName, email, loginMethod: "email", role: "user" });
         const database = await db.getDb();
         if (database) {
           await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = 'pending' WHERE openId = ${openId}`);
@@ -306,13 +307,15 @@ export const appRouter = router({
 
     // ─── Admin: approve/reject pending accounts ─────────────────────────────
     approveAccount: protectedProcedure
-      .input(z.object({ userId: z.number(), approve: z.boolean() }))
+      .input(z.object({ userId: z.number(), approve: z.boolean(), role: z.string().optional(), companyId: z.number().optional() }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         const status = input.approve ? "active" : "rejected";
         const database = await db.getDb();
         if (database) {
-          await database.execute(sql`UPDATE users SET accountStatus = ${status} WHERE id = ${input.userId}`);
+          const role = input.role || "user";
+          const companyId = input.companyId || null;
+          await database.execute(sql`UPDATE users SET accountStatus = ${status}, role = ${role}, companyId = ${companyId} WHERE id = ${input.userId}`);
         }
         return { success: true };
       }),
@@ -966,11 +969,12 @@ export const appRouter = router({
   projects: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       const allProjects = await db.getAllProjects();
-      // Admin/dono_obra see all projects; others see only assigned projects
-      if (isAdminOrDono(ctx.user.role)) {
+      const role = ctx.user.role;
+      // Admin/dono_obra/PM see all projects
+      if (role === "admin" || role === "dono_obra" || role === "pm") {
         return allProjects;
       }
-      // Check user-level project assignments first
+      // EE/RAP/RAA/observador: only see assigned projects, NEVER SIN01
       const userProjectAssocs = await db.getUserProjects(ctx.user.id);
       const userProjectIds = new Set(userProjectAssocs.map(up => up.projectId));
       // Also check company-level project assignments
@@ -980,12 +984,12 @@ export const appRouter = router({
           userProjectIds.add(cp.projectId);
         }
       }
-      // If no specific assignments at all (neither user nor company), show all projects
+      // If no assignments, return empty (user sees nothing until admin assigns)
       if (userProjectIds.size === 0) {
-        return allProjects;
+        return [];
       }
-      // Otherwise, filter to only assigned projects
-      return allProjects.filter(p => userProjectIds.has(p.id));
+      // Filter to assigned projects and exclude SIN01 for non-admin roles
+      return allProjects.filter(p => userProjectIds.has(p.id) && p.code !== "SIN01");
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))

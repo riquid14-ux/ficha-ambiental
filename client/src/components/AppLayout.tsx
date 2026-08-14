@@ -168,7 +168,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const needs2FA = user && !(user as any).totpEnabled && user.createdAt &&
     (Date.now() - new Date(user.createdAt).getTime() > 30 * 24 * 60 * 60 * 1000);
 
-  const { projects, activeProject, setActiveProjectId, isAllProjects } = useProject();
+  const { projects, activeProject, setActiveProjectId, isAllProjects, canSeeAllProjects } = useProject();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -282,12 +282,14 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                     <SelectValue placeholder="Selecionar projeto" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">
-                      <div className="flex items-center gap-2">
-                        <FolderKanban className="h-3 w-3" />
-                        <span>Todos os Projetos</span>
-                      </div>
-                    </SelectItem>
+                    {canSeeAllProjects && (
+                      <SelectItem value="all">
+                        <div className="flex items-center gap-2">
+                          <FolderKanban className="h-3 w-3" />
+                          <span>Todos os Projetos</span>
+                        </div>
+                      </SelectItem>
+                    )}
                     {projects.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>
                         <span className="font-medium">{p.code}</span>

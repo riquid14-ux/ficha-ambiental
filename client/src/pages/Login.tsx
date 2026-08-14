@@ -19,6 +19,7 @@ export default function Login() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
+  const [registerCompany, setRegisterCompany] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [userId, setUserId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -135,7 +136,7 @@ export default function Login() {
     if (!email.trim()) { setError("Introduza o seu email"); return; }
     if (password.length < 6) { setError("A palavra-passe deve ter pelo menos 6 caracteres"); return; }
     if (password !== confirmPassword) { setError("As palavras-passe não coincidem"); return; }
-    registerMutation.mutate({ email: email.trim(), password, name: registerName.trim() });
+    registerMutation.mutate({ email: email.trim(), password, name: registerName.trim(), companyName: registerCompany.trim() || undefined });
   };
 
   const handleAutodeskLogin = () => { window.location.href = "/api/autodesk/login"; };
@@ -242,6 +243,7 @@ export default function Login() {
         {viewMode === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
             <Input type="text" placeholder="Nome completo" value={registerName} onChange={(e) => { setRegisterName(e.target.value); setError(""); }} className="h-12" autoFocus />
+            <Input type="text" placeholder="Empresa (ex: TSL, EDP...)" value={registerCompany} onChange={(e) => { setRegisterCompany(e.target.value); }} className="h-12" />
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" />

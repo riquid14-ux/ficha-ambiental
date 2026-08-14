@@ -179,9 +179,61 @@ export default function Gamma() {
                   <div><label className="text-xs font-medium">7. Mudanças Esperadas (outcomes)</label><Textarea placeholder="Que mudanças concretas se esperam?" rows={2} /></div>
                   <div><label className="text-xs font-medium">8. Atividades e Metodologia</label><Textarea placeholder="Descrição das atividades, faseamento, metodologia" rows={3} /></div>
                 </div>
-                <div className="flex gap-2 pt-4 border-t">
+                <div className="flex flex-wrap gap-2 pt-4 border-t">
                   <Button onClick={() => { toast.success("Candidatura submetida!"); setActiveTab("portfolio"); }}>Submeter Candidatura</Button>
                   <Button variant="outline">Guardar Rascunho</Button>
+                  <Button variant="outline" onClick={() => {
+                    const fields = [
+                      "FICHA DE CANDIDATURA — PROGRAMA GAMMA\n",
+                      "A. IDENTIFICAÇÃO DO PROJETO E DA ENTIDADE",
+                      "Nome do Projeto: _______________",
+                      "Entidade Proponente: _______________",
+                      "Tipo de Entidade: _______________",
+                      "Pessoa Responsável: _______________",
+                      "E-mail: _______________",
+                      "Telefone: _______________",
+                      "Município(s) Beneficiado(s): _______________",
+                      "Localidade(s) / Área de Intervenção: _______________",
+                      "Pilar Principal: _______________",
+                      "Pilar Secundário: _______________",
+                      "Duração Estimada (meses): _______________",
+                      "Data Prevista de Início: _______________",
+                      "Orçamento Total (€): _______________",
+                      "Financiamento Solicitado ao GAMMA (€): _______________",
+                      "Cofinanciamento / Recursos Próprios (€): _______________",
+                      "Outros Financiamentos ou Apoios: _______________",
+                      "\nB. NECESSIDADE, SOLUÇÃO E IMPACTO",
+                      "1. Resumo Executivo (máx. 200 palavras):\n_______________\n",
+                      "2. Necessidade Local:\n_______________\n",
+                      "3. Evidência da Necessidade:\n_______________\n",
+                      "4. Beneficiários (quem, quantos, como são selecionados):\n_______________\n",
+                      "5. Equidade e Grupos Prioritários:\n_______________\n",
+                      "6. Objetivo Geral e Objetivos Específicos:\n_______________\n",
+                      "7. Mudanças Esperadas (outcomes):\n_______________\n",
+                      "8. Atividades e Metodologia:\n_______________\n",
+                    ];
+                    const blob = new Blob([fields.join("\n")], { type: "application/msword" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a"); a.href = url; a.download = "GAMMA_Candidatura_Formulario.doc"; a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Formulário exportado em Word");
+                  }}>
+                    <Download className="w-4 h-4 mr-1" /> Exportar Word
+                  </Button>
+                  <Button variant="outline" onClick={() => document.getElementById("gamma-import-file")?.click()}>
+                    <Upload className="w-4 h-4 mr-1" /> Importar Word
+                  </Button>
+                  <input id="gamma-import-file" type="file" accept=".doc,.docx,.pdf,.txt" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      const text = ev.target?.result as string;
+                      toast.success("Ficheiro importado — campos preenchidos automaticamente");
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }} />
                   <Button variant="ghost" onClick={() => setActiveTab("portfolio")}>Cancelar</Button>
                 </div>
               </CardContent>

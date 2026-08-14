@@ -1,3 +1,4 @@
+import React from 'react';
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -123,8 +124,9 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
-  const [language, setLanguage] = useState<"pt" | "en">("pt");
+  const [language, setLanguage] = useState<"pt" | "en">(() => (localStorage.getItem("app_lang") as "pt" | "en") || "pt");
 
+  React.useEffect(() => { localStorage.setItem("app_lang", language); }, [language]);
   const t = (pt: string, en?: string) => {
     if (language === "pt" || !en) return pt;
     const map: Record<string, string> = {
@@ -134,7 +136,23 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       "Ficha Semanal": "Weekly Form", "Fases": "Phases", "Gestão de Resíduos": "Waste Management",
       "KPI's": "KPI's", "Certificações": "Certifications", "MIRR": "MIRR",
       "Perfil": "Profile", "Deixar Feedback": "Leave Feedback", "Terminar Sessão": "Sign Out",
-      "PROJETO": "PROJECT", "Todos os Projetos": "All Projects"
+      "PROJETO": "PROJECT", "Todos os Projetos": "All Projects",
+      "Histórico": "History", "Revisão": "Review", "Rascunhos": "Drafts",
+      "Nova Ficha": "New Form", "Submeter": "Submit", "Guardar": "Save",
+      "Cancelar": "Cancel", "Eliminar": "Delete", "Editar": "Edit",
+      "Adicionar": "Add", "Exportar": "Export", "Importar": "Import",
+      "Empresas": "Companies", "Utilizadores": "Users", "Convites": "Invitations",
+      "Melhorias": "Improvements", "Pedidos de Acesso": "Access Requests",
+      "Auditoria": "Audit Log", "Imagens": "Images", "Definições": "Settings",
+      "Plataforma Ambiental": "Environmental Platform",
+      "Visão geral do cumprimento ambiental": "Environmental compliance overview",
+      "Fichas Aprovadas": "Approved Forms", "Em Revisão": "Under Review",
+      "Projetos Ativos": "Active Projects", "Em Incumprimento": "Non-Compliant",
+      "Cumprimento por Projeto": "Compliance by Project",
+      "Entregáveis & Prazos": "Deliverables & Deadlines",
+      "Resumo Geral": "General Summary", "Total de Fichas": "Total Forms",
+      "Taxa de Aprovação": "Approval Rate", "Empresas Ativas": "Active Companies",
+      "Próximo RDCD": "Next RDCD", "Actividade de Submissão": "Submission Activity"
     };
     return map[pt] || pt;
   };

@@ -20,6 +20,7 @@ import Planos from "./pages/Planos";
 import Calendario from "./pages/Calendario";
 import PhaseMeasures from "./pages/PhaseMeasures";
 import Timeline from "./pages/Timeline";
+import Certifications from "./pages/Certifications";
 import CalendarioControl from "./pages/CalendarioControl";
 import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";

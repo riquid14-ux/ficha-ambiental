@@ -213,21 +213,7 @@ export default function AdminPanel() {
         )}
 </Tabs>
       </div>
-      {/* Delete User Confirmation Dialog */}
-      {deleteUserId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
-            <p className="text-sm text-muted-foreground mb-4">Tem a certeza que quer eliminar <strong>{usersQuery.data?.find(uu => uu.id === deleteUserId)?.name || ""}</strong>? Esta acao e irreversivel.</p>
-            <p className="text-sm mb-2">Escreva o nome do utilizador para confirmar:</p>
-            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
-            <div className="flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{deleteUserMutation.isPending ? "A eliminar..." : "Confirmar"}</Button>
-              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </AppLayout>
   );
 }
@@ -860,6 +846,20 @@ function UsersTab() {
             </Table>
           </CardContent>
         </Card>
+      )}
+      {deleteUserId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
+            <p className="text-sm text-muted-foreground mb-4">Tem a certeza?</p>
+            <p className="text-sm mb-2">Escreva o nome para confirmar:</p>
+            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
+            <div className="flex gap-2">
+              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

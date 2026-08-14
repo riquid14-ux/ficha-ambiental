@@ -230,9 +230,11 @@ export default function Login() {
             <Button type="submit" size="lg" className="w-full h-12" disabled={verify2FAMutation.isPending}>
               {verify2FAMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Verificar"}
             </Button>
-            <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setTotpCode(""); setError(""); }}>
-              Voltar ao login
+            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+            <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setTotpCode(""); setError(""); setUserId(null); }}>
+              ← Voltar ao login
             </button>
+            <p className="text-xs text-muted-foreground text-center">Não tem acesso ao autenticador? Contacte <strong>npa@startcampus.pt</strong></p>
           </form>
         )}
 

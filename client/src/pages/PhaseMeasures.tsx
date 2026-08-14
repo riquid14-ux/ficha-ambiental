@@ -342,7 +342,7 @@ export default function PhaseMeasures() {
                         ) : (
                           <>
                             <Badge variant="outline" className="text-xs font-mono shrink-0">{m.number}</Badge>
-                            <span className="text-xs flex-1 truncate">{m.description}</span>
+                            <span className="text-xs flex-1">{m.description}</span>
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure({ id: m.id, number: m.number, description: m.description, responsible: m.responsible })}>
                               <Pencil className="w-3 h-3" />
                             </Button>
@@ -453,7 +453,7 @@ function MeasureCard({
       >
         {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
         <Badge variant="outline" className="text-xs shrink-0 font-mono">{measure.number}</Badge>
-        <span className="text-sm flex-1 min-w-0 truncate">{measure.description}</span>
+        <span className="text-sm flex-1 min-w-0">{measure.description}</span>
         <div className="flex items-center gap-2 shrink-0">
           {totalAttachments > 0 && (
             <span className="text-xs text-muted-foreground flex items-center gap-0.5">

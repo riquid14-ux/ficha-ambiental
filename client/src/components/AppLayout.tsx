@@ -310,7 +310,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       </SidebarInset>
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100]">
+        <div className="fixed inset-0 bg-white flex items-center justify-center z-[100]">
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -343,6 +343,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   </div>
                 </div>
               )}
+              <div className="pt-2 border-t">
+                <p className="text-xs text-muted-foreground mb-2">Não consegue aceder ao autenticador? Contacte <strong>npa@startcampus.pt</strong></p>
+                <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { window.location.href = "/api/auth/logout"; }}>
+                  Terminar Sessão
+                </button>
+              </div>
             </CardContent>
           </Card>
         </div>

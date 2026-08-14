@@ -213,6 +213,21 @@ export default function AdminPanel() {
         )}
 </Tabs>
       </div>
+      {/* Delete User Confirmation Dialog */}
+      {deleteUserId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
+            <p className="text-sm text-muted-foreground mb-4">Tem a certeza que quer eliminar <strong>{usersQuery.data?.find(uu => uu.id === deleteUserId)?.name || ""}</strong>? Esta acao e irreversivel.</p>
+            <p className="text-sm mb-2">Escreva o nome do utilizador para confirmar:</p>
+            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
+            <div className="flex gap-2">
+              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{deleteUserMutation.isPending ? "A eliminar..." : "Confirmar"}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
@@ -230,6 +245,10 @@ function CompaniesTab() {
   const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
+  const deleteCompanyMutation = trpc.companies.delete.useMutation({
+    onSuccess: () => { toast.success("Empresa eliminada"); companiesQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const setCompanyProjectsMutation = trpc.projects.setCompanyProjects.useMutation({
     onSuccess: () => {
       toast.success("Projetos da empresa atualizados");
@@ -338,7 +357,7 @@ function CompaniesTab() {
                   {editingCompanyId === c.id ? (
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-1">
-                        {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                        {projectsQuery.data?.filter(p => p.code !== "main" && p.code !== "SIN01-NEST").map(p => (
                           <label key={p.id} className="flex items-center gap-1 text-xs cursor-pointer">
                             <input
                               type="checkbox"
@@ -408,6 +427,11 @@ function CompaniesTab() {
                   <Badge variant={c.active ? "default" : "secondary"}>
                     {c.active ? "Ativa" : "Inativa"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => { if (confirm(`Tem a certeza que quer eliminar a empresa "${c.name}"?`)) deleteCompanyMutation.mutate({ id: c.id }); }}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -701,7 +725,7 @@ function UsersTab() {
                     {editingProjectsUserId === u.id ? (
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-1">
-                          {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                          {projectsQuery.data?.filter(p => p.code !== "main" && p.code !== "SIN01-NEST").map(p => (
                             <label key={p.id} className="flex items-center gap-1 text-xs cursor-pointer">
                               <input
                                 type="checkbox"

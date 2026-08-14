@@ -387,6 +387,17 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`UPDATE users SET companyId = NULL WHERE companyId = ${input.id}`);
+          await database.execute(sql`DELETE FROM company_projects WHERE companyId = ${input.id}`);
+          await database.execute(sql`DELETE FROM companies WHERE id = ${input.id}`);
+        }
+        return { success: true };
+      }),
 
   // ─── Users Management (Admin / Dono de Obra) ──────────────────────────────
   users: router({

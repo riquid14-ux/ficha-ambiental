@@ -1844,7 +1844,7 @@ export const appRouter = router({
         ? `SELECT * FROM audit_log WHERE userId = ${input.userId} ORDER BY createdAt DESC LIMIT ${input.limit}`
         : `SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ${input.limit}`;
       const [rows] = await database.execute(query);
-      return rows as any[];
+      return (rows as unknown) as any[];
     }),
   },
 });

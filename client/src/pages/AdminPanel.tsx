@@ -43,6 +43,39 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   rejected: "destructive",
 };
 
+
+function AuditLogTab() {
+  const { data: logs, isLoading } = trpc.audit.list.useQuery({ limit: 200 });
+  if (isLoading) return <p className="text-sm text-muted-foreground">A carregar...</p>;
+  if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">Sem registos de auditoria.</p>;
+  return (
+    <div className="max-h-[500px] overflow-y-auto">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-white border-b">
+          <tr>
+            <th className="text-left p-2">Data</th>
+            <th className="text-left p-2">Utilizador</th>
+            <th className="text-left p-2">Ação</th>
+            <th className="text-left p-2">Entidade</th>
+            <th className="text-left p-2">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((log: any) => (
+            <tr key={log.id} className="border-b hover:bg-gray-50">
+              <td className="p-2 text-xs">{new Date(log.createdAt).toLocaleString("pt-PT")}</td>
+              <td className="p-2">{log.userName || "—"}</td>
+              <td className="p-2">{log.action}</td>
+              <td className="p-2">{log.entity || "—"}</td>
+              <td className="p-2 text-xs max-w-[200px] truncate">{log.oldValue ? `${log.oldValue} → ${log.newValue}` : log.newValue || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -137,6 +170,11 @@ export default function AdminPanel() {
             <TabsTrigger value="melhorias" className="gap-2">
               💡 Melhorias
             </TabsTrigger>
+            {user?.role === "admin" && (
+              <TabsTrigger value="auditoria" className="gap-2">
+                📋 Auditoria
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="companies" className="mt-4">
@@ -158,7 +196,22 @@ export default function AdminPanel() {
           <TabsContent value="melhorias" className="mt-4">
             <MelhoriasTab />
           </TabsContent>
-        </Tabs>
+        
+        {/* Audit Log Tab - Admin only */}
+        {user?.role === "admin" && (
+          <TabsContent value="auditoria" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Histórico de Ações</CardTitle>
+                <p className="text-sm text-muted-foreground">Registo de todas as alterações realizadas na plataforma (apenas leitura)</p>
+              </CardHeader>
+              <CardContent>
+                <AuditLogTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+</Tabs>
       </div>
     </AppLayout>
   );

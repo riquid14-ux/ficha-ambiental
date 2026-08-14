@@ -9,7 +9,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador", "pm"]).default("user").notNull(),
   companyId: int("companyId"),
   fullName: varchar("fullName", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 255 }),
@@ -193,7 +193,7 @@ export const invitations = mysqlTable("invitations", {
   id: int("id").autoincrement().primaryKey(),
   email: varchar("email", { length: 320 }).notNull(),
   companyId: int("companyId").notNull(),
-  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]).default("ee").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador", "pm"]).default("ee").notNull(),
   invitedBy: int("invitedBy").notNull(),
   status: mysqlEnum("status", ["pending", "accepted", "expired"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -507,3 +507,16 @@ export const kpiIncidents = mysqlTable("kpi_incidents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type KpiIncident = typeof kpiIncidents.$inferSelect;
+
+// Audit log for admin actions
+export const auditLog = mysqlTable("audit_log", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("userId").notNull(),
+  userName: varchar("userName", { length: 255 }),
+  action: varchar("action", { length: 255 }).notNull(),
+  entity: varchar("entity", { length: 255 }),
+  entityId: int("entityId"),
+  oldValue: text("oldValue"),
+  newValue: text("newValue"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});

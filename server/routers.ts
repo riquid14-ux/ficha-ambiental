@@ -1829,6 +1829,27 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // Audit log
+  audit: {
+    list: protectedProcedure.input(z.object({
+      limit: z.number().optional().default(100),
+      userId: z.number().optional(),
+      action: z.string().optional(),
+    })).query(async ({ ctx, input }) => {
+      if (!isAdminOrDono(ctx.user)) throw new TRPCError({ code: "FORBIDDEN" });
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      let query = `SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ?`;
+      const params: any[] = [input.limit];
+      if (input.userId) {
+        query = `SELECT * FROM audit_log WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`;
+        params.unshift(input.userId);
+      }
+      const [rows] = await database.execute(query, params);
+      return rows as any[];
+    }),
+  },
 });
 
 export type AppRouter = typeof appRouter;

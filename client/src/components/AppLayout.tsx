@@ -143,14 +143,43 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const canReview = user?.role === "raa" || user?.role === "admin" || user?.role === "dono_obra" || user?.role === "observador";
-  const canAdmin = user?.role === "admin" || user?.role === "dono_obra";
+  const userRole = user?.role || "user";
+  const canAdmin = userRole === "admin";
+  const canAdminOrDO = userRole === "admin" || userRole === "dono_obra";
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
-  const baseMenuItems = isAllProjects ? allProjectsMenuItems : (isOperationOnly ? operationProjectMenuItems : projectMenuItems);
+  
+  // Role-based sidebar filtering (permissions matrix from doc)
+  // EE/RAA: Workflow, Ficha Semanal, Gestão de Resíduos, KPI's
+  // RAP: Workflow, Ficha Semanal, KPI's (no Gestão de Resíduos)
+  // PM: Workflow, Dashboard, Calendário, Fases, Timeline, Ficha Semanal, Gestão de Resíduos, KPI's
+  // DO/Admin: everything
+  // Observador: Dashboard, Ficha Semanal (read-only)
+  const getFilteredMenuItems = () => {
+    if (isAllProjects) {
+      // Only Admin, DO, PM can see "Todos os Projetos"
+      if (["admin", "dono_obra", "pm"].includes(userRole)) return allProjectsMenuItems;
+      return []; // EE, RAP, RAA cannot see all-projects view
+    }
+    if (isOperationOnly) return operationProjectMenuItems;
+    // Per-project menu items based on role
+    const allowedPaths: Record<string, string[]> = {
+      admin: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      dono_obra: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      pm: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      ee: ["/workflow", "/ficha", "/residuos", "/kpi"],
+      raa: ["/workflow", "/ficha", "/residuos", "/kpi"],
+      rap: ["/workflow", "/ficha", "/kpi"],
+      observador: ["/dashboard", "/ficha"],
+      user: ["/ficha"],
+    };
+    const allowed = allowedPaths[userRole] || allowedPaths.user;
+    return projectMenuItems.filter(item => allowed.includes(item.path));
+  };
+  const baseMenuItems = getFilteredMenuItems();
   const allItems = [
     ...baseMenuItems,
-    ...(canReview && !isAllProjects && !isOperationOnly ? reviewMenuItems : []),
     ...(canAdmin ? adminMenuItems : []),
+    ...(canAdminOrDO && !canAdmin ? [{ icon: Shield, label: "Administração", path: "/admin" }] : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 

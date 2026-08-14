@@ -21,6 +21,7 @@ import Calendario from "./pages/Calendario";
 import PhaseMeasures from "./pages/PhaseMeasures";
 import Timeline from "./pages/Timeline";
 import Certifications from "./pages/Certifications";
+import Gamma from "./pages/Gamma";
 import CalendarioControl from "./pages/CalendarioControl";
 import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/residuos" component={MIRR} />
       <Route path="/kpi" component={KPI} />
             <Route path="/certificacoes" component={Certifications} />
+            <Route path="/gamma" component={Gamma} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />

@@ -77,6 +77,7 @@ const allProjectsMenuItems = [
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
+  { icon: Heart, label: "GAMMA", path: "/gamma" },
 ];
 
 const adminMenuItems = [
@@ -121,6 +122,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const { user, logout } = useAuth();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
+  const [language, setLanguage] = useState<"pt" | "en">("pt");
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
@@ -306,6 +309,11 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   <UserCircle className="mr-2 h-4 w-4" />
                   <span>Perfil</span>
                 </DropdownMenuItem>
+                {["admin", "dono_obra", "pm"].includes(userRole) && (
+                  <DropdownMenuItem onClick={() => setLanguage(prev => prev === "pt" ? "en" : "pt")} className="cursor-pointer">
+                    <span>{language === "pt" ? "🇬🇧 English" : "🇵🇹 Português"}</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   <span>Deixar Feedback</span>
@@ -383,12 +391,32 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           </Card>
         </div>
       )}
+      {/* English Translation Warning */}
+      {language === "en" && (
+        <div className="fixed bottom-0 left-0 right-0 bg-amber-100 border-t border-amber-300 p-2 text-center z-40">
+          <p className="text-xs text-amber-800">⚠️ Please note: all documentation submitted on this platform must be written in Portuguese, regardless of the display language.</p>
+        </div>
+      )}
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">Deixar Feedback</h3>
             <p className="text-sm text-muted-foreground mb-4">Partilhe sugestões de melhoria ou reporte problemas.</p>
-            <textarea className="w-full border rounded-md p-3 text-sm min-h-[120px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+            <textarea className="w-full border rounded-md p-3 text-sm min-h-[100px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+            <div className="mb-3">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Anexar fotografias (opcional)</label>
+              <input type="file" accept="image/*" multiple className="text-xs" onChange={e => { if (e.target.files) setFeedbackPhotos(Array.from(e.target.files).slice(0, 5)); }} />
+              {feedbackPhotos.length > 0 && (
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {feedbackPhotos.map((f, i) => (
+                    <div key={i} className="relative w-16 h-16 border rounded overflow-hidden">
+                      <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+                      <button className="absolute top-0 right-0 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-bl" onClick={() => setFeedbackPhotos(prev => prev.filter((_, idx) => idx !== i))}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 justify-end">
               <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>Cancelar</button>
               <button className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>

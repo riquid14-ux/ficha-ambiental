@@ -54,6 +54,9 @@ export default function Gamma() {
   const [showNewEdition, setShowNewEdition] = useState(false);
   const [newEditionName, setNewEditionName] = useState("");
   const [newPillar, setNewPillar] = useState("");
+  const [winners, setWinners] = useState<{name: string; entity: string; pillar: string; amount: string; status: string; timeline: {phase: string; date: string; done: boolean}[]}[]>([]);
+  const [showAddWinner, setShowAddWinner] = useState(false);
+  const [newWinner, setNewWinner] = useState({ name: "", entity: "", pillar: "", amount: "", status: "Em curso" });
   const [editingPillar, setEditingPillar] = useState<number | null>(null);
   const [editPillarValue, setEditPillarValue] = useState("");
 
@@ -250,11 +253,93 @@ export default function Gamma() {
             </Card>
           </TabsContent>
 
+
+          {/* Vencedores */}
+          <TabsContent value="vencedores" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Projetos Vencedores — {edition.name}</CardTitle>
+                  {isAdmin && <Button size="sm" onClick={() => setShowAddWinner(!showAddWinner)}><Plus className="w-3 h-3 mr-1" /> Adicionar Vencedor</Button>}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {showAddWinner && isAdmin && (
+                  <div className="p-4 border-2 border-dashed rounded-lg space-y-3 bg-green-50/50">
+                    <h4 className="font-semibold text-sm">Novo Projeto Vencedor</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input placeholder="Nome do projeto..." value={newWinner.name} onChange={e => setNewWinner({...newWinner, name: e.target.value})} className="h-8 text-sm" />
+                      <Input placeholder="Entidade promotora..." value={newWinner.entity} onChange={e => setNewWinner({...newWinner, entity: e.target.value})} className="h-8 text-sm" />
+                      <select className="h-8 text-sm border rounded px-2" value={newWinner.pillar} onChange={e => setNewWinner({...newWinner, pillar: e.target.value})}>
+                        <option value="">Pilar...</option>
+                        {edition.pillars.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <Input placeholder="Montante (€)..." value={newWinner.amount} onChange={e => setNewWinner({...newWinner, amount: e.target.value})} className="h-8 text-sm" />
+                    </div>
+                    <Button size="sm" onClick={() => { if (newWinner.name) { setWinners([...winners, {...newWinner, timeline: [{phase: "Arranque", date: "", done: false}, {phase: "Meio-termo", date: "", done: false}, {phase: "Conclusão", date: "", done: false}]}]); setNewWinner({name: "", entity: "", pillar: "", amount: "", status: "Em curso"}); setShowAddWinner(false); toast.success("Vencedor adicionado!"); } }}>Confirmar</Button>
+                  </div>
+                )}
+                {winners.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-muted-foreground">Nenhum projeto vencedor registado nesta edição.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {winners.map((w, wi) => (
+                      <Card key={wi} className="border-l-4 border-l-green-500">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold">{w.name}</h4>
+                              <p className="text-xs text-muted-foreground">{w.entity} · {w.pillar} · {w.amount}€</p>
+                            </div>
+                            <Badge variant={w.status === "Concluído" ? "default" : "secondary"}>{w.status}</Badge>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium mb-2">Timeline do Projeto:</p>
+                            <div className="flex items-center gap-2">
+                              {w.timeline.map((t, ti) => (
+                                <div key={ti} className="flex-1">
+                                  <div className="flex items-center gap-1">
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${t.done ? "bg-green-500 border-green-500" : "border-gray-300"}`}>
+                                      {t.done && <span className="text-white text-[8px]">✓</span>}
+                                    </div>
+                                    <span className="text-xs">{t.phase}</span>
+                                  </div>
+                                  {isAdmin && (
+                                    <div className="mt-1 flex items-center gap-1">
+                                      <input type="date" className="text-[10px] border rounded px-1 h-5 w-24" value={t.date} onChange={e => { const updated = [...winners]; updated[wi].timeline[ti].date = e.target.value; setWinners(updated); }} />
+                                      <input type="checkbox" checked={t.done} onChange={e => { const updated = [...winners]; updated[wi].timeline[ti].done = e.target.checked; setWinners(updated); }} className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              {isAdmin && (
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { const updated = [...winners]; updated[wi].timeline.push({phase: "Nova fase", date: "", done: false}); setWinners(updated); }}>+ Fase</Button>
+                              )}
+                            </div>
+                          </div>
+                          {isAdmin && (
+                            <div className="flex gap-2 pt-2 border-t">
+                              <select className="h-7 text-xs border rounded px-2" value={w.status} onChange={e => { const updated = [...winners]; updated[wi].status = e.target.value; setWinners(updated); }}>
+                                <option value="Em curso">Em curso</option><option value="Concluído">Concluído</option><option value="Suspenso">Suspenso</option>
+                              </select>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { setWinners(winners.filter((_, i) => i !== wi)); }}>
+                                <Trash2 className="w-3 h-3 mr-1" /> Remover
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
           {/* Definições (Admin) */}
           {isAdmin && (
             <TabsContent value="definicoes" className="space-y-4">
               <Card>
-                <CardHeader><CardTitle className="text-lg">Definições da Edição — {edition.name}</CardTitle></CardHeader>
+                <CardHeader><div className="flex items-center gap-3"><CardTitle className="text-lg">Definições da Edição:</CardTitle><Input className="h-8 text-sm w-48" value={edition.name} onChange={e => { const updated = [...editions]; updated[activeEdition].name = e.target.value; setEditions(updated); }} /></div></CardHeader>
                 <CardContent className="space-y-6">
                   {/* Pillars */}
                   <div>
@@ -291,9 +376,11 @@ export default function Gamma() {
                       {edition.eligibility.map((e, i) => (
                         <div key={i} className="flex items-center gap-2 p-2 border rounded text-sm">
                           <Badge variant="outline" className="shrink-0">{e.key}</Badge>
-                          <span className="flex-1">{e.label}</span>
+                          <Input className="flex-1 h-7 text-xs" value={e.label} onChange={ev => { const updated = [...editions]; updated[activeEdition].eligibility[i].label = ev.target.value; setEditions(updated); }} />
+                          <Button size="sm" variant="ghost" className="h-7 text-red-500" onClick={() => { const updated = [...editions]; updated[activeEdition].eligibility.splice(i, 1); setEditions(updated); }}><Trash2 className="w-3 h-3" /></Button>
                         </div>
                       ))}
+                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].eligibility.length + 1; updated[activeEdition].eligibility.push({key: "E" + n, label: "Novo critério..."}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> Adicionar Critério</Button>
                     </div>
                   </div>
 
@@ -301,12 +388,15 @@ export default function Gamma() {
                   <div>
                     <h3 className="font-semibold text-sm mb-2">Critérios de Pontuação (soma = {edition.scoring.reduce((s, c) => s + c.weight, 0)}%)</h3>
                     <div className="space-y-1">
-                      {edition.scoring.map(c => (
+                      {edition.scoring.map((c, i) => (
                         <div key={c.key} className="flex items-center gap-2 p-2 border rounded text-sm">
-                          <Badge variant="outline" className="w-12 justify-center shrink-0">{c.weight}%</Badge>
-                          <span className="flex-1">{c.label}</span>
+                          <Input type="number" className="w-14 h-7 text-xs text-center" value={c.weight} onChange={e => { const updated = [...editions]; updated[activeEdition].scoring[i].weight = parseInt(e.target.value) || 0; setEditions(updated); }} />
+                          <span className="text-xs text-muted-foreground">%</span>
+                          <Input className="flex-1 h-7 text-xs" value={c.label} onChange={e => { const updated = [...editions]; updated[activeEdition].scoring[i].label = e.target.value; setEditions(updated); }} />
+                          <Button size="sm" variant="ghost" className="h-7 text-red-500" onClick={() => { const updated = [...editions]; updated[activeEdition].scoring.splice(i, 1); setEditions(updated); }}><Trash2 className="w-3 h-3" /></Button>
                         </div>
                       ))}
+                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].scoring.length + 1; updated[activeEdition].scoring.push({key: "C" + n, label: "Novo critério...", weight: 5, question: ""}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> Adicionar Critério</Button>
                     </div>
                   </div>
 

@@ -116,27 +116,78 @@ export default function Certifications() {
   const [activeTab, setActiveTab] = useState("overview");
   const isAdmin = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
 
+  const [itemStates, setItemStates] = useState<Record<string, { status: string; notes: string }>>({});
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  const updateItemState = (id: string, field: string, value: string) => {
+    setItemStates(prev => ({ ...prev, [id]: { ...prev[id], status: prev[id]?.status || "pending", notes: prev[id]?.notes || "", [field]: value } }));
+  };
+
+  const getStatusIcon = (status: string) => {
+    if (status === "done") return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+    if (status === "progress") return <AlertTriangle className="w-4 h-4 text-amber-500" />;
+    return <Circle className="w-4 h-4 text-gray-300" />;
+  };
+
   const renderItems = (items: { id: string; label: string; unit: string; granularity: string }[]) => (
     <div className="space-y-2">
-      {items.map(item => (
-        <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-          <Circle className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm">{item.label}</p>
-            <div className="flex gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">{item.unit}</Badge>
-              <span className="text-xs text-muted-foreground">{item.granularity}</span>
+      {items.map(item => {
+        const state = itemStates[item.id] || { status: "pending", notes: "" };
+        const isExpanded = expandedItem === item.id;
+        return (
+          <div key={item.id} className="border rounded-lg overflow-hidden">
+            <div className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
+              {getStatusIcon(state.status)}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{item.label}</p>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">{item.unit}</Badge>
+                  <span className="text-xs text-muted-foreground">{item.granularity}</span>
+                </div>
+              </div>
+              <Badge variant={state.status === "done" ? "default" : state.status === "progress" ? "secondary" : "outline"} className="text-xs shrink-0">
+                {state.status === "done" ? "Concluído" : state.status === "progress" ? "Em Curso" : "Pendente"}
+              </Badge>
             </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {isAdmin && (
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => toast.info("Submissão: texto, documento ou imagem aceites. Funcionalidade de upload disponível quando ligada ao SharePoint.")}>
-                <Upload className="w-3 h-3 mr-1" /> Submeter
-              </Button>
+            {isExpanded && (
+              <div className="border-t p-3 bg-gray-50/50 space-y-3">
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input type="radio" name={item.id} checked={state.status === "done"} onChange={() => updateItemState(item.id, "status", "done")} className="accent-green-600" />
+                    <span className="text-green-700 font-medium">Concluído</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input type="radio" name={item.id} checked={state.status === "progress"} onChange={() => updateItemState(item.id, "status", "progress")} className="accent-amber-600" />
+                    <span className="text-amber-700 font-medium">Em Curso</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <input type="radio" name={item.id} checked={state.status === "pending"} onChange={() => updateItemState(item.id, "status", "pending")} className="accent-gray-400" />
+                    <span className="text-gray-600">Pendente</span>
+                  </label>
+                  <input type="text" placeholder="Notas rápidas..." className="flex-1 h-7 text-xs border rounded px-2" value={state.notes} onChange={e => updateItemState(item.id, "notes", e.target.value)} />
+                </div>
+                <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">💬 Comentários (0)</span>
+                  <span className="flex items-center gap-1">📷 Fotos (0)</span>
+                  <span className="flex items-center gap-1">📎 Ficheiros (0)</span>
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 flex items-center gap-1">
+                    <input type="text" placeholder="Adicionar comentário..." className="flex-1 h-8 text-xs border rounded px-2" />
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">📤</Button>
+                  </div>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => toast.info("Upload de fotos disponível quando ligado ao SharePoint")}>
+                    📷 Adicionar Foto
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => toast.info("Upload de ficheiros disponível quando ligado ao SharePoint")}>
+                    📎 Anexar Ficheiro
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 

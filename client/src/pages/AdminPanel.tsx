@@ -294,6 +294,7 @@ function CompaniesTab() {
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
                     <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="pm">PM — Project Manager</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
                   </SelectContent>
@@ -498,6 +499,12 @@ function UsersTab() {
   const [editingProjectsUserId, setEditingProjectsUserId] = useState<number | null>(null);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
+  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const deleteUserMutation = trpc.auth.deleteUser.useMutation({
+    onSuccess: () => { toast.success("Utilizador eliminado"); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
   const assignCompanyMutation = trpc.users.assignCompany.useMutation({
     onSuccess: () => {
       toast.success("Empresa atribuída");
@@ -619,6 +626,7 @@ function UsersTab() {
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
                       <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="pm">PM — Project Manager</SelectItem>
                       <SelectItem value="observador">Observador</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
@@ -666,6 +674,7 @@ function UsersTab() {
                         <SelectItem value="raa">RAA</SelectItem>
                         <SelectItem value="rap">RAP</SelectItem>
                         <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="pm">PM — Project Manager</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
                       </SelectContent>
                     </Select>
@@ -766,6 +775,13 @@ function UsersTab() {
                         <Badge variant="outline" className="text-[10px] px-1 py-0">Construção</Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {u.role !== "admin" && user?.role === "admin" && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => setDeleteUserId(u.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

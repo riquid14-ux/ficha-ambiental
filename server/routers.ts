@@ -304,6 +304,24 @@ export const appRouter = router({
         }
         return { success: true, tempPassword };
       }),
+    // ─── Admin: delete non-admin user ───────────────────────────────────────
+    deleteUser: protectedProcedure
+      .input(z.object({ userId: z.number(), confirmName: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const allUsers = await db.getAllUsers();
+        const targetUser = allUsers.find(u => u.id === input.userId);
+        if (!targetUser) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador nao encontrado" });
+        if (targetUser.role === "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Nao e possivel eliminar um administrador" });
+        if ((targetUser.name || "").toLowerCase().trim() !== input.confirmName.toLowerCase().trim()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Nome nao corresponde" });
+        }
+        const database = await db.getDb();
+        if (database) {
+          await database.execute(sql`DELETE FROM users WHERE id = ${input.userId}`);
+        }
+        return { success: true };
+      }),
 
     // ─── Admin: approve/reject pending accounts ─────────────────────────────
     approveAccount: protectedProcedure

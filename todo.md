@@ -277,3 +277,9 @@
 - [x] PLN-02: Fix green ticks on plans with no dates (show warning instead)
 - [x] DATA-05: Add Rascunho counter to Dashboard KPI row
 - [x] NAV-03: Rename "Matriz" to distinct names in each context
+
+## PDF Import & QA Fixes
+- [x] Add PDF import for historical fichas (upload PDF, LLM extracts text, matches to measures)
+- [x] Add pagination controls UI to users table
+- [x] Comprehensive mega test of all features (61/61 tests passing)
+- [x] Clean up test data from history (deleted submissions purged)

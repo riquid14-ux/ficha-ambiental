@@ -733,6 +733,11 @@ const translations: Record<string, Record<Lang, string>> = {
   "Nova": { pt: "Nova", en: "New" },
   "Abrir": { pt: "Abrir", en: "Open" },
   "Criar conta": { pt: "Criar conta", en: "Create account" },
+  "Importar PDF Histórico": { pt: "Importar PDF Histórico", en: "Import Historical PDF" },
+  "Importar Ficha de Controlo (PDF)": { pt: "Importar Ficha de Controlo (PDF)", en: "Import Control Sheet (PDF)" },
+  "A processar...": { pt: "A processar...", en: "Processing..." },
+  "Página": { pt: "Página", en: "Page" },
+  "de": { pt: "de", en: "of" },
 };
 
 interface LanguageContextType {

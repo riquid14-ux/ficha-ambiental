@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon } from "lucide-react";
 import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2 } from "lucide-react";
@@ -531,8 +531,31 @@ function UsersTab() {
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
   const [filterProject, setFilterProject] = useState<string>("all");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+
+  // Filtered and paginated users
+  const filteredUsers = useMemo(() => {
+    const data = usersQuery.data || [];
+    return data.filter((u: any) => {
+      const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchRole = filterRole === "all" || u.role === filterRole;
+      const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
+      return matchSearch && matchRole && matchProject;
+    });
+  }, [usersQuery.data, searchTerm, filterRole, filterProject]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage, PAGE_SIZE]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole, filterProject]);
+
   const deleteUserMutation = trpc.auth.deleteUser.useMutation({
     onSuccess: () => { toast.success(t("Utilizador eliminado")); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
     onError: (e) => toast.error(e.message),
@@ -613,7 +636,7 @@ function UsersTab() {
           <Input
             placeholder={t("Pesquisar") + " (nome, email)"}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className="w-full"
           />
         </div>
@@ -730,7 +753,7 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersQuery.data?.filter((u: any) => { const ms = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()); const mr = filterRole === "all" || u.role === filterRole; const mp = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject)); return ms && mr && mp; }).map((u: any) => (
+              {paginatedUsers.map((u: any) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>
@@ -864,6 +887,21 @@ function UsersTab() {
           </Table>
         </CardContent>
       </Card>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-2 mb-4 px-2">
+          <span className="text-sm text-muted-foreground">
+            {filteredUsers.length} {t("Utilizadores")} · {t("Página")} {currentPage} {t("de")} {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+              {t("Anterior")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+              {t("Próximo")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Pending Invitations */}
       {invitationsQuery.data && invitationsQuery.data.filter((i) => i.status === "pending").length > 0 && (

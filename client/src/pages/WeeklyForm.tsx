@@ -22,7 +22,7 @@ import ReviewPageFull from "./ReviewPage";
 import SubmissionHistoryFull from "./SubmissionHistory";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 function getWeekOptions() {
   const now = new Date();
   const year = now.getFullYear();
@@ -971,5 +971,105 @@ function MatrizEmbedded() {
 }
 
 function HistoricoEmbedded() {
-  return <SubmissionHistoryFull embedded />;
+  const { t } = useLanguage();
+  const { activeProject } = useProject();
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importWeek, setImportWeek] = useState<number>(1);
+  const [importYear, setImportYear] = useState<number>(new Date().getFullYear());
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const importPdfMutation = trpc.submissions.importPdf.useMutation();
+  const utils = trpc.useUtils();
+
+  const handleImportPdf = async () => {
+    if (!importFile || !activeProject) return;
+    setIsImporting(true);
+    try {
+      const result = await importPdfMutation.mutateAsync({
+        projectId: activeProject.id,
+        weekNumber: importWeek,
+        year: importYear,
+        pdfBase64: await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.readAsDataURL(importFile);
+        }),
+        pdfFilename: importFile.name,
+      });
+      toast.success(
+        `PDF importado com sucesso! ${result.matchedMeasures} medidas correspondidas de ${result.totalMeasures} totais.`
+      );
+      setShowImportDialog(false);
+      setImportFile(null);
+      utils.submissions.invalidate();
+    } catch (err: any) {
+      toast.error(`Erro ao importar PDF: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-end mb-4">
+        <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)} className="gap-2">
+          <Upload className="h-4 w-4" />
+          {t("Importar PDF Histórico")}
+        </Button>
+      </div>
+      <SubmissionHistoryFull embedded />
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Importar Ficha de Controlo (PDF)")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>{t("Semana")}</Label>
+              <Select value={String(importWeek)} onValueChange={(v) => setImportWeek(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 53 }, (_, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>
+                      {t("Semana")} {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("Ano")}</Label>
+              <Select value={String(importYear)} onValueChange={(v) => setImportYear(Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[2023, 2024, 2025, 2026].map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("Ficheiro PDF")}</Label>
+              <Input type="file" accept=".pdf" onChange={(e) => setImportFile(e.target.files?.[0] || null)} className="mt-1" />
+              {importFile && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {importFile.name} ({(importFile.size / 1024).toFixed(0)} KB)
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowImportDialog(false)}>{t("Cancelar")}</Button>
+            <Button onClick={handleImportPdf} disabled={!importFile || isImporting} className="gap-2">
+              {isImporting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> {t("A processar...")}</>
+              ) : (
+                <><Upload className="h-4 w-4" /> {t("Importar")}</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

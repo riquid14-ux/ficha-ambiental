@@ -831,6 +831,88 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+    // ─── Import PDF Historical Ficha ────────────────────────────────────
+    importPdf: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        weekNumber: z.number(),
+        year: z.number(),
+        pdfBase64: z.string(), // base64 encoded PDF data
+        pdfFilename: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const { invokeLLM } = await import("./_core/llm");
+
+        // Upload PDF to storage first
+        const buffer = Buffer.from(input.pdfBase64, "base64");
+        const fileKey = `pdf-imports/${input.projectId}/${Date.now()}_${input.pdfFilename}`;
+        const { url: pdfStorageUrl } = await storagePut(fileKey, buffer, "application/pdf");
+
+        // Get all measures for this project
+        const allMeasures = await database.select().from(schema.measures);
+        const measureList = allMeasures.map((m: any) => `ID:${m.id} - ${m.code || ''} ${m.description}`).join('\n');
+        
+        // Use LLM to extract responses from the PDF
+        const response = await invokeLLM({
+          model: "gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: "You are an environmental compliance document parser. Extract measure responses from a Portuguese environmental control sheet (Ficha de Controlo Ambiental). For each measure found in the PDF, return the measure ID, status (I=Implementado, C=Conforme, NC=Não Conforme, NA=Não Aplicável), and any observations text. Return JSON only." },
+            { role: "user", content: `Here are the measures in our system:\n${measureList}\n\nI have uploaded a PDF environmental control sheet. The PDF content has been uploaded to: ${pdfStorageUrl}\nMatch each response to the correct measure ID. Return a JSON object with a "responses" array of objects with: measureId (number), status (string: I/C/NC/NA), observations (string or null).` }
+          ],
+          max_tokens: 16384,
+        } as any);
+
+        let extractedResponses: any[] = [];
+        try {
+          const content = String(response.choices?.[0]?.message?.content || "{}");
+          // Try to extract JSON from the response (may be wrapped in markdown code blocks)
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+          extractedResponses = parsed.responses || [];
+        } catch (e) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível processar o PDF. Tente novamente." });
+        }
+
+        // Create a new submission for this historical ficha
+        const [result] = await database!.insert(schema.weeklySubmissions).values({
+          projectId: input.projectId,
+          companyId: (ctx.user as any).companyId || null,
+          weekNumber: input.weekNumber,
+          weekYear: input.year,
+          weekStartDate: "01.01." + input.year,
+          weekEndDate: "07.01." + input.year,
+          status: "approved", // Historical fichas are already approved
+          createdBy: ctx.user.id,
+          submittedBy: ctx.user.id,
+          submittedAt: Date.now(),
+          reviewedBy: ctx.user.id,
+          reviewedAt: Date.now(),
+          reviewNotes: "Importado via PDF histórico",
+        }).$returningId();
+        
+        const submissionId = result.id;
+        
+        // Save each extracted response
+        for (const resp of extractedResponses) {
+          if (resp.measureId && resp.status) {
+            await database!.insert(schema.measureResponses).values({
+              submissionId,
+              measureId: resp.measureId,
+              status: resp.status,
+              observations: resp.observations || null,
+            });
+          }
+        }
+        
+        return { 
+          success: true, 
+          submissionId, 
+          matchedMeasures: extractedResponses.length,
+          totalMeasures: allMeasures.length 
+        };
+      }),
   }),
 
   // ─── Review Comments ──────────────────────────────────────────────────────

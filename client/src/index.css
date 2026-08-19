@@ -131,105 +131,13 @@ main {
   --color-sidebar-ring: oklch(0.6 0.15 155);
 }
 
-/* Dark mode overrides for hardcoded colors */
-:root.dark .bg-white, .dark .bg-white {
-  background-color: oklch(0.2 0.01 120) !important;
+/* Simple dark mode - uses CSS variables already defined in :root.dark */
+/* The ThemeProvider adds .dark to <html>, Tailwind picks up dark: variants */
+/* For elements using hardcoded colors, we use a simple filter approach */
+html.dark {
+  color-scheme: dark;
 }
-:root.dark .text-gray-900, .dark .text-gray-900 {
-  color: oklch(0.93 0.005 120) !important;
-}
-:root.dark .text-gray-800, .dark .text-gray-800 {
-  color: oklch(0.85 0.005 120) !important;
-}
-:root.dark .text-gray-700, .dark .text-gray-700 {
-  color: oklch(0.8 0.005 120) !important;
-}
-:root.dark .text-gray-600, .dark .text-gray-600 {
-  color: oklch(0.7 0.01 120) !important;
-}
-:root.dark .text-gray-500, .dark .text-gray-500 {
-  color: oklch(0.6 0.01 120) !important;
-}
-:root.dark .border-gray-200, .dark .border-gray-200 {
-  border-color: oklch(0.3 0.01 120) !important;
-}
-:root.dark .bg-gray-50, .dark .bg-gray-50 {
-  background-color: oklch(0.18 0.01 120) !important;
-}
-:root.dark .bg-gray-100, .dark .bg-gray-100 {
-  background-color: oklch(0.22 0.01 120) !important;
-}
-
-/* BULLETPROOF DARK MODE - inverts everything then re-inverts images/videos */
-:root.dark body {
-  background-color: #1a1a1a !important;
-  color: #e5e5e5 !important;
-}
-:root.dark .sidebar,
-:root.dark [data-sidebar],
-:root.dark nav {
-  background-color: #1a2e1a !important;
-}
-:root.dark .bg-background {
-  background-color: #1a1a1a !important;
-}
-:root.dark .bg-muted {
-  background-color: #262626 !important;
-}
-:root.dark .bg-card, :root.dark [class*="Card"] {
-  background-color: #222222 !important;
-}
-:root.dark .border-border, :root.dark [class*="border-"] {
-  border-color: #333333 !important;
-}
-:root.dark .text-foreground {
-  color: #e5e5e5 !important;
-}
-:root.dark .text-muted-foreground {
-  color: #a3a3a3 !important;
-}
-/* Override ALL light backgrounds in dark mode */
-:root.dark [class*="bg-green-5"], :root.dark [class*="bg-emerald-5"],
-:root.dark [class*="bg-blue-5"], :root.dark [class*="bg-amber-5"],
-:root.dark [class*="bg-red-5"], :root.dark [class*="bg-purple-5"],
-:root.dark [class*="bg-cyan-5"], :root.dark [class*="bg-orange-5"],
-:root.dark [class*="bg-yellow-5"], :root.dark [class*="bg-pink-5"] {
-  background-color: rgba(255,255,255,0.05) !important;
-}
-:root.dark [class*="bg-green-1"], :root.dark [class*="bg-emerald-1"],
-:root.dark [class*="bg-blue-1"], :root.dark [class*="bg-amber-1"],
-:root.dark [class*="bg-red-1"], :root.dark [class*="bg-purple-1"] {
-  background-color: rgba(255,255,255,0.08) !important;
-}
-/* Dark text colors become light */
-:root.dark [class*="text-green-9"], :root.dark [class*="text-emerald-9"],
-:root.dark [class*="text-blue-9"], :root.dark [class*="text-amber-9"] {
-  color: #d4d4d4 !important;
-}
-:root.dark [class*="text-green-7"], :root.dark [class*="text-emerald-7"],
-:root.dark [class*="text-blue-7"], :root.dark [class*="text-amber-7"] {
-  color: #a3a3a3 !important;
-}
-/* Keep images, videos, and colored badges visible */
-:root.dark img, :root.dark video, :root.dark svg {
-  filter: none !important;
-}
-/* Input fields in dark mode */
-:root.dark input, :root.dark textarea, :root.dark select {
-  background-color: #2a2a2a !important;
-  color: #e5e5e5 !important;
-  border-color: #444 !important;
-}
-:root.dark button {
-  border-color: #444 !important;
-}
-/* Tables */
-:root.dark table, :root.dark th, :root.dark td {
-  border-color: #333 !important;
-}
-:root.dark th {
-  background-color: #262626 !important;
-}
-:root.dark tr:hover {
-  background-color: #2a2a2a !important;
+html.dark body {
+  background-color: oklch(0.145 0.015 120);
+  color: oklch(0.93 0.005 120);
 }

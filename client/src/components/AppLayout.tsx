@@ -3,7 +3,6 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "../contexts/LanguageContext";
-import { useAutoTranslate } from "../hooks/useAutoTranslate";
 import { useTheme } from "../contexts/ThemeContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -128,7 +127,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
   const { language, setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  useAutoTranslate();
   // Password verification for OAuth-authenticated users
   const [passwordVerified, setPasswordVerified] = useState(() => sessionStorage.getItem("pw_verified") === "1");
   const [pwInput, setPwInput] = useState("");

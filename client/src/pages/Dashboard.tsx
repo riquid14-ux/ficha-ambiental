@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
@@ -31,6 +32,7 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects, projects } = useProject();
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
@@ -160,7 +162,7 @@ export default function Dashboard() {
         <div className="relative rounded-xl overflow-hidden h-48">
           <img src={brandImages?.image_dashboard || "https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(2).jpg"} alt="Start Campus" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
-            <p className="text-white font-semibold text-lg">Plataforma Ambiental — Start Campus</p>
+            <p className="text-white font-semibold text-lg">{t("Plataforma Ambiental — Start Campus")}</p>
           </div>
         </div>
 
@@ -201,7 +203,7 @@ export default function Dashboard() {
               </Card>
               <Card><CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-indigo-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) < new Date()).length; })()}</p>
-                <p className="text-xs text-muted-foreground">Em Incumprimento</p>
+                <p className="text-xs text-muted-foreground">{t("Em Incumprimento")}</p>
               </CardContent></Card>
             </div>
             {/* Reporting timeline */}
@@ -225,7 +227,7 @@ export default function Dashboard() {
                             </div>
                             <div className="text-right">
                               <p className={`text-sm font-medium ${isOverdue ? "text-red-600" : ""}`}>{date.toLocaleDateString("pt-PT")}</p>
-                              {isOverdue && <Badge variant="destructive" className="text-[10px]">Em atraso</Badge>}
+                              {isOverdue && <Badge variant="destructive" className="text-[10px]">{t("Em atraso")}</Badge>}
                             </div>
                           </div>
                         );
@@ -301,25 +303,25 @@ export default function Dashboard() {
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-emerald-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "approved").length; })()}</p>
-                <p className="text-[11px] text-emerald-600 font-medium mt-1">Fichas Aprovadas</p>
+                <p className="text-[11px] text-emerald-600 font-medium mt-1">{t("Fichas Aprovadas")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-blue-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "submitted" || s.status === "under_review").length; })()}</p>
-                <p className="text-[11px] text-blue-600 font-medium mt-1">Em Revisão</p>
+                <p className="text-[11px] text-blue-600 font-medium mt-1">{t("Em Revisão")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-amber-700">{projects.length}</p>
-                <p className="text-[11px] text-amber-600 font-medium mt-1">Projetos Ativos</p>
+                <p className="text-[11px] text-amber-600 font-medium mt-1">{t("Projetos Ativos")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-red-50 to-red-100/50 border-red-200">
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-red-700">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return (calEvents as any[]).filter((e: any) => e.status === "pending" && e.nextDate && Number(e.nextDate) < Date.now()).length; })()}</p>
-                <p className="text-[11px] text-red-600 font-medium mt-1">Em Incumprimento</p>
+                <p className="text-[11px] text-red-600 font-medium mt-1">{t("Em Incumprimento")}</p>
               </CardContent>
             </Card>
           </div>
@@ -330,7 +332,7 @@ export default function Dashboard() {
             <Card>
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Cumprimento por Projeto</p>
+                  <p className="text-sm font-semibold">{t("Cumprimento por Projeto")}</p>
                   <Badge variant="outline" className="text-[10px]">{projects.length} projetos</Badge>
                 </div>
                 <div className="space-y-2">
@@ -341,21 +343,21 @@ export default function Dashboard() {
                     const now = new Date();
                     const endDateStr = currentPhase?.endDate;
                     let colorClass = "bg-emerald-500"; // default green = on track
-                    let statusText = "No prazo";
+                    let statusText = t("No prazo");
                     if (endDateStr) {
                       const endDate = new Date(endDateStr);
                       const diffMs = endDate.getTime() - now.getTime();
                       const diffDays = diffMs / (1000 * 60 * 60 * 24);
                       if (diffDays < 0 && currentPhase.progress < 100) {
                         colorClass = "bg-red-500"; // overdue
-                        statusText = "Em atraso";
+                        statusText = t("Em atraso");
                       } else if (diffDays < 30 && currentPhase.progress < 100) {
                         colorClass = "bg-amber-500"; // less than 1 month
                         statusText = "< 1 mês";
                       }
                     } else if (overallProgress === 0) {
                       colorClass = "bg-gray-300";
-                      statusText = "Sem data";
+                      statusText = t("Sem data");
                     }
                     const projCode = proj.code;
                     const matchedProject = projects.find((p: any) => p.code === projCode);
@@ -379,7 +381,7 @@ export default function Dashboard() {
             {/* Deadlines & Reporting */}
             <Card>
               <CardContent className="p-4 space-y-3">
-                <p className="text-sm font-semibold">Entregáveis & Prazos</p>
+                <p className="text-sm font-semibold">{t("Entregáveis & Prazos")}</p>
                 {calendarEventsQuery.data && (() => {
                   const events = (calendarEventsQuery.data as any[]) || [];
                   const now = Date.now();
@@ -413,15 +415,15 @@ export default function Dashboard() {
                       <div className="flex gap-3 text-center pt-1">
                         <div className="flex-1 p-2 rounded bg-emerald-50 border border-emerald-100">
                           <p className="text-lg font-bold text-emerald-700">{validated.length}</p>
-                          <p className="text-[9px] text-emerald-600">Validados</p>
+                          <p className="text-[9px] text-emerald-600">{t("Validados")}</p>
                         </div>
                         <div className="flex-1 p-2 rounded bg-blue-50 border border-blue-100">
                           <p className="text-lg font-bold text-blue-700">{events.length}</p>
-                          <p className="text-[9px] text-blue-600">Total Eventos</p>
+                          <p className="text-[9px] text-blue-600">{t("Total Eventos")}</p>
                         </div>
                         <div className="flex-1 p-2 rounded bg-red-50 border border-red-100">
                           <p className="text-lg font-bold text-red-700">{overdue.length}</p>
-                          <p className="text-[9px] text-red-600">Atrasados</p>
+                          <p className="text-[9px] text-red-600">{t("Atrasados")}</p>
                         </div>
                       </div>
                     </div>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const DAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -121,6 +122,7 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
 }
 
 export default function Calendario() {
+  const { t } = useLanguage();
   const { isAllProjects, activeProject, projects } = useProject();
   const { user } = useAuth();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";

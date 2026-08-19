@@ -10,6 +10,7 @@ import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers, Settings, EyeOff,
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
@@ -49,6 +50,7 @@ const PHASE_DEFS = [
 ];
 
 export default function Timeline() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects, projects } = useProject();
 

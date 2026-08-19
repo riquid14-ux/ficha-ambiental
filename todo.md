@@ -251,3 +251,10 @@
 - [x] FLOW-09: Notas do Projeto append-only (threaded notes)
 - [x] ADM-02: Add Edit + Deactivate to companies (not just delete)
 - [x] DATA-04: Matriz title "por Empresa" not "por Projeto"
+
+## EN/PT Translation + UX Improvements
+- [x] Create proper i18n context with full EN/PT translations
+- [x] Translate all page titles, buttons, labels, empty states
+- [x] Fix password strength policy (minimum 8 chars + indicator)
+- [ ] Add empty state component for Dashboard charts
+- [ ] Standardize week notation (S34/2026 format)

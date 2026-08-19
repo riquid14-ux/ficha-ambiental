@@ -1,0 +1,246 @@
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+
+type Lang = "pt" | "en";
+
+// Full translation dictionary
+const translations: Record<string, Record<Lang, string>> = {
+  // ─── Navigation / Sidebar ───
+  "Dashboard": { pt: "Dashboard", en: "Dashboard" },
+  "Matriz": { pt: "Matriz", en: "Tracking Matrix" },
+  "Planos": { pt: "Planos", en: "Monitoring Plans" },
+  "Calendário": { pt: "Calendário", en: "Calendar" },
+  "Timeline": { pt: "Timeline", en: "Timeline" },
+  "RDCD": { pt: "RDCD", en: "RDCD Report" },
+  "GAMMA": { pt: "GAMMA", en: "GAMMA" },
+  "Administração": { pt: "Administração", en: "Administration" },
+  "Workflow": { pt: "Workflow", en: "Workflow" },
+  "Ficha Semanal": { pt: "Ficha Semanal", en: "Weekly Form" },
+  "Fases": { pt: "Fases", en: "Phases" },
+  "Gestão de Resíduos": { pt: "Gestão de Resíduos", en: "Waste Management" },
+  "KPI's": { pt: "KPI's", en: "KPIs" },
+  "Certificações": { pt: "Certificações", en: "Certifications" },
+  "MIRR": { pt: "MIRR", en: "MIRR" },
+  "Perfil": { pt: "Perfil", en: "Profile" },
+  "Deixar Feedback": { pt: "Deixar Feedback", en: "Leave Feedback" },
+  "Terminar Sessão": { pt: "Terminar Sessão", en: "Sign Out" },
+  "PROJETO": { pt: "PROJETO", en: "PROJECT" },
+  "Todos os Projetos": { pt: "Todos os Projetos", en: "All Projects" },
+
+  // ─── Dashboard ───
+  "Visão geral do cumprimento ambiental": { pt: "Visão geral do cumprimento ambiental", en: "Environmental compliance overview" },
+  "Fichas Aprovadas": { pt: "Fichas Aprovadas", en: "Approved Forms" },
+  "Em Revisão": { pt: "Em Revisão", en: "Under Review" },
+  "Projetos Ativos": { pt: "Projetos Ativos", en: "Active Projects" },
+  "Em Incumprimento": { pt: "Em Incumprimento", en: "Non-Compliant" },
+  "Cumprimento por Projeto": { pt: "Cumprimento por Projeto", en: "Compliance by Project" },
+  "Entregáveis & Prazos": { pt: "Entregáveis & Prazos", en: "Deliverables & Deadlines" },
+  "Validados": { pt: "Validados", en: "Validated" },
+  "Total Eventos": { pt: "Total Eventos", en: "Total Events" },
+  "Atrasados": { pt: "Atrasados", en: "Overdue" },
+  "Resumo Geral": { pt: "Resumo Geral", en: "General Summary" },
+  "Total de Fichas": { pt: "Total de Fichas", en: "Total Forms" },
+  "Taxa de Aprovação": { pt: "Taxa de Aprovação", en: "Approval Rate" },
+  "Empresas Ativas": { pt: "Empresas Ativas", en: "Active Companies" },
+  "Próximo RDCD": { pt: "Próximo RDCD", en: "Next RDCD" },
+  "Actividade de Submissão": { pt: "Actividade de Submissão", en: "Submission Activity" },
+  "Evolução Semanal": { pt: "Evolução Semanal", en: "Weekly Evolution" },
+  "Evolução do Projeto": { pt: "Evolução do Projeto", en: "Project Evolution" },
+  "Distribuição por Entidade Executante": { pt: "Distribuição por Entidade Executante", en: "Distribution by Contractor" },
+  "Distribuição por Estado": { pt: "Distribuição por Estado", en: "Distribution by Status" },
+  "No prazo": { pt: "No prazo", en: "On track" },
+  "Em atraso": { pt: "Em atraso", en: "Overdue" },
+  "Sem data": { pt: "Sem data", en: "No date" },
+
+  // ─── Ficha Semanal ───
+  "Nova Ficha": { pt: "Nova Ficha", en: "New Form" },
+  "Rascunhos": { pt: "Rascunhos", en: "Drafts" },
+  "Histórico": { pt: "Histórico", en: "History" },
+  "Revisão": { pt: "Revisão", en: "Review" },
+  "Submeter": { pt: "Submeter", en: "Submit" },
+  "Resubmeter": { pt: "Resubmeter", en: "Resubmit" },
+  "Guardar": { pt: "Guardar", en: "Save" },
+  "Cancelar": { pt: "Cancelar", en: "Cancel" },
+  "Eliminar": { pt: "Eliminar", en: "Delete" },
+  "Editar": { pt: "Editar", en: "Edit" },
+  "Adicionar": { pt: "Adicionar", en: "Add" },
+  "Exportar": { pt: "Exportar", en: "Export" },
+  "Importar": { pt: "Importar", en: "Import" },
+  "Guardado com sucesso": { pt: "Guardado com sucesso", en: "Saved successfully" },
+  "Ficha submetida com sucesso!": { pt: "Ficha submetida com sucesso!", en: "Form submitted successfully!" },
+  "Selecione a semana": { pt: "Selecione a semana", en: "Select week" },
+  "Iniciar Ficha": { pt: "Iniciar Ficha", en: "Start Form" },
+  "Conforme": { pt: "Conforme", en: "Compliant" },
+  "Não Conforme": { pt: "Não Conforme", en: "Non-Compliant" },
+  "Implementado": { pt: "Implementado", en: "Implemented" },
+  "Não Aplicável": { pt: "Não Aplicável", en: "Not Applicable" },
+  "Observações": { pt: "Observações", en: "Observations" },
+  "Responsável": { pt: "Responsável", en: "Responsible" },
+  "Mostrar todas as fases": { pt: "Mostrar todas as fases", en: "Show all phases" },
+  "Mostrar só fase atual": { pt: "Mostrar só fase atual", en: "Show current phase only" },
+  "Fase atual": { pt: "Fase atual", en: "Current phase" },
+  "A mostrar todas as fases": { pt: "A mostrar todas as fases", en: "Showing all phases" },
+  "medidas": { pt: "medidas", en: "measures" },
+  "Submetida — Aguarda Revisão": { pt: "Submetida — Aguarda Revisão", en: "Submitted — Awaiting Review" },
+
+  // ─── Matriz ───
+  "Visão Agregada por Empresa": { pt: "Visão Agregada por Empresa", en: "Aggregated View by Company" },
+  "Cada linha representa uma empresa": { pt: "Cada linha representa uma empresa", en: "Each row represents a company" },
+  "Entregue": { pt: "Entregue", en: "Delivered" },
+  "Criada (Rascunho)": { pt: "Criada (Rascunho)", en: "Created (Draft)" },
+  "Rejeitada": { pt: "Rejeitada", en: "Rejected" },
+  "Sem ficha": { pt: "Sem ficha", en: "No form" },
+  "Parcialmente entregue": { pt: "Parcialmente entregue", en: "Partially delivered" },
+
+  // ─── Review ───
+  "Fichas Pendentes de Revisão": { pt: "Fichas Pendentes de Revisão", en: "Forms Pending Review" },
+  "Já Revistas": { pt: "Já Revistas", en: "Already Reviewed" },
+  "Aprovar Ficha": { pt: "Aprovar Ficha", en: "Approve Form" },
+  "Rejeitar Ficha": { pt: "Rejeitar Ficha", en: "Reject Form" },
+  "Revisão submetida com sucesso": { pt: "Revisão submetida com sucesso", en: "Review submitted successfully" },
+  "Não pode aprovar uma ficha que criou ou submeteu.": { pt: "Não pode aprovar uma ficha que criou ou submeteu.", en: "You cannot approve a form you created or submitted." },
+  "Separação de funções: peça a outro revisor para avaliar esta ficha.": { pt: "Separação de funções: peça a outro revisor para avaliar esta ficha.", en: "Separation of duties: ask another reviewer to evaluate this form." },
+
+  // ─── Admin ───
+  "Empresas": { pt: "Empresas", en: "Companies" },
+  "Utilizadores": { pt: "Utilizadores", en: "Users" },
+  "Convites": { pt: "Convites", en: "Invitations" },
+  "Melhorias": { pt: "Melhorias", en: "Improvements" },
+  "Pedidos de Acesso": { pt: "Pedidos de Acesso", en: "Access Requests" },
+  "Auditoria": { pt: "Auditoria", en: "Audit Log" },
+  "Nova Empresa": { pt: "Nova Empresa", en: "New Company" },
+  "Criar": { pt: "Criar", en: "Create" },
+  "Nome completo": { pt: "Nome completo", en: "Full name" },
+  "Sigla / Nome curto": { pt: "Sigla / Nome curto", en: "Abbreviation / Short name" },
+  "Tipo": { pt: "Tipo", en: "Type" },
+  "Estado": { pt: "Estado", en: "Status" },
+  "Ativa": { pt: "Ativa", en: "Active" },
+  "Inativa": { pt: "Inativa", en: "Inactive" },
+  "Empresa atualizada": { pt: "Empresa atualizada", en: "Company updated" },
+  "Empresa eliminada": { pt: "Empresa eliminada", en: "Company deleted" },
+  "Convidar Utilizador": { pt: "Convidar Utilizador", en: "Invite User" },
+
+  // ─── Workflow ───
+  "Workflow do Projeto": { pt: "Workflow do Projeto", en: "Project Workflow" },
+  "Notas do Projeto": { pt: "Notas do Projeto", en: "Project Notes" },
+  "Adicionar Nota": { pt: "Adicionar Nota", en: "Add Note" },
+  "Nenhuma nota adicional definida para este projeto.": { pt: "Nenhuma nota adicional definida para este projeto.", en: "No additional notes defined for this project." },
+
+  // ─── Calendar ───
+  "Prazo Regulatório de Submissão": { pt: "Prazo Regulatório de Submissão", en: "Regulatory Submission Deadline" },
+  "Prazo Interno de Preparação": { pt: "Prazo Interno de Preparação", en: "Internal Preparation Deadline" },
+  "Submetido": { pt: "Submetido", en: "Submitted" },
+  "Validado pela Entidade": { pt: "Validado pela Entidade", en: "Validated by Entity" },
+  "Elementos a Reportar": { pt: "Elementos a Reportar", en: "Reporting Elements" },
+
+  // ─── Phases / Timeline ───
+  "Pré-Licenciamento": { pt: "Pré-Licenciamento", en: "Pre-Licensing" },
+  "Licenciamento": { pt: "Licenciamento", en: "Licensing" },
+  "Pré-Construção": { pt: "Pré-Construção", en: "Pre-Construction" },
+  "Preparação Prévia": { pt: "Preparação Prévia", en: "Prior Preparation" },
+  "Execução da Obra": { pt: "Execução da Obra", en: "Construction Execution" },
+  "Fase Final de Construção": { pt: "Fase Final de Construção", en: "Final Construction Phase" },
+  "Final de Construção": { pt: "Final de Construção", en: "End of Construction" },
+  "Exploração / Operação": { pt: "Exploração / Operação", en: "Operation" },
+  "Desativação": { pt: "Desativação", en: "Decommissioning" },
+  "Concluído": { pt: "Concluído", en: "Completed" },
+  "Em Curso": { pt: "Em Curso", en: "In Progress" },
+  "Pendente": { pt: "Pendente", en: "Pending" },
+
+  // ─── KPI ───
+  "Submeter Dados": { pt: "Submeter Dados", en: "Submit Data" },
+  "Metas": { pt: "Metas", en: "Targets" },
+  "Incidentes Ambientais": { pt: "Incidentes Ambientais", en: "Environmental Incidents" },
+  "Trabalhadores": { pt: "Trabalhadores", en: "Workers" },
+  "Energia e CO₂": { pt: "Energia e CO₂", en: "Energy & CO₂" },
+  "Água": { pt: "Água", en: "Water" },
+  "Semana": { pt: "Semana", en: "Week" },
+  "Mês": { pt: "Mês", en: "Month" },
+  "Semestre": { pt: "Semestre", en: "Semester" },
+  "Ano": { pt: "Ano", en: "Year" },
+  "Projeto": { pt: "Projeto", en: "Project" },
+
+  // ─── RDCD ───
+  "Definir Período": { pt: "Definir Período", en: "Define Period" },
+  "Selecionar Medidas": { pt: "Selecionar Medidas", en: "Select Measures" },
+  "Pré-visualização": { pt: "Pré-visualização", en: "Preview" },
+  "Incluir Planos de Monitorização": { pt: "Incluir Planos de Monitorização", en: "Include Monitoring Plans" },
+  "Gerar Relatório": { pt: "Gerar Relatório", en: "Generate Report" },
+
+  // ─── Common ───
+  "Carregar": { pt: "Carregar", en: "Upload" },
+  "Descarregar": { pt: "Descarregar", en: "Download" },
+  "Pesquisar": { pt: "Pesquisar", en: "Search" },
+  "Filtrar": { pt: "Filtrar", en: "Filter" },
+  "Todos": { pt: "Todos", en: "All" },
+  "Nenhum resultado": { pt: "Nenhum resultado", en: "No results" },
+  "A carregar...": { pt: "A carregar...", en: "Loading..." },
+  "Erro": { pt: "Erro", en: "Error" },
+  "Sucesso": { pt: "Sucesso", en: "Success" },
+  "Confirmar": { pt: "Confirmar", en: "Confirm" },
+  "Voltar": { pt: "Voltar", en: "Back" },
+  "Fechar": { pt: "Fechar", en: "Close" },
+  "Sim": { pt: "Sim", en: "Yes" },
+  "Não": { pt: "Não", en: "No" },
+  "Selecionar projeto": { pt: "Selecionar projeto", en: "Select project" },
+  "Plataforma Ambiental — Start Campus": { pt: "Plataforma Ambiental — Start Campus", en: "Environmental Platform — Start Campus" },
+
+  // ─── Login ───
+  "Iniciar Sessão": { pt: "Iniciar Sessão", en: "Sign In" },
+  "Email": { pt: "Email", en: "Email" },
+  "Palavra-passe": { pt: "Palavra-passe", en: "Password" },
+  "Entrar": { pt: "Entrar", en: "Sign In" },
+  "Criar Conta": { pt: "Criar Conta", en: "Create Account" },
+  "Esqueceu a palavra-passe?": { pt: "Esqueceu a palavra-passe?", en: "Forgot password?" },
+  "Entrar com Autodesk": { pt: "Entrar com Autodesk", en: "Sign in with Autodesk" },
+
+  // ─── Certifications ───
+  "Próximos Prazos": { pt: "Próximos Prazos", en: "Upcoming Deadlines" },
+  "Submissões": { pt: "Submissões", en: "Submissions" },
+
+  // ─── GAMMA ───
+  "Necessidades": { pt: "Necessidades", en: "Needs Assessment" },
+  "Scorecard": { pt: "Scorecard", en: "Scorecard" },
+  "Vencedores": { pt: "Vencedores", en: "Winners" },
+  "Definições": { pt: "Definições", en: "Settings" },
+  "Candidatura": { pt: "Candidatura", en: "Application" },
+};
+
+interface LanguageContextType {
+  language: Lang;
+  setLanguage: (lang: Lang) => void;
+  t: (key: string) => string;
+}
+
+const LanguageContext = createContext<LanguageContextType>({
+  language: "pt",
+  setLanguage: () => {},
+  t: (key) => key,
+});
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguage] = useState<Lang>(() =>
+    (localStorage.getItem("app_lang") as Lang) || "pt"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("app_lang", language);
+  }, [language]);
+
+  const t = (key: string): string => {
+    const entry = translations[key];
+    if (!entry) return key;
+    return entry[language] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  return useContext(LanguageContext);
+}
+
+export default LanguageContext;

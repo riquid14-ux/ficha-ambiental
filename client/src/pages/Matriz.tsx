@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Grid3X3, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMemo } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Map submission status to display info
 function getStatusDisplay(status: string) {
@@ -25,6 +26,7 @@ function getStatusDisplay(status: string) {
 }
 
 export default function Matriz(props: any) {
+  const { t } = useLanguage();
   const embedded = props?.embedded;
   const { activeProject, isAllProjects } = useProject();
 
@@ -132,9 +134,9 @@ export default function Matriz(props: any) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">
-              {isAllProjects ? "Visão Agregada por Empresa" : activeProject?.name || "Projeto"}
+              {isAllProjects ? t("Visão Agregada por Empresa") : activeProject?.name || "Projeto"}
             </CardTitle>
-            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">Cada linha representa uma empresa. Verde = todas as fichas entregues nessa semana.</p>}
+            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">{t("Cada linha representa uma empresa")}. Verde = todas as fichas entregues nessa semana.</p>}
           </CardHeader>
           <CardContent className="p-0">
             {matrixQuery.isLoading && (

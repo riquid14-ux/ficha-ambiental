@@ -243,7 +243,7 @@ export const appRouter = router({
 
     // ─── Register (creates pending account) ─────────────────────────────────
     register: publicProcedure
-      .input(z.object({ email: z.string().email(), password: z.string().min(6), name: z.string().min(1), companyName: z.string().optional() }))
+      .input(z.object({ email: z.string().email(), password: z.string().min(8), name: z.string().min(1), companyName: z.string().optional() }))
       .mutation(async ({ input }) => {
         const email = input.email.toLowerCase().trim();
         const existingUsers = await db.getAllUsers();

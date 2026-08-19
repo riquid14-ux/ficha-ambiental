@@ -21,6 +21,7 @@ import MatrizFull from "./Matriz";
 import ReviewPageFull from "./ReviewPage";
 import SubmissionHistoryFull from "./SubmissionHistory";
 import { Input } from "@/components/ui/input";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function getWeekOptions() {
   const now = new Date();
@@ -55,6 +56,7 @@ type ResponseMap = Record<number, { status: "I" | "C" | "NC" | "NA" | null; obse
 
 export default function WeeklyForm() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects } = useProject();
@@ -666,7 +668,7 @@ export default function WeeklyForm() {
                   {canSubmitThis && (
                     <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                      {isRejected ? "Resubmeter" : "Submeter"}
+                      {isRejected ? t("Resubmeter") : t("Submeter")}
                     </Button>
                   )}
                 </div>

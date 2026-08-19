@@ -15,6 +15,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send } from "lucide-react";
 import { useLocation } from "wouter";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
@@ -44,6 +45,7 @@ type MeasureVerdict = "ok" | "nok" | null;
 type VerdictMap = Record<number, { verdict: MeasureVerdict; comment: string }>;
 
 export default function ReviewPage(props: any) {
+  const { t } = useLanguage();
   const embedded = props?.embedded;
   const { user } = useAuth();
   const [, setLocation] = useLocation();

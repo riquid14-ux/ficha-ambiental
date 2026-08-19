@@ -66,10 +66,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <ProjectProvider>
-            <Toaster />
-            <Router />
-          </ProjectProvider>
+          <LanguageProvider>
+            <ProjectProvider>
+              <Toaster />
+              <Router />
+            </ProjectProvider>
+          </LanguageProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
@@ -105,3 +107,4 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     return this.props.children;
   }
 }
+import { LanguageProvider } from "./contexts/LanguageContext";

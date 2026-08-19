@@ -12,12 +12,14 @@ import { useState, useMemo } from "react";
 import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pencil, Trash2, CheckCircle, XCircle, Target, BarChart3, Users, Car, Leaf, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 const CAT_LABELS: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", energy: "Energia", water: "Água", emissions: "Emissões", incidents: "Incidentes", other: "Outros" };
 const CAT_ICONS: Record<string, string> = { workforce: "👷", transport: "🚗", fuel: "⛽", energy: "⚡", water: "💧", incidents: "⚠️", other: "📋" };
 
 export default function KPI() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
   const [activeTab, setActiveTab] = useState("overview");
@@ -195,7 +197,7 @@ export default function KPI() {
             <TabsTrigger value="overview">Matriz</TabsTrigger>
             <TabsTrigger value="submit">Submeter</TabsTrigger>
             {isAdminOrDO && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
-            {user?.role === "admin" && <TabsTrigger value="metas">Metas</TabsTrigger>}
+            {user?.role === "admin" && <TabsTrigger value="metas">{t("Metas")}</TabsTrigger>}
           </TabsList>
 
           {/* Matrix */}

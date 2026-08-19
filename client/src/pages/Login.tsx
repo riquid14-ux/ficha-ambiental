@@ -6,10 +6,12 @@ import { trpc } from "@/lib/trpc";
 import { AlertCircle, Loader2, Mail, Lock, Shield, UserPlus } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPassword";
 
 export default function Login() {
+  const { t, language } = useLanguage();
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
@@ -204,7 +206,7 @@ export default function Login() {
                 <Input type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" disabled={loginMutation.isPending} />
               </div>
               <Button type="submit" size="lg" className="w-full h-12 shadow-lg" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Entrar"}
+                {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : t("Entrar")}
               </Button>
             </form>
             {!isInIframe && (
@@ -223,7 +225,7 @@ export default function Login() {
                 <UserPlus className="w-3 h-3 inline mr-1" /> Criar conta
               </button>
               <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => { setViewMode("forgotPassword"); setError(""); setSuccess(""); }}>
-                Esqueceu a palavra-passe?
+                {t("Esqueceu a palavra-passe?")}
               </button>
             </div>
           </>
@@ -259,7 +261,7 @@ export default function Login() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="Palavra-passe (min. 6 caracteres)" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
+              <Input type="password" placeholder="Palavra-passe (mín. 8 caracteres)" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

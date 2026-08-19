@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, BookOpen, Pencil, Save, Info, ArrowDown, ArrowRight, CheckCircle2, XCircle, RotateCcw, FileText, Send, Eye, MessageSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function Workflow() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
   const [editing, setEditing] = useState(false);

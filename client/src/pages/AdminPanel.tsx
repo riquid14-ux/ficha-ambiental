@@ -158,12 +158,6 @@ export default function AdminPanel() {
             <TabsTrigger value="users" className="gap-2">
               <Users className="w-4 h-4" /> Utilizadores
             </TabsTrigger>
-            <TabsTrigger value="submissions" className="gap-2">
-              <ClipboardList className="w-4 h-4" /> Submissões
-            </TabsTrigger>
-            <TabsTrigger value="historical" className="gap-2">
-              <FileUp className="w-4 h-4" /> Histórico PDF
-            </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <ImageIcon className="w-4 h-4" /> Imagens
             </TabsTrigger>
@@ -190,12 +184,6 @@ export default function AdminPanel() {
           </TabsContent>
           <TabsContent value="users" className="mt-4">
             <UsersTab />
-          </TabsContent>
-          <TabsContent value="submissions" className="mt-4">
-            <SubmissionsTab />
-          </TabsContent>
-          <TabsContent value="historical" className="mt-4">
-            <HistoricalTab />
           </TabsContent>
           <TabsContent value="images" className="mt-4">
             <ImagesTab />

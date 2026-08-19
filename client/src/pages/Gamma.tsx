@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
-import { Heart, Users, Leaf, Lightbulb, BookOpen, Plus, Settings, Trash2, Edit2, CheckCircle2, XCircle } from "lucide-react";
+import { Heart, Users, Leaf, Lightbulb, BookOpen, Plus, Settings, Trash2, Edit2, CheckCircle2, XCircle, Download, Upload } from "lucide-react";
 
 const DEFAULT_PILLARS = ["Educação", "Saúde Mental e Bem-Estar", "Inclusão Social e Integração", "Sustentabilidade", "Inovação e Abordagem"];
 const PILLAR_ICONS: Record<string, any> = { "Educação": BookOpen, "Saúde Mental e Bem-Estar": Heart, "Inclusão Social e Integração": Users, "Sustentabilidade": Leaf, "Inovação e Abordagem": Lightbulb };

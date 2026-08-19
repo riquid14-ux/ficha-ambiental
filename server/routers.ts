@@ -194,6 +194,36 @@ export const appRouter = router({
         return { success: true, requires2FA: false, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
       }),
 
+    // ─── Forgot Password ─────────────────────────────────────────────────
+    forgotPassword: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [user] = await database.select().from(schema.users).where(eq(schema.users.email, input.email.toLowerCase().trim())).limit(1);
+        if (!user) return { success: true, message: "Se o email existir no sistema, o administrador será notificado. Contacte apoioamb@startcampus.pt" };
+        const crypto = await import("crypto");
+        const token = crypto.randomBytes(32).toString("hex");
+        const expiry = Date.now() + 3600000;
+        await database.update(schema.users).set({ passwordResetToken: token, passwordResetExpiry: expiry }).where(eq(schema.users.id, user.id));
+        console.log(`[Password Reset] Token for ${input.email}: ${token}`);
+        return { success: true, message: "Pedido de recuperação registado. Contacte apoioamb@startcampus.pt para receber as instruções de reset." };
+      }),
+    // ─── Reset Password with Token ──────────────────────────────────────
+    resetPasswordWithToken: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string(), newPassword: z.string().min(6) }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [user] = await database.select().from(schema.users).where(eq(schema.users.email, input.email.toLowerCase().trim())).limit(1);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador não encontrado" });
+        const u = user as any;
+        if (!u.passwordResetToken || u.passwordResetToken !== input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Token inválido" });
+        if (u.passwordResetExpiry && Date.now() > u.passwordResetExpiry) throw new TRPCError({ code: "BAD_REQUEST", message: "Token expirado" });
+        const hash = await bcrypt.hash(input.newPassword, 10);
+        await database.update(schema.users).set({ passwordHash: hash, mustChangePassword: false, passwordResetToken: null, passwordResetExpiry: null }).where(eq(schema.users.id, user.id));
+        return { success: true };
+      }),
     // ─── Verify 2FA code ────────────────────────────────────────────────────
     verify2FA: publicProcedure
       .input(z.object({ userId: z.number(), code: z.string().length(6) }))

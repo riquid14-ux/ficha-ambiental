@@ -7,7 +7,7 @@ import { AlertCircle, Loader2, Mail, Lock, Shield, UserPlus } from "lucide-react
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 
-type ViewMode = "login" | "register" | "2fa" | "changePassword";
+type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPassword";
 
 export default function Login() {
   const { user, loading } = useAuth();
@@ -67,6 +67,11 @@ export default function Login() {
       setPassword("");
       setRegisterName("");
     },
+    onError: (err) => setError(err.message),
+  });
+
+  const forgotMutation = trpc.auth.forgotPassword.useMutation({
+    onSuccess: (data) => { setSuccess(data.message); },
     onError: (err) => setError(err.message),
   });
 
@@ -156,6 +161,7 @@ export default function Login() {
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
               {viewMode === "2fa" && "Introduza o código do Authenticator"}
               {viewMode === "changePassword" && "Defina uma nova palavra-passe"}
+              {viewMode === "forgotPassword" && "Recuperação de palavra-passe"}
             </p>
           </div>
         </div>
@@ -216,6 +222,9 @@ export default function Login() {
               <button type="button" className="text-sm text-primary hover:underline" onClick={() => { setViewMode("register"); setError(""); setSuccess(""); }}>
                 <UserPlus className="w-3 h-3 inline mr-1" /> Criar conta
               </button>
+              <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => { setViewMode("forgotPassword"); setError(""); setSuccess(""); }}>
+                Esqueceu a palavra-passe?
+              </button>
             </div>
           </>
         )}
@@ -262,8 +271,36 @@ export default function Login() {
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>
               Já tenho conta — Entrar
             </button>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center mt-2">
               Após criar conta, o administrador irá aprovar o seu acesso.
+            </p>
+          </form>
+        )}
+
+        {/* ─── Forgot Password Form ─── */}
+        {viewMode === "forgotPassword" && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            setError(""); setSuccess("");
+            if (!email.trim()) { setError("Introduza o seu email"); return; }
+            forgotMutation.mutate({ email: email.trim() });
+          }} className="space-y-4">
+            <div className="text-center mb-4">
+              <Mail className="w-12 h-12 mx-auto text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">Introduza o email associado à sua conta. O administrador será notificado para proceder ao reset da palavra-passe.</p>
+            </div>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
+            </div>
+            <Button type="submit" size="lg" className="w-full h-12" disabled={forgotMutation.isPending}>
+              {forgotMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A enviar...</>) : "Solicitar Recuperação"}
+            </Button>
+            <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>
+              ← Voltar ao login
+            </button>
+            <p className="text-xs text-muted-foreground text-center">
+              Contacte <strong>apoioamb@startcampus.pt</strong> para assistência imediata.
             </p>
           </form>
         )}

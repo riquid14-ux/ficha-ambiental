@@ -206,7 +206,7 @@ export const appRouter = router({
         const token = crypto.randomBytes(32).toString("hex");
         const expiry = Date.now() + 3600000;
         await database.update(schema.users).set({ passwordResetToken: token, passwordResetExpiry: expiry }).where(eq(schema.users.id, user.id));
-        console.log(`[Password Reset] Token for ${input.email}: ${token}`);
+        // Password reset token generated
         return { success: true, message: "Pedido de recuperação registado. Contacte apoioamb@startcampus.pt para receber as instruções de reset." };
       }),
     // ─── Reset Password with Token ──────────────────────────────────────

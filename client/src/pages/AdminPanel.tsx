@@ -48,18 +48,18 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 function AuditLogTab() {
   const { t } = useLanguage();
   const { data: logs, isLoading } = trpc.audit.list.useQuery({ limit: 200 });
-  if (isLoading) return <p className="text-sm text-muted-foreground">{t("A carregar...")}</p>;
-  if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">{t("Sem registos de auditoria.")}</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">A carregar...</p>;
+  if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">Sem registos de auditoria.</p>;
   return (
     <div className="max-h-[500px] overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-background border-b">
           <tr>
-            <th className="text-left p-2">{t("Data")}</th>
-            <th className="text-left p-2">{t("Utilizador")}</th>
-            <th className="text-left p-2">{t("Ação")}</th>
-            <th className="text-left p-2">{t("Entidade")}</th>
-            <th className="text-left p-2">{t("Detalhes")}</th>
+            <th className="text-left p-2">Data</th>
+            <th className="text-left p-2">Utilizador</th>
+            <th className="text-left p-2">Ação</th>
+            <th className="text-left p-2">Entidade</th>
+            <th className="text-left p-2">Detalhes</th>
           </tr>
         </thead>
         <tbody>
@@ -88,7 +88,7 @@ export default function AdminPanel() {
       <AppLayout>
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">{t("Acesso restrito a administradores e Dono de Obra.")}</p>
+            <p className="text-muted-foreground">Acesso restrito a administradores e Dono de Obra.</p>
           </CardContent>
         </Card>
       </AppLayout>
@@ -100,7 +100,7 @@ export default function AdminPanel() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Administração</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t("Gestão de empresas, utilizadores e submissões")}</p>
+          <p className="text-muted-foreground text-sm mt-1">Gestão de empresas, utilizadores e submissões</p>
         </div>
 
         {/* Explanatory Roles Panel */}
@@ -108,42 +108,42 @@ export default function AdminPanel() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Tipos de Entidade e Permissões")}</h3>
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tipos de Entidade e Permissões</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
-                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
+                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
-                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
+                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
-                  <p className="text-xs text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
+                  <p className="text-xs text-muted-foreground">Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">{t("Dono de Obra — Start Campus")}</p>
-                  <p className="text-xs text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
+                  <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
+                  <p className="text-xs text-muted-foreground">Visão geral do projeto. Acesso de administração e supervisão.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Observador</p>
-                  <p className="text-xs text-muted-foreground">{t("Acesso de leitura. Pode ver dashboard, histórico e revisões.")}</p>
+                  <p className="text-xs text-muted-foreground">Acesso de leitura. Pode ver dashboard, histórico e revisões.</p>
                 </div>
               </div>
             </div>
@@ -205,8 +205,8 @@ export default function AdminPanel() {
           <TabsContent value="auditoria" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>{t("Histórico de Ações")}</CardTitle>
-                <p className="text-sm text-muted-foreground">{t("Registo de todas as alterações realizadas na plataforma (apenas leitura)")}</p>
+                <CardTitle>Histórico de Ações</CardTitle>
+                <p className="text-sm text-muted-foreground">Registo de todas as alterações realizadas na plataforma (apenas leitura)</p>
               </CardHeader>
               <CardContent>
                 <AuditLogTab />
@@ -236,11 +236,11 @@ function CompaniesTab() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
   const deleteCompanyMutation = trpc.companies.delete.useMutation({
-    onSuccess: () => { toast.success("Empresa eliminada"); companiesQuery.refetch(); },
+    onSuccess: () => { toast.success(t("Empresa eliminada")); companiesQuery.refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
   const updateCompanyMutation = trpc.companies.update.useMutation({
-    onSuccess: () => { toast.success("Empresa atualizada"); companiesQuery.refetch(); },
+    onSuccess: () => { toast.success(t("Empresa atualizada")); companiesQuery.refetch(); },
     onError: (err: any) => toast.error(err.message),
   });
   const setCompanyProjectsMutation = trpc.projects.setCompanyProjects.useMutation({
@@ -266,7 +266,7 @@ function CompaniesTab() {
 
   const createMutation = trpc.companies.create.useMutation({
     onSuccess: () => {
-      toast.success("Empresa criada com sucesso");
+      toast.success(t("Empresa criada com sucesso"));
       utils.companies.list.invalidate();
       setDialogOpen(false);
       setNewName("");
@@ -279,26 +279,26 @@ function CompaniesTab() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">{t("Empresas / Entidades")}</CardTitle>
+        <CardTitle className="text-base">Empresas / Entidades</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Nova Empresa")}</Button>
+            <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Empresa</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("Criar Nova Empresa")}</DialogTitle>
+              <DialogTitle>Criar Nova Empresa</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div>
-                <Label>{t("Nome completo")}</Label>
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("Ex: Empresa ABC, Lda.")} />
+                <Label>Nome completo</Label>
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Empresa ABC, Lda." />
               </div>
               <div>
-                <Label>{t("Sigla / Nome curto")}</Label>
+                <Label>Sigla / Nome curto</Label>
                 <Input value={newShortName} onChange={(e) => setNewShortName(e.target.value)} placeholder="Ex: ABC" />
               </div>
               <div>
-                <Label>{t("Tipo")}</Label>
+                <Label>Tipo</Label>
                 <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "rap" | "dono_obra" | "raa" | "observador")}>
                   <SelectTrigger>
                     <SelectValue />
@@ -306,7 +306,7 @@ function CompaniesTab() {
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
-                    <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
+                    <SelectItem value="dono_obra">Dono de Obra</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
@@ -329,11 +329,11 @@ function CompaniesTab() {
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead>{t("Nome")}</TableHead>
-              <TableHead>{t("Sigla")}</TableHead>
-              <TableHead>{t("Tipo")}</TableHead>
-              <TableHead>{t("Projetos")}</TableHead>
-              <TableHead>{t("Estado")}</TableHead>
+              <TableHead>Nome</TableHead>
+              <TableHead>Sigla</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Projetos</TableHead>
+              <TableHead>Estado</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -461,17 +461,17 @@ function SubmissionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{t("Todas as Submissões")}</CardTitle>
+        <CardTitle className="text-base">Todas as Submissões</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("Semana")}</TableHead>
-              <TableHead>{t("Empresa")}</TableHead>
-              <TableHead>{t("Período")}</TableHead>
-              <TableHead>{t("Estado")}</TableHead>
-              <TableHead>{t("Ações")}</TableHead>
+              <TableHead>Semana</TableHead>
+              <TableHead>Empresa</TableHead>
+              <TableHead>Período</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -531,12 +531,12 @@ function UsersTab() {
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const deleteUserMutation = trpc.auth.deleteUser.useMutation({
-    onSuccess: () => { toast.success("Utilizador eliminado"); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
+    onSuccess: () => { toast.success(t("Utilizador eliminado")); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
     onError: (e) => toast.error(e.message),
   });
   const assignCompanyMutation = trpc.users.assignCompany.useMutation({
     onSuccess: () => {
-      toast.success("Empresa atribuída");
+      toast.success(t("Empresa atribuída"));
       utils.users.list.invalidate();
     },
   });
@@ -550,7 +550,7 @@ function UsersTab() {
 
   const createInviteMutation = trpc.invitations.create.useMutation({
     onSuccess: () => {
-      toast.success("Convite enviado com sucesso");
+      toast.success(t("Convite enviado com sucesso"));
       utils.invitations.list.invalidate();
       setInviteEmail("");
       setInviteCompanyId("");
@@ -564,7 +564,7 @@ function UsersTab() {
 
   const deleteInviteMutation = trpc.invitations.delete.useMutation({
     onSuccess: () => {
-      toast.success("Convite removido");
+      toast.success(t("Convite removido"));
       utils.invitations.list.invalidate();
     },
   });
@@ -607,7 +607,7 @@ function UsersTab() {
       {/* Invite User Button + Dialog */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t("Utilizadores")}</CardTitle>
+          <CardTitle className="text-base">{t(Utilizadores)}</CardTitle>
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -617,11 +617,11 @@ function UsersTab() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t("Convidar Novo Utilizador")}</DialogTitle>
+                <DialogTitle>Convidar Novo Utilizador</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>{t("Email")}</Label>
+                  <Label>Email</Label>
                   <Input
                     type="email"
                     placeholder="email@empresa.pt"
@@ -630,7 +630,7 @@ function UsersTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("Empresa")}</Label>
+                  <Label>Empresa</Label>
                   <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar empresa" />
@@ -645,7 +645,7 @@ function UsersTab() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("Papel")}</Label>
+                  <Label>Papel</Label>
                   <Select value={inviteRole} onValueChange={setInviteRole}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar papel" />
@@ -654,10 +654,10 @@ function UsersTab() {
                       <SelectItem value="ee">EE — Entidade Executante</SelectItem>
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
-                      <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
+                      <SelectItem value="dono_obra">Dono de Obra</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                       <SelectItem value="observador">Observador</SelectItem>
-                      <SelectItem value="admin">{t("Administrador")}</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -675,12 +675,12 @@ function UsersTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("Nome")}</TableHead>
-                <TableHead>{t("Email")}</TableHead>
-               <TableHead>{t("Papel")}</TableHead>
-               <TableHead>{t("Empresa")}</TableHead>
-               <TableHead>{t("Projetos")}</TableHead>
-                <TableHead>{t("Fases")}</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Email</TableHead>
+               <TableHead>Papel</TableHead>
+               <TableHead>Empresa</TableHead>
+               <TableHead>Projetos</TableHead>
+                <TableHead>Fases</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -697,12 +697,12 @@ function UsersTab() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">{t("Utilizador")}</SelectItem>
+                        <SelectItem value="user">Utilizador</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="ee">EE</SelectItem>
-                        <SelectItem value="raa">{t("RAA")}</SelectItem>
-                        <SelectItem value="rap">{t("RAP")}</SelectItem>
-                        <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
+                        <SelectItem value="raa">RAA</SelectItem>
+                        <SelectItem value="rap">RAP</SelectItem>
+                        <SelectItem value="dono_obra">Dono de Obra</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
                       </SelectContent>
@@ -799,9 +799,9 @@ function UsersTab() {
                   <TableCell>
                     <div className="flex flex-wrap gap-0.5">
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 dark:bg-green-900/20 text-green-700">{t("Todas")}</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 dark:bg-green-900/20 text-green-700">Todas</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">{t("Construção")}</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">Construção</Badge>
                       )}
                     </div>
                   </TableCell>
@@ -832,10 +832,10 @@ function UsersTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("Email")}</TableHead>
-                  <TableHead>{t("Empresa")}</TableHead>
-                  <TableHead>{t("Papel")}</TableHead>
-                  <TableHead>{t("Data")}</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>Papel</TableHead>
+                  <TableHead>Data</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -869,13 +869,13 @@ function UsersTab() {
       {deleteUserId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2 text-destructive">{t("Eliminar Utilizador")}</h3>
+            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
             <p className="text-sm text-muted-foreground mb-4">Tem a certeza?</p>
             <p className="text-sm mb-2">Escreva o nome para confirmar:</p>
-            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder={t("Nome completo")} className="mb-4" />
+            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
             <div className="flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{t("Confirmar")}</Button>
-              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}</Button>
+              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
             </div>
           </div>
         </div>
@@ -928,12 +928,12 @@ function HistoricalTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t("Carregar Ficha Histórica (PDF)")}</CardTitle>
+          <CardTitle className="text-base">Carregar Ficha Histórica (PDF)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label>{t("Empresa")}</Label>
+              <Label>Empresa</Label>
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar..." />
@@ -948,15 +948,15 @@ function HistoricalTab() {
               </Select>
             </div>
             <div>
-              <Label>{t("Semana")}</Label>
+              <Label>Semana</Label>
               <Input type="number" min={1} max={53} value={weekNumber} onChange={(e) => setWeekNumber(e.target.value)} placeholder="Ex: 32" />
             </div>
             <div>
-              <Label>{t("Ano")}</Label>
+              <Label>Ano</Label>
               <Input type="number" min={2020} max={2030} value={weekYear} onChange={(e) => setWeekYear(e.target.value)} />
             </div>
             <div>
-              <Label>{t("Ficheiro PDF")}</Label>
+              <Label>Ficheiro PDF</Label>
               <Input type="file" accept=".pdf" ref={fileInputRef} />
             </div>
           </div>
@@ -975,9 +975,9 @@ function HistoricalTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("Semana")}</TableHead>
-                <TableHead>{t("Empresa")}</TableHead>
-                <TableHead>{t("Ficheiro")}</TableHead>
+                <TableHead>Semana</TableHead>
+                <TableHead>Empresa</TableHead>
+                <TableHead>Ficheiro</TableHead>
                 <TableHead>Data Upload</TableHead>
               </TableRow>
             </TableHeader>
@@ -1023,7 +1023,7 @@ function MelhoriasTab() {
     <div className="space-y-4">
       <h3 className="font-semibold">{t("Feedback e Melhorias dos Utilizadores")}</h3>
       {!feedbacks || feedbacks.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">Sem feedback recebido. Os utilizadores podem enviar sugestões pelo menu do perfil.</p>
+        <p className="text-sm text-muted-foreground text-center py-8">{t("Sem feedback recebido")}</p>
       ) : (
         <div className="space-y-3">
           {feedbacks.map((fb: any) => (
@@ -1034,9 +1034,9 @@ function MelhoriasTab() {
                   <p className="text-xs text-muted-foreground">{fb.createdAt ? new Date(fb.createdAt).toLocaleDateString("pt-PT") : ""}</p>
                 </div>
                 <select className="text-xs border rounded px-2 py-1" value={fb.status || "pendente"} onChange={e => updateMutation.mutate({ id: fb.id, status: e.target.value })}>
-                  <option value="pendente">{t("Pendente")}</option>
+                  <option value="pendente">Pendente</option>
                   <option value="em_analise">Em Análise</option>
-                  <option value="implementado">{t("Implementado")}</option>
+                  <option value="implementado">Implementado</option>
                   <option value="rejeitado">Rejeitado</option>
                 </select>
               </div>
@@ -1060,7 +1060,7 @@ function PendingAccountsTab() {
   if (pending.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum pedido de acesso pendente.</div>;
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold">{t("Pedidos de Acesso Pendentes")}</h3>
+      <h3 className="text-lg font-semibold">Pedidos de Acesso Pendentes</h3>
       {pending.map((p: any) => (
         <div key={p.id} className="flex items-center justify-between p-4 border rounded-lg">
           <div>
@@ -1068,8 +1068,8 @@ function PendingAccountsTab() {
             <p className="text-sm text-muted-foreground">{p.email}</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}</button>
-            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}</button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>Aprovar</button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>Rejeitar</button>
           </div>
         </div>
       ))}

@@ -261,7 +261,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 <div className="flex items-center gap-2">
                   <img src={LOGO_URL} alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
-                    Plataforma de Gestão Ambiental
+                    PGA — Start Campus
                   </span>
                 </div>
               )}
@@ -429,7 +429,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       {/* English Translation Warning */}
       {language === "en" && (
         <div className="fixed bottom-0 left-0 right-0 bg-amber-100 border-t border-amber-300 p-2 text-center z-40">
-          <p className="text-xs text-amber-800">⚠️ Please note: all documentation submitted on this platform must be written in Portuguese, regardless of the display language.</p>
+          <p className="text-xs text-amber-800">⚠️ {t("Nota: toda a documentação submetida nesta plataforma deve ser escrita em Português, independentemente do idioma de visualização.")}</p>
         </div>
       )}
       {showFeedback && (

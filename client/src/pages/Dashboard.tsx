@@ -832,7 +832,7 @@ export default function Dashboard() {
                   <BarChart data={filteredByWeek}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                     <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
@@ -880,7 +880,7 @@ export default function Dashboard() {
                   <BarChart data={filteredByCompany}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                     <XAxis dataKey="companyName" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
                     {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}

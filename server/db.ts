@@ -105,7 +105,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
             role: invitation.role as any,
           }).where(eq(users.openId, user.openId));
           await acceptInvitation(invitation.id);
-          console.log(`[Invitation] Auto-assigned user ${emailLower} to company ${invitation.companyId} with role ${invitation.role}`);
+          // Auto-assigned user to company
         }
       }
     }

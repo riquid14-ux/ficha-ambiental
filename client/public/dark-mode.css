@@ -1,0 +1,105 @@
+/* ===== COMPREHENSIVE DARK MODE OVERRIDES ===== */
+/* This file is NOT processed by Tailwind/Vite CSS optimizer */
+/* It uses html.dark selectors with !important to override ALL hardcoded colors */
+
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #0f1117 !important;
+  color: #e5e5e5 !important;
+}
+
+/* Backgrounds */
+html.dark .bg-white { background-color: #1a1a2e !important; }
+html.dark .bg-gray-50, html.dark .bg-gray-100 { background-color: #1e1e32 !important; }
+html.dark .bg-gray-200, html.dark .bg-gray-300 { background-color: #2a2a3e !important; }
+html.dark .bg-green-50, html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+html.dark .bg-green-100, html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+html.dark .bg-green-600, html.dark .bg-emerald-600 { background-color: #059669 !important; }
+html.dark .bg-green-700, html.dark .bg-emerald-700, html.dark .bg-green-800 { background-color: #047857 !important; }
+html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
+html.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15) !important; }
+html.dark .bg-red-50, html.dark .bg-rose-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+html.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
+html.dark .bg-yellow-50, html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+html.dark .bg-yellow-100, html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.15) !important; }
+html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
+html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
+html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1) !important; }
+html.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.1) !important; }
+html.dark .bg-green-50\/50, html.dark .bg-red-50\/50 { background-color: transparent !important; }
+
+/* Text colors */
+html.dark .text-gray-900, html.dark .text-gray-800 { color: #e5e5e5 !important; }
+html.dark .text-gray-700, html.dark .text-gray-600 { color: #d1d1d1 !important; }
+html.dark .text-gray-500, html.dark .text-gray-400 { color: #a0a0a0 !important; }
+html.dark .text-black { color: #f0f0f0 !important; }
+html.dark .text-green-600, html.dark .text-green-700, html.dark .text-green-800, html.dark .text-green-900 { color: #6ee7b7 !important; }
+html.dark .text-emerald-600, html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7 !important; }
+html.dark .text-amber-600, html.dark .text-amber-700, html.dark .text-amber-800 { color: #fcd34d !important; }
+html.dark .text-yellow-600, html.dark .text-yellow-700 { color: #fcd34d !important; }
+html.dark .text-red-600, html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5 !important; }
+html.dark .text-blue-600, html.dark .text-blue-700, html.dark .text-blue-800 { color: #93c5fd !important; }
+html.dark .text-purple-600, html.dark .text-purple-700, html.dark .text-purple-800 { color: #c4b5fd !important; }
+html.dark .text-orange-600, html.dark .text-orange-700 { color: #fdba74 !important; }
+html.dark .text-indigo-600, html.dark .text-indigo-700 { color: #a5b4fc !important; }
+
+/* Borders */
+html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color: #333348 !important; }
+html.dark .border-green-200, html.dark .border-green-300, html.dark .border-emerald-200, html.dark .border-emerald-300 { border-color: rgba(16, 185, 129, 0.3) !important; }
+html.dark .border-blue-200, html.dark .border-blue-300 { border-color: rgba(59, 130, 246, 0.3) !important; }
+html.dark .border-red-200, html.dark .border-red-300, html.dark .border-red-500 { border-color: rgba(239, 68, 68, 0.4) !important; }
+html.dark .border-amber-200, html.dark .border-yellow-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
+html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3) !important; }
+
+/* Inputs and form elements */
+html.dark input, html.dark textarea, html.dark select {
+  background-color: #1e1e32 !important;
+  color: #e5e5e5 !important;
+  border-color: #333348 !important;
+}
+html.dark input::placeholder, html.dark textarea::placeholder {
+  color: #666 !important;
+}
+
+/* Tables */
+html.dark table { background-color: #1a1a2e !important; }
+html.dark th { background-color: #1e1e32 !important; color: #e5e5e5 !important; }
+html.dark td { color: #d1d1d1 !important; border-color: #333348 !important; }
+html.dark tr:hover td { background-color: #252540 !important; }
+
+/* Dialogs and modals */
+html.dark [role="dialog"] { background-color: #1a1a2e !important; color: #e5e5e5 !important; }
+
+/* Dropdown menus */
+html.dark [data-radix-popper-content-wrapper] > div {
+  background-color: #1e1e32 !important;
+  border-color: #333348 !important;
+  color: #e5e5e5 !important;
+}
+
+/* Recharts */
+html.dark .recharts-cartesian-axis-tick-value { fill: #a0a0a0 !important; }
+html.dark .recharts-legend-item-text { color: #d1d1d1 !important; }
+html.dark .recharts-default-tooltip { background-color: #1e1e32 !important; border-color: #333348 !important; color: #e5e5e5 !important; }
+
+/* Tabs */
+html.dark [data-state="active"][role="tab"] { background-color: #1e1e32 !important; color: #e5e5e5 !important; }
+
+/* Badges with colored backgrounds */
+html.dark .bg-green-100.text-green-700, html.dark .bg-green-100.text-green-800 { background-color: rgba(16,185,129,0.15) !important; color: #6ee7b7 !important; }
+html.dark .bg-red-100.text-red-700, html.dark .bg-red-100.text-red-800 { background-color: rgba(239,68,68,0.15) !important; color: #fca5a5 !important; }
+html.dark .bg-blue-100.text-blue-700, html.dark .bg-blue-100.text-blue-800 { background-color: rgba(59,130,246,0.15) !important; color: #93c5fd !important; }
+html.dark .bg-amber-100.text-amber-700, html.dark .bg-amber-100.text-amber-800 { background-color: rgba(245,158,11,0.15) !important; color: #fcd34d !important; }
+html.dark .bg-purple-100.text-purple-700, html.dark .bg-purple-100.text-purple-800 { background-color: rgba(168,85,247,0.15) !important; color: #c4b5fd !important; }
+
+/* Shadows */
+html.dark .shadow-sm, html.dark .shadow, html.dark .shadow-md, html.dark .shadow-lg {
+  --tw-shadow-color: rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Scrollbar */
+html.dark ::-webkit-scrollbar-track { background: #1a1a2e; }
+html.dark ::-webkit-scrollbar-thumb { background: #333348; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #444460; }

@@ -239,3 +239,37 @@ export async function sendAccessDeniedNotification(
     return false;
   }
 }
+
+export async function sendFichaDeletedNotification(
+  toEmail: string,
+  companyName: string,
+  weekNumber: number,
+  weekYear: number,
+  deletedByName: string,
+  deletedAt: string
+): Promise<boolean> {
+  const config = await getEmailConfig();
+  if (!config.enabled) return false;
+  const subject = `[Plataforma de Gestão Ambiental] Ficha Semanal Eliminada — S${weekNumber}/${weekYear}`;
+  const body = `
+    <h3 style="color: #d32f2f;">Ficha Semanal Eliminada</h3>
+    <p style="color: #333;">A ficha semanal da empresa <strong>${companyName}</strong> referente à <strong>Semana ${weekNumber}/${weekYear}</strong> foi eliminada.</p>
+    <table style="border-collapse: collapse; margin: 16px 0;">
+      <tr><td style="padding: 6px 12px; color: #666;">Eliminada por:</td><td style="padding: 6px 12px; font-weight: bold;">${deletedByName}</td></tr>
+      <tr><td style="padding: 6px 12px; color: #666;">Data/Hora:</td><td style="padding: 6px 12px;">${deletedAt}</td></tr>
+    </table>
+    <p style="color: #666; font-size: 13px;">Se considera que esta eliminação foi um erro, contacte o administrador da plataforma.</p>`;
+  try {
+    const transporter = createTransporter(config);
+    await transporter.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to: toEmail,
+      subject,
+      html: wrapHtml(subject, body),
+    });
+    return true;
+  } catch (err) {
+    console.warn("[Email] Failed to send deletion notification:", err);
+    return false;
+  }
+}

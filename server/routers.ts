@@ -775,6 +775,23 @@ export const appRouter = router({
           deletedByEmail: ctx.user.email || null,
         });
         await db.softDeleteWeeklySubmission(input.id, ctx.user.id);
+        // Send email notification to the submitter
+        try {
+          if (sub.createdBy) {
+            const creator = await db.getUserById(sub.createdBy);
+            if (creator?.email) {
+              const { sendFichaDeletedNotification } = await import("./email");
+              await sendFichaDeletedNotification(
+                creator.email,
+                company?.shortName || "?",
+                sub.weekNumber,
+                sub.weekYear,
+                ctx.user.name || ctx.user.email,
+                new Date().toLocaleString("pt-PT")
+              );
+            }
+          }
+        } catch (e) { console.error("Email notification failed:", e); }
         return { success: true };
       }),
 

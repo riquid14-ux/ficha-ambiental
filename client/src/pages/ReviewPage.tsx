@@ -13,7 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useMemo, useCallback } from "react";
 import { useProject } from "@/contexts/ProjectContext";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send } from "lucide-react";
+import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -58,6 +58,16 @@ export default function ReviewPage(props: any) {
   const submissionsQuery = trpc.submissions.listAll.useQuery({});
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
+  const usersQuery = trpc.users.list.useQuery(undefined, { enabled: canReview });
+  const userMap = new Map((usersQuery.data || []).map((u: any) => [u.id, u.name || u.email]));
+  const getUserName = (id: number | null | undefined) => id ? (userMap.get(id) || `#${id}`) : "-";
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const deleteMutation = trpc.submissions.delete.useMutation({
+    onSuccess: () => { toast.success(t("Ficha eliminada com sucesso")); submissionsQuery.refetch(); setDeleteDialogOpen(false); setDeleteTarget(null); setDeleteConfirmText(""); },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   // Filter submissions by active project
   const filteredSubmissions = useMemo(() => {
@@ -214,6 +224,7 @@ export default function ReviewPage(props: any) {
                   <TableHead>{t("Semana")}</TableHead>
                   <TableHead>{t("Empresa")}</TableHead>
                   <TableHead>{t("Período")}</TableHead>
+                  <TableHead>{t("Criado por")}</TableHead>
                   <TableHead>{t("Ações")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -225,6 +236,7 @@ export default function ReviewPage(props: any) {
                       <TableCell className="font-medium">S{sub.weekNumber}/{sub.weekYear}</TableCell>
                       <TableCell>{company?.companyType === "rap" ? "RAP - " : ""}{company?.shortName || "-"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{sub.weekStartDate} - {sub.weekEndDate}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{getUserName(sub.createdBy)}</TableCell>
                       <TableCell className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => handleViewDetail(sub)}>
                           <Eye className="w-4 h-4 mr-1" /> Ver
@@ -257,6 +269,8 @@ export default function ReviewPage(props: any) {
                   <TableHead>{t("Empresa")}</TableHead>
                   <TableHead>{t("Estado")}</TableHead>
                   <TableHead>{t("Notas")}</TableHead>
+                  <TableHead>{t("Criado por")}</TableHead>
+                  <TableHead>{t("Aprovado por")}</TableHead>
                   <TableHead>{t("Ações")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -269,10 +283,17 @@ export default function ReviewPage(props: any) {
                       <TableCell>{company?.companyType === "rap" ? "RAP - " : ""}{company?.shortName || "-"}</TableCell>
                       <TableCell><Badge variant={STATUS_VARIANT[sub.status] || "secondary"}>{STATUS_LABELS[sub.status] || sub.status}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{sub.reviewNotes || "-"}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{getUserName(sub.createdBy)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{sub.status === "approved" ? getUserName(sub.reviewedBy) : "-"}</TableCell>
+                      <TableCell className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => handleViewDetail(sub)}>
                           <Eye className="w-4 h-4 mr-1" /> Ver
                         </Button>
+                        {user?.role === "admin" && (
+                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { setDeleteTarget(sub); setDeleteDialogOpen(true); }}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -493,6 +514,32 @@ export default function ReviewPage(props: any) {
                 {filteredMeasuresBySection.length === 0 && (
                   <p className="text-center text-muted-foreground py-8">{t("Nenhuma medida com o estado selecionado")}</p>
                 )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteDialogOpen(false); setDeleteTarget(null); setDeleteConfirmText(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-destructive">{t("Eliminar Ficha Semanal")}</DialogTitle>
+            </DialogHeader>
+            {deleteTarget && (
+              <div className="space-y-4">
+                <p className="text-sm">
+                  {t("Confirma que quer eliminar a ficha semanal da")} <strong>{companyMap.get(deleteTarget.companyId)?.shortName || "?"}</strong> — S{deleteTarget.weekNumber}/{deleteTarget.weekYear}?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {t("Criado por")}: {getUserName(deleteTarget.createdBy)} | {t("Aprovado por")}: {deleteTarget.reviewedBy ? getUserName(deleteTarget.reviewedBy) : "-"}
+                </p>
+                <div>
+                  <label className="text-sm font-medium">{t("Escreva")} "<strong>eliminar</strong>" {t("para confirmar")}:</label>
+                  <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="eliminar" className="mt-1" />
+                </div>
+                <Button variant="destructive" disabled={deleteConfirmText.toLowerCase() !== "eliminar" || deleteMutation.isPending} onClick={() => deleteMutation.mutate({ id: deleteTarget.id })} className="w-full">
+                  {deleteMutation.isPending ? t("A eliminar...") : t("Confirmar Eliminação")}
+                </Button>
               </div>
             )}
           </DialogContent>

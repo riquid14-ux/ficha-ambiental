@@ -858,6 +858,15 @@ const translations: Record<string, Record<Lang, string>> = {
   "Palavra-passe atual": { pt: "Palavra-passe atual", en: "Current password" },
   "Quantidade": { pt: "Quantidade", en: "Quantity" },
   "Selecionar Projetos": { pt: "Selecionar Projetos", en: "Select Projects" },
+  "Criado por": { pt: "Criado por", en: "Created by" },
+  "Aprovado por": { pt: "Aprovado por", en: "Approved by" },
+  "Eliminar Ficha Semanal": { pt: "Eliminar Ficha Semanal", en: "Delete Weekly Form" },
+  "Confirma que quer eliminar a ficha semanal da": { pt: "Confirma que quer eliminar a ficha semanal da", en: "Confirm you want to delete the weekly form from" },
+  "Escreva": { pt: "Escreva", en: "Type" },
+  "para confirmar": { pt: "para confirmar", en: "to confirm" },
+  "A eliminar...": { pt: "A eliminar...", en: "Deleting..." },
+  "Confirmar Eliminação": { pt: "Confirmar Eliminação", en: "Confirm Deletion" },
+  "Ficha eliminada com sucesso": { pt: "Ficha eliminada com sucesso", en: "Form deleted successfully" },
 };
 
 interface LanguageContextType {

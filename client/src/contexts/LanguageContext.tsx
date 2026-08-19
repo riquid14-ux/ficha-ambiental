@@ -725,6 +725,16 @@ const translations: Record<string, Record<Lang, string>> = {
   "Guardar Configuração": { pt: "Guardar Configuração", en: "Save Configuration" },
   "Geral": { pt: "Geral", en: "General" },
   "Secção": { pt: "Secção", en: "Section" },
+  "Matriz Acompanhamento": { pt: "Matriz Acompanhamento", en: "Tracking Matrix" },
+  "Processo de submissão e revisão de fichas de controlo ambiental.": { pt: "Processo de submissão e revisão de fichas de controlo ambiental.", en: "Submission and review process for environmental control forms." },
+  "Selecione um projeto específico no menu lateral para ver notas adicionais do workflow.": { pt: "Selecione um projeto específico no menu lateral para ver notas adicionais do workflow.", en: "Select a specific project from the sidebar to view additional workflow notes." },
+  "Ação EE/RAP": { pt: "Ação EE/RAP", en: "EE/RAP Action" },
+  "Ação RAA": { pt: "Ação RAA", en: "RAA Action" },
+  "Aprovado": { pt: "Aprovado", en: "Approved" },
+  "Rejeitado": { pt: "Rejeitado", en: "Rejected" },
+  "Workflow atualizado com sucesso": { pt: "Workflow atualizado com sucesso", en: "Workflow updated successfully" },
+  "Pesquisar por nome ou email": { pt: "Pesquisar por nome ou email", en: "Search by name or email" },
+  "Todos os roles": { pt: "Todos os roles", en: "All roles" },
 };
 
 interface LanguageContextType {

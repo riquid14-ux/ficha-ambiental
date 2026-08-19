@@ -97,7 +97,7 @@ export async function sendFichaSubmittedNotification(
     console.log("[Email] Notifications disabled or no RAA emails. Skipping.");
     return false;
   }
-  const subject = `[PGA] Nova Ficha Submetida — ${projectCode} Semana ${weekNumber}/${weekYear}`;
+  const subject = `[Plataforma de Gestão Ambiental] Nova Ficha Submetida — ${projectCode} Semana ${weekNumber}/${weekYear}`;
   const body = `
     <h3 style="color: #333;">Nova Ficha de Controlo Submetida</h3>
     <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
@@ -143,7 +143,7 @@ export async function sendFichaReviewedNotification(
   const isApproved = status === "approved";
   const statusLabel = isApproved ? "Aprovada" : "Rejeitada";
   const statusColor = isApproved ? "#16a34a" : "#dc2626";
-  const subject = `[PGA] Ficha ${statusLabel} — ${projectCode} Semana ${weekNumber}/${weekYear}`;
+  const subject = `[Plataforma de Gestão Ambiental] Ficha ${statusLabel} — ${projectCode} Semana ${weekNumber}/${weekYear}`;
   const body = `
     <h3 style="color: #333;">Ficha de Controlo ${statusLabel}</h3>
     <div style="background: ${isApproved ? '#f0fdf4' : '#fef2f2'}; border-left: 4px solid ${statusColor}; padding: 12px 16px; margin: 15px 0; border-radius: 4px;">
@@ -184,7 +184,7 @@ export async function sendInvitationEmail(
     console.log("[Email] Notifications disabled. Skipping invitation email.");
     return false;
   }
-  const subject = `[PGA] Convite para a Plataforma de Gestão Ambiental — Start Campus`;
+  const subject = `[Plataforma de Gestão Ambiental] Convite — Start Campus`;
   const body = `
     <h3 style="color: #333;">Bem-vindo à Plataforma de Gestão Ambiental</h3>
     <p style="color: #333;">Olá${recipientName ? ` ${recipientName}` : ''},</p>
@@ -220,7 +220,7 @@ export async function sendAccessDeniedNotification(
 ): Promise<boolean> {
   const config = await getEmailConfig();
   if (!config.enabled) return false;
-  const subject = `[PGA] Tentativa de acesso não autorizada — ${attemptEmail}`;
+  const subject = `[Plataforma de Gestão Ambiental] Tentativa de acesso não autorizada — ${attemptEmail}`;
   const body = `
     <h3 style="color: #333;">Tentativa de Acesso Registada</h3>
     <p style="color: #333;">O email <strong>${attemptEmail}</strong> tentou aceder à plataforma mas não tem permissões.</p>

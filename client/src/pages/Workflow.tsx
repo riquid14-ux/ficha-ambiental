@@ -60,10 +60,10 @@ export default function Workflow() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-primary" />
-            Workflow do Projeto
+            {t("Workflow do Projeto")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Processo de submissão e revisão de fichas de controlo ambiental.
+            {t("Processo de submissão e revisão de fichas de controlo ambiental.")}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export default function Workflow() {
             <CardContent className="p-6 text-center">
               <Info className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-muted-foreground">
-                Selecione um projeto específico no menu lateral para ver notas adicionais do workflow.
+                {t("Selecione um projeto específico no menu lateral para ver notas adicionais do workflow.")}
               </p>
             </CardContent>
           </Card>
@@ -94,12 +94,12 @@ export default function Workflow() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  Notas do Projeto — {activeProject.code}
+                  {t("Notas do Projeto")} — {activeProject.code}
                 </CardTitle>
                 {canEdit && !editing && (
                   <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                     <Pencil className="w-4 h-4 mr-1.5" />
-                    Editar
+                    {t("Editar")}
                   </Button>
                 )}
               </div>
@@ -121,12 +121,12 @@ export default function Workflow() {
                   ) : (
                     <div className="text-center py-6">
                       <p className="text-muted-foreground text-sm">
-                        Nenhuma nota adicional definida para este projeto.
+                        {t("Nenhuma nota adicional definida para este projeto.")}
                       </p>
                       {canEdit && (
                         <Button variant="outline" size="sm" className="mt-3" onClick={() => setEditing(true)}>
                           <Pencil className="w-4 h-4 mr-1.5" />
-                          Adicionar Nota
+                          {t("Adicionar Nota")}
                         </Button>
                       )}
                     </div>
@@ -256,28 +256,28 @@ function WorkflowDiagram() {
               {/* Approved path */}
               <div className="flex flex-col items-center gap-2">
                 <div className="w-full p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 text-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-1" />
-                  <p className="text-sm font-semibold text-green-800">{t("Aprovada")}</p>
-                  <p className="text-xs text-green-700 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
+                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400 mx-auto mb-1" />
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-200">{t("Aprovada")}</p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
                 </div>
-                <ArrowDown className="w-4 h-4 text-green-500" />
-                <div className="text-center px-2 py-1.5 rounded bg-green-100/50 border border-green-200">
-                  <p className="text-xs text-green-800 font-medium">{t("Disponível no Histórico")}</p>
-                  <p className="text-[10px] text-green-700">{t("Exportável em PDF")}</p>
+                <ArrowDown className="w-4 h-4 text-green-500 dark:text-green-400" />
+                <div className="text-center px-2 py-1.5 rounded bg-green-100/50 dark:bg-green-900/30 border border-green-200 dark:border-green-700">
+                  <p className="text-xs text-green-800 dark:text-green-200 font-medium">{t("Disponível no Histórico")}</p>
+                  <p className="text-[10px] text-green-700 dark:text-green-300">{t("Exportável em PDF")}</p>
                 </div>
               </div>
 
               {/* Rejected path */}
               <div className="flex flex-col items-center gap-2">
                 <div className="w-full p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 text-center">
-                  <XCircle className="w-6 h-6 text-red-600 mx-auto mb-1" />
-                  <p className="text-sm font-semibold text-red-800">{t("Rejeitada")}</p>
-                  <p className="text-xs text-red-700 mt-1">{t("RAA adiciona comentários com motivo da rejeição")}</p>
+                  <XCircle className="w-6 h-6 text-red-600 dark:text-red-400 mx-auto mb-1" />
+                  <p className="text-sm font-semibold text-red-800 dark:text-red-200">{t("Rejeitada")}</p>
+                  <p className="text-xs text-red-700 dark:text-red-300 mt-1">{t("RAA adiciona comentários com motivo da rejeição")}</p>
                 </div>
-                <ArrowDown className="w-4 h-4 text-red-500" />
-                <div className="text-center px-2 py-1.5 rounded bg-red-100/50 border border-red-200">
-                  <p className="text-xs text-red-800 font-medium">{t("Volta para Rascunhos")}</p>
-                  <p className="text-[10px] text-red-700">{t("EE/RAP corrige e resubmete")}</p>
+                <ArrowDown className="w-4 h-4 text-red-500 dark:text-red-400" />
+                <div className="text-center px-2 py-1.5 rounded bg-red-100/50 dark:bg-red-900/30 border border-red-200 dark:border-red-700">
+                  <p className="text-xs text-red-800 dark:text-red-200 font-medium">{t("Volta para Rascunhos")}</p>
+                  <p className="text-[10px] text-red-700 dark:text-red-300">{t("EE/RAP corrige e resubmete")}</p>
                 </div>
                 <ArrowDown className="w-4 h-4 text-muted-foreground" />
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -293,9 +293,10 @@ function WorkflowDiagram() {
       {/* Legend */}
       <div className="mt-6 pt-4 border-t flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Ação EE/RAP</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Ação RAA</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> Aprovado</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> Rejeitado</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> {t("Ação EE/RAP")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Ação RAA")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {t("Aprovado")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> {t("Rejeitado")}</span>
       </div>
     </div>
   );
@@ -303,16 +304,16 @@ function WorkflowDiagram() {
 
 function FlowStep({ icon, title, description, color, actor }: { icon: React.ReactNode; title: string; description: string; color: string; actor: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-blue-700",
-    indigo: "bg-indigo-50 border-indigo-200 text-indigo-700",
-    amber: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 text-amber-700",
-    green: "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-700",
+    blue: "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-200",
+    indigo: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200",
+    amber: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-200",
+    green: "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-200",
   };
   const badgeClasses: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-800",
-    indigo: "bg-indigo-100 text-indigo-800",
-    amber: "bg-amber-100 text-amber-800",
-    green: "bg-green-100 text-green-800",
+    blue: "bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-200",
+    indigo: "bg-indigo-100 dark:bg-indigo-800/40 text-indigo-800 dark:text-indigo-200",
+    amber: "bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200",
+    green: "bg-green-100 dark:bg-green-800/40 text-green-800 dark:text-green-200",
   };
 
   return (

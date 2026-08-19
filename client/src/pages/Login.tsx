@@ -272,7 +272,7 @@ export default function Login() {
         {viewMode === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
             <Input type="text" placeholder={t("Nome completo")} value={registerName} onChange={(e) => { setRegisterName(e.target.value); setError(""); }} className="h-12" autoFocus />
-            <Input type="text" placeholder={t("Empresa (ex: TSL, EDP...)")} value={registerCompany} onChange={(e) => { setRegisterCompany(e.target.value); }} className="h-12" />
+            <Input type="text" placeholder={t("Nome da empresa")} value={registerCompany} onChange={(e) => { setRegisterCompany(e.target.value); }} className="h-12" />
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" />

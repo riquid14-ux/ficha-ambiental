@@ -524,7 +524,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Nome de perfil": { pt: "Nome de perfil", en: "Profile name" },
   "Cargo ou função": { pt: "Cargo ou função", en: "Role or position" },
   "Nova palavra-passe (min. 6 caracteres)": { pt: "Nova palavra-passe (min. 6 caracteres)", en: "New password (min. 6 characters)" },
-  "Empresa (ex: TSL, EDP...)": { pt: "Empresa (ex: TSL, EDP...)", en: "Company (e.g.: TSL, EDP...)" },
+  "Nome da empresa": { pt: "Nome da empresa", en: "Company name" },
   "Confirmar palavra-passe": { pt: "Confirmar palavra-passe", en: "Confirm password" },
   "Nome do resíduo": { pt: "Nome do resíduo", en: "Waste name" },
   "Use o botão \"Adicionar Medida\" para começar.": { pt: "Use o botão \"Adicionar Medida\" para começar.", en: "Use the \"Add Measure\" button to start." },

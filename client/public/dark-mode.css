@@ -136,3 +136,35 @@ html.dark footer, html.dark .fixed.bottom-0 {
   background-color: #1e293b !important;
   border-color: #334155 !important;
 }
+
+/* ===== DARK MODE CSS VARIABLES (bypasses Tailwind 4 optimizer) ===== */
+:root.dark, .dark {
+  --color-background: oklch(0.145 0.015 120) !important;
+  --color-foreground: oklch(0.93 0.005 120) !important;
+  --color-card: oklch(0.2 0.01 120) !important;
+  --color-card-foreground: oklch(0.93 0.005 120) !important;
+  --color-popover: oklch(0.2 0.01 120) !important;
+  --color-popover-foreground: oklch(0.93 0.005 120) !important;
+  --color-primary: oklch(0.6 0.15 155) !important;
+  --color-primary-foreground: oklch(0.145 0.015 120) !important;
+  --color-secondary: oklch(0.25 0.02 155) !important;
+  --color-secondary-foreground: oklch(0.9 0.005 120) !important;
+  --color-muted: oklch(0.25 0.01 120) !important;
+  --color-muted-foreground: oklch(0.65 0.02 120) !important;
+  --color-accent: oklch(0.25 0.02 155) !important;
+  --color-accent-foreground: oklch(0.9 0.005 120) !important;
+  --color-destructive: oklch(0.55 0.2 25) !important;
+  --color-destructive-foreground: oklch(0.93 0.005 120) !important;
+  --color-border: oklch(0.3 0.01 120) !important;
+  --color-input: oklch(0.3 0.01 120) !important;
+  --color-ring: oklch(0.6 0.15 155) !important;
+  --color-sidebar: oklch(0.17 0.01 155) !important;
+  --color-sidebar-foreground: oklch(0.9 0.005 120) !important;
+  --color-sidebar-primary: oklch(0.6 0.15 155) !important;
+  --color-sidebar-primary-foreground: oklch(0.145 0.015 120) !important;
+  --color-sidebar-accent: oklch(0.25 0.02 155) !important;
+  --color-sidebar-accent-foreground: oklch(0.9 0.005 120) !important;
+  --color-sidebar-border: oklch(0.3 0.01 120) !important;
+  --color-sidebar-ring: oklch(0.6 0.15 155) !important;
+  color-scheme: dark;
+}

@@ -207,6 +207,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // in the new menu, redirect to Dashboard to avoid orphan pages
   useEffect(() => {
     if (location === "/" || location === "/login" || location === "/perfil" || location === "/admin") return;
+    // Don't redirect if menu items haven't loaded yet or are empty
+    if (allItems.length === 0) return;
     const validPaths = allItems.map(item => item.path);
     const isCurrentRouteValid = validPaths.some(p => location.startsWith(p));
     if (!isCurrentRouteValid) {

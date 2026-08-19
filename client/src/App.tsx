@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { Component, ReactNode } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -107,4 +108,3 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     return this.props.children;
   }
 }
-import { LanguageProvider } from "./contexts/LanguageContext";

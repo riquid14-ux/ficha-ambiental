@@ -88,7 +88,7 @@ export default function WeeklyForm() {
     { projectId: activeProject?.id ?? 0 },
     { enabled: !!activeProject?.id }
   );
-  const [showAllPhases, setShowAllPhases] = useState(false);
+  const [showAllPhases, setShowAllPhases] = useState(true);
   const [showAllMeasuresOnRejected, setShowAllMeasuresOnRejected] = useState(false);
   // Determine the current phase (first phase with progress < 100)
   const currentPhaseKey = useMemo(() => {

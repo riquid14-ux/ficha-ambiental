@@ -308,3 +308,8 @@
 - [x] Wrapped Workflow page strings with t() (16 replacements)
 - [x] Wrapped AdminPanel and Gamma bare PT strings with t()
 - [x] Added comprehensive dark mode CSS overrides for charts, tabs, badges, borders
+
+## Critical Bug Fixes
+- [x] FIX: Fichas semanais measures missing/broken - medidas não aparecem
+- [ ] FIX: Timeline phases broken/confused
+- [x] IMPROVE: Email config UI more user-friendly

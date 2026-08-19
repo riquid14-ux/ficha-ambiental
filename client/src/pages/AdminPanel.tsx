@@ -1214,42 +1214,86 @@ function EmailConfigTab() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">✉️ {t("Configuração de Email")}</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Configure o servidor SMTP para envio de notificações. A equipa de IT define o servidor SMTP da organização.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="w-4 h-4" />
-          <div>
-            <p className="font-medium text-sm">{t("Ativar notificações por email")}</p>
-            <p className="text-xs text-muted-foreground">Quando ativo, o sistema envia emails automáticos para submissões, aprovações e convites</p>
+    <div className="space-y-4">
+      {/* Enable/Disable toggle card */}
+      <Card className={`border-2 transition-colors ${enabled ? 'border-green-500 dark:border-green-600' : 'border-muted'}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
+                <span className="text-lg">{enabled ? '✅' : '📧'}</span>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">{t("Notificações por Email")}</p>
+                <p className="text-xs text-muted-foreground">{enabled ? t("Ativo — o sistema envia emails automáticos") : t("Inativo — nenhum email será enviado")}</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="sr-only peer" />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+            </label>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><Label>Servidor SMTP</Label><Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" /></div>
-          <div><Label>Porta SMTP</Label><Input value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} placeholder="587" /></div>
-          <div><Label>Utilizador SMTP</Label><Input value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="apoioamb@startcampus.pt" /></div>
-          <div><Label>Palavra-passe SMTP</Label><Input type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} placeholder="••••••••" /></div>
-          <div><Label>Email de envio</Label><Input value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="apoioamb@startcampus.pt" /></div>
-          <div><Label>Nome do remetente</Label><Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Plataforma de Gestão Ambiental" /></div>
-        </div>
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
-          <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">ℹ️ Emails automáticos enviados pelo sistema:</p>
-          <ul className="list-disc list-inside text-blue-700 dark:text-blue-300 space-y-1">
-            <li>Ficha submetida → Notifica RAA, Admin e Dono de Obra</li>
-            <li>Ficha aprovada/rejeitada → Notifica o submitter</li>
-            <li>Convite de utilizador → Email com link de acesso e credenciais</li>
-            <li>Tentativa de acesso não autorizada → Notifica o administrador</li>
-          </ul>
-        </div>
-        <Button onClick={handleSave} disabled={updateMutation.isPending} className="gap-2">
-          {updateMutation.isPending ? "A guardar..." : "Guardar Configuração"}
-        </Button>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* SMTP Server Config */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">🔧 {t("Servidor SMTP")}</CardTitle>
+          <p className="text-xs text-muted-foreground">{t("Configuração técnica — a equipa de IT fornece estes dados")}</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1"><Label className="text-xs">{t("Servidor")}</Label><Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.office365.com" className="h-9" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("Porta")}</Label><Input value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} placeholder="587" className="h-9" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("Utilizador")}</Label><Input value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="apoioamb@startcampus.pt" className="h-9" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("Palavra-passe")}</Label><Input type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} placeholder="••••••••" className="h-9" /></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sender Info */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">📨 {t("Remetente")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1"><Label className="text-xs">{t("Email de envio")}</Label><Input value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="apoioamb@startcampus.pt" className="h-9" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("Nome do remetente")}</Label><Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Plataforma de Gestão Ambiental" className="h-9" /></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification types info */}
+      <Card className="bg-muted/30">
+        <CardContent className="p-4">
+          <p className="font-medium text-sm mb-3">{t("Emails automáticos enviados pelo sistema")}:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
+              <span className="text-green-600 mt-0.5">📤</span>
+              <div><span className="font-medium">{t("Ficha submetida")}</span><br/><span className="text-muted-foreground">{t("Notifica RAA, Admin e Dono de Obra")}</span></div>
+            </div>
+            <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
+              <span className="text-blue-600 mt-0.5">✅</span>
+              <div><span className="font-medium">{t("Ficha aprovada/rejeitada")}</span><br/><span className="text-muted-foreground">{t("Notifica o submitter")}</span></div>
+            </div>
+            <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
+              <span className="text-purple-600 mt-0.5">👤</span>
+              <div><span className="font-medium">{t("Convite de utilizador")}</span><br/><span className="text-muted-foreground">{t("Email com link de acesso e credenciais")}</span></div>
+            </div>
+            <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
+              <span className="text-red-600 mt-0.5">🔒</span>
+              <div><span className="font-medium">{t("Acesso não autorizado")}</span><br/><span className="text-muted-foreground">{t("Notifica o administrador")}</span></div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Save button */}
+      <Button onClick={handleSave} disabled={updateMutation.isPending} size="lg" className="w-full gap-2">
+        {updateMutation.isPending ? t("A guardar...") : t("Guardar Configuração")}
+      </Button>
+    </div>
   );
 }

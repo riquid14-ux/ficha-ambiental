@@ -438,10 +438,10 @@ export default function SubmissionHistory(props: any) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">{t("Todos os estados")}</SelectItem>
-                        <SelectItem value="I">{t("Implementado")}< /SelectItem>
-                        <SelectItem value="C">{t("Conforme")}< /SelectItem>
-                        <SelectItem value="NC">{t("Não Conforme")}< /SelectItem>
-                        <SelectItem value="NA">{t("Não Aplicável")}< /SelectItem>
+                        <SelectItem value="I">{t("Implementado")}</SelectItem>
+                        <SelectItem value="C">{t("Conforme")}</SelectItem>
+                        <SelectItem value="NC">{t("Não Conforme")}</SelectItem>
+                        <SelectItem value="NA">{t("Não Aplicável")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -526,6 +526,7 @@ export default function SubmissionHistory(props: any) {
 }
 
 function DeletionHistoryView() {
+  const { t } = useLanguage();
   const deletionLogsQuery = trpc.deletionLogs.list.useQuery();
   const { activeProject, isAllProjects } = useProject();
   const { user } = useAuth();
@@ -584,7 +585,7 @@ function DeletionHistoryView() {
           <TableHeader>
             <TableRow>
               <TableHead>{t("Semana")}</TableHead>
-              <TableHead>{t("Empresa")}< /TableHead>
+              <TableHead>{t("Empresa")}</TableHead>
               <TableHead>{t("Eliminado por")}</TableHead>
               <TableHead>{t("Data")}</TableHead>
               <TableHead>{t("Recuperar")}</TableHead>

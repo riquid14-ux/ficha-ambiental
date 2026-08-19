@@ -131,7 +131,7 @@ export default function CalendarioControl() {
                 <div>
                   <label className="text-xs text-muted-foreground">{t("Periodicidade")}</label>
                   <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(p => ({ ...p, periodicity: e.target.value }))}>
-                    <option value="Anual">{t("Anual")}< /option>
+                    <option value="Anual">{t("Anual")}</option>
                     <option value="Semestral">{t("Semestral")}</option>
                     <option value="Trimestral">{t("Trimestral")}</option>
                     <option value="Mensal">{t("Mensal")}</option>
@@ -177,8 +177,8 @@ export default function CalendarioControl() {
                     <th className="py-2.5 px-2 font-medium">{t("Periodicidade")}</th>
                     <th className="py-2.5 px-2 font-medium">{t("Próxima Data")}</th>
                     <th className="py-2.5 px-2 font-medium">{t("Responsável")}</th>
-                    <th className="py-2.5 px-2 font-medium">{t("Estado")}< /th>
-                    <th className="py-2.5 px-2 font-medium">{t("Ações")}< /th>
+                    <th className="py-2.5 px-2 font-medium">{t("Estado")}</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Ações")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,7 +203,7 @@ export default function CalendarioControl() {
                             <td className="py-2.5 px-2">
                               {isEditing ? (
                                 <select className="h-7 text-xs border rounded px-1" value={editData.periodicity} onChange={e => setEditData((p: any) => ({ ...p, periodicity: e.target.value }))}>
-                                  <option value="Anual">{t("Anual")}< /option>
+                                  <option value="Anual">{t("Anual")}</option>
                                   <option value="Semestral">{t("Semestral")}</option>
                                   <option value="Trimestral">{t("Trimestral")}</option>
                                   <option value="Mensal">{t("Mensal")}</option>
@@ -248,7 +248,7 @@ export default function CalendarioControl() {
                               ) : evt.status === "confirmed" ? (
                                 <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">Confirmado</Badge>
                               ) : (
-                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{t("Pendente")}< /Badge>
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{t("Pendente")}</Badge>
                               )}
                             </td>
                             <td className="py-2.5 px-2">

@@ -46,6 +46,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 
 
 function AuditLogTab() {
+  const { t } = useLanguage();
   const { data: logs, isLoading } = trpc.audit.list.useQuery({ limit: 200 });
   if (isLoading) return <p className="text-sm text-muted-foreground">{t("A carregar...")}</p>;
   if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">{t("Sem registos de auditoria.")}</p>;
@@ -56,7 +57,7 @@ function AuditLogTab() {
           <tr>
             <th className="text-left p-2">{t("Data")}</th>
             <th className="text-left p-2">{t("Utilizador")}</th>
-            <th className="text-left p-2">{t("Ação")}< /th>
+            <th className="text-left p-2">{t("Ação")}</th>
             <th className="text-left p-2">{t("Entidade")}</th>
             <th className="text-left p-2">{t("Detalhes")}</th>
           </tr>
@@ -221,6 +222,7 @@ export default function AdminPanel() {
 }
 
 function CompaniesTab() {
+  const { t } = useLanguage();
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
   const [newType, setNewType] = useState<"ee" | "rap" | "dono_obra" | "raa" | "observador">("ee");
@@ -304,7 +306,7 @@ function CompaniesTab() {
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
-                    <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
+                    <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
@@ -331,7 +333,7 @@ function CompaniesTab() {
               <TableHead>Sigla</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>{t("Projetos")}</TableHead>
-              <TableHead>{t("Estado")}< /TableHead>
+              <TableHead>{t("Estado")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -450,6 +452,7 @@ function CompaniesTab() {
 }
 
 function SubmissionsTab() {
+  const { t } = useLanguage();
   const submissionsQuery = trpc.submissions.listAll.useQuery({});
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
@@ -465,10 +468,10 @@ function SubmissionsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>{t("Semana")}</TableHead>
-              <TableHead>{t("Empresa")}< /TableHead>
+              <TableHead>{t("Empresa")}</TableHead>
               <TableHead>{t("Período")}</TableHead>
-              <TableHead>{t("Estado")}< /TableHead>
-              <TableHead>{t("Ações")}< /TableHead>
+              <TableHead>{t("Estado")}</TableHead>
+              <TableHead>{t("Ações")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -509,6 +512,7 @@ function SubmissionsTab() {
 }
 
 function UsersTab() {
+  const { t } = useLanguage();
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const usersQuery = trpc.users.list.useQuery();
@@ -603,7 +607,7 @@ function UsersTab() {
       {/* Invite User Button + Dialog */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t("Utilizadores")}< /CardTitle>
+          <CardTitle className="text-base">{t("Utilizadores")}</CardTitle>
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -626,7 +630,7 @@ function UsersTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("Empresa")}< /Label>
+                  <Label>{t("Empresa")}</Label>
                   <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar empresa" />
@@ -650,10 +654,10 @@ function UsersTab() {
                       <SelectItem value="ee">EE — Entidade Executante</SelectItem>
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
-                      <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
+                      <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                       <SelectItem value="observador">Observador</SelectItem>
-                      <SelectItem value="admin">{t("Administrador")}< /SelectItem>
+                      <SelectItem value="admin">{t("Administrador")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -674,7 +678,7 @@ function UsersTab() {
                 <TableHead>{t("Nome")}</TableHead>
                 <TableHead>{t("Email")}</TableHead>
                <TableHead>{t("Papel")}</TableHead>
-               <TableHead>{t("Empresa")}< /TableHead>
+               <TableHead>{t("Empresa")}</TableHead>
                <TableHead>{t("Projetos")}</TableHead>
                 <TableHead>Fases</TableHead>
               </TableRow>
@@ -698,7 +702,7 @@ function UsersTab() {
                         <SelectItem value="ee">EE</SelectItem>
                         <SelectItem value="raa">{t("RAA")}</SelectItem>
                         <SelectItem value="rap">{t("RAP")}</SelectItem>
-                        <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
+                        <SelectItem value="dono_obra">{t("Dono de Obra")}</SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
                       </SelectContent>
@@ -829,7 +833,7 @@ function UsersTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("Email")}</TableHead>
-                  <TableHead>{t("Empresa")}< /TableHead>
+                  <TableHead>{t("Empresa")}</TableHead>
                   <TableHead>{t("Papel")}</TableHead>
                   <TableHead>{t("Data")}</TableHead>
                   <TableHead></TableHead>
@@ -871,7 +875,7 @@ function UsersTab() {
             <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
             <div className="flex gap-2">
               <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
-              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}< /Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}</Button>
             </div>
           </div>
         </div>
@@ -881,6 +885,7 @@ function UsersTab() {
 }
 
 function HistoricalTab() {
+  const { t } = useLanguage();
   const utils = trpc.useUtils();
   const companiesQuery = trpc.companies.list.useQuery();
   const historicalQuery = trpc.historical.list.useQuery({});
@@ -928,7 +933,7 @@ function HistoricalTab() {
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label>{t("Empresa")}< /Label>
+              <Label>{t("Empresa")}</Label>
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar..." />
@@ -971,7 +976,7 @@ function HistoricalTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("Semana")}</TableHead>
-                <TableHead>{t("Empresa")}< /TableHead>
+                <TableHead>{t("Empresa")}</TableHead>
                 <TableHead>Ficheiro</TableHead>
                 <TableHead>Data Upload</TableHead>
               </TableRow>
@@ -1010,6 +1015,7 @@ function HistoricalTab() {
 }
 
 function MelhoriasTab() {
+  const { t } = useLanguage();
   const { data: feedbacks, refetch } = trpc.feedback.list.useQuery();
   const updateMutation = trpc.feedback.updateStatus.useMutation({ onSuccess: () => refetch() });
   
@@ -1028,9 +1034,9 @@ function MelhoriasTab() {
                   <p className="text-xs text-muted-foreground">{fb.createdAt ? new Date(fb.createdAt).toLocaleDateString("pt-PT") : ""}</p>
                 </div>
                 <select className="text-xs border rounded px-2 py-1" value={fb.status || "pendente"} onChange={e => updateMutation.mutate({ id: fb.id, status: e.target.value })}>
-                  <option value="pendente">{t("Pendente")}< /option>
+                  <option value="pendente">{t("Pendente")}</option>
                   <option value="em_analise">Em Análise</option>
-                  <option value="implementado">{t("Implementado")}< /option>
+                  <option value="implementado">{t("Implementado")}</option>
                   <option value="rejeitado">Rejeitado</option>
                 </select>
               </div>
@@ -1045,6 +1051,7 @@ function MelhoriasTab() {
 
 // ─── Pending Accounts Tab ───────────────────────────────────────────────────
 function PendingAccountsTab() {
+  const { t } = useLanguage();
   const pendingQuery = trpc.auth.pendingAccounts.useQuery();
   const approveMutation = trpc.auth.approveAccount.useMutation({
     onSuccess: () => { pendingQuery.refetch(); },
@@ -1061,8 +1068,8 @@ function PendingAccountsTab() {
             <p className="text-sm text-muted-foreground">{p.email}</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}< /button>
-            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}< /button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}</button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}</button>
           </div>
         </div>
       ))}

@@ -208,7 +208,7 @@ export default function Timeline() {
         <div className="relative rounded-xl overflow-hidden h-44">
           <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(17).jpg" alt="Start Campus" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-end pb-4 pl-5">
-            <p className="text-white text-sm font-medium">{t("Ciclo de vida dos projetos Start Campus")}< /p>
+            <p className="text-white text-sm font-medium">{t("Ciclo de vida dos projetos Start Campus")}</p>
           </div>
         </div>
 
@@ -235,7 +235,7 @@ export default function Timeline() {
                     <div className="flex gap-1">
                       <div className="flex-1">
                         <div className="h-2.5 rounded-full bg-orange-500" />
-                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">{t("Operação")}< /p>
+                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">{t("Operação")}</p>
                       </div>
                     </div>
                   ) : (
@@ -338,7 +338,7 @@ export default function Timeline() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm text-muted-foreground">{t("Progresso Global")}< /p>
+              <p className="text-sm text-muted-foreground">{t("Progresso Global")}</p>
               <p className="text-3xl font-bold">{overallProgress}%</p>
             </div>
             <div className="text-right text-sm">
@@ -362,7 +362,7 @@ export default function Timeline() {
 
       {/* Phase pipeline - visual timeline */}
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Pipeline de Fases")}< /h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Pipeline de Fases")}</h2>
 
         {/* Horizontal pipeline for desktop */}
         <div className="hidden lg:flex items-center gap-1 overflow-x-auto pb-2">
@@ -388,7 +388,7 @@ export default function Timeline() {
 
       {/* Detailed phase cards */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Detalhe por Fase")}< /h2>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Detalhe por Fase")}</h2>
         {visiblePhaseData.map(phase => (
           <Card key={phase.key} className={`overflow-hidden ${phase.isComplete ? "border-green-200" : ""}`}>
             <CardContent className="p-0">
@@ -401,13 +401,13 @@ export default function Timeline() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm">{phase.label}</h3>
                       {phase.isComplete && (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">{t("Concluída")}< /Badge>
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">{t("Concluída")}</Badge>
                       )}
                       {!phase.isComplete && phase.hasActivity && (
-                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">{t("Em Curso")}< /Badge>
+                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">{t("Em Curso")}</Badge>
                       )}
                       {!phase.isComplete && !phase.hasActivity && (
-                        <Badge variant="secondary" className="text-xs">{t("Pendente")}< /Badge>
+                        <Badge variant="secondary" className="text-xs">{t("Pendente")}</Badge>
                       )}
                     </div>
                     <span className="text-sm font-bold">{phase.progress}%</span>

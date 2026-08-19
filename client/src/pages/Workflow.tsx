@@ -173,7 +173,7 @@ export default function Workflow() {
                   <span className="text-blue-700 font-bold text-[10px]">EE</span>
                 </div>
                 <div>
-                  <p className="font-medium">{t("Entidade Executante")}< /p>
+                  <p className="font-medium">{t("Entidade Executante")}</p>
                   <p className="text-muted-foreground">{t("Preenche e submete a ficha semanal com evidências fotográficas e documentais.")}</p>
                 </div>
               </div>
@@ -200,7 +200,7 @@ export default function Workflow() {
                   <span className="text-green-700 font-bold text-[10px]">DO</span>
                 </div>
                 <div>
-                  <p className="font-medium">{t("Dono de Obra")}< /p>
+                  <p className="font-medium">{t("Dono de Obra")}</p>
                   <p className="text-muted-foreground">{t("Supervisiona o processo global, gere fases e define o workflow do projeto.")}</p>
                 </div>
               </div>
@@ -213,6 +213,7 @@ export default function Workflow() {
 }
 
 function WorkflowDiagram() {
+  const { t } = useLanguage();
   return (
     <div className="py-4">
       {/* Main flow - vertical on mobile, horizontal on desktop */}
@@ -250,13 +251,13 @@ function WorkflowDiagram() {
         {/* Decision point */}
         <div className="relative w-full max-w-lg">
           <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-4 bg-muted/20">
-            <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("Decisão da RAA")}< /p>
+            <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("Decisão da RAA")}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Approved path */}
               <div className="flex flex-col items-center gap-2">
                 <div className="w-full p-3 rounded-lg bg-green-50 border border-green-200 text-center">
                   <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-1" />
-                  <p className="text-sm font-semibold text-green-800">{t("Aprovada")}< /p>
+                  <p className="text-sm font-semibold text-green-800">{t("Aprovada")}</p>
                   <p className="text-xs text-green-700 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
                 </div>
                 <ArrowDown className="w-4 h-4 text-green-500" />

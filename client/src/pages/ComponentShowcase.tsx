@@ -1,5 +1,4 @@
 import {
-import { useLanguage } from "@/contexts/LanguageContext";
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -173,6 +172,7 @@ import {
 import { useState } from "react";
 import { toast as sonnerToast } from "sonner";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function ComponentsShowcase() {
   const { t } = useLanguage();

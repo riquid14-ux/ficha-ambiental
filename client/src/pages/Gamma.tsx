@@ -103,7 +103,7 @@ export default function Gamma() {
               <div className="flex gap-2">
                 <Input placeholder="Nome da edição (ex: GAMMA 3.0)" value={newEditionName} onChange={e => setNewEditionName(e.target.value)} />
                 <Button onClick={createNewEdition}>Criar</Button>
-                <Button variant="outline" onClick={() => setShowNewEdition(false)}>{t("Cancelar")}< /Button>
+                <Button variant="outline" onClick={() => setShowNewEdition(false)}>{t("Cancelar")}</Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">{t("A nova edição será criada com os pilares e critérios padrão. Pode editá-los depois na tab Definições.")}</p>
             </CardContent>
@@ -240,7 +240,7 @@ export default function Gamma() {
                     reader.readAsText(file);
                     e.target.value = "";
                   }} />
-                  <Button variant="ghost" onClick={() => setActiveTab("portfolio")}>{t("Cancelar")}< /Button>
+                  <Button variant="ghost" onClick={() => setActiveTab("portfolio")}>{t("Cancelar")}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -281,7 +281,7 @@ export default function Gamma() {
                   <h3 className="font-semibold text-sm">3. Parecer e Condições</h3>
                   <div><label className="text-xs font-medium">Pontos Fortes</label><Textarea rows={2} placeholder="Identificar os pontos fortes da candidatura..." /></div>
                   <div><label className="text-xs font-medium">Lacunas / Condições antes de Financiar</label><Textarea rows={2} placeholder="Condições que devem ser cumpridas..." /></div>
-                  <div><label className="text-xs font-medium">Parecer Final do Avaliador</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}< /SelectItem><SelectItem value="conditional">Aprovar com Condições</SelectItem><SelectItem value="reject">{t("Rejeitar")}< /SelectItem></SelectContent></Select></div>
+                  <div><label className="text-xs font-medium">Parecer Final do Avaliador</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}</SelectItem><SelectItem value="conditional">Aprovar com Condições</SelectItem><SelectItem value="reject">{t("Rejeitar")}</SelectItem></SelectContent></Select></div>
                   <div><label className="text-xs font-medium">Conflitos de Interesse Declarados</label><Input placeholder="Declarar ou indicar 'Nenhum'" /></div>
                 </div>
               </CardContent>
@@ -320,7 +320,7 @@ export default function Gamma() {
                             <th className="text-left p-2">{t("Projeto")}</th>
                             <th className="text-left p-2">Pilar</th>
                             <th className="text-center p-2">Pontuação</th>
-                            <th className="text-center p-2">{t("Estado")}< /th>
+                            <th className="text-center p-2">{t("Estado")}</th>
                             <th className="text-center p-2">Prioridade</th>
                           </tr>
                         </thead>

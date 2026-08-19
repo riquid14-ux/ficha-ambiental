@@ -43,6 +43,7 @@ export default function ProjectManagement() {
 }
 
 function CreateProjectDialog() {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -98,6 +99,7 @@ function CreateProjectDialog() {
 }
 
 function ProjectList() {
+  const { t } = useLanguage();
   const { data: projects = [] } = trpc.projects.list.useQuery();
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
 
@@ -158,6 +160,7 @@ function ProjectList() {
 }
 
 function ProjectCompaniesTab({ projectId }: { projectId: number }) {
+  const { t } = useLanguage();
   const { data: projectCompanies = [] } = trpc.projects.getCompanies.useQuery({ projectId });
   const { data: allCompanies = [] } = trpc.companies.list.useQuery();
   const utils = trpc.useUtils();
@@ -206,6 +209,7 @@ function ProjectCompaniesTab({ projectId }: { projectId: number }) {
 }
 
 function ProjectUsersTab({ projectId }: { projectId: number }) {
+  const { t } = useLanguage();
   const { data: projectUserAssocs = [] } = trpc.projects.getUsers.useQuery({ projectId });
   const { data: allUsers = [] } = trpc.users.list.useQuery();
   const utils = trpc.useUtils();

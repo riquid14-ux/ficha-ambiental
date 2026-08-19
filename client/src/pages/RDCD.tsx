@@ -236,7 +236,7 @@ export default function RDCD() {
               <p className="text-sm text-muted-foreground mb-4">{t("Escolha os projetos a incluir neste RDCD. Pode selecionar um, vários ou todos.")}</p>
               <div className="flex gap-2 mb-4">
                 <Button size="sm" variant="outline" onClick={selectAllProjects}>{t("Selecionar Todos")}</Button>
-                <Button size="sm" variant="outline" onClick={() => setSelectedProjects([])}>{t("Limpar")}< /Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedProjects([])}>{t("Limpar")}</Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {availableProjects.map(p => (
@@ -266,7 +266,7 @@ export default function RDCD() {
         {step === 2 && (
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">{t("Definir Período")}< /h2>
+              <h2 className="text-lg font-semibold mb-1">{t("Definir Período")}</h2>
               <p className="text-sm text-muted-foreground mb-4">Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
@@ -344,7 +344,7 @@ export default function RDCD() {
         {step === 3 && (
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">{t("Compilação de Medidas")}< /h2>
+              <h2 className="text-lg font-semibold mb-1">{t("Compilação de Medidas")}</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 O sistema analisou {filteredSubmissions.length} fichas aprovadas no período. Reveja o estado de cada medida e selecione as evidências a incluir.
               </p>
@@ -352,11 +352,11 @@ export default function RDCD() {
               <div className="grid grid-cols-4 gap-3 mb-4">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-green-700">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
-                  <p className="text-xs text-green-600">{t("Conforme")}< /p>
+                  <p className="text-xs text-green-600">{t("Conforme")}</p>
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
-                  <p className="text-xs text-red-600">{t("Não Conforme")}< /p>
+                  <p className="text-xs text-red-600">{t("Não Conforme")}</p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-gray-700">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
@@ -456,11 +456,11 @@ export default function RDCD() {
                   <p className="text-sm">{startWeek} a {endWeek}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Fichas analisadas")}< /p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Fichas analisadas")}</p>
                   <p className="text-sm">{filteredSubmissions.length} fichas aprovadas</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Medidas no relatório")}< /p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Medidas no relatório")}</p>
                   <p className="text-sm">
                     {compiledMeasures.filter(m => m.totalResponses > 0).length} medidas ·
                     <span className="text-green-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} conformes</span> ·
@@ -469,7 +469,7 @@ export default function RDCD() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Planos de Monitorização")}< /p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Planos de Monitorização")}</p>
                   <p className="text-sm">{includePlans ? `Incluídos (${selectedPlanIds.length} de ${plans?.length || 0} planos)` : "Não incluídos"}</p>
                 </div>
               </div>

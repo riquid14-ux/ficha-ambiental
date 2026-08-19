@@ -127,7 +127,7 @@ export default function Planos() {
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{t("Planos de Monitorização")}< /h1>
+          <h1 className="text-2xl font-bold">{t("Planos de Monitorização")}</h1>
           <p className="text-muted-foreground text-sm">{t("Programas e planos do DCAPE — Fase de Construção")}</p>
         </div>
         {isAdminOrDono && (
@@ -137,7 +137,7 @@ export default function Planos() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{t("Criar Novo Plano")}< /DialogTitle>
+                <DialogTitle>{t("Criar Novo Plano")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <Input placeholder="Nome do plano" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
@@ -176,7 +176,7 @@ export default function Planos() {
         </div>
         <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-center">
           <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
-          <p className="text-xs text-amber-600">{t("Entrega este mês")}< /p>
+          <p className="text-xs text-amber-600">{t("Entrega este mês")}</p>
         </div>
         <div className="p-3 rounded-lg border bg-blue-50 border-blue-200 text-center">
           <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
@@ -242,6 +242,7 @@ export default function Planos() {
 }
 
 function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, submitDocMutation, confirmDeliveryMutation, formatDate, timeLabel, now }: any) {
+  const { t } = useLanguage();
   const [lastDate, setLastDate] = useState("");
   const [nextDate, setNextDate] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
@@ -345,7 +346,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
             }} disabled={confirmDeliveryMutation.isPending}>
               {confirmDeliveryMutation.isPending ? "A confirmar..." : "Sim, foi entregue"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>{t("Cancelar")}< /Button>
+            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>{t("Cancelar")}</Button>
           </div>
         </div>
       )}

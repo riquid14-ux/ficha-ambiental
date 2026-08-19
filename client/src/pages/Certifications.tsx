@@ -160,11 +160,11 @@ export default function Certifications() {
                   </label>
                   <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input type="radio" name={item.id} checked={state.status === "progress"} onChange={() => updateItemState(item.id, "status", "progress")} className="accent-amber-600" />
-                    <span className="text-amber-700 font-medium">{t("Em Curso")}< /span>
+                    <span className="text-amber-700 font-medium">{t("Em Curso")}</span>
                   </label>
                   <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input type="radio" name={item.id} checked={state.status === "pending"} onChange={() => updateItemState(item.id, "status", "pending")} className="accent-gray-400" />
-                    <span className="text-gray-600">{t("Pendente")}< /span>
+                    <span className="text-gray-600">{t("Pendente")}</span>
                   </label>
                   <input type="text" placeholder="Notas rápidas..." className="flex-1 h-7 text-xs border rounded px-2" value={state.notes} onChange={e => updateItemState(item.id, "notes", e.target.value)} />
                 </div>

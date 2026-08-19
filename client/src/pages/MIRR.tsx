@@ -265,7 +265,7 @@ export default function MIRR() {
                 <div className="flex gap-2 items-end">
                   <div><label className="text-[10px] text-muted-foreground">{t("Chave")}</label><Input className="h-7 text-xs w-24" value={newDest.key} onChange={e => setNewDest(p => ({ ...p, key: e.target.value }))} placeholder="recovery" /></div>
                   <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Nome")}</label><Input className="h-7 text-xs" value={newDest.label} onChange={e => setNewDest(p => ({ ...p, label: e.target.value }))} placeholder="Valorização" /></div>
-                  <div><label className="text-[10px] text-muted-foreground">{t("Operação")}< /label><Input className="h-7 text-xs w-16" value={newDest.operation} onChange={e => setNewDest(p => ({ ...p, operation: e.target.value }))} placeholder="R4" /></div>
+                  <div><label className="text-[10px] text-muted-foreground">{t("Operação")}</label><Input className="h-7 text-xs w-16" value={newDest.operation} onChange={e => setNewDest(p => ({ ...p, operation: e.target.value }))} placeholder="R4" /></div>
                   <Button size="sm" className="h-7 text-xs" onClick={() => { if (newDest.key && newDest.label) { setDestinations([...destinations, newDest]); setNewDest({ key: "", label: "", operation: "" }); toast.success("Destino adicionado"); } }}>{t("Adicionar")}</Button>
                 </div>
               </div>
@@ -366,7 +366,7 @@ export default function MIRR() {
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>{t("Registar e-GAR")}</Button>
-                <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>{t("Cancelar")}< /Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>{t("Cancelar")}</Button>
               </div>
             </CardContent>
           </Card>

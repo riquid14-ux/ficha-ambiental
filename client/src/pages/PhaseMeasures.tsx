@@ -409,7 +409,6 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
   );
   return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }
-
 function MeasureCard({
   measure, status, notes, evidence, isExpanded, onToggle,
   onStatusChange, onNotesChange, onNotesBlur,
@@ -433,6 +432,7 @@ function MeasureCard({
   isOperationOnly?: boolean;
   evidenceYear?: number;
 }) {
+  const { t } = useLanguage();
   const [commentText, setCommentText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -487,7 +487,7 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Não Aplicável")}< /Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Não Aplicável")}</Label>
                     </div>
                   </>
                 ) : (
@@ -498,11 +498,11 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">{t("Em Curso")}< /Label>
+                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">{t("Em Curso")}</Label>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Pendente")}< /Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Pendente")}</Label>
                     </div>
                   </>
                 )}
@@ -650,14 +650,15 @@ function MeasureCard({
 }
 
 function StatusBadge({ status }: { status?: string }) {
+  const { t } = useLanguage();
   if (!status) return <Badge variant="outline" className="text-xs text-gray-400 px-1.5 py-0">—</Badge>;
   switch (status) {
     case "concluido":
       return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
     case "em_curso":
-      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}< /Badge>;
+      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
     case "pendente":
-      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}< /Badge>;
+      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}</Badge>;
     default:
       return null;
   }

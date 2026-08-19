@@ -150,15 +150,18 @@ export default function Login() {
   const isInIframe = window.self !== window.top;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4">
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-6 mb-8">
-          <img src={LOGO_URL} alt="Start Campus" className="h-16 object-contain" />
+        <div className="bg-white rounded-2xl shadow-xl border border-green-100/50 p-8">
+        <div className="flex flex-col items-center gap-5 mb-8">
+          <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl shadow-lg">
+            <img src={LOGO_URL} alt="Start Campus" className="h-10 object-contain brightness-0 invert" />
+          </div>
           <div className="text-center">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
               Plataforma Ambiental
             </h1>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-gray-500 mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
               {viewMode === "2fa" && "Introduza o código do Authenticator"}
@@ -306,6 +309,7 @@ export default function Login() {
             </p>
           </form>
         )}
+        </div>
       </div>
     </div>
   );

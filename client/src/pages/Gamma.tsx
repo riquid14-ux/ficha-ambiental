@@ -48,7 +48,7 @@ const NECESSIDADES_SINES = [{"id": 1, "pilar": "Educação", "necessidade": "Suc
 export default function Gamma() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("portfolio");
-  const [winners, setWinners] = useState<Array<{name: string; pillar: string; startDate: string; endDate: string; milestones: string; budget: string; status: string}>>([]);
+  const [winners, setWinners] = useState<Array<{name: string; pillar: string; startDate: string; endDate: string; milestones: string; budget: string; status: string; timeline: Array<{phase: string; date: string; done: boolean}>; entity?: string; amount?: string; score?: number; priority?: string}>>([]);
   const isAdmin = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
 
   // Edition state (admin can create/edit)
@@ -307,7 +307,7 @@ export default function Gamma() {
                 <p className="text-sm text-muted-foreground">Pontuação agregada dos projetos candidatos por critério de avaliação.</p>
               </CardHeader>
               <CardContent>
-                {portfolioItems.length === 0 ? (
+                {winners.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">Sem projetos avaliados. Submeta candidaturas e avalie-as na tab Avaliação.</p>
                 ) : (
                   <div className="space-y-4">
@@ -323,7 +323,7 @@ export default function Gamma() {
                           </tr>
                         </thead>
                         <tbody>
-                          {portfolioItems.map((p, i) => (
+                          {winners.map((p, i) => (
                             <tr key={i} className="border-b hover:bg-muted/50">
                               <td className="p-2 font-medium">{p.name}</td>
                               <td className="p-2"><Badge variant="outline">{p.pillar}</Badge></td>
@@ -348,7 +348,7 @@ export default function Gamma() {
                   <CardTitle>Projetos Vencedores</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Timeline de execução dos projetos aprovados e financiados.</p>
                 </div>
-                {isAdmin && <Button size="sm" onClick={() => { setWinners([...winners, { name: "", pillar: DEFAULT_PILLARS[0], startDate: "", endDate: "", milestones: "", budget: "", status: "Em curso" }]); }}><Plus className="w-4 h-4 mr-1" /> Adicionar Vencedor</Button>}
+                {isAdmin && <Button size="sm" onClick={() => { setWinners([...winners, { name: "", pillar: DEFAULT_PILLARS[0], startDate: "", endDate: "", milestones: "", budget: "", status: "Em curso", timeline: [] }]); }}><Plus className="w-4 h-4 mr-1" /> Adicionar Vencedor</Button>}
               </CardHeader>
               <CardContent>
                 {winners.length === 0 ? (
@@ -450,7 +450,7 @@ export default function Gamma() {
                       </select>
                       <Input placeholder="Montante (€)..." value={newWinner.amount} onChange={e => setNewWinner({...newWinner, amount: e.target.value})} className="h-8 text-sm" />
                     </div>
-                    <Button size="sm" onClick={() => { if (newWinner.name) { setWinners([...winners, {...newWinner, timeline: [{phase: "Arranque", date: "", done: false}, {phase: "Meio-termo", date: "", done: false}, {phase: "Conclusão", date: "", done: false}]}]); setNewWinner({name: "", entity: "", pillar: "", amount: "", status: "Em curso"}); setShowAddWinner(false); toast.success("Vencedor adicionado!"); } }}>Confirmar</Button>
+                    <Button size="sm" onClick={() => { if (newWinner.name) { setWinners([...winners, {...newWinner, startDate: "", endDate: "", milestones: "", budget: newWinner.amount || "", timeline: [{phase: "Arranque", date: "", done: false}, {phase: "Meio-termo", date: "", done: false}, {phase: "Conclusão", date: "", done: false}]}]); setNewWinner({name: "", entity: "", pillar: "", amount: "", status: "Em curso"}); setShowAddWinner(false); toast.success("Vencedor adicionado!"); } }}>Confirmar</Button>
                   </div>
                 )}
                 {winners.length === 0 ? (

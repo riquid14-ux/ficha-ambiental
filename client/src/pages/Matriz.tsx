@@ -193,7 +193,7 @@ export default function Matriz(props: any) {
                           <td className="p-3 font-medium sticky left-0 bg-background z-10">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 uppercase">
-                                {row.company.companyType}
+                                {({"dono_obra":"DO","ee":"EE","rap":"RAP","raa":"RAA"} as Record<string,string>)[row.company.companyType] || row.company.companyType}
                               </Badge>
                               <span className="truncate">{row.company.shortName}</span>
                             </div>

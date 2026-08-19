@@ -30,6 +30,7 @@ export default function KPI() {
   const [formStep, setFormStep] = useState(0);
   const [editingMetric, setEditingMetric] = useState<any>(null);
   const [dashFilter, setDashFilter] = useState<"week" | "month" | "semester" | "year" | "project">("month");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [dashPage, setDashPage] = useState(0);
   
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
@@ -147,8 +148,8 @@ export default function KPI() {
             <p className="text-sm text-muted-foreground">Indicadores de sustentabilidade — {activeProject?.name}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> Exportar</Button>
-            {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> Definições</Button>}
+            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> {t("Exportar")}</Button>
+            {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
           </div>
         </div>
 
@@ -195,7 +196,7 @@ export default function KPI() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="overview">Matriz</TabsTrigger>
-            <TabsTrigger value="submit">Submeter</TabsTrigger>
+            <TabsTrigger value="submit">{t("Submeter")}</TabsTrigger>
             {isAdminOrDO && <TabsTrigger value="dashboard">Dashboard</TabsTrigger>}
             {user?.role === "admin" && <TabsTrigger value="metas">{t("Metas")}</TabsTrigger>}
           </TabsList>
@@ -277,14 +278,20 @@ export default function KPI() {
           {isAdminOrDO && (
             <TabsContent value="dashboard" className="space-y-4">
               <div className="flex gap-2 items-center mb-2">
-                <span className="text-sm text-muted-foreground">Período:</span>
+                <span className="text-sm text-muted-foreground">{t("Período")}:</span>
                 {(["week", "month", "semester", "year", "project"] as const).map(f => (
-                  <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs h-7">{f === "week" ? "Semana" : f === "month" ? "Mês" : f === "semester" ? "Semestre" : f === "year" ? "Ano" : "Projeto"}</Button>
+                  <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs h-7">{f === "week" ? t("Semana") : f === "month" ? t("Mês") : f === "semester" ? t("Semestre") : f === "year" ? t("Ano") : t("Projeto")}</Button>
                 ))}
+                {(dashFilter === "year" || dashFilter === "semester" || dashFilter === "month") && (
+                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                    <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="flex gap-1 mb-3 flex-wrap">
 
-                  {["Energia & CO2", "Água", "Trabalhadores", "Incidentes"].map((p, i) => (
+                  {[t("Energia & CO2"), t("Água"), t("Trabalhadores"), t("Incidentes")].map((p, i) => (
                     <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="text-xs h-7">{p}</Button>
                   ))}
                 </div>

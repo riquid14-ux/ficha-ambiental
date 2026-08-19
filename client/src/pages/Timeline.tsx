@@ -269,8 +269,8 @@ export default function Timeline() {
     <AppLayout><div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
         {/* Brand banner */}
-        <div className="relative rounded-xl overflow-hidden h-32 mb-4">
-          <img src={brandImages?.image_timeline || "/manus-storage/sc-datacenter-1_78c8d65f.jpg"} alt="Start Campus" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_timeline_position || "center" }} />
+        <div className="relative rounded-xl overflow-hidden h-32 mb-4 bg-gradient-to-r from-green-900 via-green-800 to-emerald-700">
+          <img src={brandImages?.image_timeline || "/manus-storage/sc-datacenter-1_78c8d65f.jpg"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_timeline_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-green-900/50 to-transparent" />
         </div>
         <div className="flex items-center justify-between">

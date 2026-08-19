@@ -159,8 +159,8 @@ export default function Dashboard() {
         </div>
 
         {/* Brand hero image */}
-        <div className="relative rounded-xl overflow-hidden h-48">
-          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="Start Campus" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} />
+        <div className="relative rounded-xl overflow-hidden h-48 bg-gradient-to-r from-green-900 via-green-800 to-emerald-700">
+          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">{t("Plataforma Ambiental — Start Campus")}</p>
           </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
             </div>
             {/* Reporting timeline */}
             <Card>
-              <CardHeader><CardTitle className="text-sm">Próximos Reportings</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t("Próximos Reportings")}</CardTitle></CardHeader>
               <CardContent>
                 {(() => {
                   const calEvents = calendarEventsQuery?.data;
@@ -239,7 +239,7 @@ export default function Dashboard() {
             </Card>
             {/* Responsible persons */}
             <Card>
-              <CardHeader><CardTitle className="text-sm">Responsáveis pelo Reporting</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader>
               <CardContent>
                 {(() => {
                   const calEvents = calendarEventsQuery?.data;
@@ -485,7 +485,7 @@ export default function Dashboard() {
                     <span className="text-sm font-bold">{companiesQuery.data?.length || 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                    <span className="text-xs">Próximo RDCD</span>
+                    <span className="text-xs">{t("Próximo RDCD")}</span>
                     <span className="text-sm font-bold text-blue-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</span>
                   </div>
                 </div>
@@ -545,7 +545,7 @@ export default function Dashboard() {
                     <FileBarChart className="w-5 h-5 text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm text-blue-800">Próximo RDCD</p>
+                    <p className="font-semibold text-sm text-blue-800">{t("Próximo RDCD")}</p>
                     <p className="text-xs text-blue-600">
                       {weeksUntilNextRDCD <= 4
                         ? `Faltam ${weeksUntilNextRDCD} semanas para o próximo relatório semestral`
@@ -553,7 +553,7 @@ export default function Dashboard() {
                       }
                     </p>
                   </div>
-                  <a href="/rdcd" className="text-xs text-blue-700 font-medium hover:underline shrink-0">Gerar RDCD →</a>
+                  <a href="/rdcd" className="text-xs text-blue-700 font-medium hover:underline shrink-0">{t("Gerar RDCD")} →</a>
                 </div>
               </CardContent>
             </Card>
@@ -599,7 +599,7 @@ export default function Dashboard() {
                   <SelectValue placeholder="Empresa" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  <SelectItem value="all">{t("Todas as empresas")}</SelectItem>
                   {companiesQuery.data?.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
                       {c.companyType === "rap" ? "RAP - " : ""}{c.shortName}
@@ -613,7 +613,7 @@ export default function Dashboard() {
                 <SelectValue placeholder="Semana" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as semanas</SelectItem>
+                <SelectItem value="all">{t("Todas as semanas")}</SelectItem>
                 {weeks.map((w) => (
                   <SelectItem key={`${w.weekYear}-${w.weekNumber}`} value={`${w.weekYear}-${w.weekNumber}`}>
                     S{w.weekNumber}/{w.weekYear}
@@ -626,7 +626,7 @@ export default function Dashboard() {
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os estados</SelectItem>
+                <SelectItem value="all">{t("Todos os estados")}</SelectItem>
                 <SelectItem value="I">Implementado</SelectItem>
                 <SelectItem value="C">Conforme</SelectItem>
                 <SelectItem value="NC">Não Conforme</SelectItem>
@@ -638,7 +638,7 @@ export default function Dashboard() {
                 <SelectValue placeholder="Secção" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas as secções</SelectItem>
+                <SelectItem value="all">{t("Todas as secções")}</SelectItem>
                 {sectionsQuery.data?.map((s) => (
                   <SelectItem key={s.id} value={String(s.id)}>{s.name.length > 40 ? s.name.slice(0, 40) + "..." : s.name}</SelectItem>
                 ))}

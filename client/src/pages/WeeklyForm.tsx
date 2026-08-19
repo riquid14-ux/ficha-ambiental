@@ -88,17 +88,7 @@ export default function WeeklyForm() {
     { projectId: activeProject?.id ?? 0 },
     { enabled: !!activeProject?.id }
   );
-  const [showAllPhases, setShowAllPhases] = useState(false);
   const [showAllMeasuresOnRejected, setShowAllMeasuresOnRejected] = useState(false);
-  // Determine the current phase (first phase with progress < 100)
-  // The ficha semanal ONLY contains construction measures (from the DCAPE Word document)
-  // These are sections with phase: "Preparação Prévia", "Execução da Obra", "Fase Final"
-  // Other phases (Licenciamento, Exploração, Desativação, Pré-Construção) belong in Fases/Timeline only
-  const FICHA_SEMANAL_PHASES = ["Preparação Prévia", "Execução da Obra", "Fase Final"];
-  const currentPhaseKey = useMemo(() => {
-    // Not used for filtering anymore - we use FICHA_SEMANAL_PHASES directly
-    return null;
-  }, [projectPhasesQuery.data]);
   const utils = trpc.useUtils();
 
   // Fetch all submissions for the user's company (for drafts panel)
@@ -386,19 +376,13 @@ export default function WeeklyForm() {
       map.get(m.sectionId)!.push(m);
     }
     // FLOW-07 FIX: Filter sections to current phase only (unless showAllPhases is on)
-    let filteredSections = sectionsQuery.data;
-    // Always filter to construction-only phases (ficha semanal = Word document measures only)
-    // Other phases (Licenciamento, Exploração, etc.) are managed in Fases/Timeline tab
-    if (!showAllPhases) {
-      filteredSections = sectionsQuery.data.filter((s: any) =>
-        FICHA_SEMANAL_PHASES.includes(s.phase)
-      );
-    }
-    return filteredSections.map((s) => ({
+    // Ficha semanal shows ALL measures from the DCAPE Word document
+    // Filtered only by responsible (EE/RAP/DO) - no phase filtering
+    return sectionsQuery.data.map((s) => ({
       section: s,
       measures: map.get(s.id) || [],
     })).filter((s) => s.measures.length > 0);
-  }, [measuresQuery.data, sectionsQuery.data, measureFilterType, showAllPhases, currentPhaseKey, isRejected, showAllMeasuresOnRejected, reviewFeedbackMap]);
+  }, [measuresQuery.data, sectionsQuery.data, measureFilterType, isRejected, showAllMeasuresOnRejected, reviewFeedbackMap]);
 
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
@@ -689,17 +673,10 @@ export default function WeeklyForm() {
             </div>
 
             {/* Measures by Section */}
-            {/* FLOW-07: Phase scope indicator + toggle */}
-            {(
-              <div className="flex items-center justify-between mb-2 px-1">
-                <p className="text-xs text-muted-foreground">
-                  {showAllPhases ? t("A mostrar todas as medidas (incluindo outras fases)") : `${t("Medidas de construção")} (${measuresBySection.reduce((acc: number, s: any) => acc + s.measures.length, 0)} ${t("medidas")})`}
-                </p>
-                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAllPhases(!showAllPhases)}>
-                  {showAllPhases ? t("Mostrar só construção") : t("Mostrar todas as fases")}
-                </Button>
-              </div>
-            )}
+            {/* Measure count indicator */}
+            <p className="text-xs text-muted-foreground mb-2 px-1">
+              {measuresBySection.reduce((acc: number, s: any) => acc + s.measures.length, 0)} {t("medidas")}
+            </p>
             <Accordion type="multiple" className="space-y-2">
           {measuresBySection.map(({ section, measures }) => (
             <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-4">

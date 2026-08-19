@@ -108,8 +108,8 @@ export default function Login() {
   }, [loading, user, autoLoginAttempted]);
 
   useEffect(() => {
-    if (!loading && user && viewMode === "login" && sessionStorage.getItem("pw_verified") === "1") setLocation("/dashboard");
-    if (!loading && user && viewMode === "login" && sessionStorage.getItem("pw_verified") !== "1" && (user as any).passwordHash) setViewMode("changePassword");
+    if (!loading && user && viewMode === "login") setLocation("/dashboard");
+    // OAuth users go directly to dashboard
   }, [loading, user, setLocation, viewMode]);
 
   if (loading || autoLoginLoading) {
@@ -123,7 +123,7 @@ export default function Login() {
     );
   }
 
-  if (user && viewMode === "login" && sessionStorage.getItem("pw_verified") === "1") return null;
+  if (user && viewMode === "login") return null;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

@@ -150,7 +150,18 @@ export default function Login() {
   const isInIframe = window.self !== window.top;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4">
+    <div className="min-h-screen flex bg-gradient-to-br from-green-50 via-white to-emerald-50">
+      {/* Left panel - brand image (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 relative">
+        <img src="/manus-storage/sc-aerial-1_176e4635.jpg" alt="Start Campus Sines" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
+          <h2 className="text-white text-3xl font-bold mb-2">Start Campus</h2>
+          <p className="text-white/80 text-lg">Plataforma de Gestão Ambiental</p>
+          <p className="text-white/60 text-sm mt-2">Monitorização e compliance ambiental para projectos de construção sustentável em Sines, Portugal.</p>
+        </div>
+      </div>
+      {/* Right panel - login form */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl border border-green-100/50 p-8">
         <div className="flex flex-col items-center gap-5 mb-8">
@@ -310,6 +321,7 @@ export default function Login() {
           </form>
         )}
         </div>
+      </div>
       </div>
     </div>
   );

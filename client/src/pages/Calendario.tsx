@@ -285,6 +285,11 @@ export default function Calendario() {
       <div className="space-y-5 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
+          {/* Brand banner */}
+          <div className="relative rounded-xl overflow-hidden h-28 mb-4">
+            <img src="/manus-storage/sc-sin01_2c20c2d5.png" alt="Start Campus SIN01" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-green-900/40 to-transparent" />
+          </div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Calendar className="w-6 h-6" />
               Calendário de Reporting

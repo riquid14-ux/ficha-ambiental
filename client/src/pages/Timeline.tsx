@@ -267,6 +267,11 @@ export default function Timeline() {
   return (
     <AppLayout><div className="p-6 max-w-6xl mx-auto space-y-6">
       <div>
+        {/* Brand banner */}
+        <div className="relative rounded-xl overflow-hidden h-32 mb-4">
+          <img src="/manus-storage/sc-datacenter-1_78c8d65f.jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-green-900/50 to-transparent" />
+        </div>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">

@@ -311,5 +311,5 @@
 
 ## Critical Bug Fixes
 - [x] FIX: Fichas semanais measures missing/broken - medidas não aparecem
-- [ ] FIX: Timeline phases broken/confused
+- [x] FIX: Timeline phases broken/confused
 - [x] IMPROVE: Email config UI more user-friendly

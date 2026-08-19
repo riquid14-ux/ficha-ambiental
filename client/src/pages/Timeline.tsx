@@ -170,7 +170,17 @@ export default function Timeline() {
       const hasActivity = concluido > 0 || emCurso > 0;
 
       // Merge DB data (hidden, dates, dbId)
-      const dbPhase = projectPhasesData.find((pp: any) => pp.phaseName === phaseDef.key || pp.phaseKey === phaseDef.key);
+      // Match DB phase using multiple strategies (phaseKey, phaseName, or normalized comparison)
+      const normalizeKey = (s: string) => s.toLowerCase().replace(/[áàã]/g, "a").replace(/[éè]/g, "e").replace(/[íì]/g, "i").replace(/[óòõ]/g, "o").replace(/[úù]/g, "u").replace(/[^a-z0-9]/g, "");
+      const defNorm = normalizeKey(phaseDef.key);
+      const dbPhase = projectPhasesData.find((pp: any) => 
+        pp.phaseName === phaseDef.key || pp.phaseKey === phaseDef.key ||
+        normalizeKey(pp.phaseName) === defNorm || normalizeKey(pp.phaseKey) === defNorm ||
+        // Handle specific mismatches
+        (phaseDef.key === "Prévias Licenciamento" && (pp.phaseKey === "previas_licenciamento" || pp.phaseName?.includes("Licenciamento") && pp.phaseName?.includes("Previamente"))) ||
+        (phaseDef.key === "Desativação (Pós-Exploração)" && (pp.phaseKey === "desativacao" || pp.phaseName === "Desativação")) ||
+        (phaseDef.key === "Execução da Obra" && (pp.phaseKey === "execucao_obra" || pp.phaseKey === "construcao"))
+      );
       return {
       ...phaseDef,
       total,

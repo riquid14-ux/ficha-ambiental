@@ -165,17 +165,17 @@ export default function WeeklyForm() {
   const uploadFileMutation = trpc.files.upload.useMutation({
     onSuccess: () => {
       utils.files.getBySubmission.invalidate({ submissionId: submissionId! });
-      toast.success("Ficheiro anexado com sucesso");
+      toast.success(t("Ficheiro anexado com sucesso"));
     },
     onError: (err) => {
-      toast.error(err.message || "Erro ao anexar ficheiro");
+      toast.error(err.message || t("Erro ao anexar ficheiro"));
     },
   });
 
   const deleteFileMutation = trpc.files.delete.useMutation({
     onSuccess: () => {
       utils.files.getBySubmission.invalidate({ submissionId: submissionId! });
-      toast.success("Ficheiro removido");
+      toast.success(t("Ficheiro removido"));
     },
   });
 
@@ -203,7 +203,7 @@ export default function WeeklyForm() {
 
   const saveMutation = trpc.responses.save.useMutation({
     onSuccess: () => {
-      toast.success("Guardado com sucesso");
+      toast.success(t("Guardado com sucesso"));
     },
     onError: (err) => {
       toast.error(err.message);
@@ -212,7 +212,7 @@ export default function WeeklyForm() {
 
   const submitMutation = trpc.submissions.submit.useMutation({
     onSuccess: () => {
-      toast.success("Ficha submetida com sucesso!");
+      toast.success(t("Ficha submetida com sucesso!"));
       utils.submissions.mySubmissions.invalidate();
       setLocation("/historico");
     },
@@ -223,7 +223,7 @@ export default function WeeklyForm() {
 
   const resubmitMutation = trpc.submissions.resubmit.useMutation({
     onSuccess: () => {
-      toast.success("Ficha resubmetida com sucesso!");
+      toast.success(t("Ficha resubmetida com sucesso!"));
       utils.submissions.mySubmissions.invalidate();
       setLocation("/historico");
     },
@@ -234,7 +234,7 @@ export default function WeeklyForm() {
 
   const deleteMutation = trpc.submissions.delete.useMutation({
     onSuccess: () => {
-      toast.success("Ficha eliminada com sucesso!");
+      toast.success(t("Ficha eliminada com sucesso!"));
       utils.submissions.mySubmissions.invalidate();
       setLocation("/ficha");
     },
@@ -288,7 +288,7 @@ export default function WeeklyForm() {
   }, [submissionId, responses]);
 
   const handleSubmit = useCallback(async () => {
-    if (!confirm("Tem a certeza que pretende submeter esta ficha? Após submissão, ficará em revisão e não poderá ser editada.")) return;
+    if (!confirm(t("Tem a certeza que pretende submeter esta ficha?"))) return;
     if (!submissionId) return;
     setSubmitting(true);
     // Save first
@@ -339,7 +339,7 @@ export default function WeeklyForm() {
             utils.evidence.getBySubmission.invalidate({ submissionId });
             toast.success(`Imagem "${file.name}" carregada`);
           } else {
-            toast.error("Erro ao carregar imagem");
+            toast.error(t("Erro ao carregar imagem"));
           }
         } catch {
           toast.error("Erro ao carregar imagem");
@@ -644,13 +644,13 @@ export default function WeeklyForm() {
                       </div>
                     )}
                     <p className="mt-2 text-xs text-red-500 dark:text-red-400 italic">
-                      As medidas com problemas estão destacadas a vermelho. Corrija e clique em "Resubmeter".
+                      {t("As medidas com problemas estão destacadas. Corrija e resubmeta.")}
                     </p>
                     <button
                       className="mt-2 text-xs text-red-600 underline hover:text-red-800 font-medium"
                       onClick={() => setShowAllMeasuresOnRejected(prev => !prev)}
                     >
-                      {showAllMeasuresOnRejected ? "Mostrar apenas medidas rejeitadas" : "Mostrar todas as medidas"}
+                      {showAllMeasuresOnRejected ? t("Mostrar apenas medidas rejeitadas") : t("Mostrar todas as medidas")}
                     </button>
                   </div>
                 )}
@@ -663,7 +663,7 @@ export default function WeeklyForm() {
                       variant="destructive"
                       size="sm"
                       onClick={() => {
-                        if (confirm("Tem a certeza que pretende eliminar esta ficha? Esta ação é irreversível.")) {
+                        if (confirm(t("Tem a certeza que pretende eliminar esta ficha?"))) {
                           deleteMutation.mutate({ id: submissionId! });
                         }
                       }}
@@ -696,7 +696,7 @@ export default function WeeklyForm() {
                   {!showAllPhases && ` (${measuresBySection.reduce((acc, s) => acc + s.measures.length, 0)} medidas)`}
                 </p>
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAllPhases(!showAllPhases)}>
-                  {showAllPhases ? "Mostrar só fase atual" : "Mostrar todas as fases"}
+                  {showAllPhases ? t("Mostrar só fase atual") : t("Mostrar todas as fases")}
                 </Button>
               </div>
             )}
@@ -754,7 +754,7 @@ export default function WeeklyForm() {
                             <div key={s} className="flex items-center gap-1.5">
                               <RadioGroupItem value={s} id={`${measure.id}-${s}`} />
                               <Label htmlFor={`${measure.id}-${s}`} className="text-xs cursor-pointer">
-                                {s === "I" ? "Implementado" : s === "C" ? "Conforme" : s === "NC" ? "Não Conforme" : "N/A"}
+                                {s === "I" ? t("Implementado") : s === "C" ? t("Conforme") : s === "NC" ? t("Não Conforme") : t("N/A")}
                               </Label>
                             </div>
                           ))}
@@ -762,7 +762,7 @@ export default function WeeklyForm() {
 
                         {/* Observations */}
                         <Textarea
-                          placeholder="Observações..."
+                          placeholder={t("Observações...")}
                           value={response?.observations || ""}
                           onChange={(e) => handleObservationChange(measure.id, e.target.value)}
                           className="text-sm min-h-[60px]"
@@ -914,7 +914,7 @@ export default function WeeklyForm() {
                         variant={sub.status === "rejected" ? "destructive" : "outline"}
                         className="text-xs shrink-0"
                       >
-                        {sub.status === "rejected" ? "Rejeitada" : "Rascunho"}
+                        {sub.status === "rejected" ? t("Rejeitada") : t("Rascunho")}
                       </Badge>
                     </div>
                     {sub.status === "rejected" && (

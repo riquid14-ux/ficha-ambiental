@@ -88,14 +88,16 @@ export default function WeeklyForm() {
     { projectId: activeProject?.id ?? 0 },
     { enabled: !!activeProject?.id }
   );
-  const [showAllPhases, setShowAllPhases] = useState(true);
+  const [showAllPhases, setShowAllPhases] = useState(false);
   const [showAllMeasuresOnRejected, setShowAllMeasuresOnRejected] = useState(false);
   // Determine the current phase (first phase with progress < 100)
+  // The ficha semanal ONLY contains construction measures (from the DCAPE Word document)
+  // These are sections with phase: "Preparação Prévia", "Execução da Obra", "Fase Final"
+  // Other phases (Licenciamento, Exploração, Desativação, Pré-Construção) belong in Fases/Timeline only
+  const FICHA_SEMANAL_PHASES = ["Preparação Prévia", "Execução da Obra", "Fase Final"];
   const currentPhaseKey = useMemo(() => {
-    if (!projectPhasesQuery.data || projectPhasesQuery.data.length === 0) return null;
-    const sorted = [...projectPhasesQuery.data].sort((a: any, b: any) => a.orderIndex - b.orderIndex);
-    const active = sorted.find((p: any) => p.progress < 100 && !p.hidden);
-    return active ? active.phaseKey : sorted[sorted.length - 1]?.phaseKey || null;
+    // Not used for filtering anymore - we use FICHA_SEMANAL_PHASES directly
+    return null;
   }, [projectPhasesQuery.data]);
   const utils = trpc.useUtils();
 
@@ -385,14 +387,12 @@ export default function WeeklyForm() {
     }
     // FLOW-07 FIX: Filter sections to current phase only (unless showAllPhases is on)
     let filteredSections = sectionsQuery.data;
-    if (!showAllPhases && currentPhaseKey) {
+    // Always filter to construction-only phases (ficha semanal = Word document measures only)
+    // Other phases (Licenciamento, Exploração, etc.) are managed in Fases/Timeline tab
+    if (!showAllPhases) {
       filteredSections = sectionsQuery.data.filter((s: any) =>
-        s.phase?.toLowerCase().includes(currentPhaseKey.toLowerCase().replace(/_/g, " ").replace(/-/g, " "))
-        || s.phase?.toLowerCase().replace(/[áàã]/g, "a").replace(/[éè]/g, "e").replace(/[íì]/g, "i").replace(/[óòõ]/g, "o").replace(/[úù]/g, "u")
-            .includes(currentPhaseKey.toLowerCase().replace(/_/g, " "))
+        FICHA_SEMANAL_PHASES.includes(s.phase)
       );
-      // If no sections match the current phase key, show all (fallback)
-      if (filteredSections.length === 0) filteredSections = sectionsQuery.data;
     }
     return filteredSections.map((s) => ({
       section: s,
@@ -690,14 +690,13 @@ export default function WeeklyForm() {
 
             {/* Measures by Section */}
             {/* FLOW-07: Phase scope indicator + toggle */}
-            {currentPhaseKey && (
+            {(
               <div className="flex items-center justify-between mb-2 px-1">
                 <p className="text-xs text-muted-foreground">
-                  {showAllPhases ? "A mostrar todas as fases" : `Fase atual: ${currentPhaseKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}`}
-                  {!showAllPhases && ` (${measuresBySection.reduce((acc, s) => acc + s.measures.length, 0)} medidas)`}
+                  {showAllPhases ? t("A mostrar todas as medidas (incluindo outras fases)") : `${t("Medidas de construção")} (${measuresBySection.reduce((acc: number, s: any) => acc + s.measures.length, 0)} ${t("medidas")})`}
                 </p>
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAllPhases(!showAllPhases)}>
-                  {showAllPhases ? t("Mostrar só fase atual") : t("Mostrar todas as fases")}
+                  {showAllPhases ? t("Mostrar só construção") : t("Mostrar todas as fases")}
                 </Button>
               </div>
             )}

@@ -79,7 +79,7 @@ export default function Dashboard() {
   );
 
   const analytics = analyticsQuery.data;
-  const calendarEventsQuery = trpc.calendarEvents.list.useQuery(isOperationOnly && activeProject?.id ? { projectId: activeProject.id } : { projectId: 0 });
+  const calendarEventsQuery = trpc.calendarEvents.list.useQuery(activeProject?.id ? { projectId: activeProject.id } : { projectId: 0 });
   const wasteQuery = trpc.wasteEgars.list.useQuery({ projectId: activeProject?.id || 0, year: new Date().getFullYear() });
 
   // Filter charts by selected status

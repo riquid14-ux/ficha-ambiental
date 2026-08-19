@@ -12,7 +12,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -629,6 +629,94 @@ export default function Dashboard() {
         )}
 
         {!isOperationOnly && (<>
+        {/* Mini Calendar & Phase Timeline for individual project */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Mini Calendar - Upcoming Deadlines */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-primary" />
+                  {t("Próximos Prazos")}
+                </p>
+                <a href="/calendario" className="text-[10px] text-primary hover:underline">{t("Ver calendário")} →</a>
+              </div>
+              {calendarEventsQuery.data && (() => {
+                const events = (calendarEventsQuery.data as any[]) || [];
+                const now = Date.now();
+                const upcoming = events.filter((e: any) => e.nextDate && Number(e.nextDate) >= now).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5);
+                const overdue = events.filter((e: any) => e.nextDate && Number(e.nextDate) < now && e.status !== "reported" && e.status !== "validated");
+                if (upcoming.length === 0 && overdue.length === 0) return <p className="text-xs text-muted-foreground py-4 text-center">Sem prazos definidos</p>;
+                return (
+                  <div className="space-y-1.5">
+                    {overdue.length > 0 && (
+                      <div className="p-2 rounded-lg bg-red-50 border border-red-200 mb-2">
+                        <p className="text-[10px] font-semibold text-red-700 mb-1">{t("Em Incumprimento")} ({overdue.length})</p>
+                        {overdue.slice(0, 3).map((e: any) => (
+                          <div key={e.id} className="flex justify-between text-[10px] text-red-600 py-0.5">
+                            <span className="truncate flex-1">{e.name}</span>
+                            <span className="ml-2 shrink-0">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {upcoming.map((e: any) => {
+                      const daysUntil = Math.ceil((Number(e.nextDate) - now) / 86400000);
+                      const isUrgent = daysUntil <= 14;
+                      return (
+                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-amber-50 border border-amber-200" : "bg-muted/30"}`}>
+                          <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-amber-400" : "bg-emerald-400"}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-medium truncate">{e.name}</p>
+                            <p className="text-[9px] text-muted-foreground">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}</p>
+                          </div>
+                          <span className={`text-[9px] font-medium ${isUrgent ? "text-amber-700" : "text-muted-foreground"}`}>{daysUntil}d</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+          {/* Phase Timeline for individual project */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  {t("Fases do Projeto")}
+                </p>
+                <a href="/timeline" className="text-[10px] text-primary hover:underline">{t("Ver timeline")} →</a>
+              </div>
+              {(() => {
+                const phases = ["Pré-Licenciamento", "Licenciamento", "Pré-Construção", "Preparação", "Execução da Obra", "Finalização", "Final Construção", "Exploração", "Operação"];
+                return (
+                  <div className="space-y-1">
+                    {phases.map((phase, i) => {
+                      const isActive = i === 3;
+                      const isDone = i < 3;
+                      return (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-amber-400 text-amber-900 ring-2 ring-amber-200" : "bg-gray-100 text-gray-400"}`}>
+                            {isDone ? "✓" : i + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[11px] ${isActive ? "font-semibold text-amber-800" : isDone ? "text-emerald-700" : "text-muted-foreground"}`}>{phase}</span>
+                              {isActive && <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Em curso</span>}
+                            </div>
+                          </div>
+                          {isDone && <span className="text-[9px] text-emerald-600">100%</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </div>
         <div className="flex flex-wrap gap-3 justify-end">
           <div className="flex flex-wrap gap-3">
             {canSeeAll && (

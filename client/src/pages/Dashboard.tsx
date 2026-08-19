@@ -162,7 +162,7 @@ export default function Dashboard() {
         <div className="relative rounded-xl overflow-hidden h-48 ">
           <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
-            <p className="text-white font-semibold text-lg">{t("Plataforma Ambiental — Start Campus")}</p>
+            <p className="text-white font-semibold text-lg">{t("Plataforma de Gestão Ambiental — Start Campus")}</p>
           </div>
         </div>
 
@@ -251,7 +251,7 @@ export default function Dashboard() {
                       {Object.entries(owners).map(([name, events]) => (
                         <div key={name} className="flex items-center justify-between p-2 rounded border border-gray-100">
                           <p className="text-sm font-medium">{name}</p>
-                          <p className="text-xs text-muted-foreground">{(events as string[]).length} reportings atribuídos</p>
+                          <p className="text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p>
                         </div>
                       ))}
                     </div>
@@ -479,11 +479,11 @@ export default function Dashboard() {
                 <p className="text-sm font-semibold">Resumo Geral</p>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                    <span className="text-xs">Total de Fichas</span>
+                    <span className="text-xs font-medium">{t("Total de Fichas")}</span>
                     <span className="text-sm font-bold">{(() => { const s = submissionsQuery.data; return s && Array.isArray(s) ? s.filter((x: any) => x.status !== "deleted").length : 0; })()}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                    <span className="text-xs">Taxa de Aprovação</span>
+                    <span className="text-xs font-medium">{t("Taxa de Aprovação")}</span>
                     <span className="text-sm font-bold text-emerald-600">{(() => { const s = submissionsQuery.data; if (!s || !Array.isArray(s)) return "—"; const total = s.filter((x: any) => x.status !== "deleted" && x.status !== "draft").length; const approved = s.filter((x: any) => x.status === "approved").length; return total > 0 ? `${Math.round(approved / total * 100)}%` : "—"; })()}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">

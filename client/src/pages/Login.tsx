@@ -174,7 +174,7 @@ export default function Login() {
           </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Plataforma Ambiental
+              Plataforma de Gestão Ambiental
             </h1>
             <p className="text-sm text-gray-500 mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}

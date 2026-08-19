@@ -182,7 +182,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Sim": { pt: "Sim", en: "Yes" },
   "Não": { pt: "Não", en: "No" },
   "Selecionar projeto": { pt: "Selecionar projeto", en: "Select project" },
-  "Plataforma Ambiental — Start Campus": { pt: "Plataforma Ambiental — Start Campus", en: "Environmental Platform — Start Campus" },
+  "Plataforma de Gestão Ambiental — Start Campus": { pt: "Plataforma de Gestão Ambiental — Start Campus", en: "Environmental Management Platform — Start Campus" },
 
   // ─── Login ───
   "Iniciar Sessão": { pt: "Iniciar Sessão", en: "Sign In" },

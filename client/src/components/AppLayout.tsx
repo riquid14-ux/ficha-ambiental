@@ -259,7 +259,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 <div className="flex items-center gap-2">
                   <img src={LOGO_URL} alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
-                    Plataforma Ambiental
+                    Plataforma de Gestão Ambiental
                   </span>
                 </div>
               )}

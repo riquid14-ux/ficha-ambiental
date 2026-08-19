@@ -849,7 +849,16 @@ const translations: Record<string, Record<Lang, string>> = {
   "Vencedor adicionado!": { pt: "Vencedor adicionado!", en: "Winner added!" },
   "Verifique a sua empresa e projeto.": { pt: "Verifique a sua empresa e projeto.", en: "Check your company and project." },
   "Volume": { pt: "Volume", en: "Volume" },
-  "Água Acumulada": { pt: "Água Acumulada", en: "Accumulated Water" },};
+  "Água Acumulada": { pt: "Água Acumulada", en: "Accumulated Water" },
+  "Controlo de Eventos": { pt: "Controlo de Eventos", en: "Event Control" },
+  "Estado Atual": { pt: "Estado Atual", en: "Current Status" },
+  "Guardar Perfil": { pt: "Guardar Perfil", en: "Save Profile" },
+  "Horas": { pt: "Horas", en: "Hours" },
+  "Incluir Planos": { pt: "Incluir Planos", en: "Include Plans" },
+  "Palavra-passe atual": { pt: "Palavra-passe atual", en: "Current password" },
+  "Quantidade": { pt: "Quantidade", en: "Quantity" },
+  "Selecionar Projetos": { pt: "Selecionar Projetos", en: "Select Projects" },
+};
 
 interface LanguageContextType {
   language: Lang;
@@ -876,14 +885,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const entry = translations[key];
     if (!entry) return key;
     return entry[language] || key;
-  "Controlo de Eventos": { pt: "Controlo de Eventos", en: "Event Control" },
-  "Estado Atual": { pt: "Estado Atual", en: "Current Status" },
-  "Guardar Perfil": { pt: "Guardar Perfil", en: "Save Profile" },
-  "Horas": { pt: "Horas", en: "Hours" },
-  "Incluir Planos": { pt: "Incluir Planos", en: "Include Plans" },
-  "Palavra-passe atual": { pt: "Palavra-passe atual", en: "Current password" },
-  "Quantidade": { pt: "Quantidade", en: "Quantity" },
-  "Selecionar Projetos": { pt: "Selecionar Projetos", en: "Select Projects" },};
+  };
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight } from "lucide-react";
-import { FilePlus, Paperclip, Download, File, Grid3X3, History } from "lucide-react";
+import { FilePlus, Paperclip, Download, File, Grid3X3, History, ClipboardList, FileUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MatrizFull from "./Matriz";
 import ReviewPageFull from "./ReviewPage";
@@ -494,7 +494,7 @@ export default function WeeklyForm() {
 
         {/* Tabs: Nova Ficha / Rascunhos */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="nova" className="gap-1 text-xs">
               <FilePlus className="w-3.5 h-3.5" />
               Nova Ficha
@@ -518,7 +518,15 @@ export default function WeeklyForm() {
             </TabsTrigger>
             <TabsTrigger value="revisao" className="gap-1 text-xs">
               <FileText className="w-3.5 h-3.5" />
-              Revisão
+              {t("Revisão")}
+            </TabsTrigger>
+            <TabsTrigger value="submissoes" className="gap-1 text-xs">
+              <ClipboardList className="w-3.5 h-3.5" />
+              {t("Submissões")}
+            </TabsTrigger>
+            <TabsTrigger value="pdf-historico" className="gap-1 text-xs">
+              <FileUp className="w-3.5 h-3.5" />
+              {t("Histórico PDF")}
             </TabsTrigger>
           </TabsList>
 
@@ -932,6 +940,16 @@ export default function WeeklyForm() {
             <ReviewPageFull embedded />
           </TabsContent>
 
+          {/* Tab: Submissões (todas) */}
+          <TabsContent value="submissoes" className="mt-4">
+            <SubmissoesEmbedded />
+          </TabsContent>
+
+          {/* Tab: Histórico PDF */}
+          <TabsContent value="pdf-historico" className="mt-4">
+            <HistoricoPdfEmbedded />
+          </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout>
@@ -944,6 +962,213 @@ export default function WeeklyForm() {
 
 function MatrizEmbedded() {
   return <MatrizFull embedded />;
+}
+
+function SubmissoesEmbedded() {
+  const { t } = useLanguage();
+  const { activeProject } = useProject();
+  const submissionsQuery = trpc.submissions.listAll.useQuery({});
+  const companiesQuery = trpc.companies.list.useQuery();
+  const companyMap = new Map(companiesQuery.data?.map((c: any) => [c.id, c]) || []);
+  const [, setLocation] = useLocation();
+
+  const filtered = useMemo(() => {
+    if (!submissionsQuery.data || !activeProject) return [];
+    return submissionsQuery.data.filter((s: any) => s.projectId === activeProject.id);
+  }, [submissionsQuery.data, activeProject]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ClipboardList className="w-5 h-5" />
+          {t("Todas as Submissões")} — {activeProject?.code || ""}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 px-3 font-medium">{t("Semana")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("Empresa")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("Estado")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("Período")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("Ações")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s: any) => {
+                const company = companyMap.get(s.companyId);
+                return (
+                  <tr key={s.id} className="border-b hover:bg-muted/50">
+                    <td className="py-2 px-3 font-medium">S{s.weekNumber}/{s.weekYear}</td>
+                    <td className="py-2 px-3">{company?.shortName || "-"}</td>
+                    <td className="py-2 px-3">
+                      <Badge variant={s.status === "approved" ? "default" : s.status === "rejected" ? "destructive" : "outline"} className="text-xs">
+                        {s.status === "approved" ? t("Aprovada") : s.status === "rejected" ? t("Rejeitada") : s.status === "submitted" ? t("Submetida") : s.status === "under_review" ? t("Em Revisão") : t("Rascunho")}
+                      </Badge>
+                    </td>
+                    <td className="py-2 px-3 text-xs text-muted-foreground">{s.weekStartDate} — {s.weekEndDate}</td>
+                    <td className="py-2 px-3">
+                      <Button variant="ghost" size="sm" onClick={() => setLocation(`/ficha/${s.id}`)} className="text-xs">
+                        {t("Ver")}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    {t("Nenhuma submissão encontrada.")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HistoricoPdfEmbedded() {
+  const { t } = useLanguage();
+  const { activeProject } = useProject();
+  const utils = trpc.useUtils();
+  const companiesQuery = trpc.companies.list.useQuery();
+  const historicalQuery = trpc.historical.list.useQuery({});
+  const uploadMutation = trpc.historical.upload.useMutation({
+    onSuccess: () => {
+      toast.success(t("PDF histórico carregado com sucesso"));
+      utils.historical.list.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
+  const [weekNumber, setWeekNumber] = useState<string>("");
+  const [weekYear, setWeekYear] = useState<string>(String(new Date().getFullYear()));
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file || !selectedCompany || !weekNumber || !weekYear) {
+      toast.error(t("Preencha todos os campos e selecione um ficheiro."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      uploadMutation.mutate({
+        companyId: Number(selectedCompany),
+        weekNumber: Number(weekNumber),
+        weekYear: Number(weekYear),
+        filename: file.name,
+        mimeType: file.type || "application/pdf",
+        data: base64,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const filtered = useMemo(() => {
+    if (!historicalQuery.data) return [];
+    return historicalQuery.data;
+  }, [historicalQuery.data]);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileUp className="w-5 h-5" />
+            {t("Carregar Ficha Histórica (PDF)")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <Label>{t("Empresa")}</Label>
+              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                <SelectTrigger><SelectValue placeholder={t("Selecionar...")} /></SelectTrigger>
+                <SelectContent>
+                  {companiesQuery.data?.map((c: any) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.companyType === "rap" ? "RAP - " : ""}{c.shortName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("Semana")}</Label>
+              <Input type="number" min={1} max={53} value={weekNumber} onChange={(e) => setWeekNumber(e.target.value)} placeholder="Ex: 32" />
+            </div>
+            <div>
+              <Label>{t("Ano")}</Label>
+              <Input type="number" min={2020} max={2035} value={weekYear} onChange={(e) => setWeekYear(e.target.value)} />
+            </div>
+            <div>
+              <Label>{t("Ficheiro PDF")}</Label>
+              <Input type="file" accept=".pdf" ref={fileInputRef} />
+            </div>
+          </div>
+          <Button className="mt-4 gap-2" onClick={handleUpload} disabled={uploadMutation.isPending}>
+            <FileUp className="w-4 h-4" />
+            {uploadMutation.isPending ? t("A carregar...") : t("Carregar PDF")}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t("Fichas Históricas")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-3 font-medium">{t("Semana")}</th>
+                  <th className="text-left py-2 px-3 font-medium">{t("Empresa")}</th>
+                  <th className="text-left py-2 px-3 font-medium">{t("Ficheiro")}</th>
+                  <th className="text-left py-2 px-3 font-medium">{t("Data Upload")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((h: any) => {
+                  const company = companiesQuery.data?.find((c: any) => c.id === h.companyId);
+                  return (
+                    <tr key={h.id} className="border-b hover:bg-muted/50">
+                      <td className="py-2 px-3 font-medium">S{h.weekNumber}/{h.weekYear}</td>
+                      <td className="py-2 px-3">{company?.companyType === "rap" ? "RAP - " : ""}{company?.shortName || "-"}</td>
+                      <td className="py-2 px-3">
+                        <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                          {h.filename || "PDF"}
+                        </a>
+                      </td>
+                      <td className="py-2 px-3 text-xs text-muted-foreground">
+                        {new Date(h.uploadedAt).toLocaleDateString("pt-PT")}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                      {t("Nenhuma ficha histórica carregada")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function HistoricoEmbedded() {

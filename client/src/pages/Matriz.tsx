@@ -80,10 +80,10 @@ export default function Matriz(props: any) {
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Grid3X3 className="w-6 h-6 text-primary" />
-              Matriz de Acompanhamento
+              {t("Matriz de Acompanhamento")}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Visão geral do estado das fichas por empresa e semana
+              {t("Visão geral do estado das fichas por empresa e semana")}
               {!isAllProjects && activeProject && (
                 <span className="ml-1 font-medium text-foreground">— {activeProject.code}</span>
               )}
@@ -102,7 +102,7 @@ export default function Matriz(props: any) {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-amber-400" />
-                <span>Criada (Rascunho)</span>
+                <span>{t("Criada (Rascunho)")}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-blue-400" />
@@ -148,7 +148,7 @@ export default function Matriz(props: any) {
 
             {matrixQuery.isError && (
               <div className="p-6 text-center text-red-600">
-                Erro ao carregar dados da matriz. Tente novamente.
+                {t("Erro ao carregar dados da matriz.")}
               </div>
             )}
 
@@ -156,10 +156,10 @@ export default function Matriz(props: any) {
               <div className="flex flex-col items-center justify-center py-16 text-center px-6">
                 <Grid3X3 className="w-12 h-12 text-muted-foreground/30 mb-3" />
                 <p className="text-muted-foreground">
-                  Sem dados para exibir.
+                  {t("Sem dados para exibir.")}
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
-                  As fichas submetidas aparecerão aqui organizadas por empresa e semana.
+                  {t("As fichas submetidas aparecerão aqui organizadas por empresa e semana.")}
                 </p>
               </div>
             )}
@@ -219,7 +219,7 @@ export default function Matriz(props: any) {
                                   <TooltipContent>
                                     <p className="font-medium">{row.company.shortName} — {formatWeekFull(cell.weekKey)}</p>
                                     <p className="text-xs text-muted-foreground">
-                                      {display ? display.description : "Sem ficha submetida"}
+                                      {display ? display.description : t("Sem ficha submetida")}
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>

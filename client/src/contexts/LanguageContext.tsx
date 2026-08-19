@@ -920,7 +920,20 @@ const translations: Record<string, Record<Lang, string>> = {
   "email": { pt: "email", en: "email" },
   "error": { pt: "error", en: "error" },
   "input": { pt: "input", en: "input" },
-  "script": { pt: "script", en: "script" },};
+  "As fichas submetidas aparecerão aqui organizadas por empresa e semana.": { pt: "As fichas submetidas aparecerão aqui organizadas por empresa e semana.", en: "Submitted forms will appear here organized by company and week." },
+  "Carregar PDF": { pt: "Carregar PDF", en: "Upload PDF" },
+  "Data Upload": { pt: "Data Upload", en: "Upload Date" },
+  "Erro ao carregar dados da matriz.": { pt: "Erro ao carregar dados da matriz.", en: "Error loading matrix data." },
+  "Fichas Históricas": { pt: "Fichas Históricas", en: "Historical Forms" },
+  "Matriz de Acompanhamento": { pt: "Matriz de Acompanhamento", en: "Monitoring Matrix" },
+  "Nenhuma ficha histórica carregada": { pt: "Nenhuma ficha histórica carregada", en: "No historical forms uploaded" },
+  "Nenhuma submissão encontrada.": { pt: "Nenhuma submissão encontrada.", en: "No submissions found." },
+  "Sem dados para exibir.": { pt: "Sem dados para exibir.", en: "No data to display." },
+  "Sem ficha submetida": { pt: "Sem ficha submetida", en: "No form submitted" },
+  "Visão geral do estado das fichas por empresa e semana": { pt: "Visão geral do estado das fichas por empresa e semana", en: "Overview of form status by company and week" },
+  "Criada (Rascunho)": { pt: "Criada (Rascunho)", en: "Created (Draft)" },
+  "Carregar Ficha Histórica (PDF)": { pt: "Carregar Ficha Histórica (PDF)", en: "Upload Historical Form (PDF)" },
+};
 
 interface LanguageContextType {
   language: Lang;

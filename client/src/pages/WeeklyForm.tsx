@@ -359,8 +359,8 @@ export default function WeeklyForm() {
   const isReadOnly = user?.role === "observador" || (!canEdit && user?.role !== "admin" && user?.role !== "dono_obra");
 
   // Can delete: only creator or admin, and only draft/rejected
-  const canDelete = (subStatus === "draft" || subStatus === "rejected") &&
-    (user?.role === "admin" || user?.role === "dono_obra" || submissionQuery.data?.createdBy === user?.id);
+  const canDelete = (user?.role === "admin" || user?.role === "dono_obra") ||
+    ((subStatus === "draft" || subStatus === "rejected") && submissionQuery.data?.createdBy === user?.id);
 
   // Can submit: only creator or admin
   const canSubmitThis = user?.role === "admin" || user?.role === "dono_obra" || submissionQuery.data?.createdBy === user?.id;

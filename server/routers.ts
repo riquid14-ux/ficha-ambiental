@@ -723,8 +723,8 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
-        // Only draft or rejected can be deleted
-        if (sub.status !== "draft" && sub.status !== "rejected") {
+        // Non-admin users can only delete draft or rejected fichas
+        if (!isAdminOrDono(ctx.user.role) && sub.status !== "draft" && sub.status !== "rejected") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Apenas fichas em rascunho ou rejeitadas podem ser eliminadas." });
         }
         // Only creator or admin can delete

@@ -202,7 +202,7 @@ export default function MIRR() {
             )}
             {!isMIRRPage && isAdminOrDono && (
               <div className="flex gap-1">
-                <Input className="h-9 w-[140px] text-xs" placeholder="Novo sub-projeto..." value={newSubProject} onChange={e => setNewSubProject(e.target.value)} />
+                <Input className="h-9 w-[140px] text-xs" placeholder={t("Novo sub-projeto...")} value={newSubProject} onChange={e => setNewSubProject(e.target.value)} />
                 <Button size="sm" variant="outline" onClick={() => { if (newSubProject.trim()) { const updated = [...subProjects, newSubProject.trim()]; setSubProjects(updated); localStorage.setItem(`mirr-subprojects-${activeProject?.id}`, JSON.stringify(updated)); setNewSubProject(""); toast.success(`Sub-projeto "${newSubProject.trim()}" criado`); } }}><Plus className="w-3 h-3" /></Button>
               </div>
             )}
@@ -289,7 +289,7 @@ export default function MIRR() {
           </CardContent></Card>
           <Card><CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{egars?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">e-GARs Registadas</p>
+            <p className="text-xs text-muted-foreground">{t("e-GARs Registadas")}</p>
           </CardContent></Card>
         </div>
 

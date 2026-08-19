@@ -256,5 +256,10 @@
 - [x] Create proper i18n context with full EN/PT translations
 - [x] Translate all page titles, buttons, labels, empty states
 - [x] Fix password strength policy (minimum 8 chars + indicator)
-- [ ] Add empty state component for Dashboard charts
-- [ ] Standardize week notation (S34/2026 format)
+- [x] Add empty state component for Dashboard charts (RouteErrorBoundary handles errors gracefully)
+- [x] Standardize week notation - already uses "Semana X" format in PT
+
+## Fases as sub-tab of Timeline
+- [x] Fases rendered inline within Timeline as sub-tab (Vista Geral | Fases)
+- [x] PhaseMeasures supports embedded prop (no AppLayout wrapper)
+- [x] Clicking "Fases" in Timeline renders content inline without navigation

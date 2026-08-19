@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
+import PhaseMeasures from "./PhaseMeasures";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -283,9 +284,26 @@ export default function Timeline() {
       </div>
       {/* Sub-navigation: Vista Geral | Fases */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
-        <span className="px-4 py-1.5 rounded text-sm font-medium bg-white shadow text-foreground">Vista Geral</span>
-        <a href="/fases" className="px-4 py-1.5 rounded text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Fases</a>
+        <button
+          onClick={() => setActiveSubTab("timeline")}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "timeline" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Vista Geral
+        </button>
+        <button
+          onClick={() => setActiveSubTab("fases")}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "fases" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Fases
+        </button>
       </div>
+
+      {/* Render PhaseMeasures inline when Fases tab is active */}
+      {activeSubTab === "fases" && (
+        <PhaseMeasures embedded />
+      )}
+
+      {activeSubTab === "timeline" && (<>
 
       {/* Admin Settings Panel */}
       {showSettings && user?.role === "admin" && (
@@ -415,6 +433,8 @@ export default function Timeline() {
           <p>Nenhuma fase com medidas encontrada.</p>
         </div>
       )}
+      </>)}
     </div>
   </AppLayout>);
 }
+  const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">("timeline");

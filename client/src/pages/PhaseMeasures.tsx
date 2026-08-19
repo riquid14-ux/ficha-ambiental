@@ -32,7 +32,7 @@ const ALL_PHASES = [
   { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-gray-500" },
 ];
 
-export default function PhaseMeasures() {
+export default function PhaseMeasures({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
   const { activeProject } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
@@ -192,18 +192,16 @@ export default function PhaseMeasures() {
   }, [phaseData, statuses]);
 
   if (!sectionsQuery.data || !measuresQuery.data) {
-    return (
-      <AppLayout>
-        <div className="p-6 space-y-4">
-          <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-          <div className="h-40 bg-muted animate-pulse rounded" />
-        </div>
-      </AppLayout>
+    const loadingContent = (
+      <div className="p-6 space-y-4">
+        <div className="h-8 w-64 bg-muted animate-pulse rounded" />
+        <div className="h-40 bg-muted animate-pulse rounded" />
+      </div>
     );
+    return embedded ? loadingContent : <AppLayout>{loadingContent}</AppLayout>;
   }
 
-  return (
-    <AppLayout>
+  const mainContent = (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
@@ -406,8 +404,8 @@ export default function PhaseMeasures() {
         ))}
       </Tabs>
     </div>
-    </AppLayout>
   );
+  return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }
 
 function MeasureCard({

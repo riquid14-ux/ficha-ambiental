@@ -139,13 +139,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     onError: () => setPwError("Palavra-passe incorreta"),
   });
   const needsPasswordCheck = user && !passwordVerified && (user as any).passwordHash;
-
-  // Redirect to login page if password verification is needed
-  useEffect(() => {
-    if (needsPasswordCheck) {
-      setLocation("/login");
-    }
-  }, [needsPasswordCheck, setLocation]);
   const [show2FASetup, setShow2FASetup] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
@@ -163,6 +156,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
 
   const { projects, activeProject, setActiveProjectId, isAllProjects, canSeeAllProjects } = useProject();
   const [location, setLocation] = useLocation();
+  useEffect(() => { if (needsPasswordCheck) setLocation("/login"); }, [needsPasswordCheck]);
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);

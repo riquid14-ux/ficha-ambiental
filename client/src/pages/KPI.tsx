@@ -250,7 +250,7 @@ export default function KPI() {
 
                 {/* Calculated values preview */}
                 {formStep === categories.length - 1 && calculatedMetrics.length > 0 && (
-                  <div className="mt-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div className="mt-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200">
                     <p className="text-xs font-semibold text-emerald-700 mb-2">{t("Valores Calculados Automaticamente")}</p>
                     {calculatedMetrics.map((m: any) => {
                       let cv = 0;

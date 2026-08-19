@@ -255,7 +255,7 @@ function WorkflowDiagram() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Approved path */}
               <div className="flex flex-col items-center gap-2">
-                <div className="w-full p-3 rounded-lg bg-green-50 border border-green-200 text-center">
+                <div className="w-full p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 text-center">
                   <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-1" />
                   <p className="text-sm font-semibold text-green-800">{t("Aprovada")}</p>
                   <p className="text-xs text-green-700 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
@@ -269,7 +269,7 @@ function WorkflowDiagram() {
 
               {/* Rejected path */}
               <div className="flex flex-col items-center gap-2">
-                <div className="w-full p-3 rounded-lg bg-red-50 border border-red-200 text-center">
+                <div className="w-full p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 text-center">
                   <XCircle className="w-6 h-6 text-red-600 mx-auto mb-1" />
                   <p className="text-sm font-semibold text-red-800">{t("Rejeitada")}</p>
                   <p className="text-xs text-red-700 mt-1">{t("RAA adiciona comentários com motivo da rejeição")}</p>
@@ -303,10 +303,10 @@ function WorkflowDiagram() {
 
 function FlowStep({ icon, title, description, color, actor }: { icon: React.ReactNode; title: string; description: string; color: string; actor: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 border-blue-200 text-blue-700",
+    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-blue-700",
     indigo: "bg-indigo-50 border-indigo-200 text-indigo-700",
-    amber: "bg-amber-50 border-amber-200 text-amber-700",
-    green: "bg-green-50 border-green-200 text-green-700",
+    amber: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 text-amber-700",
+    green: "bg-green-50 dark:bg-green-900/20 border-green-200 text-green-700",
   };
   const badgeClasses: Record<string, string> = {
     blue: "bg-blue-100 text-blue-800",

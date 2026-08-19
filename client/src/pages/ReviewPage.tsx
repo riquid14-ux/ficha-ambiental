@@ -360,7 +360,7 @@ export default function ReviewPage(props: any) {
                                     type="button"
                                     size="sm"
                                     variant={v?.verdict === "ok" ? "default" : "outline"}
-                                    className={`h-8 px-3 ${v?.verdict === "ok" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50 hover:border-green-300"}`}
+                                    className={`h-8 px-3 ${v?.verdict === "ok" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50 dark:bg-green-900/20 hover:border-green-300"}`}
                                     onClick={() => setVerdict(m.id, v?.verdict === "ok" ? null : "ok")}
                                   >
                                     <Check className="w-4 h-4 mr-1" /> Conforme
@@ -369,7 +369,7 @@ export default function ReviewPage(props: any) {
                                     type="button"
                                     size="sm"
                                     variant={v?.verdict === "nok" ? "default" : "outline"}
-                                    className={`h-8 px-3 ${v?.verdict === "nok" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-50 hover:border-red-300"}`}
+                                    className={`h-8 px-3 ${v?.verdict === "nok" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-50 dark:bg-red-900/20 hover:border-red-300"}`}
                                     onClick={() => setVerdict(m.id, v?.verdict === "nok" ? null : "nok")}
                                   >
                                     <XIcon className="w-4 h-4 mr-1" /> Não Conforme
@@ -403,7 +403,7 @@ export default function ReviewPage(props: any) {
                   <div className="flex gap-3">
                     {/* FLOW-04: Block self-approval in UI */}
                     {(selectedSubmission?.createdBy === user?.id || selectedSubmission?.submittedBy === user?.id) ? (
-                      <div className="w-full text-center p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <div className="w-full text-center p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-md">
                         <p className="text-sm text-amber-700 font-medium">{t("Não pode aprovar/rejeitar uma ficha que criou ou submeteu.")}</p>
                         <p className="text-xs text-amber-600 mt-1">{t("Separação de funções: peça a outro revisor para avaliar esta ficha.")}</p>
                       </div>

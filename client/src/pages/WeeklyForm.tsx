@@ -583,7 +583,7 @@ export default function WeeklyForm() {
                 </p>
               </div>
               {isAllProjects && !params.id ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                     <span>{t("Selecione um projeto específico no menu lateral para criar uma ficha de controlo.")}</span>
@@ -618,7 +618,7 @@ export default function WeeklyForm() {
                 {isSubmitted && <Badge className="mt-1">{t("Submetida — Aguarda Revisão")}</Badge>}
                 {isApproved && <Badge className="mt-1 bg-green-600">{t("Aprovada")}</Badge>}
                 {isRejected && (
-                  <div className="mt-2 p-4 border-2 border-red-500 bg-red-50 dark:bg-red-950/40 rounded-lg shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="mt-2 p-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20 dark:bg-red-950/40 rounded-lg shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center shrink-0 animate-pulse">
                         <AlertTriangle className="w-5 h-5 text-white" />

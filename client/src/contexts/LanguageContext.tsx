@@ -731,6 +731,14 @@ const translations: Record<string, Record<Lang, string>> = {
   "Em Sede de Licenciamento": { pt: "Em Sede de Licenciamento", en: "Licensing Phase" },
   "Fase Final Construção": { pt: "Fase Final Construção", en: "Final Construction Phase" },
   "Desativação (Pós-Exploração)": { pt: "Desativação (Pós-Exploração)", en: "Decommissioning (Post-Operation)" },
+  "Datas de entrega de reportings": { pt: "Datas de entrega de reportings", en: "Reporting delivery dates" },
+  "Novo sub-projeto": { pt: "Novo sub-projeto", en: "New sub-project" },
+  "Fluxo de Submissão": { pt: "Fluxo de Submissão", en: "Submission Workflow" },
+  "Notas do Projeto": { pt: "Notas do Projeto", en: "Project Notes" },
+  "Gestão de Resíduos": { pt: "Gestão de Resíduos", en: "Waste Management" },
+  "Reciclado": { pt: "Reciclado", en: "Recycled" },
+  "Incinerado": { pt: "Incinerado", en: "Incinerated" },
+  "Aterro": { pt: "Aterro", en: "Landfill" },
 };
 
 interface LanguageContextType {

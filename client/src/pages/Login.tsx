@@ -194,7 +194,7 @@ export default function Login() {
         )}
 
         {success && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 text-green-700 text-sm mb-4">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 text-sm mb-4">
             <Shield className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{success}</span>
           </div>

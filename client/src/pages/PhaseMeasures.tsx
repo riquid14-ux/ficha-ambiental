@@ -217,7 +217,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
         </div>
         {isOperationOnly && (
           <div className="flex items-center gap-2">
-            <div className="text-lg font-bold text-emerald-700 border border-emerald-200 bg-emerald-50 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
+            <div className="text-lg font-bold text-emerald-700 border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
             <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -520,7 +520,7 @@ function MeasureCard({
           {/* Evidence sections */}
           {isOperationOnly && evidenceYear && (
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-base px-3 py-1 border-emerald-300 bg-emerald-50 text-emerald-800">
+              <Badge variant="outline" className="text-base px-3 py-1 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800">
                 📅 Evidências {evidenceYear}
               </Badge>
             </div>

@@ -183,7 +183,7 @@ export default function Certifications() {
 
           {/* === CELE — Smart Installation-Level Input === */}
           <TabsContent value="cele" className="space-y-4">
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-lg">
               <p className="text-xs text-orange-800"><strong>CELE — Comércio Europeu de Licenças de Emissão (EU ETS)</strong> · Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.</p>
             </div>
 
@@ -298,7 +298,7 @@ export default function Certifications() {
                       <span className="text-xs text-muted-foreground">litros</span>
                     </div>
                   </div>
-                  <div className="md:col-span-2 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                  <div className="md:col-span-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100">
                     <label className="text-xs font-medium text-orange-800">Emissões de CO2 Calculadas</label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input className="h-9 bg-background" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
@@ -344,7 +344,7 @@ export default function Certifications() {
 
           {/* === EED — Grouped KPI Input === */}
           <TabsContent value="eed" className="space-y-4">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-800"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.</p>
             </div>
 
@@ -384,17 +384,17 @@ export default function Certifications() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100">
                     <label className="text-xs font-medium text-blue-800">PUE</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
                     <p className="text-[10px] text-blue-600 mt-0.5">Power Usage Effectiveness</p>
                   </div>
-                  <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100">
                     <label className="text-xs font-medium text-green-800">REF (%)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
                     <p className="text-[10px] text-green-600 mt-0.5">Renewable Energy Factor</p>
                   </div>
-                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100">
                     <label className="text-xs font-medium text-amber-800">ERF (%)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
                     <p className="text-[10px] text-amber-600 mt-0.5">Energy Reuse Factor</p>
@@ -451,7 +451,7 @@ export default function Certifications() {
 
           {/* === LEED — Smart Category Grouping === */}
           <TabsContent value="leed" className="space-y-4">
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg">
               <p className="text-xs text-green-800"><strong>LEED O&M v4.1 — Existing Buildings</strong> · 90 pontos de performance + 10 pontos de créditos. Submissão contínua via plataforma Arc. Dados de 12 meses de operação.</p>
             </div>
 

@@ -374,11 +374,11 @@ export default function RDCD() {
               </p>
               {/* Summary */}
               <div className="grid grid-cols-4 gap-3 mb-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-green-700">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
                   <p className="text-xs text-green-600">{t("Conforme")}</p>
                 </div>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
                   <p className="text-xs text-red-600">{t("Não Conforme")}</p>
                 </div>
@@ -386,7 +386,7 @@ export default function RDCD() {
                   <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
                   <p className="text-xs text-muted-foreground">{t("N/A")}</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-amber-700">{compiledMeasures.filter(m => m.autoStatus === "pending").length}</p>
                   <p className="text-xs text-amber-600">{t("Sem dados")}</p>
                 </div>

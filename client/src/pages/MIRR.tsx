@@ -62,7 +62,7 @@ export default function MIRR() {
   const { activeProject } = useProject();
   const [location] = useLocation();
   const isMIRRPage = location === "/mirr";
-  const pageTitle = isMIRRPage ? "MIRR" : "Gestão de Resíduos";
+  const pageTitle = isMIRRPage ? "MIRR" : t("Gestão de Resíduos");
   const pageSubtitle = isMIRRPage ? "Mapa Integrado de Registo de Resíduos — Operação" : "Gestão e rastreio de resíduos de construção";
   const [subProject, setSubProject] = useState("all");
   const [subProjects, setSubProjects] = useState<string[]>(() => {
@@ -314,9 +314,9 @@ export default function MIRR() {
               ))}
             </div>
             <div className="flex gap-4 mt-3 text-xs">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> {t("Reciclado")}</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400" /> {t("Incinerado")}</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> {t("Aterro")}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> {t(t("Reciclado"))}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400" /> {t(t("Incinerado"))}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> {t(t("Aterro"))}</span>
             </div>
           </CardContent>
         </Card>

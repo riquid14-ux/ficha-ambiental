@@ -296,7 +296,7 @@ export default function Calendario() {
               Calendário de Reporting
             </h1>
             <p className="text-muted-foreground text-sm">
-              {isAllProjects ? "Todos os projetos" : activeProject?.name || "Projeto"} — Datas de entrega de reportings
+              {isAllProjects ? t("Todos os Projetos") : activeProject?.name || "Projeto"} — {t("Datas de entrega de reportings")}
             </p>
           </div>
           <div className="flex gap-2">
@@ -380,7 +380,7 @@ export default function Calendario() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-emerald-600 font-medium">{t("Próxima Entrega")}</p>
-                  <p className="font-semibold text-sm text-emerald-900 truncate">{nextEvent.name}</p>
+                  <p className="font-semibold text-sm text-emerald-900 dark:text-emerald-100 truncate">{nextEvent.name}</p>
                   <p className="text-xs text-emerald-700">
                     {nextEvent.date.toLocaleDateString("pt-PT", { day: "2-digit", month: "long" })}
                     {nextEvent.projectName && ` · ${nextEvent.projectName}`}
@@ -600,7 +600,7 @@ export default function Calendario() {
                           overdue: "bg-red-100 text-red-800 border-red-200",
                           pending: "bg-slate-100 text-slate-800 border-slate-200",
                           reported: "bg-sky-100 text-sky-800 border-sky-200",
-                          confirmed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+                          confirmed: "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-200",
                         };
                         const statusLabel: Record<string, string> = {
                           overdue: "Em Incumprimento",

@@ -174,11 +174,11 @@ export default function Planos() {
           <p className="text-2xl font-bold">{stats.total}</p>
           <p className="text-xs text-muted-foreground">{t("Total")}</p>
         </div>
-        <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-center">
+        <div className="p-3 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 text-center">
           <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
           <p className="text-xs text-amber-600">{t("Entrega este mês")}</p>
         </div>
-        <div className="p-3 rounded-lg border bg-blue-50 border-blue-200 text-center">
+        <div className="p-3 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-center">
           <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
           <p className="text-xs text-blue-600">{t("Próximos meses")}</p>
         </div>
@@ -304,7 +304,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
 
       {/* Submission status banner */}
       {plan.submissionStatus === "submitted" && (
-        <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between">
+        <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileUp className="w-4 h-4 text-amber-600" />
             <div>
@@ -325,7 +325,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
         </div>
       )}
       {plan.submissionStatus === "delivered" && (
-        <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2">
+        <div className="mt-2 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-600" />
           <div>
             <p className="text-xs font-medium text-green-800">{t("Entregue à entidade competente")}</p>

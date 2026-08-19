@@ -799,7 +799,7 @@ function UsersTab() {
                   <TableCell>
                     <div className="flex flex-wrap gap-0.5">
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700">{t("Todas")}</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 dark:bg-green-900/20 text-green-700">{t("Todas")}</Badge>
                       ) : (
                         <Badge variant="outline" className="text-[10px] px-1 py-0">{t("Construção")}</Badge>
                       )}

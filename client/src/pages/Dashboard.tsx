@@ -375,7 +375,7 @@ export default function Dashboard() {
                           <p className="text-[10px] text-muted-foreground">{t(currentPhase?.key || "Pré-Licenciamento")}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
+                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
                         </div>
                       </div>
                     );
@@ -397,7 +397,7 @@ export default function Dashboard() {
                   return (
                     <div className="space-y-3">
                       {overdue.length > 0 && (
-                        <div className="p-2.5 rounded-lg bg-red-50 border border-red-200">
+                        <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200">
                           <p className="text-[11px] font-semibold text-red-700 mb-1.5">Em Incumprimento ({overdue.length})</p>
                           {overdue.slice(0, 4).map((e: any) => (
                             <div key={e.id} className="flex justify-between text-[10px] text-red-600 py-0.5">
@@ -408,7 +408,7 @@ export default function Dashboard() {
                         </div>
                       )}
                       {upcoming.length > 0 && (
-                        <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                        <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200">
                           <p className="text-[11px] font-semibold text-amber-700 mb-1.5">Próximos 60 dias ({upcoming.length})</p>
                           {upcoming.slice(0, 4).map((e: any) => (
                             <div key={e.id} className="flex justify-between text-[10px] text-amber-600 py-0.5">
@@ -419,15 +419,15 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="flex gap-3 text-center pt-1">
-                        <div className="flex-1 p-2 rounded bg-emerald-50 border border-emerald-100">
+                        <div className="flex-1 p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100">
                           <p className="text-lg font-bold text-emerald-700">{validated.length}</p>
                           <p className="text-[9px] text-emerald-600">{t("Validados")}</p>
                         </div>
-                        <div className="flex-1 p-2 rounded bg-blue-50 border border-blue-100">
+                        <div className="flex-1 p-2 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-100">
                           <p className="text-lg font-bold text-blue-700">{events.length}</p>
                           <p className="text-[9px] text-blue-600">{t("Total Eventos")}</p>
                         </div>
-                        <div className="flex-1 p-2 rounded bg-red-50 border border-red-100">
+                        <div className="flex-1 p-2 rounded bg-red-50 dark:bg-red-900/20 border border-red-100">
                           <p className="text-lg font-bold text-red-700">{overdue.length}</p>
                           <p className="text-[9px] text-red-600">{t("Atrasados")}</p>
                         </div>
@@ -650,7 +650,7 @@ export default function Dashboard() {
                 return (
                   <div className="space-y-1.5">
                     {overdue.length > 0 && (
-                      <div className="p-2 rounded-lg bg-red-50 border border-red-200 mb-2">
+                      <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 mb-2">
                         <p className="text-[10px] font-semibold text-red-700 mb-1">{t("Em Incumprimento")} ({overdue.length})</p>
                         {overdue.slice(0, 3).map((e: any) => (
                           <div key={e.id} className="flex justify-between text-[10px] text-red-600 py-0.5">
@@ -664,7 +664,7 @@ export default function Dashboard() {
                       const daysUntil = Math.ceil((Number(e.nextDate) - now) / 86400000);
                       const isUrgent = daysUntil <= 14;
                       return (
-                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-amber-50 border border-amber-200" : "bg-muted/30"}`}>
+                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200" : "bg-muted/30"}`}>
                           <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-amber-400" : "bg-emerald-400"}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium truncate">{e.name}</p>

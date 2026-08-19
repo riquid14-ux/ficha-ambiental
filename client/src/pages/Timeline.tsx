@@ -28,7 +28,7 @@ function getSimplifiedPhaseLabel(phaseKey: string): string {
 }
 
 function getPhaseColor(phaseKey: string): string {
-  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "bg-emerald-100 text-emerald-800 border-emerald-300";
+  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-300";
   const def = PHASE_DEFS.find(p => p.key === phaseKey);
   if (!def) return "bg-muted text-foreground";
   return def.lightColor + " " + def.textColor;
@@ -39,14 +39,14 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const OPERATION_PHASES = ["Exploração", "Desativação (Pós-Exploração)"];
 
 const PHASE_DEFS = [
-  { key: "Prévias Licenciamento", label: "Pré-Licenciamento", shortLabel: "Pré-Lic.", color: "bg-purple-500", lightColor: "bg-purple-50 border-purple-200", textColor: "text-purple-700" },
-  { key: "Em Sede de Licenciamento", label: "Licenciamento", shortLabel: "Lic.", color: "bg-blue-500", lightColor: "bg-blue-50 border-blue-200", textColor: "text-blue-700" },
+  { key: "Prévias Licenciamento", label: "Pré-Licenciamento", shortLabel: "Pré-Lic.", color: "bg-purple-500", lightColor: "bg-purple-50 dark:bg-purple-900/20 border-purple-200", textColor: "text-purple-700" },
+  { key: "Em Sede de Licenciamento", label: "Licenciamento", shortLabel: "Lic.", color: "bg-blue-500", lightColor: "bg-blue-50 dark:bg-blue-900/20 border-blue-200", textColor: "text-blue-700" },
   { key: "Pré-Construção", label: "Pré-Construção", shortLabel: "Pré-Const.", color: "bg-cyan-500", lightColor: "bg-cyan-50 border-cyan-200", textColor: "text-cyan-700" },
-  { key: "Preparação Prévia", label: "Construção (Preparação)", shortLabel: "Prep.", color: "bg-emerald-400", lightColor: "bg-emerald-50 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Execução da Obra", label: "Construção (Execução)", shortLabel: "Exec.", color: "bg-emerald-500", lightColor: "bg-emerald-50 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Fase Final", label: "Construção (Final)", shortLabel: "Final", color: "bg-emerald-600", lightColor: "bg-emerald-50 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Fase Final Construção", label: "Final da Construção", shortLabel: "Final Const.", color: "bg-amber-500", lightColor: "bg-amber-50 border-amber-200", textColor: "text-amber-700" },
-  { key: "Exploração", label: "Exploração", shortLabel: "Expl.", color: "bg-orange-500", lightColor: "bg-orange-50 border-orange-200", textColor: "text-orange-700" },
+  { key: "Preparação Prévia", label: "Construção (Preparação)", shortLabel: "Prep.", color: "bg-emerald-400", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
+  { key: "Execução da Obra", label: "Construção (Execução)", shortLabel: "Exec.", color: "bg-emerald-500", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
+  { key: "Fase Final", label: "Construção (Final)", shortLabel: "Final", color: "bg-emerald-600", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
+  { key: "Fase Final Construção", label: "Final da Construção", shortLabel: "Final Const.", color: "bg-amber-500", lightColor: "bg-amber-50 dark:bg-amber-900/20 border-amber-200", textColor: "text-amber-700" },
+  { key: "Exploração", label: "Exploração", shortLabel: "Expl.", color: "bg-orange-500", lightColor: "bg-orange-50 dark:bg-orange-900/20 border-orange-200", textColor: "text-orange-700" },
   { key: "Desativação (Pós-Exploração)", label: "Desativação", shortLabel: "Desat.", color: "bg-muted0", lightColor: "bg-muted border-border", textColor: "text-foreground" },
 ];
 

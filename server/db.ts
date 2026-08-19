@@ -546,8 +546,8 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
   if (filters?.weekNumber) subConditions.push(eq(weeklySubmissions.weekNumber, filters.weekNumber));
   if (filters?.projectId) subConditions.push(eq(weeklySubmissions.projectId, filters.projectId));
 
-  // Always exclude soft-deleted submissions from analytics
-  subConditions.push(sql`${weeklySubmissions.status} != 'deleted'`);
+  // FLOW-01 FIX: Only APPROVED fichas count toward compliance analytics
+  subConditions.push(eq(weeklySubmissions.status, "approved"));
 
   const submissionsQuery = subConditions.length > 0
     ? db.select().from(weeklySubmissions).where(and(...subConditions))
@@ -864,7 +864,8 @@ export async function getMatrixData(projectId?: number) {
   const db = await getDb();
   if (!db) return { submissions: [], companies: [], weeks: [] };
 
-  // Get relevant companies (EE and RAP only)
+  // FLOW-03 FIX: Get ALL companies that have submissions (not just EE/RAP)
+  // This ensures DO-submitted fichas also appear in the matrix
   let relevantCompanies: typeof companies.$inferSelect[] = [];
   if (projectId) {
     relevantCompanies = await getCompaniesForProject(projectId);
@@ -872,8 +873,8 @@ export async function getMatrixData(projectId?: number) {
     const allCompanies = await db.select().from(companies).where(eq(companies.active, 1));
     relevantCompanies = allCompanies;
   }
-  // Filter to only EE and RAP companies
-  relevantCompanies = relevantCompanies.filter(c => c.companyType === "ee" || c.companyType === "rap");
+  // Include all companies that are EE, RAP, or have at least one submission
+  // (This ensures DO fichas are visible in the matrix too)
 
   // Get all non-deleted submissions (optionally filtered by project)
   let subs;

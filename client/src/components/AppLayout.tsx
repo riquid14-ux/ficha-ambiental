@@ -233,6 +233,17 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 
+  // NAV-01 FIX: Route guard — when project mode changes, if current route is not
+  // in the new menu, redirect to Dashboard to avoid orphan pages
+  useEffect(() => {
+    if (location === "/" || location === "/login" || location === "/perfil" || location === "/admin") return;
+    const validPaths = allItems.map(item => item.path);
+    const isCurrentRouteValid = validPaths.some(p => location.startsWith(p));
+    if (!isCurrentRouteValid) {
+      setLocation("/dashboard");
+    }
+  }, [isAllProjects, activeProject?.id, isOperationOnly]);
+
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
   }, [isCollapsed]);

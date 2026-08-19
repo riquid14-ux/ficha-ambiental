@@ -81,6 +81,19 @@ export default function WeeklyForm() {
 
   const sectionsQuery = trpc.sections.list.useQuery();
   const measuresQuery = trpc.measures.list.useQuery();
+  // FLOW-07 FIX: Query project phases to determine current phase and scope the ficha
+  const projectPhasesQuery = trpc.projectPhases.list.useQuery(
+    { projectId: activeProject?.id ?? 0 },
+    { enabled: !!activeProject?.id }
+  );
+  const [showAllPhases, setShowAllPhases] = useState(false);
+  // Determine the current phase (first phase with progress < 100)
+  const currentPhaseKey = useMemo(() => {
+    if (!projectPhasesQuery.data || projectPhasesQuery.data.length === 0) return null;
+    const sorted = [...projectPhasesQuery.data].sort((a: any, b: any) => a.orderIndex - b.orderIndex);
+    const active = sorted.find((p: any) => p.progress < 100 && !p.hidden);
+    return active ? active.phaseKey : sorted[sorted.length - 1]?.phaseKey || null;
+  }, [projectPhasesQuery.data]);
   const utils = trpc.useUtils();
 
   // Fetch all submissions for the user's company (for drafts panel)
@@ -272,6 +285,7 @@ export default function WeeklyForm() {
   }, [submissionId, responses]);
 
   const handleSubmit = useCallback(async () => {
+    if (!confirm("Tem a certeza que pretende submeter esta ficha? Após submissão, ficará em revisão e não poderá ser editada.")) return;
     if (!submissionId) return;
     setSubmitting(true);
     // Save first
@@ -360,11 +374,22 @@ export default function WeeklyForm() {
       if (!map.has(m.sectionId)) map.set(m.sectionId, []);
       map.get(m.sectionId)!.push(m);
     }
-    return sectionsQuery.data.map((s) => ({
+    // FLOW-07 FIX: Filter sections to current phase only (unless showAllPhases is on)
+    let filteredSections = sectionsQuery.data;
+    if (!showAllPhases && currentPhaseKey) {
+      filteredSections = sectionsQuery.data.filter((s: any) =>
+        s.phase?.toLowerCase().includes(currentPhaseKey.toLowerCase().replace(/_/g, " ").replace(/-/g, " "))
+        || s.phase?.toLowerCase().replace(/[áàã]/g, "a").replace(/[éè]/g, "e").replace(/[íì]/g, "i").replace(/[óòõ]/g, "o").replace(/[úù]/g, "u")
+            .includes(currentPhaseKey.toLowerCase().replace(/_/g, " "))
+      );
+      // If no sections match the current phase key, show all (fallback)
+      if (filteredSections.length === 0) filteredSections = sectionsQuery.data;
+    }
+    return filteredSections.map((s) => ({
       section: s,
       measures: map.get(s.id) || [],
     })).filter((s) => s.measures.length > 0);
-  }, [measuresQuery.data, sectionsQuery.data, measureFilterType]);
+  }, [measuresQuery.data, sectionsQuery.data, measureFilterType, showAllPhases, currentPhaseKey]);
 
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
@@ -456,8 +481,8 @@ export default function WeeklyForm() {
         </div>
 
         {/* Ficha Header with Logo and Company */}
-        <Card>
-          <CardContent className="p-6">
+        <Card className="hidden print:block">
+          <CardContent className="p-6 print:p-4">
             <div className="flex items-center justify-between mb-4">
               <img src={LOGO_URL} alt="Start Campus" className="h-12 object-contain" />
               <div className="text-right">
@@ -649,6 +674,18 @@ export default function WeeklyForm() {
             </div>
 
             {/* Measures by Section */}
+            {/* FLOW-07: Phase scope indicator + toggle */}
+            {currentPhaseKey && (
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-xs text-muted-foreground">
+                  {showAllPhases ? "A mostrar todas as fases" : `Fase atual: ${currentPhaseKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}`}
+                  {!showAllPhases && ` (${measuresBySection.reduce((acc, s) => acc + s.measures.length, 0)} medidas)`}
+                </p>
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => setShowAllPhases(!showAllPhases)}>
+                  {showAllPhases ? "Mostrar só fase atual" : "Mostrar todas as fases"}
+                </Button>
+              </div>
+            )}
             <Accordion type="multiple" className="space-y-2">
           {measuresBySection.map(({ section, measures }) => (
             <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-4">
@@ -674,7 +711,7 @@ export default function WeeklyForm() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-foreground leading-relaxed">{measure.description}</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Responsável: {measure.responsible.replace(/\|/g, " / ").replace("DO", "DO - Start Campus").replace("EE", "EE - Empresa")}
+                              Responsável: {measure.responsible.replace(/\|/g, " / ").replace(/\bDO\b/g, "Dono de Obra").replace(/\bEE\b/g, "Entidade Executante").replace(/\bRAP\b/g, "Resp. Acomp. Patrimonial").replace(/\bRAA\b/g, "Resp. Acomp. Ambiental")}
                             </p>
                           </div>
                           {reviewFeedback && (

@@ -235,3 +235,19 @@
 - [x] KPI settings panel (add/edit metrics, units, conversion factors)
 - [x] KPI Excel export (consolidated totals)
 - [x] KPI filter by week/month
+
+## UAT Critical Fixes (Rita Monteiro — Aug 2026)
+- [x] FLOW-01: Dashboard only counts APPROVED fichas (not drafts/submitted)
+- [x] FLOW-04: Separation of duties — block self-approval at API level
+- [x] FLOW-02: Wire ficha approval to update Fases progress
+- [x] FLOW-03: Matriz shows ALL submitting entities (not just EE/RAP)
+- [x] GAMMA-01: Fix crash + add ErrorBoundary per route
+- [x] NAV-01: Route guard on project mode switch (redirect to Dashboard)
+- [x] FLOW-06: Submit confirmation dialog + success/error toast
+- [x] FLOW-07: Scope ficha to current phase measures only
+- [x] FCH-01: Move print header to print-only CSS
+- [x] FLOW-10: Sections in lifecycle order, fix duplicate names, fix raw role slugs
+- [x] DATA-03: Shared PHASE_DEFS constant for consistent phase names
+- [x] FLOW-09: Notas do Projeto append-only (threaded notes)
+- [x] ADM-02: Add Edit + Deactivate to companies (not just delete)
+- [x] DATA-04: Matriz title "por Empresa" not "por Projeto"

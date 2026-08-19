@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { Component, ReactNode } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import Home from "./pages/Home";
@@ -29,6 +30,7 @@ import KPI from "./pages/KPI";
 
 function Router() {
   return (
+    <RouteErrorBoundary>
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
@@ -55,6 +57,7 @@ function Router() {
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    </RouteErrorBoundary>
   );
 }
 
@@ -74,3 +77,31 @@ function App() {
 }
 
 export default App;
+
+// Per-route error boundary that shows a friendly message instead of crashing the whole app
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh] p-8">
+          <div className="text-center max-w-md">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold mb-2">Erro ao carregar esta página</h2>
+            <p className="text-muted-foreground mb-4">Ocorreu um erro inesperado. Tente recarregar a página ou voltar ao Dashboard.</p>
+            <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = "/dashboard"; }} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
+              Voltar ao Dashboard
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}

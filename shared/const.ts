@@ -4,6 +4,32 @@ export const AXIOS_TIMEOUT_MS = 30_000;
 export const UNAUTHED_ERR_MSG = 'Please login (10001)';
 export const NOT_ADMIN_ERR_MSG = 'You do not have required permission (10002)';
 
+// DATA-03 FIX: Canonical phase definitions — single source of truth for phase names
+// Used by Timeline, Dashboard, Fases, and WeeklyForm to ensure consistency
+export const PHASE_DEFS = [
+  { key: "pre_licenciamento", name: "Pré-Licenciamento", short: "Pré-Lic.", order: 1 },
+  { key: "licenciamento", name: "Licenciamento", short: "Lic.", order: 2 },
+  { key: "pre_construcao", name: "Pré-Construção", short: "Pré-Const.", order: 3 },
+  { key: "preparacao_previa", name: "Preparação Prévia", short: "Prep.", order: 4 },
+  { key: "execucao", name: "Execução da Obra", short: "Exec.", order: 5 },
+  { key: "fase_final", name: "Fase Final de Construção", short: "Final Const.", order: 6 },
+  { key: "final_construcao", name: "Final de Construção", short: "Final", order: 7 },
+  { key: "exploracao", name: "Exploração / Operação", short: "Operação", order: 8 },
+  { key: "desativacao", name: "Desativação", short: "Desativ.", order: 9 },
+] as const;
+
+// Human-readable role names (FLOW-10 fix)
+export const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  dono_obra: "Dono de Obra",
+  pm: "Project Manager",
+  ee: "Entidade Executante",
+  rap: "Resp. Acomp. Patrimonial",
+  raa: "Resp. Acomp. Ambiental",
+  observador: "Observador",
+  user: "Utilizador",
+};
+
 // One-time nonce cookie that binds an OAuth login to the browser that started
 // it. The `__Host-` prefix forces the cookie host-only (Secure, Path=/, no
 // Domain), so a sibling *.manus.space site cannot plant a matching value in a

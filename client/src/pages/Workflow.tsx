@@ -42,7 +42,14 @@ export default function Workflow() {
 
   const handleSave = () => {
     if (!activeProject) return;
-    updateMutation.mutate({ projectId: activeProject.id, workflowDescription: editText });
+    // FLOW-09 FIX: Append-only notes — prepend new note with timestamp and author
+    const timestamp = new Date().toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const author = user?.name || "—";
+    const newEntry = `[${timestamp}] ${author}:\n${editText.trim()}`;
+    const existing = workflowQuery.data?.workflowDescription || "";
+    const combined = existing ? `${newEntry}\n\n---\n\n${existing}` : newEntry;
+    updateMutation.mutate({ projectId: activeProject.id, workflowDescription: combined });
+    setEditText("");
   };
 
   return (
@@ -117,7 +124,7 @@ export default function Workflow() {
                       {canEdit && (
                         <Button variant="outline" size="sm" className="mt-3" onClick={() => setEditing(true)}>
                           <Pencil className="w-4 h-4 mr-1.5" />
-                          Adicionar Notas
+                          Adicionar Nota
                         </Button>
                       )}
                     </div>
@@ -130,7 +137,7 @@ export default function Workflow() {
                   <Textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    placeholder="Notas específicas do workflow para este projeto..."
+                    placeholder="Escreva uma nova nota... (será adicionada ao histórico)"
                     className="min-h-[150px] text-sm"
                   />
                   <div className="flex items-center gap-2">

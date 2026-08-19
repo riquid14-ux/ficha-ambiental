@@ -800,6 +800,10 @@ export const appRouter = router({
         }
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        // FLOW-04 FIX: Separation of duties — submitter cannot approve own ficha
+        if (sub.createdBy === ctx.user.id || sub.submittedBy === ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Não pode aprovar uma ficha que criou ou submeteu. Separação de funções obrigatória." });
+        }
         if (sub.status !== "submitted") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas submetidas podem ser revistas." });
         }
@@ -808,6 +812,22 @@ export const appRouter = router({
           await db.bulkUpsertMeasureReviews(input.id, ctx.user.id, input.measureReviews);
         }
         await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
+        // FLOW-02 FIX: When a ficha is APPROVED, update phase measure statuses
+        // Each measure with status "C" (Conforme) or "I" (Implementado) marks that measure as "concluido"
+        if (input.status === "approved" && sub.projectId) {
+          const responses = await db.getResponsesBySubmission(input.id);
+          for (const resp of responses) {
+            if (resp.status === "C" || resp.status === "I") {
+              await db.upsertPhaseMeasureStatus({
+                measureId: resp.measureId,
+                projectId: sub.projectId,
+                status: "concluido",
+                notes: `Aprovado via ficha #${input.id} (S${sub.weekNumber}/${sub.weekYear})`,
+                updatedBy: ctx.user.id,
+              });
+            }
+          }
+        }
         return { success: true };
       }),
   }),

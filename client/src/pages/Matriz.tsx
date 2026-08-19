@@ -132,9 +132,9 @@ export default function Matriz(props: any) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">
-              {isAllProjects ? "Visão Agregada por Projeto" : activeProject?.name || "Projeto"}
+              {isAllProjects ? "Visão Agregada por Empresa" : activeProject?.name || "Projeto"}
             </CardTitle>
-            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">Cada linha representa um projeto. Verde = todas as fichas entregues nessa semana.</p>}
+            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">Cada linha representa uma empresa. Verde = todas as fichas entregues nessa semana.</p>}
           </CardHeader>
           <CardContent className="p-0">
             {matrixQuery.isLoading && (

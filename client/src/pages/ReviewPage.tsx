@@ -396,12 +396,22 @@ export default function ReviewPage(props: any) {
                     <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Adicione notas gerais sobre a revisão (opcional)..." rows={3} />
                   </div>
                   <div className="flex gap-3">
-                    <Button className="flex-1" variant="default" onClick={() => submitReview("approved")} disabled={reviewMutation.isPending}>
-                      <CheckCircle className="w-4 h-4 mr-2" /> Aprovar Ficha
-                    </Button>
-                    <Button className="flex-1" variant="destructive" onClick={() => submitReview("rejected")} disabled={reviewMutation.isPending}>
-                      <XCircle className="w-4 h-4 mr-2" /> Rejeitar Ficha
-                    </Button>
+                    {/* FLOW-04: Block self-approval in UI */}
+                    {(selectedSubmission?.createdBy === user?.id || selectedSubmission?.submittedBy === user?.id) ? (
+                      <div className="w-full text-center p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <p className="text-sm text-amber-700 font-medium">Não pode aprovar/rejeitar uma ficha que criou ou submeteu.</p>
+                        <p className="text-xs text-amber-600 mt-1">Separação de funções: peça a outro revisor para avaliar esta ficha.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <Button className="flex-1" variant="default" onClick={() => submitReview("approved")} disabled={reviewMutation.isPending}>
+                          <CheckCircle className="w-4 h-4 mr-2" /> Aprovar Ficha
+                        </Button>
+                        <Button className="flex-1" variant="destructive" onClick={() => submitReview("rejected")} disabled={reviewMutation.isPending}>
+                          <XCircle className="w-4 h-4 mr-2" /> Rejeitar Ficha
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

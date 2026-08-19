@@ -13,7 +13,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon } from "lucide-react";
-import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2 } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
 
@@ -235,6 +235,10 @@ function CompaniesTab() {
     onSuccess: () => { toast.success("Empresa eliminada"); companiesQuery.refetch(); },
     onError: (e: any) => toast.error(e.message),
   });
+  const updateCompanyMutation = trpc.companies.update.useMutation({
+    onSuccess: () => { toast.success("Empresa atualizada"); companiesQuery.refetch(); },
+    onError: (err: any) => toast.error(err.message),
+  });
   const setCompanyProjectsMutation = trpc.projects.setCompanyProjects.useMutation({
     onSuccess: () => {
       toast.success("Projetos da empresa atualizados");
@@ -415,9 +419,17 @@ function CompaniesTab() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => { if (confirm(`Tem a certeza que quer eliminar a empresa "${c.name}"?`)) deleteCompanyMutation.mutate({ id: c.id }); }}>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { const newName = prompt("Nome da empresa:", c.name); if (newName && newName !== c.name) updateCompanyMutation.mutate({ id: c.id, name: newName }); }} title="Editar">
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-600" onClick={() => { if (confirm(`Desativar a empresa "${c.name}"? Os dados serão preservados.`)) updateCompanyMutation.mutate({ id: c.id, active: c.active ? 0 : 1 }); }} title={c.active ? "Desativar" : "Reativar"}>
+                      {c.active ? <XCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => { if (confirm(`ELIMINAR PERMANENTEMENTE a empresa "${c.name}"? Esta ação é irreversível!`)) deleteCompanyMutation.mutate({ id: c.id }); }} title="Eliminar">
                     <Trash2 className="w-3 h-3" />
                   </Button>
+                    </div>
                 </TableCell>
               </TableRow>
             ))}

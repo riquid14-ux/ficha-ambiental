@@ -73,7 +73,7 @@ const operationProjectMenuItems = [
 // Menu items for "Todos os Projetos" view
 const allProjectsMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Grid3X3, label: "Matriz", path: "/matriz" },
+  { icon: Grid3X3, label: "Matriz Acompanhamento", path: "/matriz" },
   { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },

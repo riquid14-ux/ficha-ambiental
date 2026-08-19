@@ -271,11 +271,35 @@ export default function RDCD() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-sm font-medium">{t("Semana de início")}</label>
-                  <input type="week" className="w-full h-9 border rounded-md px-3 text-sm mt-1" value={startWeek} onChange={e => setStartWeek(e.target.value)} />
+                  <select className="w-full h-9 border rounded-md px-3 text-sm mt-1 bg-background" value={startWeek} onChange={e => setStartWeek(e.target.value)}>
+                    <option value="">Selecionar semana...</option>
+                    {Array.from({length: 53}, (_, i) => i + 1).map(w => {
+                      const year = new Date().getFullYear();
+                      const jan4 = new Date(year, 0, 4);
+                      const dow = jan4.getDay() || 7;
+                      const mon = new Date(jan4);
+                      mon.setDate(jan4.getDate() - dow + 1 + (w - 1) * 7);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      const fmt = (d: Date) => `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
+                      return <option key={w} value={`${year}-W${w.toString().padStart(2,"0")}`}>S{w} — {fmt(mon)} a {fmt(sun)}</option>;
+                    })}
+                  </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">{t("Semana de fim")}</label>
-                  <input type="week" className="w-full h-9 border rounded-md px-3 text-sm mt-1" value={endWeek} onChange={e => setEndWeek(e.target.value)} />
+                  <select className="w-full h-9 border rounded-md px-3 text-sm mt-1 bg-background" value={endWeek} onChange={e => setEndWeek(e.target.value)}>
+                    <option value="">Selecionar semana...</option>
+                    {Array.from({length: 53}, (_, i) => i + 1).map(w => {
+                      const year = new Date().getFullYear();
+                      const jan4 = new Date(year, 0, 4);
+                      const dow = jan4.getDay() || 7;
+                      const mon = new Date(jan4);
+                      mon.setDate(jan4.getDate() - dow + 1 + (w - 1) * 7);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      const fmt = (d: Date) => `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
+                      return <option key={w} value={`${year}-W${w.toString().padStart(2,"0")}`}>S{w} — {fmt(mon)} a {fmt(sun)}</option>;
+                    })}
+                  </select>
                 </div>
               </div>
               {startWeek && endWeek && (

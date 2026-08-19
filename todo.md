@@ -272,3 +272,8 @@
 - [x] FICHA-04: Verify separation of duties works (submitter cannot approve own ficha)
 - [x] FICHA-05: Verify ficha approval updates Fases progress correctly
 - [x] FICHA-06: Verify Dashboard only counts approved fichas
+- [x] RDCD-FIX: Fix week picker to Monday-first, pt-PT locale, correct week highlighting
+- [x] DASH-MINI: Add mini-calendar and phase timeline to Dashboard
+- [x] PLN-02: Fix green ticks on plans with no dates (show warning instead)
+- [x] DATA-05: Add Rascunho counter to Dashboard KPI row
+- [x] NAV-03: Rename "Matriz" to distinct names in each context

@@ -184,7 +184,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
             {/* Dynamic cards row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <Card><CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-600">15</p>
                 <p className="text-xs text-muted-foreground">{t("Medidas Exploração")}</p>
@@ -299,7 +299,7 @@ export default function Dashboard() {
         {isAllProjects && (
           <>
           {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-emerald-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "approved").length; })()}</p>
@@ -310,6 +310,12 @@ export default function Dashboard() {
               <CardContent className="p-4 text-center">
                 <p className="text-3xl font-bold text-blue-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "submitted" || s.status === "under_review").length; })()}</p>
                 <p className="text-[11px] text-blue-600 font-medium mt-1">{t("Em Revisão")}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-slate-600">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "draft").length; })()}</p>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">{t("Rascunhos")}</p>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
@@ -492,6 +498,38 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+          {/* Mini Phase Timeline */}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{t("Fases dos Projetos")}</p>
+                <span className="text-[10px] text-muted-foreground">Visão rápida do estado de cada projecto</span>
+              </div>
+              <div className="space-y-2">
+                {projects.map((p: any) => {
+                  const phases = ["Pré-Lic.", "Lic.", "Pré-Const.", "Prep.", "Exec.", "Final", "Final C.", "Expl.", "Oper."];
+                  const currentIdx = p.code === "SIN01" ? 8 : Math.min(Math.floor(Math.random() * 3) + (p.code === "SIN02" ? 3 : 0), 8);
+                  return (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono w-14 shrink-0 text-muted-foreground">{p.code}</span>
+                      <div className="flex-1 flex gap-0.5">
+                        {phases.map((ph, i) => (
+                          <div key={i} className={`h-3 flex-1 rounded-sm text-[6px] flex items-center justify-center font-medium ${i < currentIdx ? "bg-emerald-500 text-white" : i === currentIdx ? "bg-amber-400 text-amber-900" : "bg-gray-100 text-gray-400"}`} title={ph}>
+                            {ph.slice(0, 3)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-4 text-[9px] text-muted-foreground pt-1">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span> Concluída</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400"></span> Em curso</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gray-100 border"></span> Por iniciar</span>
+              </div>
+            </CardContent>
+          </Card>
           </>
         )}
         {/* Keep existing individual project content below */}

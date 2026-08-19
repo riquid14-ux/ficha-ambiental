@@ -247,10 +247,10 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
   const [nextDate, setNextDate] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const isEditing = editingPlan === plan.id;
-  const isOverdue = plan.nextReportingDate && plan.nextReportingDate < now && plan.nextReportingDate > 0;
-  const isUpcoming = plan.nextReportingDate && plan.nextReportingDate > now && plan.nextReportingDate - now < 90 * 86400000;
-
-  const statusColor = isOverdue ? "border-l-red-500" : isUpcoming ? "border-l-amber-500" : "border-l-green-500";
+  const hasDate = plan.nextReportingDate && plan.nextReportingDate > 0;
+  const isOverdue = hasDate && plan.nextReportingDate < now;
+  const isUpcoming = hasDate && plan.nextReportingDate > now && plan.nextReportingDate - now < 90 * 86400000;
+  const statusColor = isOverdue ? "border-l-red-500" : !hasDate ? "border-l-amber-400" : isUpcoming ? "border-l-amber-500" : "border-l-green-500";
 
   return (
     <div className={`border rounded-lg p-3 border-l-4 ${statusColor} bg-background`}>
@@ -259,6 +259,8 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
         <div className="shrink-0">
           {isOverdue ? (
             <AlertTriangle className="w-4 h-4 text-red-500" />
+          ) : !hasDate ? (
+            <AlertTriangle className="w-4 h-4 text-amber-400" />
           ) : isUpcoming ? (
             <Clock className="w-4 h-4 text-amber-500" />
           ) : (

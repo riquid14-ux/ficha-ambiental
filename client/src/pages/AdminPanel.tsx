@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +56,7 @@ function AuditLogTab() {
           <tr>
             <th className="text-left p-2">Data</th>
             <th className="text-left p-2">Utilizador</th>
-            <th className="text-left p-2">Ação</th>
+            <th className="text-left p-2">{t("Ação")}< /th>
             <th className="text-left p-2">Entidade</th>
             <th className="text-left p-2">Detalhes</th>
           </tr>
@@ -77,6 +78,7 @@ function AuditLogTab() {
 }
 
 export default function AdminPanel() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -302,7 +304,7 @@ function CompaniesTab() {
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
-                    <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                    <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
@@ -329,7 +331,7 @@ function CompaniesTab() {
               <TableHead>Sigla</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Projetos</TableHead>
-              <TableHead>Estado</TableHead>
+              <TableHead>{t("Estado")}< /TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -463,10 +465,10 @@ function SubmissionsTab() {
           <TableHeader>
             <TableRow>
               <TableHead>Semana</TableHead>
-              <TableHead>Empresa</TableHead>
+              <TableHead>{t("Empresa")}< /TableHead>
               <TableHead>Período</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Ações</TableHead>
+              <TableHead>{t("Estado")}< /TableHead>
+              <TableHead>{t("Ações")}< /TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -601,7 +603,7 @@ function UsersTab() {
       {/* Invite User Button + Dialog */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Utilizadores</CardTitle>
+          <CardTitle className="text-base">{t("Utilizadores")}< /CardTitle>
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -624,7 +626,7 @@ function UsersTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Empresa</Label>
+                  <Label>{t("Empresa")}< /Label>
                   <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar empresa" />
@@ -648,10 +650,10 @@ function UsersTab() {
                       <SelectItem value="ee">EE — Entidade Executante</SelectItem>
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
-                      <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                      <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                       <SelectItem value="observador">Observador</SelectItem>
-                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="admin">{t("Administrador")}< /SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -672,7 +674,7 @@ function UsersTab() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                <TableHead>Papel</TableHead>
-               <TableHead>Empresa</TableHead>
+               <TableHead>{t("Empresa")}< /TableHead>
                <TableHead>Projetos</TableHead>
                 <TableHead>Fases</TableHead>
               </TableRow>
@@ -696,7 +698,7 @@ function UsersTab() {
                         <SelectItem value="ee">EE</SelectItem>
                         <SelectItem value="raa">RAA</SelectItem>
                         <SelectItem value="rap">RAP</SelectItem>
-                        <SelectItem value="dono_obra">Dono de Obra</SelectItem>
+                        <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
                       </SelectContent>
@@ -827,7 +829,7 @@ function UsersTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
-                  <TableHead>Empresa</TableHead>
+                  <TableHead>{t("Empresa")}< /TableHead>
                   <TableHead>Papel</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead></TableHead>
@@ -869,7 +871,7 @@ function UsersTab() {
             <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
             <div className="flex gap-2">
               <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
-              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}< /Button>
             </div>
           </div>
         </div>
@@ -926,7 +928,7 @@ function HistoricalTab() {
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <Label>Empresa</Label>
+              <Label>{t("Empresa")}< /Label>
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar..." />
@@ -969,7 +971,7 @@ function HistoricalTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Semana</TableHead>
-                <TableHead>Empresa</TableHead>
+                <TableHead>{t("Empresa")}< /TableHead>
                 <TableHead>Ficheiro</TableHead>
                 <TableHead>Data Upload</TableHead>
               </TableRow>
@@ -1026,9 +1028,9 @@ function MelhoriasTab() {
                   <p className="text-xs text-muted-foreground">{fb.createdAt ? new Date(fb.createdAt).toLocaleDateString("pt-PT") : ""}</p>
                 </div>
                 <select className="text-xs border rounded px-2 py-1" value={fb.status || "pendente"} onChange={e => updateMutation.mutate({ id: fb.id, status: e.target.value })}>
-                  <option value="pendente">Pendente</option>
+                  <option value="pendente">{t("Pendente")}< /option>
                   <option value="em_analise">Em Análise</option>
-                  <option value="implementado">Implementado</option>
+                  <option value="implementado">{t("Implementado")}< /option>
                   <option value="rejeitado">Rejeitado</option>
                 </select>
               </div>
@@ -1059,8 +1061,8 @@ function PendingAccountsTab() {
             <p className="text-sm text-muted-foreground">{p.email}</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>Aprovar</button>
-            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>Rejeitar</button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}< /button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}< /button>
           </div>
         </div>
       ))}

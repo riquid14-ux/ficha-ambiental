@@ -154,12 +154,12 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">Visão geral do cumprimento ambiental</p>
+          <p className="text-muted-foreground text-sm mt-1">{t("Visão geral do cumprimento ambiental")}< /p>
           </div>
         </div>
 
         {/* Brand hero image */}
-        <div className="relative rounded-xl overflow-hidden h-48 bg-gradient-to-r from-green-900 via-green-800 to-emerald-700">
+        <div className="relative rounded-xl overflow-hidden h-48 ">
           <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">{t("Plataforma Ambiental — Start Campus")}</p>
@@ -178,7 +178,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="font-semibold text-emerald-900">Fase de Operação — {activeProject?.name}</p>
-                    <p className="text-xs text-muted-foreground">Monitorização contínua de medidas ambientais e gestão de resíduos</p>
+                    <p className="text-xs text-muted-foreground">{t("Monitorização contínua de medidas ambientais e gestão de resíduos")}< /p>
                   </div>
                 </div>
               </CardContent>
@@ -438,7 +438,7 @@ export default function Dashboard() {
             {/* Weekly Activity Chart placeholder */}
             <Card className="lg:col-span-2">
               <CardContent className="p-4 space-y-3">
-                <p className="text-sm font-semibold">Actividade de Submissão (últimas 12 semanas)</p>
+                <p className="text-sm font-semibold">{t("Actividade de Submissão (últimas 12 semanas)")}< /p>
                 <div className="grid grid-cols-12 gap-1 h-24 items-end">
                   {(() => {
                     const subs = submissionsQuery.data;
@@ -481,7 +481,7 @@ export default function Dashboard() {
                     <span className="text-sm font-bold text-emerald-600">{(() => { const s = submissionsQuery.data; if (!s || !Array.isArray(s)) return "—"; const total = s.filter((x: any) => x.status !== "deleted" && x.status !== "draft").length; const approved = s.filter((x: any) => x.status === "approved").length; return total > 0 ? `${Math.round(approved / total * 100)}%` : "—"; })()}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
-                    <span className="text-xs">Empresas Ativas</span>
+                    <span className="text-xs">{t("Empresas Ativas")}< /span>
                     <span className="text-sm font-bold">{companiesQuery.data?.length || 0}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
@@ -627,10 +627,10 @@ export default function Dashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("Todos os estados")}</SelectItem>
-                <SelectItem value="I">Implementado</SelectItem>
-                <SelectItem value="C">Conforme</SelectItem>
-                <SelectItem value="NC">Não Conforme</SelectItem>
-                <SelectItem value="NA">Não Aplicável</SelectItem>
+                <SelectItem value="I">{t("Implementado")}< /SelectItem>
+                <SelectItem value="C">{t("Conforme")}< /SelectItem>
+                <SelectItem value="NC">{t("Não Conforme")}< /SelectItem>
+                <SelectItem value="NA">{t("Não Aplicável")}< /SelectItem>
               </SelectContent>
             </Select>
             <Select value={selectedSection} onValueChange={setSelectedSection}>
@@ -654,7 +654,7 @@ export default function Dashboard() {
               <div className="p-2 rounded-lg bg-green-100"><CheckCircle className="w-5 h-5 text-green-600" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.I ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Implementado</p>
+                <p className="text-xs text-muted-foreground">{t("Implementado")}< /p>
               </div>
             </CardContent>
           </Card>
@@ -663,7 +663,7 @@ export default function Dashboard() {
               <div className="p-2 rounded-lg bg-blue-100"><CheckCircle className="w-5 h-5 text-blue-600" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.C ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Conforme</p>
+                <p className="text-xs text-muted-foreground">{t("Conforme")}< /p>
               </div>
             </CardContent>
           </Card>
@@ -672,7 +672,7 @@ export default function Dashboard() {
               <div className="p-2 rounded-lg bg-red-100"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.NC ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Não Conforme</p>
+                <p className="text-xs text-muted-foreground">{t("Não Conforme")}< /p>
               </div>
             </CardContent>
           </Card>
@@ -681,7 +681,7 @@ export default function Dashboard() {
               <div className="p-2 rounded-lg bg-slate-100"><MinusCircle className="w-5 h-5 text-slate-500" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.NA ?? 0}</p>
-                <p className="text-xs text-muted-foreground">Não Aplicável</p>
+                <p className="text-xs text-muted-foreground">{t("Não Aplicável")}< /p>
               </div>
             </CardContent>
           </Card>
@@ -692,14 +692,14 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
             <span>Filtro ativo:</span>
             <span className="font-medium" style={{ color: STATUS_COLORS[selectedStatus] }}>{STATUS_LABELS[selectedStatus]}</span>
-            <button className="ml-2 underline text-xs" onClick={() => setSelectedStatus("all")}>Limpar</button>
+            <button className="ml-2 underline text-xs" onClick={() => setSelectedStatus("all")}>{t("Limpar")}< /button>
           </div>
         )}
 
         {/* Charts Row 1 */}
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
-            <CardHeader><CardTitle className="text-base">Evolução Semanal</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("Evolução Semanal")}< /CardTitle></CardHeader>
             <CardContent>
               {filteredByWeek.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -716,12 +716,12 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}< /div>
               )}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Evolução do Projeto (Acumulado)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("Evolução do Projeto (Acumulado)")}< /CardTitle></CardHeader>
             <CardContent>
               {projectEvolution.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -736,7 +736,7 @@ export default function Dashboard() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}< /div>
               )}
             </CardContent>
           </Card>
@@ -746,7 +746,7 @@ export default function Dashboard() {
         <div className="grid lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" />Distribuição por Entidade Executante</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" />{t("Distribuição por Entidade Executante")}< /CardTitle>
             </CardHeader>
             <CardContent>
               {filteredByCompany.length > 0 ? (
@@ -764,12 +764,12 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}< /div>
               )}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Distribuição por Estado</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("Distribuição por Estado")}< /CardTitle></CardHeader>
             <CardContent>
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -782,7 +782,7 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">Sem dados disponíveis</div>
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}< /div>
               )}
             </CardContent>
           </Card>
@@ -791,7 +791,7 @@ export default function Dashboard() {
         {/* By Section */}
         {filteredBySection.some((s: any) => s.I + s.C + s.NC + s.NA > 0) && (
           <Card>
-            <CardHeader><CardTitle className="text-base">Cumprimento por Secção</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t("Cumprimento por Secção")}< /CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={filteredBySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0)} layout="vertical">

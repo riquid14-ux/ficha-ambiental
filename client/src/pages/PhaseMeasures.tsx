@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -33,6 +34,7 @@ const ALL_PHASES = [
 ];
 
 export default function PhaseMeasures({ embedded = false }: { embedded?: boolean }) {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
@@ -485,7 +487,7 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Não Aplicável</Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Não Aplicável")}< /Label>
                     </div>
                   </>
                 ) : (
@@ -496,11 +498,11 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Em Curso</Label>
+                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">{t("Em Curso")}< /Label>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">Pendente</Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Pendente")}< /Label>
                     </div>
                   </>
                 )}
@@ -653,9 +655,9 @@ function StatusBadge({ status }: { status?: string }) {
     case "concluido":
       return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
     case "em_curso":
-      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em Curso</Badge>;
+      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}< /Badge>;
     case "pendente":
-      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Pendente</Badge>;
+      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}< /Badge>;
     default:
       return null;
   }

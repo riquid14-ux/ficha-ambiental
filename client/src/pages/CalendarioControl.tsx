@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 import { Settings, Plus, Trash2, Save, X, Eye, EyeOff } from "lucide-react";
 
 export default function CalendarioControl() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { projects } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
@@ -129,7 +131,7 @@ export default function CalendarioControl() {
                 <div>
                   <label className="text-xs text-muted-foreground">Periodicidade</label>
                   <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(p => ({ ...p, periodicity: e.target.value }))}>
-                    <option value="Anual">Anual</option>
+                    <option value="Anual">{t("Anual")}< /option>
                     <option value="Semestral">Semestral</option>
                     <option value="Trimestral">Trimestral</option>
                     <option value="Mensal">Mensal</option>
@@ -175,8 +177,8 @@ export default function CalendarioControl() {
                     <th className="py-2.5 px-2 font-medium">Periodicidade</th>
                     <th className="py-2.5 px-2 font-medium">Próxima Data</th>
                     <th className="py-2.5 px-2 font-medium">Responsável</th>
-                    <th className="py-2.5 px-2 font-medium">Estado</th>
-                    <th className="py-2.5 px-2 font-medium">Ações</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Estado")}< /th>
+                    <th className="py-2.5 px-2 font-medium">{t("Ações")}< /th>
                   </tr>
                 </thead>
                 <tbody>
@@ -201,7 +203,7 @@ export default function CalendarioControl() {
                             <td className="py-2.5 px-2">
                               {isEditing ? (
                                 <select className="h-7 text-xs border rounded px-1" value={editData.periodicity} onChange={e => setEditData((p: any) => ({ ...p, periodicity: e.target.value }))}>
-                                  <option value="Anual">Anual</option>
+                                  <option value="Anual">{t("Anual")}< /option>
                                   <option value="Semestral">Semestral</option>
                                   <option value="Trimestral">Trimestral</option>
                                   <option value="Mensal">Mensal</option>
@@ -246,7 +248,7 @@ export default function CalendarioControl() {
                               ) : evt.status === "confirmed" ? (
                                 <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">Confirmado</Badge>
                               ) : (
-                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">Pendente</Badge>
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{t("Pendente")}< /Badge>
                               )}
                             </td>
                             <td className="py-2.5 px-2">

@@ -155,9 +155,9 @@ export default function KPI() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="border-l-4 border-l-red-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Incidentes Ambientais</p><p className="text-xl font-bold text-red-600">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p></CardContent></Card>
-          <Card className="border-l-4 border-l-blue-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Água Construção</p><p className="text-xl font-bold text-blue-600">{formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L</p></CardContent></Card>
-          <Card className="border-l-4 border-l-amber-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Combustível Total</p><p className="text-xl font-bold text-amber-600">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
+          <Card className="border-l-4 border-l-red-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Incidentes Ambientais")}< /p><p className="text-xl font-bold text-red-600">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p></CardContent></Card>
+          <Card className="border-l-4 border-l-blue-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Água Construção")}< /p><p className="text-xl font-bold text-blue-600">{formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L</p></CardContent></Card>
+          <Card className="border-l-4 border-l-amber-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Combustível Total")}< /p><p className="text-xl font-bold text-amber-600">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
           <Card className="border-l-4 border-l-green-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">HVO</p><p className="text-xl font-bold text-green-600">{formatNumber(totals[findMetric("emissions", "HVO")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
           <Card className="border-l-4 border-l-purple-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Eletricidade</p><p className="text-xl font-bold text-purple-600">{formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh</p></CardContent></Card>
         </div>
@@ -183,10 +183,10 @@ export default function KPI() {
                     <Input placeholder="Nome" value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
                     <Input placeholder="Unidade" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" />
                     <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
-                    <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">Manual</SelectItem><SelectItem value="calculated">Calculado</SelectItem></SelectContent></Select>
+                    <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">Manual</SelectItem><SelectItem value="calculated">{t("Calculado")}< /SelectItem></SelectContent></Select>
                   </div>
                   {editingMetric.inputType === "calculated" && <div className="grid grid-cols-3 gap-2"><Input placeholder="PCI" value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="text-sm" /><Input placeholder="FE" value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="text-sm" /><Input placeholder="Densidade" value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="text-sm" /></div>}
-                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertMetricMutation.mutate(editingMetric)}>Guardar</Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>Cancelar</Button></div>
+                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertMetricMutation.mutate(editingMetric)}>{t("Guardar")}< /Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>{t("Cancelar")}< /Button></div>
                 </div>
               )}
             </CardContent>
@@ -205,7 +205,7 @@ export default function KPI() {
           <TabsContent value="overview">
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Matriz de Submissão</CardTitle></CardHeader><CardContent>
               {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sem submissões.</p> : (
-                <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">Empresa</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
+                <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">{t("Empresa")}< /th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
                   <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
                 ))}</tbody></table></div>
               )}
@@ -331,10 +331,10 @@ export default function KPI() {
                       <Input placeholder="Nome do incidente" value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
                       <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm({...incidentForm, date: e.target.value})} />
                       <select className="border rounded px-2 py-1 text-sm" value={incidentForm.status} onChange={e => setIncidentForm({...incidentForm, status: e.target.value})}>
-                        <option value="aberto">Aberto</option><option value="em_investigacao">Em Investigação</option><option value="resolvido">Resolvido</option><option value="encerrado">Encerrado</option>
+                        <option value="aberto">{t("Aberto")}< /option><option value="em_investigacao">Em Investigação</option><option value="resolvido">Resolvido</option><option value="encerrado">Encerrado</option>
                       </select>
                       <select className="border rounded px-2 py-1 text-sm" value={incidentForm.severity} onChange={e => setIncidentForm({...incidentForm, severity: e.target.value})}>
-                        <option value="baixo">Baixo</option><option value="medio">Médio</option><option value="alto">Alto</option><option value="critico">Crítico</option>
+                        <option value="baixo">{t("Baixo")}< /option><option value="medio">{t("Médio")}< /option><option value="alto">{t("Alto")}< /option><option value="critico">{t("Crítico")}< /option>
                       </select>
                       <div className="flex gap-1">
                         <Input placeholder="Link (opcional)" value={incidentForm.link} onChange={e => setIncidentForm({...incidentForm, link: e.target.value})} className="flex-1" />
@@ -380,9 +380,9 @@ export default function KPI() {
                     <Select value={String(editingTarget.metricId)} onValueChange={v => setEditingTarget({ ...editingTarget, metricId: Number(v) })}><SelectTrigger className="text-sm"><SelectValue placeholder="Métrica" /></SelectTrigger><SelectContent>{metrics.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
                     <Input placeholder="Valor" value={editingTarget.targetValue} onChange={e => setEditingTarget({ ...editingTarget, targetValue: e.target.value })} className="text-sm" />
                     <Select value={editingTarget.targetDirection} onValueChange={v => setEditingTarget({ ...editingTarget, targetDirection: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="max">Não exceder</SelectItem><SelectItem value="min">Atingir</SelectItem></SelectContent></Select>
-                    <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Mensal</SelectItem><SelectItem value="annual">Anual</SelectItem></SelectContent></Select>
+                    <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">Mensal</SelectItem><SelectItem value="annual">{t("Anual")}< /SelectItem></SelectContent></Select>
                   </div>
-                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertTargetMutation.mutate(editingTarget)}>Guardar</Button><Button size="sm" variant="outline" onClick={() => setEditingTarget(null)}>Cancelar</Button></div>
+                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertTargetMutation.mutate(editingTarget)}>{t("Guardar")}< /Button><Button size="sm" variant="outline" onClick={() => setEditingTarget(null)}>{t("Cancelar")}< /Button></div>
                 </CardContent></Card>
               )}
               {targets.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sem metas para {targetYear}.</p> : targets.map((t: any) => {

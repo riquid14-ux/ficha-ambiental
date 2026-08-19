@@ -537,7 +537,7 @@ export default function WeeklyForm() {
             {!started && !params.id && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Selecionar Semana</CardTitle>
+              <CardTitle className="text-lg">{t("Selecionar Semana")}< /CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
@@ -609,8 +609,8 @@ export default function WeeklyForm() {
                     ({weekDates.start} — {weekDates.end})
                   </span>
                 </h2>
-                {isSubmitted && <Badge className="mt-1">Submetida — Aguarda Revisão</Badge>}
-                {isApproved && <Badge className="mt-1 bg-green-600">Aprovada</Badge>}
+                {isSubmitted && <Badge className="mt-1">{t("Submetida — Aguarda Revisão")}< /Badge>}
+                {isApproved && <Badge className="mt-1 bg-green-600">{t("Aprovada")}< /Badge>}
                 {isRejected && (
                   <div className="mt-2 p-4 border-2 border-red-500 bg-red-50 dark:bg-red-950/40 rounded-lg shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center gap-3 mb-2">
@@ -820,7 +820,7 @@ export default function WeeklyForm() {
                                   ) : (
                                     <Paperclip className="w-3.5 h-3.5" />
                                   )}
-                                  <span>Anexar ficheiro</span>
+                                  <span>{t("Anexar ficheiro")}< /span>
                                   <input
                                     type="file"
                                     accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.csv"

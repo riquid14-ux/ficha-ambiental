@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ function getSemester(month: number): number {
 }
 
 export default function SubmissionHistory(props: any) {
+  const { t } = useLanguage();
   const embedded = props?.embedded;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -436,10 +438,10 @@ export default function SubmissionHistory(props: any) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos os estados</SelectItem>
-                        <SelectItem value="I">Implementado</SelectItem>
-                        <SelectItem value="C">Conforme</SelectItem>
-                        <SelectItem value="NC">Não Conforme</SelectItem>
-                        <SelectItem value="NA">Não Aplicável</SelectItem>
+                        <SelectItem value="I">{t("Implementado")}< /SelectItem>
+                        <SelectItem value="C">{t("Conforme")}< /SelectItem>
+                        <SelectItem value="NC">{t("Não Conforme")}< /SelectItem>
+                        <SelectItem value="NA">{t("Não Aplicável")}< /SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -582,7 +584,7 @@ function DeletionHistoryView() {
           <TableHeader>
             <TableRow>
               <TableHead>Semana</TableHead>
-              <TableHead>Empresa</TableHead>
+              <TableHead>{t("Empresa")}< /TableHead>
               <TableHead>Eliminado por</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Recuperar</TableHead>

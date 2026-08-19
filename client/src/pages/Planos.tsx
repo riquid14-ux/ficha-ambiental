@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { FileText, Calendar, Clock, Plus, Pencil, Upload, AlertTriangle, CheckCircle2, ArrowRight, CheckCheck, FileUp } from "lucide-react";
 
 export default function Planos() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const { projects } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
@@ -125,7 +127,7 @@ export default function Planos() {
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Planos de Monitorização</h1>
+          <h1 className="text-2xl font-bold">{t("Planos de Monitorização")}< /h1>
           <p className="text-muted-foreground text-sm">Programas e planos do DCAPE — Fase de Construção</p>
         </div>
         {isAdminOrDono && (
@@ -135,7 +137,7 @@ export default function Planos() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Criar Novo Plano</DialogTitle>
+                <DialogTitle>{t("Criar Novo Plano")}< /DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <Input placeholder="Nome do plano" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
@@ -174,7 +176,7 @@ export default function Planos() {
         </div>
         <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-center">
           <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
-          <p className="text-xs text-amber-600">Entrega este mês</p>
+          <p className="text-xs text-amber-600">{t("Entrega este mês")}< /p>
         </div>
         <div className="p-3 rounded-lg border bg-blue-50 border-blue-200 text-center">
           <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
@@ -343,7 +345,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
             }} disabled={confirmDeliveryMutation.isPending}>
               {confirmDeliveryMutation.isPending ? "A confirmar..." : "Sim, foi entregue"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>Cancelar</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>{t("Cancelar")}< /Button>
           </div>
         </div>
       )}

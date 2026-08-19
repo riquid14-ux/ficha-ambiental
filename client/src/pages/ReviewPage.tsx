@@ -209,9 +209,9 @@ export default function ReviewPage(props: any) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Semana</TableHead>
-                  <TableHead>Empresa</TableHead>
+                  <TableHead>{t("Empresa")}< /TableHead>
                   <TableHead>Período</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>{t("Ações")}< /TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -236,7 +236,7 @@ export default function ReviewPage(props: any) {
                   );
                 })}
                 {pendingReview.length === 0 && (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma ficha pendente de revisão</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("Nenhuma ficha pendente de revisão")}< /TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -245,16 +245,16 @@ export default function ReviewPage(props: any) {
 
         {/* Already Reviewed */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Fichas Já Revistas</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t("Fichas Já Revistas")}< /CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Semana</TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Notas</TableHead>
-                  <TableHead>Ações</TableHead>
+                  <TableHead>{t("Empresa")}< /TableHead>
+                  <TableHead>{t("Estado")}< /TableHead>
+                  <TableHead>{t("Notas")}< /TableHead>
+                  <TableHead>{t("Ações")}< /TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -394,7 +394,7 @@ export default function ReviewPage(props: any) {
                 {/* General notes + action buttons */}
                 <div className="border-t pt-4 space-y-3">
                   <div>
-                    <label className="text-sm font-medium">Notas gerais da revisão</label>
+                    <label className="text-sm font-medium">{t("Notas gerais da revisão")}< /label>
                     <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Adicione notas gerais sobre a revisão (opcional)..." rows={3} />
                   </div>
                   <div className="flex gap-3">

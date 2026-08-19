@@ -285,7 +285,7 @@ export default function Calendario() {
     <AppLayout>
       <div className="space-y-5 max-w-6xl mx-auto">
         {/* Brand banner */}
-        <div className="relative rounded-xl overflow-hidden h-32 mb-4 bg-gradient-to-r from-green-900 via-green-800 to-emerald-700">
+        <div className="relative rounded-xl overflow-hidden h-32 mb-4 ">
           <img src={brandImages?.image_calendario || "/manus-storage/sc-sin01_2c20c2d5.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_calendario_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-green-900/40 to-transparent" />
         </div>
@@ -310,7 +310,7 @@ export default function Calendario() {
                 <Plus className="w-3.5 h-3.5 mr-1" /> Novo Evento
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={goToday}>Hoje</Button>
+            <Button variant="outline" size="sm" onClick={goToday}>{t("Hoje")}< /Button>
           </div>
         </div>
 
@@ -322,20 +322,20 @@ export default function Calendario() {
               <span className="font-medium text-muted-foreground">Legenda:</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
-                <span>Prazo Regulatório de Submissão</span>
+                <span>{t("Prazo Regulatório de Submissão")}< /span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-indigo-400 border border-indigo-500" />
-                <span>Prazo Interno de Preparação</span>
+                <span>{t("Prazo Interno de Preparação")}< /span>
               </div>
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-sky-400" />
-                <span>Submetido</span>
+                <span>{t("Submetido")}< /span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-emerald-600" />
-                <span>Validado pela Entidade</span>
+                <span>{t("Validado pela Entidade")}< /span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-600" />
@@ -344,7 +344,7 @@ export default function Calendario() {
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-[9px] font-bold">H</span>
-                <span>Hoje</span>
+                <span>{t("Hoje")}< /span>
               </div>
             </div>
           </CardContent>
@@ -352,19 +352,19 @@ export default function Calendario() {
         <div className="hidden">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-            <span>Prazo Regulatório de Submissão</span>
+            <span>{t("Prazo Regulatório de Submissão")}< /span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-            <span>Prazo Interno de Preparação</span>
+            <span>{t("Prazo Interno de Preparação")}< /span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
-            <span>Submetido</span>
+            <span>{t("Submetido")}< /span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-            <span>Validado pela Entidade</span>
+            <span>{t("Validado pela Entidade")}< /span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
@@ -396,7 +396,7 @@ export default function Calendario() {
                   <AlertTriangle className="w-5 h-5 text-red-700" />
                 </div>
                 <div>
-                  <p className="text-xs text-red-600 font-medium">Em Atraso</p>
+                  <p className="text-xs text-red-600 font-medium">{t("Em Atraso")}< /p>
                   <p className="font-semibold text-sm text-red-900">{overdueCount} {overdueCount === 1 ? "reporting" : "reportings"} em atraso</p>
                 </div>
               </CardContent>
@@ -582,11 +582,11 @@ export default function Calendario() {
                       <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Projeto</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Data Limite</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Data Limite")}< /th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Entidade</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Estado</th>
-                      {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">Ação</th>}
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Estado")}< /th>
+                      {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">{t("Ação")}< /th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -681,7 +681,7 @@ export default function Calendario() {
                       <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Periodicidade</th>
                       <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Data</th>
                       <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Responsável</th>
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Ações</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Ações")}< /th>
                     </tr>
                   </thead>
                   <tbody>
@@ -738,7 +738,7 @@ export default function Calendario() {
         {editingEvent && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditingEvent(null)}>
             <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-4">Editar Evento</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("Editar Evento")}< /h3>
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-muted-foreground">Nome</label>
@@ -748,7 +748,7 @@ export default function Calendario() {
                   <div>
                     <label className="text-xs text-muted-foreground">Periodicidade</label>
                     <select className="w-full h-9 border rounded-md px-2 text-sm" value={editingEvent.periodicity || "Anual"} onChange={e => setEditingEvent({...editingEvent, periodicity: e.target.value})}>
-                      <option value="Anual">Anual</option><option value="Semestral">Semestral</option><option value="Trimestral">Trimestral</option><option value="Mensal">Mensal</option><option value="Pontual">Pontual</option>
+                      <option value="Anual">{t("Anual")}< /option><option value="Semestral">Semestral</option><option value="Trimestral">Trimestral</option><option value="Mensal">Mensal</option><option value="Pontual">Pontual</option>
                     </select>
                   </div>
                   <div>
@@ -765,8 +765,8 @@ export default function Calendario() {
                   <Input value={editingEvent.entityLink || ""} onChange={e => setEditingEvent({...editingEvent, entityLink: e.target.value})} placeholder="https://siliamb.apambiente.pt" />
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" onClick={() => { updateEventMutation.mutate({ id: editingEvent.id, name: editingEvent.name, periodicity: editingEvent.periodicity, nextDate: typeof editingEvent.nextDate === "string" && editingEvent.nextDate ? new Date(editingEvent.nextDate).getTime() : (typeof editingEvent.nextDate === "number" ? editingEvent.nextDate : undefined), entityToDeliver: editingEvent.entityToDeliver || undefined, entityLink: editingEvent.entityLink || undefined }); setEditingEvent(null); }}>Guardar</Button>
-                  <Button size="sm" variant="outline" onClick={() => setEditingEvent(null)}>Cancelar</Button>
+                  <Button size="sm" onClick={() => { updateEventMutation.mutate({ id: editingEvent.id, name: editingEvent.name, periodicity: editingEvent.periodicity, nextDate: typeof editingEvent.nextDate === "string" && editingEvent.nextDate ? new Date(editingEvent.nextDate).getTime() : (typeof editingEvent.nextDate === "number" ? editingEvent.nextDate : undefined), entityToDeliver: editingEvent.entityToDeliver || undefined, entityLink: editingEvent.entityLink || undefined }); setEditingEvent(null); }}>{t("Guardar")}< /Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingEvent(null)}>{t("Cancelar")}< /Button>
                 </div>
               </div>
             </div>
@@ -786,7 +786,7 @@ export default function Calendario() {
                   <div>
                     <label className="text-xs text-muted-foreground">Periodicidade</label>
                     <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(prev => ({ ...prev, periodicity: e.target.value }))}>
-                      <option value="Anual">Anual</option>
+                      <option value="Anual">{t("Anual")}< /option>
                       <option value="Semestral">Semestral</option>
                       <option value="Trimestral">Trimestral</option>
                       <option value="Mensal">Mensal</option>
@@ -794,7 +794,7 @@ export default function Calendario() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Categoria</label>
+                    <label className="text-xs text-muted-foreground">{t("Categoria")}< /label>
                     <Input value={newEvent.category} onChange={e => setNewEvent(prev => ({ ...prev, category: e.target.value }))} placeholder="Ex: APA, Energia" />
                   </div>
                 </div>
@@ -827,7 +827,7 @@ export default function Calendario() {
                   }} disabled={createEventMutation.isPending} size="sm">
                     {createEventMutation.isPending ? "A criar..." : "Criar Evento"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowCreateEvent(false)}>Cancelar</Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowCreateEvent(false)}>{t("Cancelar")}< /Button>
                 </div>
               </div>
             </div>

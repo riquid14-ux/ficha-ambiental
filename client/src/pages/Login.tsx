@@ -160,8 +160,8 @@ export default function Login() {
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
         <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
           <h2 className="text-white text-3xl font-bold mb-2">Start Campus</h2>
-          <p className="text-white/80 text-lg">Gestão Integrada de Compliance Ambiental</p>
-          <p className="text-white/60 text-sm mt-2">Controlo de medidas ambientais, reporting regulatório, KPIs de sustentabilidade e gestão de resíduos — tudo num único ponto de acesso para todas as equipas.</p>
+          <p className="text-white/80 text-lg">Plataforma de Gestão Ambiental</p>
+          <p className="text-white/60 text-sm mt-2">Delivering Sustainable AI-Scale Data Centers</p>
         </div>
       </div>
       {/* Right panel - login form */}

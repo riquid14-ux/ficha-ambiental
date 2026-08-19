@@ -931,8 +931,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Sem dados para exibir.": { pt: "Sem dados para exibir.", en: "No data to display." },
   "Sem ficha submetida": { pt: "Sem ficha submetida", en: "No form submitted" },
   "Visão geral do estado das fichas por empresa e semana": { pt: "Visão geral do estado das fichas por empresa e semana", en: "Overview of form status by company and week" },
-  "Criada (Rascunho)": { pt: "Criada (Rascunho)", en: "Created (Draft)" },
-  "Carregar Ficha Histórica (PDF)": { pt: "Carregar Ficha Histórica (PDF)", en: "Upload Historical Form (PDF)" },
 };
 
 interface LanguageContextType {

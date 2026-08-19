@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function ProjectManagement() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -27,7 +29,7 @@ export default function ProjectManagement() {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Gestão de Projetos</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("Gestão de Projetos")}</h1>
             <p className="text-muted-foreground text-sm mt-1">
               Gerir projetos, atribuir empresas e utilizadores
             </p>
@@ -67,19 +69,19 @@ function CreateProjectDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Criar Novo Projeto</DialogTitle>
+          <DialogTitle>{t("Criar Novo Projeto")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <div>
-            <Label>Código</Label>
+            <Label>{t("Código")}</Label>
             <Input value={code} onChange={e => setCode(e.target.value)} placeholder="SIN02" />
           </div>
           <div>
-            <Label>Nome</Label>
+            <Label>{t("Nome")}</Label>
             <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nome do projeto" />
           </div>
           <div>
-            <Label>Descrição (opcional)</Label>
+            <Label>{t("Descrição (opcional)")}</Label>
             <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Descrição breve" />
           </div>
           <Button
@@ -104,8 +106,8 @@ function ProjectList() {
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
           <FolderKanban className="h-12 w-12 mx-auto mb-4 opacity-40" />
-          <p>Nenhum projeto criado ainda.</p>
-          <p className="text-sm mt-1">Crie o primeiro projeto para começar.</p>
+          <p>{t("Nenhum projeto criado ainda.")}</p>
+          <p className="text-sm mt-1">{t("Crie o primeiro projeto para começar.")}</p>
         </CardContent>
       </Card>
     );
@@ -175,7 +177,7 @@ function ProjectCompaniesTab({ projectId }: { projectId: number }) {
         Selecione as empresas que trabalham neste projeto:
       </p>
       {allCompanies.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhuma empresa registada.</p>
+        <p className="text-sm text-muted-foreground">{t("Nenhuma empresa registada.")}</p>
       ) : (
         <div className="space-y-2">
           {allCompanies.map(company => (
@@ -225,7 +227,7 @@ function ProjectUsersTab({ projectId }: { projectId: number }) {
         Selecione os utilizadores com acesso a este projeto:
       </p>
       {visibleUsers.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum utilizador registado.</p>
+        <p className="text-sm text-muted-foreground">{t("Nenhum utilizador registado.")}</p>
       ) : (
         <div className="space-y-2">
           {visibleUsers.map(user => (

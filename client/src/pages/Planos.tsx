@@ -128,12 +128,12 @@ export default function Planos() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("Planos de Monitorização")}< /h1>
-          <p className="text-muted-foreground text-sm">Programas e planos do DCAPE — Fase de Construção</p>
+          <p className="text-muted-foreground text-sm">{t("Programas e planos do DCAPE — Fase de Construção")}</p>
         </div>
         {isAdminOrDono && (
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />Novo Plano</Button>
+              <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />{t("Novo Plano")}</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -144,15 +144,15 @@ export default function Planos() {
                 <Select value={newPlan.category} onValueChange={(v: any) => setNewPlan(p => ({ ...p, category: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="programa_monitorizacao">Programa de Monitorização</SelectItem>
-                    <SelectItem value="plano_projeto">Plano/Projeto</SelectItem>
+                    <SelectItem value="programa_monitorizacao">{t("Programa de Monitorização")}</SelectItem>
+                    <SelectItem value="plano_projeto">{t("Plano/Projeto")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input placeholder="Periodicidade (ex: Semestral, Trimestral)" value={newPlan.periodicity} onChange={e => setNewPlan(p => ({ ...p, periodicity: e.target.value }))} />
                 <Select value={newPlan.projectId} onValueChange={(v) => setNewPlan(p => ({ ...p, projectId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Projeto (opcional)" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Todos os projetos</SelectItem>
+                    <SelectItem value="none">{t("Todos os projetos")}</SelectItem>
                     {projects.map(p => (
                       <SelectItem key={p.id} value={String(p.id)}>{p.code} — {p.name}</SelectItem>
                     ))}
@@ -172,7 +172,7 @@ export default function Planos() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3 rounded-lg border bg-background text-center">
           <p className="text-2xl font-bold">{stats.total}</p>
-          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-xs text-muted-foreground">{t("Total")}</p>
         </div>
         <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-center">
           <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
@@ -180,11 +180,11 @@ export default function Planos() {
         </div>
         <div className="p-3 rounded-lg border bg-blue-50 border-blue-200 text-center">
           <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
-          <p className="text-xs text-blue-600">Próximos meses</p>
+          <p className="text-xs text-blue-600">{t("Próximos meses")}</p>
         </div>
         <div className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-center">
           <p className="text-2xl font-bold text-muted-foreground">{stats.noDate}</p>
-          <p className="text-xs text-muted-foreground">Sem data definida</p>
+          <p className="text-xs text-muted-foreground">{t("Sem data definida")}</p>
         </div>
       </div>
 
@@ -196,7 +196,7 @@ export default function Planos() {
               <Calendar className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Próximo reporting</p>
+              <p className="text-xs text-muted-foreground">{t("Próximo reporting")}</p>
               <p className="font-semibold text-sm truncate">{nextReport.name}</p>
             </div>
             <div className="text-right shrink-0">
@@ -213,7 +213,7 @@ export default function Planos() {
           <FileText className="w-4 h-4" /> Programas de Monitorização ({programas.length}) — ordenados por próxima entrega
         </h2>
         {programas.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum programa registado.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t("Nenhum programa registado.")}</p>
         ) : (
           <div className="grid gap-2">
             {programas.map(plan => (
@@ -228,7 +228,7 @@ export default function Planos() {
           <Calendar className="w-4 h-4" /> Planos e Projetos ({planosList.length}) — ordenados por próxima entrega
         </h2>
         {planosList.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano registado.</p>
+          <p className="text-sm text-muted-foreground text-center py-4">{t("Nenhum plano registado.")}</p>
         ) : (
           <div className="grid gap-2">
             {planosList.map(plan => (
@@ -305,8 +305,8 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
           <div className="flex items-center gap-2">
             <FileUp className="w-4 h-4 text-amber-600" />
             <div>
-              <p className="text-xs font-medium text-amber-800">Submetido na plataforma</p>
-              <p className="text-[10px] text-amber-600">Falta confirmar envio à entidade competente</p>
+              <p className="text-xs font-medium text-amber-800">{t("Submetido na plataforma")}</p>
+              <p className="text-[10px] text-amber-600">{t("Falta confirmar envio à entidade competente")}</p>
             </div>
           </div>
           {isAdminOrDono && (
@@ -325,7 +325,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
         <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-600" />
           <div>
-            <p className="text-xs font-medium text-green-800">Entregue à entidade competente</p>
+            <p className="text-xs font-medium text-green-800">{t("Entregue à entidade competente")}</p>
             <p className="text-[10px] text-green-600">
               Confirmado em {plan.confirmedDeliveryAt ? new Date(plan.confirmedDeliveryAt).toLocaleDateString("pt-PT") : "—"}
             </p>
@@ -336,7 +336,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
       {/* Confirm delivery dialog */}
       {showConfirm && (
         <div className="mt-2 p-3 rounded-lg bg-white border-2 border-primary shadow-lg space-y-2">
-          <p className="text-sm font-medium">Confirma que o plano foi entregue à entidade competente?</p>
+          <p className="text-sm font-medium">{t("Confirma que o plano foi entregue à entidade competente?")}</p>
           <p className="text-xs text-muted-foreground">Ao confirmar, a próxima data de entrega será atualizada automaticamente com base na periodicidade ({plan.periodicity || "anual"}).</p>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => {
@@ -361,11 +361,11 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
         <div className="mt-3 pt-3 border-t space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-muted-foreground">Último Reporting</label>
+              <label className="text-xs text-muted-foreground">{t("Último Reporting")}</label>
               <Input type="date" value={lastDate} onChange={e => setLastDate(e.target.value)} className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Próximo Reporting</label>
+              <label className="text-xs text-muted-foreground">{t("Próximo Reporting")}</label>
               <Input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
@@ -380,7 +380,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
           {/* Submit document button */}
           {plan.submissionStatus === "pending" && (
             <div className="mt-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-1">Submeter documento do plano:</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("Submeter documento do plano:")}</p>
               <input
                 type="file"
                 className="text-xs"

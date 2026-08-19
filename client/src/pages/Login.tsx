@@ -159,9 +159,9 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 relative">
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
         <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
-          <h2 className="text-white text-3xl font-bold mb-2">Start Campus</h2>
-          <p className="text-white/80 text-lg">Plataforma de Gestão Ambiental</p>
-          <p className="text-white/60 text-sm mt-2">Delivering Sustainable AI-Scale Data Centers</p>
+          <h2 className="text-white text-3xl font-bold mb-2">{t("Start Campus")}</h2>
+          <p className="text-white/80 text-lg">{t("Plataforma de Gestão Ambiental")}</p>
+          <p className="text-white/60 text-sm mt-2">{t("Delivering Sustainable AI-Scale Data Centers")}</p>
         </div>
       </div>
       {/* Right panel - login form */}
@@ -254,7 +254,7 @@ export default function Login() {
           <form onSubmit={handleVerify2FA} className="space-y-4">
             <div className="text-center mb-4">
               <Shield className="w-12 h-12 mx-auto text-primary mb-2" />
-              <p className="text-sm text-muted-foreground">Abra o Google Authenticator ou Microsoft Authenticator e introduza o código de 6 dígitos.</p>
+              <p className="text-sm text-muted-foreground">{t("Abra o Google Authenticator ou Microsoft Authenticator e introduza o código de 6 dígitos.")}</p>
             </div>
             <Input type="text" placeholder="000000" value={totpCode} onChange={(e) => { setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} className="h-14 text-center text-2xl tracking-widest font-mono" maxLength={6} autoFocus />
             <Button type="submit" size="lg" className="w-full h-12" disabled={verify2FAMutation.isPending}>
@@ -307,7 +307,7 @@ export default function Login() {
           }} className="space-y-4">
             <div className="text-center mb-4">
               <Shield className="w-12 h-12 mx-auto text-green-600 mb-2" />
-              <p className="text-sm text-muted-foreground">Verificação de segurança — confirme a sua identidade.</p>
+              <p className="text-sm text-muted-foreground">{t("Verificação de segurança — confirme a sua identidade.")}</p>
               {user?.email && <p className="text-xs text-muted-foreground mt-1 font-medium">{user.email}</p>}
             </div>
             {error && (
@@ -341,7 +341,7 @@ export default function Login() {
           }} className="space-y-4">
             <div className="text-center mb-4">
               <Mail className="w-12 h-12 mx-auto text-primary mb-2" />
-              <p className="text-sm text-muted-foreground">Introduza o email associado à sua conta. O administrador será notificado para proceder ao reset da palavra-passe.</p>
+              <p className="text-sm text-muted-foreground">{t("Introduza o email associado à sua conta. O administrador será notificado para proceder ao reset da palavra-passe.")}</p>
             </div>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

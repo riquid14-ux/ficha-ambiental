@@ -195,7 +195,7 @@ export default function MIRR() {
               <Select value={subProject} onValueChange={setSubProject}>
                 <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sub-projeto" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all">{t("Todos")}</SelectItem>
                   {subProjects.map(sp => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -225,7 +225,7 @@ export default function MIRR() {
         {showSettings && (
           <Card className="border-indigo-200">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Definições MIRR</CardTitle>
+              <CardTitle className="text-sm">{t("Definições MIRR")}</CardTitle>
               <Button variant="ghost" size="sm" onClick={() => setShowSettings(false)}><X className="w-4 h-4" /></Button>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -237,16 +237,16 @@ export default function MIRR() {
                     <div key={i} className="flex items-center gap-2 text-xs bg-muted/30 rounded px-2 py-1">
                       <span className="font-mono font-medium w-16">{ler.code}</span>
                       <Input className="h-6 text-xs flex-1" value={ler.name} onChange={e => { const updated = [...lerCodes]; updated[i] = { ...ler, name: e.target.value }; setLerCodes(updated); }} />
-                      {ler.hazardous && <Badge variant="destructive" className="text-[10px] h-4">Perigoso</Badge>}
+                      {ler.hazardous && <Badge variant="destructive" className="text-[10px] h-4">{t("Perigoso")}</Badge>}
                       <button className="text-red-500 hover:text-red-700" onClick={() => setLerCodes(lerCodes.filter((_, j) => j !== i))}><Trash2 className="w-3 h-3" /></button>
                     </div>
                   ))}
                 </div>
                 <div className="flex gap-2 items-end">
-                  <div><label className="text-[10px] text-muted-foreground">Código</label><Input className="h-7 text-xs w-20" value={newLer.code} onChange={e => setNewLer(p => ({ ...p, code: e.target.value }))} placeholder="170904" /></div>
-                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">Designação</label><Input className="h-7 text-xs" value={newLer.name} onChange={e => setNewLer(p => ({ ...p, name: e.target.value }))} placeholder="Nome do resíduo" /></div>
+                  <div><label className="text-[10px] text-muted-foreground">{t("Código")}</label><Input className="h-7 text-xs w-20" value={newLer.code} onChange={e => setNewLer(p => ({ ...p, code: e.target.value }))} placeholder="170904" /></div>
+                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Designação")}</label><Input className="h-7 text-xs" value={newLer.name} onChange={e => setNewLer(p => ({ ...p, name: e.target.value }))} placeholder="Nome do resíduo" /></div>
                   <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={newLer.hazardous} onChange={e => setNewLer(p => ({ ...p, hazardous: e.target.checked }))} /> Perigoso</label>
-                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newLer.code && newLer.name) { setLerCodes([...lerCodes, newLer]); setNewLer({ code: "", name: "", hazardous: false }); toast.success("Código LER adicionado"); } }}>Adicionar</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newLer.code && newLer.name) { setLerCodes([...lerCodes, newLer]); setNewLer({ code: "", name: "", hazardous: false }); toast.success("Código LER adicionado"); } }}>{t("Adicionar")}</Button>
                 </div>
               </div>
               {/* Destinations Management */}
@@ -263,10 +263,10 @@ export default function MIRR() {
                   ))}
                 </div>
                 <div className="flex gap-2 items-end">
-                  <div><label className="text-[10px] text-muted-foreground">Chave</label><Input className="h-7 text-xs w-24" value={newDest.key} onChange={e => setNewDest(p => ({ ...p, key: e.target.value }))} placeholder="recovery" /></div>
-                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">Nome</label><Input className="h-7 text-xs" value={newDest.label} onChange={e => setNewDest(p => ({ ...p, label: e.target.value }))} placeholder="Valorização" /></div>
+                  <div><label className="text-[10px] text-muted-foreground">{t("Chave")}</label><Input className="h-7 text-xs w-24" value={newDest.key} onChange={e => setNewDest(p => ({ ...p, key: e.target.value }))} placeholder="recovery" /></div>
+                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Nome")}</label><Input className="h-7 text-xs" value={newDest.label} onChange={e => setNewDest(p => ({ ...p, label: e.target.value }))} placeholder="Valorização" /></div>
                   <div><label className="text-[10px] text-muted-foreground">{t("Operação")}< /label><Input className="h-7 text-xs w-16" value={newDest.operation} onChange={e => setNewDest(p => ({ ...p, operation: e.target.value }))} placeholder="R4" /></div>
-                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newDest.key && newDest.label) { setDestinations([...destinations, newDest]); setNewDest({ key: "", label: "", operation: "" }); toast.success("Destino adicionado"); } }}>Adicionar</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newDest.key && newDest.label) { setDestinations([...destinations, newDest]); setNewDest({ key: "", label: "", operation: "" }); toast.success("Destino adicionado"); } }}>{t("Adicionar")}</Button>
                 </div>
               </div>
             </CardContent>
@@ -277,15 +277,15 @@ export default function MIRR() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card><CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600">{totalWaste.toFixed(3)}</p>
-            <p className="text-xs text-muted-foreground">Total Resíduos (t)</p>
+            <p className="text-xs text-muted-foreground">{t("Total Resíduos (t)")}</p>
           </CardContent></Card>
           <Card><CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-sky-600">{totalRecycled.toFixed(3)}</p>
-            <p className="text-xs text-muted-foreground">Reciclado (t)</p>
+            <p className="text-xs text-muted-foreground">{t("Reciclado (t)")}</p>
           </CardContent></Card>
           <Card><CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-green-600">{diversionRate}%</p>
-            <p className="text-xs text-muted-foreground">Taxa Desvio Aterro</p>
+            <p className="text-xs text-muted-foreground">{t("Taxa Desvio Aterro")}</p>
           </CardContent></Card>
           <Card><CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{egars?.length || 0}</p>
@@ -324,14 +324,14 @@ export default function MIRR() {
         {/* Add e-GAR form */}
         {showAddForm && (
           <Card className="border-emerald-200">
-            <CardHeader><CardTitle className="text-sm">Registar Nova e-GAR</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t("Registar Nova e-GAR")}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label className="text-xs text-muted-foreground">Data</label><Input type="date" value={newEgar.date} onChange={e => setNewEgar(p => ({ ...p, date: e.target.value }))} /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Data")}</label><Input type="date" value={newEgar.date} onChange={e => setNewEgar(p => ({ ...p, date: e.target.value }))} /></div>
                 <div><label className="text-xs text-muted-foreground">N.º e-GAR</label><Input value={newEgar.egarId} onChange={e => setNewEgar(p => ({ ...p, egarId: e.target.value }))} placeholder="Ex: EGAR-2026-001" /></div>
-                <div><label className="text-xs text-muted-foreground">Link e-GAR</label><Input value={newEgar.egarLink} onChange={e => setNewEgar(p => ({ ...p, egarLink: e.target.value }))} placeholder="URL do portal" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Link e-GAR")}</label><Input value={newEgar.egarLink} onChange={e => setNewEgar(p => ({ ...p, egarLink: e.target.value }))} placeholder="URL do portal" /></div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Mês</label>
+                  <label className="text-xs text-muted-foreground">{t("Mês")}</label>
                   <Select value={String(newEgar.month)} onValueChange={v => setNewEgar(p => ({ ...p, month: parseInt(v) }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{MONTHS_PT.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
@@ -339,23 +339,23 @@ export default function MIRR() {
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div><label className="text-xs text-muted-foreground">Operador de Transporte</label><Input value={newEgar.operatorTransport} onChange={e => setNewEgar(p => ({ ...p, operatorTransport: e.target.value }))} placeholder="Ex: Ambigroup" /></div>
-                <div><label className="text-xs text-muted-foreground">Cód. APA Transporte</label><Input value={newEgar.operatorTransportAPA} onChange={e => setNewEgar(p => ({ ...p, operatorTransportAPA: e.target.value }))} placeholder="Ex: APA-T-12345" /></div>
-                <div><label className="text-xs text-muted-foreground">Operador de Receção</label><Input value={newEgar.operatorReception} onChange={e => setNewEgar(p => ({ ...p, operatorReception: e.target.value }))} placeholder="Ex: Valorsul" /></div>
-                <div><label className="text-xs text-muted-foreground">Cód. APA Receção</label><Input value={newEgar.operatorReceptionAPA} onChange={e => setNewEgar(p => ({ ...p, operatorReceptionAPA: e.target.value }))} placeholder="Ex: APA-R-67890" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Operador de Transporte")}</label><Input value={newEgar.operatorTransport} onChange={e => setNewEgar(p => ({ ...p, operatorTransport: e.target.value }))} placeholder="Ex: Ambigroup" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Cód. APA Transporte")}</label><Input value={newEgar.operatorTransportAPA} onChange={e => setNewEgar(p => ({ ...p, operatorTransportAPA: e.target.value }))} placeholder="Ex: APA-T-12345" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Operador de Receção")}</label><Input value={newEgar.operatorReception} onChange={e => setNewEgar(p => ({ ...p, operatorReception: e.target.value }))} placeholder="Ex: Valorsul" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Cód. APA Receção")}</label><Input value={newEgar.operatorReceptionAPA} onChange={e => setNewEgar(p => ({ ...p, operatorReceptionAPA: e.target.value }))} placeholder="Ex: APA-R-67890" /></div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Código LER</label>
+                  <label className="text-xs text-muted-foreground">{t("Código LER")}</label>
                   <Select value={newEgar.lerCode} onValueChange={v => { setNewEgar(p => ({ ...p, lerCode: v, designation: lerCodes.find(l => l.code === v)?.name || "" })); }}>
                     <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                     <SelectContent>{lerCodes.map(l => <SelectItem key={l.code} value={l.code}>{l.code} — {l.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
-                <div><label className="text-xs text-muted-foreground">Quantidade Original (t)</label><Input type="number" step="0.001" value={newEgar.quantity} onChange={e => setNewEgar(p => ({ ...p, quantity: e.target.value }))} placeholder="0.000" /></div>
-                <div><label className="text-xs text-muted-foreground">Quantidade Corrigida (t)</label><Input type="number" step="0.001" value={newEgar.correctedQuantity} onChange={e => setNewEgar(p => ({ ...p, correctedQuantity: e.target.value }))} placeholder="Opcional" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Quantidade Original (t)")}</label><Input type="number" step="0.001" value={newEgar.quantity} onChange={e => setNewEgar(p => ({ ...p, quantity: e.target.value }))} placeholder="0.000" /></div>
+                <div><label className="text-xs text-muted-foreground">{t("Quantidade Corrigida (t)")}</label><Input type="number" step="0.001" value={newEgar.correctedQuantity} onChange={e => setNewEgar(p => ({ ...p, correctedQuantity: e.target.value }))} placeholder="Opcional" /></div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Destino Final</label>
+                  <label className="text-xs text-muted-foreground">{t("Destino Final")}</label>
                   <Select value={newEgar.destination} onValueChange={v => setNewEgar(p => ({ ...p, destination: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -365,7 +365,7 @@ export default function MIRR() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>Registar e-GAR</Button>
+                <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>{t("Registar e-GAR")}</Button>
                 <Button size="sm" variant="ghost" onClick={() => setShowAddForm(false)}>{t("Cancelar")}< /Button>
               </div>
             </CardContent>
@@ -382,13 +382,13 @@ export default function MIRR() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-left">
-                    <th className="py-2 px-2 font-medium text-muted-foreground">Data</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("Data")}</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">N.º e-GAR</th>
-                    <th className="py-2 px-2 font-medium text-muted-foreground">LER</th>
-                    <th className="py-2 px-2 font-medium text-muted-foreground">Designação</th>
-                    <th className="py-2 px-2 font-medium text-muted-foreground">Qtd (t)</th>
-                    <th className="py-2 px-2 font-medium text-muted-foreground">Operadores</th>
-                    <th className="py-2 px-2 font-medium text-muted-foreground">Destino</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("LER")}</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("Designação")}</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("Qtd (t)")}</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("Operadores")}</th>
+                    <th className="py-2 px-2 font-medium text-muted-foreground">{t("Destino")}</th>
                     {isAdminOrDono && <th className="py-2 px-2"></th>}
                   </tr></thead>
                   <tbody>

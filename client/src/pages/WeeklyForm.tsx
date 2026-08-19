@@ -478,7 +478,7 @@ export default function WeeklyForm() {
         <div className="relative rounded-xl overflow-hidden h-44">
           <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(8).jpg" alt="Start Campus Sines" className="w-full h-full object-cover object-top" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end pb-3 pl-5">
-            <p className="text-white text-xs font-medium opacity-90">Start Campus — Sines, Portugal</p>
+            <p className="text-white text-xs font-medium opacity-90">{t("Start Campus — Sines, Portugal")}</p>
           </div>
         </div>
 
@@ -496,7 +496,7 @@ export default function WeeklyForm() {
               <h1 className="text-xl font-bold tracking-tight text-foreground text-center mb-1">
                 Ficha de Controlo de Medidas Ambientais
               </h1>
-              <p className="text-xs text-muted-foreground text-center">DCAPE — Acompanhamento Semanal</p>
+              <p className="text-xs text-muted-foreground text-center">{t("DCAPE — Acompanhamento Semanal")}</p>
             </div>
           </CardContent>
         </Card>
@@ -545,7 +545,7 @@ export default function WeeklyForm() {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Semana</Label>
+                  <Label className="text-sm font-medium">{t("Semana")}</Label>
                   <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(Number(v))}>
                     <SelectTrigger>
                       <SelectValue />
@@ -558,7 +558,7 @@ export default function WeeklyForm() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Ano</Label>
+                  <Label className="text-sm font-medium">{t("Ano")}</Label>
                   <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
                     <SelectTrigger>
                       <SelectValue />
@@ -580,7 +580,7 @@ export default function WeeklyForm() {
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                    <span>Selecione um projeto específico no menu lateral para criar uma ficha de controlo.</span>
+                    <span>{t("Selecione um projeto específico no menu lateral para criar uma ficha de controlo.")}</span>
                   </div>
                 </div>
               ) : (
@@ -618,14 +618,14 @@ export default function WeeklyForm() {
                         <AlertTriangle className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-red-800 dark:text-red-200">AÇÃO IMEDIATA NECESSÁRIA</h3>
-                        <p className="text-xs text-red-600 dark:text-red-400">Esta ficha foi rejeitada pela RAA e requer correção prioritária.</p>
+                        <h3 className="text-base font-bold text-red-800 dark:text-red-200">{t("AÇÃO IMEDIATA NECESSÁRIA")}</h3>
+                        <p className="text-xs text-red-600 dark:text-red-400">{t("Esta ficha foi rejeitada pela RAA e requer correção prioritária.")}</p>
                       </div>
                     </div>
                     {submissionQuery.data?.reviewNotes && (
                       <div className="mt-2 p-3 bg-white dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded">
                         <p className="text-sm text-red-800 dark:text-red-200">
-                          <strong>Notas do revisor:</strong> {submissionQuery.data.reviewNotes}
+                          <strong>{t("Notas do revisor:")}</strong> {submissionQuery.data.reviewNotes}
                         </p>
                       </div>
                     )}
@@ -727,7 +727,7 @@ export default function WeeklyForm() {
                         {/* RAA Review Feedback */}
                         {reviewFeedback && (reviewFeedback.comment || reviewFeedback.verdict === "nok") && (
                           <div className={`ml-8 p-2 border rounded text-xs ${reviewFeedback.verdict === "nok" ? "bg-red-100/80 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300" : "bg-green-100/80 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300"}`}>
-                            <strong>Comentário RAA:</strong> {reviewFeedback.comment || (reviewFeedback.verdict === "nok" ? "Medida marcada como não conforme — necessita correção." : "Conforme.")}
+                            <strong>{t("Comentário RAA:")}</strong> {reviewFeedback.comment || (reviewFeedback.verdict === "nok" ? "Medida marcada como não conforme — necessita correção." : "Conforme.")}
                           </div>
                         )}
 
@@ -861,7 +861,7 @@ export default function WeeklyForm() {
                 {mySubmissionsQuery.isLoading && (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">A carregar...</span>
+                    <span className="ml-2 text-sm text-muted-foreground">{t("A carregar...")}</span>
                   </div>
                 )}
                 {mySubmissionsQuery.isError && (
@@ -908,7 +908,7 @@ export default function WeeklyForm() {
                     {sub.status === "rejected" && (
                       <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span>Ação imediata necessária</span>
+                        <span>{t("Ação imediata necessária")}</span>
                       </div>
                     )}
                     <Button

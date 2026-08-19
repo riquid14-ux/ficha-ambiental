@@ -47,18 +47,18 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 
 function AuditLogTab() {
   const { data: logs, isLoading } = trpc.audit.list.useQuery({ limit: 200 });
-  if (isLoading) return <p className="text-sm text-muted-foreground">A carregar...</p>;
-  if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">Sem registos de auditoria.</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">{t("A carregar...")}</p>;
+  if (!logs || logs.length === 0) return <p className="text-sm text-muted-foreground">{t("Sem registos de auditoria.")}</p>;
   return (
     <div className="max-h-[500px] overflow-y-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-white border-b">
           <tr>
-            <th className="text-left p-2">Data</th>
-            <th className="text-left p-2">Utilizador</th>
+            <th className="text-left p-2">{t("Data")}</th>
+            <th className="text-left p-2">{t("Utilizador")}</th>
             <th className="text-left p-2">{t("Ação")}< /th>
-            <th className="text-left p-2">Entidade</th>
-            <th className="text-left p-2">Detalhes</th>
+            <th className="text-left p-2">{t("Entidade")}</th>
+            <th className="text-left p-2">{t("Detalhes")}</th>
           </tr>
         </thead>
         <tbody>
@@ -87,7 +87,7 @@ export default function AdminPanel() {
       <AppLayout>
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Acesso restrito a administradores e Dono de Obra.</p>
+            <p className="text-muted-foreground">{t("Acesso restrito a administradores e Dono de Obra.")}</p>
           </CardContent>
         </Card>
       </AppLayout>
@@ -327,10 +327,10 @@ function CompaniesTab() {
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead>Nome</TableHead>
+              <TableHead>{t("Nome")}</TableHead>
               <TableHead>Sigla</TableHead>
               <TableHead>Tipo</TableHead>
-              <TableHead>Projetos</TableHead>
+              <TableHead>{t("Projetos")}</TableHead>
               <TableHead>{t("Estado")}< /TableHead>
             </TableRow>
           </TableHeader>
@@ -464,9 +464,9 @@ function SubmissionsTab() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Semana</TableHead>
+              <TableHead>{t("Semana")}</TableHead>
               <TableHead>{t("Empresa")}< /TableHead>
-              <TableHead>Período</TableHead>
+              <TableHead>{t("Período")}</TableHead>
               <TableHead>{t("Estado")}< /TableHead>
               <TableHead>{t("Ações")}< /TableHead>
             </TableRow>
@@ -617,7 +617,7 @@ function UsersTab() {
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>{t("Email")}</Label>
                   <Input
                     type="email"
                     placeholder="email@empresa.pt"
@@ -641,7 +641,7 @@ function UsersTab() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Papel</Label>
+                  <Label>{t("Papel")}</Label>
                   <Select value={inviteRole} onValueChange={setInviteRole}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar papel" />
@@ -671,11 +671,11 @@ function UsersTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-               <TableHead>Papel</TableHead>
+                <TableHead>{t("Nome")}</TableHead>
+                <TableHead>{t("Email")}</TableHead>
+               <TableHead>{t("Papel")}</TableHead>
                <TableHead>{t("Empresa")}< /TableHead>
-               <TableHead>Projetos</TableHead>
+               <TableHead>{t("Projetos")}</TableHead>
                 <TableHead>Fases</TableHead>
               </TableRow>
             </TableHeader>
@@ -693,11 +693,11 @@ function UsersTab() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">Utilizador</SelectItem>
+                        <SelectItem value="user">{t("Utilizador")}</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="ee">EE</SelectItem>
-                        <SelectItem value="raa">RAA</SelectItem>
-                        <SelectItem value="rap">RAP</SelectItem>
+                        <SelectItem value="raa">{t("RAA")}</SelectItem>
+                        <SelectItem value="rap">{t("RAP")}</SelectItem>
                         <SelectItem value="dono_obra">{t("Dono de Obra")}< /SelectItem>
                       <SelectItem value="pm">PM — Project Manager</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
@@ -828,10 +828,10 @@ function UsersTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Email</TableHead>
+                  <TableHead>{t("Email")}</TableHead>
                   <TableHead>{t("Empresa")}< /TableHead>
-                  <TableHead>Papel</TableHead>
-                  <TableHead>Data</TableHead>
+                  <TableHead>{t("Papel")}</TableHead>
+                  <TableHead>{t("Data")}</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -943,11 +943,11 @@ function HistoricalTab() {
               </Select>
             </div>
             <div>
-              <Label>Semana</Label>
+              <Label>{t("Semana")}</Label>
               <Input type="number" min={1} max={53} value={weekNumber} onChange={(e) => setWeekNumber(e.target.value)} placeholder="Ex: 32" />
             </div>
             <div>
-              <Label>Ano</Label>
+              <Label>{t("Ano")}</Label>
               <Input type="number" min={2020} max={2030} value={weekYear} onChange={(e) => setWeekYear(e.target.value)} />
             </div>
             <div>
@@ -970,7 +970,7 @@ function HistoricalTab() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Semana</TableHead>
+                <TableHead>{t("Semana")}</TableHead>
                 <TableHead>{t("Empresa")}< /TableHead>
                 <TableHead>Ficheiro</TableHead>
                 <TableHead>Data Upload</TableHead>

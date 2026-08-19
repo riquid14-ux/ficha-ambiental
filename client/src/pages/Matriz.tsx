@@ -95,10 +95,10 @@ export default function Matriz(props: any) {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">Legenda:</span>
+              <span className="font-medium text-muted-foreground">{t("Legenda:")}</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-muted border border-border" />
-                <span>Sem ficha</span>
+                <span>{t("Sem ficha")}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-amber-400" />
@@ -115,14 +115,14 @@ export default function Matriz(props: any) {
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-red-500" />
-                <span>Rejeitada</span>
+                <span>{t("Rejeitada")}</span>
               </div>
               {isAllProjects && (
                 <>
                   <span className="text-muted-foreground">|</span>
                   <div className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded bg-purple-400" />
-                    <span>Parcialmente entregue</span>
+                    <span>{t("Parcialmente entregue")}</span>
                   </div>
                 </>
               )}
@@ -142,7 +142,7 @@ export default function Matriz(props: any) {
             {matrixQuery.isLoading && (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-muted-foreground">A carregar matriz...</span>
+                <span className="ml-2 text-muted-foreground">{t("A carregar matriz...")}</span>
               </div>
             )}
 
@@ -245,7 +245,7 @@ export default function Matriz(props: any) {
                   <p className="text-2xl font-bold text-emerald-600">
                     {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "approved").length, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Entregues</p>
+                  <p className="text-xs text-muted-foreground">{t("Entregues")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-blue-500">
@@ -257,13 +257,13 @@ export default function Matriz(props: any) {
                   <p className="text-2xl font-bold text-amber-500">
                     {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "draft").length, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Rascunho</p>
+                  <p className="text-xs text-muted-foreground">{t("Rascunho")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-red-500">
                     {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "rejected").length, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Rejeitadas</p>
+                  <p className="text-xs text-muted-foreground">{t("Rejeitadas")}</p>
                 </div>
               </div>
             </CardContent>

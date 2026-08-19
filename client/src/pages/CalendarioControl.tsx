@@ -74,7 +74,7 @@ export default function CalendarioControl() {
     return (
       <AppLayout>
         <div className="p-6">
-          <p className="text-muted-foreground">Acesso restrito a Admin e Dono de Obra.</p>
+          <p className="text-muted-foreground">{t("Acesso restrito a Admin e Dono de Obra.")}</p>
         </div>
       </AppLayout>
     );
@@ -115,31 +115,31 @@ export default function CalendarioControl() {
         {showAdd && (
           <Card className="border-primary/30">
             <CardContent className="p-4">
-              <h3 className="font-semibold text-sm mb-3">Adicionar Novo Evento</h3>
+              <h3 className="font-semibold text-sm mb-3">{t("Adicionar Novo Evento")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Nome</label>
+                  <label className="text-xs text-muted-foreground">{t("Nome")}</label>
                   <Input value={newEvent.name} onChange={e => setNewEvent(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Gases APA" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Projeto</label>
+                  <label className="text-xs text-muted-foreground">{t("Projeto")}</label>
                   <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.projectId} onChange={e => setNewEvent(p => ({ ...p, projectId: e.target.value }))}>
                     <option value="">— Todos —</option>
                     {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Periodicidade</label>
+                  <label className="text-xs text-muted-foreground">{t("Periodicidade")}</label>
                   <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(p => ({ ...p, periodicity: e.target.value }))}>
                     <option value="Anual">{t("Anual")}< /option>
-                    <option value="Semestral">Semestral</option>
-                    <option value="Trimestral">Trimestral</option>
-                    <option value="Mensal">Mensal</option>
-                    <option value="Pontual">Pontual</option>
+                    <option value="Semestral">{t("Semestral")}</option>
+                    <option value="Trimestral">{t("Trimestral")}</option>
+                    <option value="Mensal">{t("Mensal")}</option>
+                    <option value="Pontual">{t("Pontual")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Próxima Data</label>
+                  <label className="text-xs text-muted-foreground">{t("Próxima Data")}</label>
                   <Input type="date" value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
                 </div>
                 <div className="flex items-end gap-2">
@@ -172,11 +172,11 @@ export default function CalendarioControl() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left bg-muted/30">
-                    <th className="py-2.5 px-2 font-medium">Evento</th>
-                    <th className="py-2.5 px-2 font-medium">Projeto</th>
-                    <th className="py-2.5 px-2 font-medium">Periodicidade</th>
-                    <th className="py-2.5 px-2 font-medium">Próxima Data</th>
-                    <th className="py-2.5 px-2 font-medium">Responsável</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Evento")}</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Projeto")}</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Periodicidade")}</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Próxima Data")}</th>
+                    <th className="py-2.5 px-2 font-medium">{t("Responsável")}</th>
                     <th className="py-2.5 px-2 font-medium">{t("Estado")}< /th>
                     <th className="py-2.5 px-2 font-medium">{t("Ações")}< /th>
                   </tr>
@@ -204,10 +204,10 @@ export default function CalendarioControl() {
                               {isEditing ? (
                                 <select className="h-7 text-xs border rounded px-1" value={editData.periodicity} onChange={e => setEditData((p: any) => ({ ...p, periodicity: e.target.value }))}>
                                   <option value="Anual">{t("Anual")}< /option>
-                                  <option value="Semestral">Semestral</option>
-                                  <option value="Trimestral">Trimestral</option>
-                                  <option value="Mensal">Mensal</option>
-                                  <option value="Pontual">Pontual</option>
+                                  <option value="Semestral">{t("Semestral")}</option>
+                                  <option value="Trimestral">{t("Trimestral")}</option>
+                                  <option value="Mensal">{t("Mensal")}</option>
+                                  <option value="Pontual">{t("Pontual")}</option>
                                 </select>
                               ) : (
                                 <span>{evt.periodicity || "—"}</span>

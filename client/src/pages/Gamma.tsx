@@ -81,8 +81,8 @@ export default function Gamma() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">GAMMA — Sustentabilidade Comunitária</h1>
-            <p className="text-muted-foreground">Programa de apoio a projetos comunitários</p>
+            <h1 className="text-2xl font-bold">{t("GAMMA — Sustentabilidade Comunitária")}</h1>
+            <p className="text-muted-foreground">{t("Programa de apoio a projetos comunitários")}</p>
           </div>
           <div className="flex items-center gap-2">
             <Select value={String(activeEdition)} onValueChange={v => setActiveEdition(Number(v))}>
@@ -99,13 +99,13 @@ export default function Gamma() {
         {showNewEdition && (
           <Card className="border-green-200 bg-green-50">
             <CardContent className="p-4">
-              <h3 className="font-semibold mb-2">Criar Nova Edição</h3>
+              <h3 className="font-semibold mb-2">{t("Criar Nova Edição")}</h3>
               <div className="flex gap-2">
                 <Input placeholder="Nome da edição (ex: GAMMA 3.0)" value={newEditionName} onChange={e => setNewEditionName(e.target.value)} />
                 <Button onClick={createNewEdition}>Criar</Button>
                 <Button variant="outline" onClick={() => setShowNewEdition(false)}>{t("Cancelar")}< /Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">A nova edição será criada com os pilares e critérios padrão. Pode editá-los depois na tab Definições.</p>
+              <p className="text-xs text-muted-foreground mt-2">{t("A nova edição será criada com os pilares e critérios padrão. Pode editá-los depois na tab Definições.")}</p>
             </CardContent>
           </Card>
         )}
@@ -317,7 +317,7 @@ export default function Gamma() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
-                            <th className="text-left p-2">Projeto</th>
+                            <th className="text-left p-2">{t("Projeto")}</th>
                             <th className="text-left p-2">Pilar</th>
                             <th className="text-center p-2">Pontuação</th>
                             <th className="text-center p-2">{t("Estado")}< /th>
@@ -496,7 +496,7 @@ export default function Gamma() {
                           {isAdmin && (
                             <div className="flex gap-2 pt-2 border-t">
                               <select className="h-7 text-xs border rounded px-2" value={w.status} onChange={e => { const updated = [...winners]; updated[wi].status = e.target.value; setWinners(updated); }}>
-                                <option value="Em curso">Em curso</option><option value="Concluído">Concluído</option><option value="Suspenso">Suspenso</option>
+                                <option value="Em curso">Em curso</option><option value="Concluído">{t("Concluído")}</option><option value="Suspenso">Suspenso</option>
                               </select>
                               <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { setWinners(winners.filter((_, i) => i !== wi)); }}>
                                 <Trash2 className="w-3 h-3 mr-1" /> Remover

@@ -1,4 +1,5 @@
 import AppLayout from "@/components/AppLayout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function Profile() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const profileQuery = trpc.profile.get.useQuery();
   const utils = trpc.useUtils();
@@ -90,7 +92,7 @@ export default function Profile() {
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Perfil</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Perfil")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Gerir as suas informações pessoais
           </p>
@@ -111,7 +113,7 @@ export default function Profile() {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("Email")}</Label>
                   <Input
                     id="email"
                     value={profileQuery.data?.email || ""}
@@ -124,7 +126,7 @@ export default function Profile() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Papel</Label>
+                  <Label htmlFor="role">{t("Papel")}</Label>
                   <Input
                     id="role"
                     value={ROLE_LABELS[profileQuery.data?.role || "user"] || profileQuery.data?.role || ""}
@@ -138,7 +140,7 @@ export default function Profile() {
 
                 <div className="border-t pt-5 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="displayName">Nome de Perfil</Label>
+                    <Label htmlFor="displayName">{t("Nome de Perfil")}</Label>
                     <Input
                       id="displayName"
                       placeholder="Nome de perfil"
@@ -151,7 +153,7 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Nome Completo</Label>
+                    <Label htmlFor="fullName">{t("Nome Completo")}</Label>
                     <Input
                       id="fullName"
                       placeholder="Nome completo"
@@ -164,7 +166,7 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="jobTitle">Cargo</Label>
+                    <Label htmlFor="jobTitle">{t("Cargo")}</Label>
                     <Input
                       id="jobTitle"
                       placeholder="Cargo ou função"
@@ -211,15 +213,15 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Palavra-passe actual</Label>
+              <Label>{t("Palavra-passe actual")}</Label>
               <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Palavra-passe actual" />
             </div>
             <div className="space-y-2">
-              <Label>Nova palavra-passe</Label>
+              <Label>{t("Nova palavra-passe")}</Label>
               <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova palavra-passe (min. 6 caracteres)" />
             </div>
             <div className="space-y-2">
-              <Label>Confirmar nova palavra-passe</Label>
+              <Label>{t("Confirmar nova palavra-passe")}</Label>
               <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="Confirmar nova palavra-passe" />
             </div>
             <Button onClick={() => {

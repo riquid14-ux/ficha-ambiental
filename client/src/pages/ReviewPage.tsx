@@ -186,15 +186,15 @@ export default function ReviewPage(props: any) {
   }, [verdicts]);
 
   if (!canSee) {
-    const restricted = <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">Acesso restrito.</p></CardContent></Card>;
+    const restricted = <Card><CardContent className="p-8 text-center"><p className="text-muted-foreground">{t("Acesso restrito.")}</p></CardContent></Card>;
     return embedded ? restricted : <AppLayout>{restricted}</AppLayout>;
   }
 
   const mainContent = (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Revisão de Fichas</h1>
-          <p className="text-muted-foreground text-sm mt-1">Reveja, comente e aprove fichas submetidas pelas empresas</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Revisão de Fichas")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("Reveja, comente e aprove fichas submetidas pelas empresas")}</p>
         </div>
 
         {/* Pending Review */}
@@ -208,9 +208,9 @@ export default function ReviewPage(props: any) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Semana</TableHead>
+                  <TableHead>{t("Semana")}</TableHead>
                   <TableHead>{t("Empresa")}< /TableHead>
-                  <TableHead>Período</TableHead>
+                  <TableHead>{t("Período")}</TableHead>
                   <TableHead>{t("Ações")}< /TableHead>
                 </TableRow>
               </TableHeader>
@@ -250,7 +250,7 @@ export default function ReviewPage(props: any) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Semana</TableHead>
+                  <TableHead>{t("Semana")}</TableHead>
                   <TableHead>{t("Empresa")}< /TableHead>
                   <TableHead>{t("Estado")}< /TableHead>
                   <TableHead>{t("Notas")}< /TableHead>
@@ -275,7 +275,7 @@ export default function ReviewPage(props: any) {
                   );
                 })}
                 {reviewed.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma ficha revista ainda</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">{t("Nenhuma ficha revista ainda")}</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -295,14 +295,14 @@ export default function ReviewPage(props: any) {
               <div className="space-y-4">
                 {/* Summary info */}
                 <div className="flex flex-wrap gap-4 text-sm bg-muted/50 p-3 rounded-lg">
-                  <span><strong>Empresa:</strong> {companyMap.get(selectedSubmission.companyId)?.shortName}</span>
-                  <span><strong>Período:</strong> {selectedSubmission.weekStartDate} - {selectedSubmission.weekEndDate}</span>
-                  <span><strong>Marcadas:</strong> {verdictCounts.total} ({verdictCounts.ok} ✓ / {verdictCounts.nok} ✗)</span>
+                  <span><strong>{t("Empresa:")}</strong> {companyMap.get(selectedSubmission.companyId)?.shortName}</span>
+                  <span><strong>{t("Período:")}</strong> {selectedSubmission.weekStartDate} - {selectedSubmission.weekEndDate}</span>
+                  <span><strong>{t("Marcadas:")}</strong> {verdictCounts.total} ({verdictCounts.ok} ✓ / {verdictCounts.nok} ✗)</span>
                 </div>
 
                 {/* Status filter */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Filtrar:</span>
+                  <span className="text-sm font-medium text-muted-foreground">{t("Filtrar:")}</span>
                   <Button size="sm" variant={measureFilter === "all" ? "default" : "outline"} onClick={() => setMeasureFilter("all")}>
                     Todos ({statusCounts.total})
                   </Button>
@@ -388,7 +388,7 @@ export default function ReviewPage(props: any) {
                 </Accordion>
 
                 {filteredMeasuresBySection.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">Nenhuma medida com o estado selecionado</p>
+                  <p className="text-center text-muted-foreground py-8">{t("Nenhuma medida com o estado selecionado")}</p>
                 )}
 
                 {/* General notes + action buttons */}
@@ -401,8 +401,8 @@ export default function ReviewPage(props: any) {
                     {/* FLOW-04: Block self-approval in UI */}
                     {(selectedSubmission?.createdBy === user?.id || selectedSubmission?.submittedBy === user?.id) ? (
                       <div className="w-full text-center p-3 bg-amber-50 border border-amber-200 rounded-md">
-                        <p className="text-sm text-amber-700 font-medium">Não pode aprovar/rejeitar uma ficha que criou ou submeteu.</p>
-                        <p className="text-xs text-amber-600 mt-1">Separação de funções: peça a outro revisor para avaliar esta ficha.</p>
+                        <p className="text-sm text-amber-700 font-medium">{t("Não pode aprovar/rejeitar uma ficha que criou ou submeteu.")}</p>
+                        <p className="text-xs text-amber-600 mt-1">{t("Separação de funções: peça a outro revisor para avaliar esta ficha.")}</p>
                       </div>
                     ) : (
                       <>
@@ -434,7 +434,7 @@ export default function ReviewPage(props: any) {
               <div className="space-y-4">
                 {/* Status filter buttons */}
                 <div className="flex flex-wrap gap-2 items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Filtrar por:</span>
+                  <span className="text-sm font-medium text-muted-foreground">{t("Filtrar por:")}</span>
                   <Button size="sm" variant={measureFilter === "all" ? "default" : "outline"} onClick={() => setMeasureFilter("all")}>
                     Todos ({statusCounts.total})
                   </Button>
@@ -488,7 +488,7 @@ export default function ReviewPage(props: any) {
                 </Accordion>
 
                 {filteredMeasuresBySection.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">Nenhuma medida com o estado selecionado</p>
+                  <p className="text-center text-muted-foreground py-8">{t("Nenhuma medida com o estado selecionado")}</p>
                 )}
               </div>
             )}

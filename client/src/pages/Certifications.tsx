@@ -156,7 +156,7 @@ export default function Certifications() {
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input type="radio" name={item.id} checked={state.status === "done"} onChange={() => updateItemState(item.id, "status", "done")} className="accent-green-600" />
-                    <span className="text-green-700 font-medium">Concluído</span>
+                    <span className="text-green-700 font-medium">{t("Concluído")}</span>
                   </label>
                   <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                     <input type="radio" name={item.id} checked={state.status === "progress"} onChange={() => updateItemState(item.id, "status", "progress")} className="accent-amber-600" />
@@ -197,7 +197,7 @@ export default function Certifications() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Certificações — SIN01 NEST</h1>
+          <h1 className="text-2xl font-bold">{t("Certificações — SIN01 NEST")}</h1>
           <p className="text-muted-foreground">LEED O&M v4.1 · EED (Art. 12.º Dir. 2023/1791) · CELE (EU ETS)</p>
         </div>
 
@@ -207,7 +207,7 @@ export default function Certifications() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-green-600" />
-                <span className="font-semibold">LEED O&M v4.1</span>
+                <span className="font-semibold">{t("LEED O&M v4.1")}</span>
               </div>
               <p className="text-xs text-muted-foreground mb-2">{LEED_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens de dados · 6 categorias</p>
               <p className="text-xs text-muted-foreground">100 pontos possíveis · Submissão via Arc/LEED Online</p>
@@ -222,7 +222,7 @@ export default function Certifications() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-blue-600" />
-                <span className="font-semibold">EED — Centros de Dados</span>
+                <span className="font-semibold">{t("EED — Centros de Dados")}</span>
               </div>
               <p className="text-xs text-muted-foreground mb-2">{EED_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens · 5 categorias · 24 KPIs</p>
               <p className="text-xs text-muted-foreground">Art. 12.º Dir. (UE) 2023/1791 · Submissão à DGEG até 15 maio</p>
@@ -233,11 +233,11 @@ export default function Certifications() {
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-orange-600" />
-                <span className="font-semibold">CELE — EU ETS</span>
+                <span className="font-semibold">{t("CELE — EU ETS")}</span>
               </div>
               <p className="text-xs text-muted-foreground mb-2">{CELE_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens · 3 categorias · Geradores de emergência</p>
               <p className="text-xs text-muted-foreground">RAE via SIRAPA/APA até 31 março · Licenças até 30 abril</p>
-              <Badge variant="outline" className="mt-2 text-[10px] bg-orange-50">Instalações com TEGEE</Badge>
+              <Badge variant="outline" className="mt-2 text-[10px] bg-orange-50">{t("Instalações com TEGEE")}</Badge>
             </CardContent>
           </Card>
         </div>
@@ -264,7 +264,7 @@ export default function Certifications() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="leed">LEED O&M v4.1</TabsTrigger>
+            <TabsTrigger value="leed">{t("LEED O&M v4.1")}</TabsTrigger>
             <TabsTrigger value="eed">EED</TabsTrigger>
             <TabsTrigger value="cele">CELE</TabsTrigger>
           </TabsList>

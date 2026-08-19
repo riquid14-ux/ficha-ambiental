@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ const PAGE_OPTIONS = [
 ];
 
 export default function ImagesTab() {
+  const { t } = useLanguage();
   const { data: settings, refetch } = trpc.appSettings.getAll.useQuery();
   const updateMutation = trpc.appSettings.update.useMutation({
     onSuccess: () => {
@@ -199,10 +201,10 @@ export default function ImagesTab() {
             </Button>
           ) : (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
-              <Label className="font-medium text-sm">Nova localização de imagem</Label>
+              <Label className="font-medium text-sm">{t("Nova localização de imagem")}</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Nome</Label>
+                  <Label className="text-xs text-muted-foreground">{t("Nome")}</Label>
                   <Input
                     placeholder="Ex: Banner principal, Hero..."
                     value={newLocationName}
@@ -210,7 +212,7 @@ export default function ImagesTab() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Página onde inserir</Label>
+                  <Label className="text-xs text-muted-foreground">{t("Página onde inserir")}</Label>
                   <Select value={newLocationPage} onValueChange={setNewLocationPage}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione a página..." />
@@ -237,7 +239,7 @@ export default function ImagesTab() {
 
         <div className="bg-muted/50 rounded-lg p-3">
           <p className="text-xs text-muted-foreground">
-            <strong>Dica:</strong> Vá a <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento vertical (ex: "30% do topo" mostra mais a parte superior da foto).
+            <strong>{t("Dica:")}</strong> Vá a <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento vertical (ex: "30% do topo" mostra mais a parte superior da foto).
           </p>
         </div>
       </CardContent>

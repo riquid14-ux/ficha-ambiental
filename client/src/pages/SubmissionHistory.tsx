@@ -226,8 +226,8 @@ export default function SubmissionHistory(props: any) {
   const inner = (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Histórico de Submissões</h1>
-          <p className="text-muted-foreground text-sm mt-1">Consulte e exporte fichas por período ou por medida</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Histórico de Submissões")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("Consulte e exporte fichas por período ou por medida")}</p>
         </div>
 
         {/* View mode toggle: Submissions vs Deleted */}
@@ -287,11 +287,11 @@ export default function SubmissionHistory(props: any) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="week">Semana</SelectItem>
-                    <SelectItem value="month">Mês</SelectItem>
-                    <SelectItem value="quarter">Trimestre</SelectItem>
-                    <SelectItem value="semester">Semestre</SelectItem>
+                    <SelectItem value="all">{t("Todos")}</SelectItem>
+                    <SelectItem value="week">{t("Semana")}</SelectItem>
+                    <SelectItem value="month">{t("Mês")}</SelectItem>
+                    <SelectItem value="quarter">{t("Trimestre")}</SelectItem>
+                    <SelectItem value="semester">{t("Semestre")}</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -301,7 +301,7 @@ export default function SubmissionHistory(props: any) {
                       <SelectValue placeholder="Selecionar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="all">{t("Todos")}</SelectItem>
                       {filterOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
@@ -324,7 +324,7 @@ export default function SubmissionHistory(props: any) {
             </div>
 
             {submissionsQuery.isLoading ? (
-              <div className="text-muted-foreground text-sm">A carregar...</div>
+              <div className="text-muted-foreground text-sm">{t("A carregar...")}</div>
             ) : filteredSubmissions.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -406,7 +406,7 @@ export default function SubmissionHistory(props: any) {
             <Card>
               <CardContent className="p-5 space-y-5">
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1">Exportar Evolução por Medida</h3>
+                  <h3 className="font-semibold text-foreground mb-1">{t("Exportar Evolução por Medida")}</h3>
                   <p className="text-sm text-muted-foreground">
                     Selecione uma ou mais medidas e um período para gerar um PDF com a evolução semanal (estado, observações e fotos).
                   </p>
@@ -415,7 +415,7 @@ export default function SubmissionHistory(props: any) {
                 {/* Period and Status filters */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Data Início</Label>
+                    <Label className="text-xs font-medium">{t("Data Início")}</Label>
                     <Input
                       type="date"
                       value={measureStartDate}
@@ -423,7 +423,7 @@ export default function SubmissionHistory(props: any) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Data Fim</Label>
+                    <Label className="text-xs font-medium">{t("Data Fim")}</Label>
                     <Input
                       type="date"
                       value={measureEndDate}
@@ -431,13 +431,13 @@ export default function SubmissionHistory(props: any) {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Filtrar por Estado</Label>
+                    <Label className="text-xs font-medium">{t("Filtrar por Estado")}</Label>
                     <Select value={measureStatusFilter} onValueChange={setMeasureStatusFilter}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos os estados</SelectItem>
+                        <SelectItem value="all">{t("Todos os estados")}</SelectItem>
                         <SelectItem value="I">{t("Implementado")}< /SelectItem>
                         <SelectItem value="C">{t("Conforme")}< /SelectItem>
                         <SelectItem value="NC">{t("Não Conforme")}< /SelectItem>
@@ -583,11 +583,11 @@ function DeletionHistoryView() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Semana</TableHead>
+              <TableHead>{t("Semana")}</TableHead>
               <TableHead>{t("Empresa")}< /TableHead>
-              <TableHead>Eliminado por</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead>Recuperar</TableHead>
+              <TableHead>{t("Eliminado por")}</TableHead>
+              <TableHead>{t("Data")}</TableHead>
+              <TableHead>{t("Recuperar")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -632,9 +632,9 @@ function DeletionHistoryView() {
                       Recuperar ({daysLeft}d)
                     </Button>
                   ) : daysSince > 21 ? (
-                    <span className="text-xs text-muted-foreground">Expirado</span>
+                    <span className="text-xs text-muted-foreground">{t("Expirado")}</span>
                   ) : (
-                    <span className="text-xs text-muted-foreground">Sem permissão</span>
+                    <span className="text-xs text-muted-foreground">{t("Sem permissão")}</span>
                   )}
                 </TableCell>
                 </>);

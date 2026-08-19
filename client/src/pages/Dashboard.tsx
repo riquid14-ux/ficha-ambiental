@@ -153,7 +153,7 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Dashboard")}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t("Visão geral do cumprimento ambiental")}< /p>
           </div>
         </div>
@@ -187,12 +187,12 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Card><CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-600">15</p>
-                <p className="text-xs text-muted-foreground">Medidas Exploração</p>
+                <p className="text-xs text-muted-foreground">{t("Medidas Exploração")}</p>
               </CardContent></Card>
               <Card className="cursor-pointer hover:border-sky-300" onClick={() => window.location.href = "/calendario"}>
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold text-sky-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents || calEvents.length === 0) return "—"; const next = calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) > new Date()).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate))[0]; return next ? new Date(Number(next.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</p>
-                  <p className="text-xs text-muted-foreground">Próximo Reporting</p>
+                  <p className="text-xs text-muted-foreground">{t("Próximo Reporting")}</p>
                 </CardContent>
               </Card>
               <Card className="cursor-pointer hover:border-amber-300" onClick={() => window.location.href = "/mirr"}>
@@ -212,7 +212,7 @@ export default function Dashboard() {
               <CardContent>
                 {(() => {
                   const calEvents = calendarEventsQuery?.data;
-                  if (!calEvents || calEvents.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem eventos de reporting configurados.</p>;
+                  if (!calEvents || calEvents.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Sem eventos de reporting configurados.")}</p>;
                   const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5);
                   return (
                     <div className="space-y-2">
@@ -266,7 +266,7 @@ export default function Dashboard() {
               <CardContent>
                 {(() => {
                   const waste = wasteQuery?.data;
-                  if (!waste || waste.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Sem e-GARs registadas. Vá ao MIRR para registar.</p>;
+                  if (!waste || waste.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>;
                   const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
                   const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
                   const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
@@ -373,7 +373,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     );
-                  }) : <p className="text-xs text-muted-foreground">A carregar...</p>}
+                  }) : <p className="text-xs text-muted-foreground">{t("A carregar...")}</p>}
                 </div>
               </CardContent>
             </Card>

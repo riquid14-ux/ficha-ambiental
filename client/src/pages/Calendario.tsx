@@ -319,7 +319,7 @@ export default function Calendario() {
         <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">Legenda:</span>
+              <span className="font-medium text-muted-foreground">{t("Legenda:")}</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
                 <span>{t("Prazo Regulatório de Submissão")}< /span>
@@ -339,7 +339,7 @@ export default function Calendario() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-600" />
-                <span>Em Incumprimento</span>
+                <span>{t("Em Incumprimento")}</span>
               </div>
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
@@ -368,7 +368,7 @@ export default function Calendario() {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
-            <span>Em Incumprimento</span>
+            <span>{t("Em Incumprimento")}</span>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -379,7 +379,7 @@ export default function Calendario() {
                   <Clock className="w-5 h-5 text-emerald-700" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-emerald-600 font-medium">Próxima Entrega</p>
+                  <p className="text-xs text-emerald-600 font-medium">{t("Próxima Entrega")}</p>
                   <p className="font-semibold text-sm text-emerald-900 truncate">{nextEvent.name}</p>
                   <p className="text-xs text-emerald-700">
                     {nextEvent.date.toLocaleDateString("pt-PT", { day: "2-digit", month: "long" })}
@@ -436,7 +436,7 @@ export default function Calendario() {
                 {selectedDay.toLocaleDateString("pt-PT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
               </h3>
               {selectedDayEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sem reportings agendados neste dia.</p>
+                <p className="text-sm text-muted-foreground">{t("Sem reportings agendados neste dia.")}</p>
               ) : (
                 <div className="space-y-2">
                   {selectedDayEvents.map(evt => (
@@ -488,11 +488,11 @@ export default function Calendario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Evento")}</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Periodicidade")}</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Responsável")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">Estado por Projeto</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Próxima Data</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Próxima Data")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -579,12 +579,12 @@ export default function Calendario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Evento</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Projeto</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Periodicidade</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Evento")}</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Projeto")}</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Periodicidade")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Data Limite")}< /th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Responsável</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Entidade</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Responsável")}</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Entidade")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Estado")}< /th>
                       {isAdminOrDono && <th className="py-2 px-2 font-medium text-muted-foreground">{t("Ação")}< /th>}
                     </tr>
@@ -676,11 +676,11 @@ export default function Calendario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Evento</th>
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Projeto</th>
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Periodicidade</th>
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Data</th>
-                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">Responsável</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Evento")}</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Projeto")}</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Periodicidade")}</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Data")}</th>
+                      <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Responsável")}</th>
                       <th className="py-2 px-2 text-xs font-medium text-muted-foreground">{t("Ações")}< /th>
                     </tr>
                   </thead>
@@ -741,18 +741,18 @@ export default function Calendario() {
               <h3 className="text-lg font-semibold mb-4">{t("Editar Evento")}< /h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Nome</label>
+                  <label className="text-xs text-muted-foreground">{t("Nome")}</label>
                   <Input value={editingEvent.name} onChange={e => setEditingEvent({...editingEvent, name: e.target.value})} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">Periodicidade</label>
+                    <label className="text-xs text-muted-foreground">{t("Periodicidade")}</label>
                     <select className="w-full h-9 border rounded-md px-2 text-sm" value={editingEvent.periodicity || "Anual"} onChange={e => setEditingEvent({...editingEvent, periodicity: e.target.value})}>
-                      <option value="Anual">{t("Anual")}< /option><option value="Semestral">Semestral</option><option value="Trimestral">Trimestral</option><option value="Mensal">Mensal</option><option value="Pontual">Pontual</option>
+                      <option value="Anual">{t("Anual")}< /option><option value="Semestral">{t("Semestral")}</option><option value="Trimestral">{t("Trimestral")}</option><option value="Mensal">{t("Mensal")}</option><option value="Pontual">{t("Pontual")}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Data</label>
+                    <label className="text-xs text-muted-foreground">{t("Data")}</label>
                     <Input type="date" value={editingEvent.nextDate ? new Date(editingEvent.nextDate).toISOString().split("T")[0] : ""} onChange={e => setEditingEvent({...editingEvent, nextDate: e.target.value})} />
                   </div>
                 </div>
@@ -784,13 +784,13 @@ export default function Calendario() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground">Periodicidade</label>
+                    <label className="text-xs text-muted-foreground">{t("Periodicidade")}</label>
                     <select className="w-full h-9 border rounded-md px-2 text-sm" value={newEvent.periodicity} onChange={e => setNewEvent(prev => ({ ...prev, periodicity: e.target.value }))}>
                       <option value="Anual">{t("Anual")}< /option>
-                      <option value="Semestral">Semestral</option>
-                      <option value="Trimestral">Trimestral</option>
-                      <option value="Mensal">Mensal</option>
-                      <option value="Pontual">Pontual</option>
+                      <option value="Semestral">{t("Semestral")}</option>
+                      <option value="Trimestral">{t("Trimestral")}</option>
+                      <option value="Mensal">{t("Mensal")}</option>
+                      <option value="Pontual">{t("Pontual")}</option>
                     </select>
                   </div>
                   <div>
@@ -803,7 +803,7 @@ export default function Calendario() {
                   <Input type="date" value={newEvent.date} onChange={e => setNewEvent(prev => ({ ...prev, date: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Entidade</label>
+                  <label className="text-xs text-muted-foreground">{t("Entidade")}</label>
                   <Input value={newEvent.entityToDeliver} onChange={e => setNewEvent(prev => ({ ...prev, entityToDeliver: e.target.value }))} placeholder="Ex: APA, CCDR, Câmara Municipal" />
                 </div>
                 <div>

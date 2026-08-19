@@ -1,4 +1,5 @@
 import {
+import { useLanguage } from "@/contexts/LanguageContext";
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -174,6 +175,7 @@ import { toast as sonnerToast } from "sonner";
 import { AIChatBox, type Message } from "@/components/AIChatBox";
 
 export default function ComponentsShowcase() {
+  const { t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [datePickerDate, setDatePickerDate] = useState<Date>();
@@ -409,7 +411,7 @@ export default function ComponentsShowcase() {
             <Card>
               <CardContent className="pt-6 space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("Email")}</Label>
                   <Input id="email" type="email" placeholder="Email" />
                 </div>
                 <div className="space-y-2">

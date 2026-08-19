@@ -70,7 +70,7 @@ export default function Workflow() {
         {/* Visual Workflow Diagram - always visible */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Fluxo de Submissão de Fichas</CardTitle>
+            <CardTitle className="text-base">{t("Fluxo de Submissão de Fichas")}</CardTitle>
           </CardHeader>
           <CardContent>
             <WorkflowDiagram />
@@ -108,7 +108,7 @@ export default function Workflow() {
               {workflowQuery.isLoading && (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">A carregar...</span>
+                  <span className="ml-2 text-sm text-muted-foreground">{t("A carregar...")}</span>
                 </div>
               )}
 
@@ -164,7 +164,7 @@ export default function Workflow() {
         {/* Roles explanation */}
         <Card className="bg-muted/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Papéis no Processo</CardTitle>
+            <CardTitle className="text-sm">{t("Papéis no Processo")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -174,25 +174,25 @@ export default function Workflow() {
                 </div>
                 <div>
                   <p className="font-medium">{t("Entidade Executante")}< /p>
-                  <p className="text-muted-foreground">Preenche e submete a ficha semanal com evidências fotográficas e documentais.</p>
+                  <p className="text-muted-foreground">{t("Preenche e submete a ficha semanal com evidências fotográficas e documentais.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
                 <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                  <span className="text-purple-700 font-bold text-[10px]">RAP</span>
+                  <span className="text-purple-700 font-bold text-[10px]">{t("RAP")}</span>
                 </div>
                 <div>
-                  <p className="font-medium">Resp. Acompanhamento do Projeto</p>
-                  <p className="text-muted-foreground">Preenche e submete a ficha semanal com evidências fotográficas e documentais.</p>
+                  <p className="font-medium">{t("Resp. Acompanhamento do Projeto")}</p>
+                  <p className="text-muted-foreground">{t("Preenche e submete a ficha semanal com evidências fotográficas e documentais.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
                 <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <span className="text-amber-700 font-bold text-[10px]">RAA</span>
+                  <span className="text-amber-700 font-bold text-[10px]">{t("RAA")}</span>
                 </div>
                 <div>
-                  <p className="font-medium">Resp. Acompanhamento Ambiental</p>
-                  <p className="text-muted-foreground">Revê, comenta, aprova ou rejeita as fichas submetidas. Garante conformidade.</p>
+                  <p className="font-medium">{t("Resp. Acompanhamento Ambiental")}</p>
+                  <p className="text-muted-foreground">{t("Revê, comenta, aprova ou rejeita as fichas submetidas. Garante conformidade.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
@@ -201,7 +201,7 @@ export default function Workflow() {
                 </div>
                 <div>
                   <p className="font-medium">{t("Dono de Obra")}< /p>
-                  <p className="text-muted-foreground">Supervisiona o processo global, gere fases e define o workflow do projeto.</p>
+                  <p className="text-muted-foreground">{t("Supervisiona o processo global, gere fases e define o workflow do projeto.")}</p>
                 </div>
               </div>
             </div>
@@ -257,12 +257,12 @@ function WorkflowDiagram() {
                 <div className="w-full p-3 rounded-lg bg-green-50 border border-green-200 text-center">
                   <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-1" />
                   <p className="text-sm font-semibold text-green-800">{t("Aprovada")}< /p>
-                  <p className="text-xs text-green-700 mt-1">Ficha validada e arquivada no histórico</p>
+                  <p className="text-xs text-green-700 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
                 </div>
                 <ArrowDown className="w-4 h-4 text-green-500" />
                 <div className="text-center px-2 py-1.5 rounded bg-green-100/50 border border-green-200">
-                  <p className="text-xs text-green-800 font-medium">Disponível no Histórico</p>
-                  <p className="text-[10px] text-green-700">Exportável em PDF</p>
+                  <p className="text-xs text-green-800 font-medium">{t("Disponível no Histórico")}</p>
+                  <p className="text-[10px] text-green-700">{t("Exportável em PDF")}</p>
                 </div>
               </div>
 
@@ -270,18 +270,18 @@ function WorkflowDiagram() {
               <div className="flex flex-col items-center gap-2">
                 <div className="w-full p-3 rounded-lg bg-red-50 border border-red-200 text-center">
                   <XCircle className="w-6 h-6 text-red-600 mx-auto mb-1" />
-                  <p className="text-sm font-semibold text-red-800">Rejeitada</p>
-                  <p className="text-xs text-red-700 mt-1">RAA adiciona comentários com motivo da rejeição</p>
+                  <p className="text-sm font-semibold text-red-800">{t("Rejeitada")}</p>
+                  <p className="text-xs text-red-700 mt-1">{t("RAA adiciona comentários com motivo da rejeição")}</p>
                 </div>
                 <ArrowDown className="w-4 h-4 text-red-500" />
                 <div className="text-center px-2 py-1.5 rounded bg-red-100/50 border border-red-200">
-                  <p className="text-xs text-red-800 font-medium">Volta para Rascunhos</p>
-                  <p className="text-[10px] text-red-700">EE/RAP corrige e resubmete</p>
+                  <p className="text-xs text-red-800 font-medium">{t("Volta para Rascunhos")}</p>
+                  <p className="text-[10px] text-red-700">{t("EE/RAP corrige e resubmete")}</p>
                 </div>
                 <ArrowDown className="w-4 h-4 text-muted-foreground" />
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <RotateCcw className="w-3 h-3" />
-                  <span>Volta ao passo 1</span>
+                  <span>{t("Volta ao passo 1")}</span>
                 </div>
               </div>
             </div>

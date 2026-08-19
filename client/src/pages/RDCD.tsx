@@ -195,7 +195,7 @@ export default function RDCD() {
     return (
       <AppLayout>
         <div className="p-6">
-          <p className="text-muted-foreground">Acesso restrito a Admin e Dono de Obra.</p>
+          <p className="text-muted-foreground">{t("Acesso restrito a Admin e Dono de Obra.")}</p>
         </div>
       </AppLayout>
     );
@@ -232,10 +232,10 @@ export default function RDCD() {
         {step === 1 && (
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">Selecionar Projeto(s)</h2>
-              <p className="text-sm text-muted-foreground mb-4">Escolha os projetos a incluir neste RDCD. Pode selecionar um, vários ou todos.</p>
+              <h2 className="text-lg font-semibold mb-1">{t("Selecionar Projeto(s)")}</h2>
+              <p className="text-sm text-muted-foreground mb-4">{t("Escolha os projetos a incluir neste RDCD. Pode selecionar um, vários ou todos.")}</p>
               <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={selectAllProjects}>Selecionar Todos</Button>
+                <Button size="sm" variant="outline" onClick={selectAllProjects}>{t("Selecionar Todos")}</Button>
                 <Button size="sm" variant="outline" onClick={() => setSelectedProjects([])}>{t("Limpar")}< /Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -270,18 +270,18 @@ export default function RDCD() {
               <p className="text-sm text-muted-foreground mb-4">Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="text-sm font-medium">Semana de início</label>
+                  <label className="text-sm font-medium">{t("Semana de início")}</label>
                   <input type="week" className="w-full h-9 border rounded-md px-3 text-sm mt-1" value={startWeek} onChange={e => setStartWeek(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Semana de fim</label>
+                  <label className="text-sm font-medium">{t("Semana de fim")}</label>
                   <input type="week" className="w-full h-9 border rounded-md px-3 text-sm mt-1" value={endWeek} onChange={e => setEndWeek(e.target.value)} />
                 </div>
               </div>
               {startWeek && endWeek && (
                 <div className="bg-muted/50 rounded-lg p-3 mb-4">
                   <p className="text-sm">
-                    <span className="font-medium">Período selecionado:</span> {startWeek} a {endWeek}
+                    <span className="font-medium">{t("Período selecionado:")}</span> {startWeek} a {endWeek}
                     {(() => {
                       const [y1, w1] = startWeek.split("-W").map(Number);
                       const [y2, w2] = endWeek.split("-W").map(Number);
@@ -295,12 +295,12 @@ export default function RDCD() {
               <div className="border rounded-lg p-4 mb-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Checkbox checked={includePlans} onCheckedChange={(v) => setIncludePlans(!!v)} id="include-plans" />
-                  <label htmlFor="include-plans" className="text-sm font-medium cursor-pointer">Incluir Planos de Monitorização no RDCD</label>
+                  <label htmlFor="include-plans" className="text-sm font-medium cursor-pointer">{t("Incluir Planos de Monitorização no RDCD")}</label>
                 </div>
                 {includePlans && plans && plans.length > 0 && (
                   <div className="ml-6 space-y-1.5">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-muted-foreground">Selecione os planos a incluir:</p>
+                      <p className="text-xs text-muted-foreground">{t("Selecione os planos a incluir:")}</p>
                       <button className="text-[10px] text-blue-600 hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
                         {selectedPlanIds.length === plans.length ? "Desselecionar todos" : "Selecionar todos"}
                       </button>
@@ -360,11 +360,11 @@ export default function RDCD() {
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-gray-700">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
-                  <p className="text-xs text-gray-600">N/A</p>
+                  <p className="text-xs text-gray-600">{t("N/A")}</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-amber-700">{compiledMeasures.filter(m => m.autoStatus === "pending").length}</p>
-                  <p className="text-xs text-amber-600">Sem dados</p>
+                  <p className="text-xs text-amber-600">{t("Sem dados")}</p>
                 </div>
               </div>
               {/* Measures list */}
@@ -396,7 +396,7 @@ export default function RDCD() {
                       </div>
                       {m.autoStatus === "conform" && m.responses.length > 0 && (
                         <div className="mt-2 pl-3 border-l-2 border-green-200">
-                          <p className="text-xs text-muted-foreground mb-1">Selecione semanas a incluir como evidência:</p>
+                          <p className="text-xs text-muted-foreground mb-1">{t("Selecione semanas a incluir como evidência:")}</p>
                           <div className="flex flex-wrap gap-1">
                             {m.responses.slice(0, 10).map((r: any, i: number) => {
                               const weekKey = `${r.year}-W${r.week}`;
@@ -424,7 +424,7 @@ export default function RDCD() {
                   );
                 })}
                 {compiledMeasures.filter(m => m.totalResponses > 0).length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhuma ficha aprovada encontrada no período selecionado. Verifique os projetos e semanas escolhidos.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("Nenhuma ficha aprovada encontrada no período selecionado. Verifique os projetos e semanas escolhidos.")}</p>
                 )}
               </div>
               <div className="flex justify-between mt-6">
@@ -443,16 +443,16 @@ export default function RDCD() {
         {step === 4 && (
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">Pré-visualização do RDCD</h2>
-              <p className="text-sm text-muted-foreground mb-4">Reveja o resumo antes de gerar o documento Word.</p>
+              <h2 className="text-lg font-semibold mb-1">{t("Pré-visualização do RDCD")}</h2>
+              <p className="text-sm text-muted-foreground mb-4">{t("Reveja o resumo antes de gerar o documento Word.")}</p>
               
               <div className="border rounded-lg p-4 space-y-4 bg-muted/20 mb-6">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Projetos</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Projetos")}</p>
                   <p className="text-sm">{projects.filter(p => selectedProjects.includes(p.id)).map(p => p.code).join(", ")}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">Período</p>
+                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Período")}</p>
                   <p className="text-sm">{startWeek} a {endWeek}</p>
                 </div>
                 <div>

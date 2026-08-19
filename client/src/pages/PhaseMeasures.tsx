@@ -237,7 +237,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
         <Card className="border-blue-200 bg-blue-50/50">
           <CardContent className="p-3">
             <p className="text-sm text-blue-800">
-              <strong>Modo de visualização.</strong> Apenas o Dono de Obra, Admin e RAA podem editar o estado das medidas.
+              <strong>{t("Modo de visualização.")}</strong> Apenas o Dono de Obra, Admin e RAA podem editar o estado das medidas.
             </p>
           </CardContent>
         </Card>
@@ -281,7 +281,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                 {isAdminOrDono && (
                   <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
                     <DialogTrigger asChild>
-                      <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />Adicionar Medida</Button>
+                      <Button size="sm" variant="outline"><Plus className="w-4 h-4 mr-1" />{t("Adicionar Medida")}</Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
@@ -324,7 +324,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  <p className="text-xs text-muted-foreground mb-3">Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.</p>
+                  <p className="text-xs text-muted-foreground mb-3">{t("Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.")}</p>
                   {(phaseData[phase.key] || []).map(({ measures: phaseMeasures }: any) =>
                     phaseMeasures.map((m: any) => (
                       <div key={m.id} className="flex items-center gap-2 p-2 rounded border bg-white">
@@ -364,7 +364,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                 {measures.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>Nenhuma medida registada nesta fase.</p>
+                    <p>{t("Nenhuma medida registada nesta fase.")}</p>
                     {isAdminOrDono && <p className="text-sm">Use o botão "Adicionar Medida" para começar.</p>}
                   </div>
                 ) : measures.map((measure: any) => (
@@ -494,7 +494,7 @@ function MeasureCard({
                   <>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
-                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Concluído</Label>
+                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">{t("Concluído")}</Label>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />

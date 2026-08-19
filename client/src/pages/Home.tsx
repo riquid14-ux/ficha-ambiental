@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, BarChart3, Shield, Upload } from "lucide-react";
@@ -6,6 +7,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 
 export default function Home() {
+  const { t } = useLanguage();
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -18,7 +20,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">A carregar...</div>
+        <div className="animate-pulse text-muted-foreground">{t("A carregar...")}</div>
       </div>
     );
   }

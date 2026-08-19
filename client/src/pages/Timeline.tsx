@@ -202,7 +202,7 @@ export default function Timeline() {
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
           <Layers className="w-6 h-6" /> Timeline do Projeto
         </h1>
-        <p className="text-muted-foreground">Visão geral do estado de cada projeto e a fase em que se encontra.</p>
+        <p className="text-muted-foreground">{t("Visão geral do estado de cada projeto e a fase em que se encontra.")}</p>
 
         {/* Brand image */}
         <div className="relative rounded-xl overflow-hidden h-44">
@@ -260,7 +260,7 @@ export default function Timeline() {
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground text-center">Selecione um projeto no menu lateral para ver o detalhe completo da timeline.</p>
+        <p className="text-xs text-muted-foreground text-center">{t("Selecione um projeto no menu lateral para ver o detalhe completo da timeline.")}</p>
       </div></AppLayout>
     );
   }
@@ -317,7 +317,7 @@ export default function Timeline() {
         <Card className="border-amber-200 bg-amber-50/50">
           <CardContent className="p-4 space-y-3">
             <p className="text-sm font-semibold flex items-center gap-1"><Settings className="w-4 h-4" /> Definições da Timeline</p>
-            <p className="text-xs text-muted-foreground">Ocultar fases, definir datas de início/fim (sincroniza com calendário)</p>
+            <p className="text-xs text-muted-foreground">{t("Ocultar fases, definir datas de início/fim (sincroniza com calendário)")}</p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {phaseData.map((phase: any) => (
                 <div key={phase.key} className="flex items-center gap-2 p-2 border rounded bg-white text-xs">
@@ -437,7 +437,7 @@ export default function Timeline() {
       {visiblePhaseData.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <Layers className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>Nenhuma fase com medidas encontrada.</p>
+          <p>{t("Nenhuma fase com medidas encontrada.")}</p>
         </div>
       )}
       </>)}

@@ -132,7 +132,7 @@ export default function Gamma() {
             <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
             <TabsTrigger value="vencedores">Vencedores</TabsTrigger>
             <TabsTrigger value="plano">Plano de Apoio</TabsTrigger>
-            {isAdmin && <TabsTrigger value="definicoes">Definições</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="definicoes">{t("Definições")}</TabsTrigger>}
           </TabsList>
 
           {/* Portfolio */}
@@ -452,7 +452,7 @@ export default function Gamma() {
                       </select>
                       <Input placeholder="Montante (€)..." value={newWinner.amount} onChange={e => setNewWinner({...newWinner, amount: e.target.value})} className="h-8 text-sm" />
                     </div>
-                    <Button size="sm" onClick={() => { if (newWinner.name) { setWinners([...winners, {...newWinner, startDate: "", endDate: "", milestones: "", budget: newWinner.amount || "", timeline: [{phase: "Arranque", date: "", done: false}, {phase: "Meio-termo", date: "", done: false}, {phase: "Conclusão", date: "", done: false}]}]); setNewWinner({name: "", entity: "", pillar: "", amount: "", status: "Em curso"}); setShowAddWinner(false); toast.success("Vencedor adicionado!"); } }}>Confirmar</Button>
+                    <Button size="sm" onClick={() => { if (newWinner.name) { setWinners([...winners, {...newWinner, startDate: "", endDate: "", milestones: "", budget: newWinner.amount || "", timeline: [{phase: "Arranque", date: "", done: false}, {phase: "Meio-termo", date: "", done: false}, {phase: "Conclusão", date: "", done: false}]}]); setNewWinner({name: "", entity: "", pillar: "", amount: "", status: "Em curso"}); setShowAddWinner(false); toast.success("Vencedor adicionado!"); } }}>{t("Confirmar")}</Button>
                   </div>
                 )}
                 {winners.length === 0 ? (

@@ -2,7 +2,8 @@ import React from 'react';
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { LOGO_URL } from "@/lib/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -125,6 +126,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
   const { language, setLanguage, t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   // Password verification for OAuth-authenticated users
   const [passwordVerified, setPasswordVerified] = useState(() => sessionStorage.getItem("pw_verified") === "1");
   const [pwInput, setPwInput] = useState("");
@@ -344,6 +346,9 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                     <span>{language === "pt" ? "🇬🇧 English" : "🇵🇹 Português"}</span>
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => toggleTheme?.()} className="cursor-pointer">
+                  <span>{theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   <span>{t("Deixar Feedback")}</span>
@@ -448,7 +453,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               )}
             </div>
             <div className="flex gap-2 justify-end">
-              <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>Cancelar</button>
+              <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>{t("Cancelar")}</button>
               <button className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>
             </div>
           </div>

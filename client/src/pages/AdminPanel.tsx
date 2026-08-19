@@ -100,7 +100,7 @@ export default function AdminPanel() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Administração</h1>
-          <p className="text-muted-foreground text-sm mt-1">Gestão de empresas, utilizadores e submissões</p>
+          <p className="text-muted-foreground text-sm mt-1">{t("Gestão de empresas, utilizadores e submissões")}</p>
         </div>
 
         {/* Explanatory Roles Panel */}
@@ -108,7 +108,7 @@ export default function AdminPanel() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tipos de Entidade e Permissões</h3>
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Tipos de Entidade e Permissões")}</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
@@ -279,7 +279,7 @@ function CompaniesTab() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Empresas / Entidades</CardTitle>
+        <CardTitle className="text-base">{t("Empresas / Entidades")}</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Empresa</Button>
@@ -874,7 +874,7 @@ function UsersTab() {
             <p className="text-sm mb-2">Escreva o nome para confirmar:</p>
             <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
             <div className="flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
+              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{t("Confirmar")}</Button>
               <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}</Button>
             </div>
           </div>

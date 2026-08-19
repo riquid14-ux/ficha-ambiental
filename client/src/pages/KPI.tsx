@@ -159,13 +159,13 @@ export default function KPI() {
           <Card className="border-l-4 border-l-blue-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Água Construção")}</p><p className="text-xl font-bold text-blue-600">{formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L</p></CardContent></Card>
           <Card className="border-l-4 border-l-amber-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Combustível Total")}</p><p className="text-xl font-bold text-amber-600">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
           <Card className="border-l-4 border-l-green-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("HVO")}</p><p className="text-xl font-bold text-green-600">{formatNumber(totals[findMetric("emissions", "HVO")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
-          <Card className="border-l-4 border-l-purple-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">Eletricidade</p><p className="text-xl font-bold text-purple-600">{formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh</p></CardContent></Card>
+          <Card className="border-l-4 border-l-purple-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Eletricidade")}</p><p className="text-xl font-bold text-purple-600">{formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh</p></CardContent></Card>
         </div>
 
         {/* Settings */}
         {showSettings && user?.role === "admin" && (
           <Card className="border-amber-200 bg-amber-50/50">
-            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="w-4 h-4 inline mr-1" />Definições</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="w-4 h-4 inline mr-1" />{t("Definições")}</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <div className="grid gap-1 max-h-40 overflow-y-auto text-xs">
                 {metrics.map((m: any) => (

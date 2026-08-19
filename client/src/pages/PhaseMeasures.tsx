@@ -508,7 +508,7 @@ function MeasureCard({
                 )}
               </RadioGroup>
               <Input
-                placeholder="Notas rápidas..."
+                placeholder={t("Notas rápidas") + "..."}
                 className="h-8 text-xs flex-1"
                 value={notes}
                 onChange={e => onNotesChange(e.target.value)}
@@ -549,7 +549,7 @@ function MeasureCard({
               {isEditable && (
                 <div className="flex gap-1">
                   <Input
-                    placeholder="Adicionar comentário..."
+                    placeholder={t("Adicionar comentário") + "..."}
                     className="h-7 text-xs"
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}

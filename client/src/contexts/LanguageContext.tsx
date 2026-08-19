@@ -530,6 +530,55 @@ const translations: Record<string, Record<Lang, string>> = {
   "Página onde inserir": { pt: "Página onde inserir", en: "Page to insert" },
   "Dica:": { pt: "Dica:", en: "Tip:" },
   "Periodicidade": { pt: "Periodicidade", en: "Frequency" },
+    "Visão geral": { pt: "Visão geral", en: "Overview" },
+  "Gestão de": { pt: "Gestão de", en: "Management of" },
+  "Configurações": { pt: "Configurações", en: "Settings" },
+  "Selecione": { pt: "Selecione", en: "Select" },
+  "Nenhum": { pt: "Nenhum", en: "None" },
+  "Comentários": { pt: "Comentários", en: "Comments" },
+  "Ficheiros": { pt: "Ficheiros", en: "Files" },
+  "Fotos": { pt: "Fotos", en: "Photos" },
+  "Notas rápidas": { pt: "Notas rápidas", en: "Quick notes" },
+  "Adicionar comentário": { pt: "Adicionar comentário", en: "Add comment" },
+  "Anexar Ficheiro": { pt: "Anexar Ficheiro", en: "Attach File" },
+  "Adicionar Foto": { pt: "Adicionar Foto", en: "Add Photo" },
+  "Atualizar": { pt: "Atualizar", en: "Update" },
+  "Próximo": { pt: "Próximo", en: "Next" },
+  "Anterior": { pt: "Anterior", en: "Previous" },
+  "Convite": { pt: "Convite", en: "Invitation" },
+  "Melhoria": { pt: "Melhoria", en: "Improvement" },
+  "Pedido": { pt: "Pedido", en: "Request" },
+  "Sigla": { pt: "Sigla", en: "Abbreviation" },
+  "Visão Agregada": { pt: "Visão Agregada", en: "Aggregated View" },
+  "Filtros": { pt: "Filtros", en: "Filters" },
+  "Resumo": { pt: "Resumo", en: "Summary" },
+  "Taxa": { pt: "Taxa", en: "Rate" },
+  "Evolução": { pt: "Evolução", en: "Evolution" },
+  "Distribuição": { pt: "Distribuição", en: "Distribution" },
+  "Cumprimento": { pt: "Cumprimento", en: "Compliance" },
+  "Conformidade": { pt: "Conformidade", en: "Conformity" },
+  "Submetida": { pt: "Submetida", en: "Submitted" },
+  "Ver calendário": { pt: "Ver calendário", en: "View calendar" },
+  "Ver timeline": { pt: "Ver timeline", en: "View timeline" },
+  "Fases do Projeto": { pt: "Fases do Projeto", en: "Project Phases" },
+  "Estado por Projeto": { pt: "Estado por Projeto", en: "Status by Project" },
+  "Datas de entrega": { pt: "Datas de entrega", en: "Delivery dates" },
+  "Ciclo de vida dos projetos": { pt: "Ciclo de vida dos projetos", en: "Project lifecycle" },
+  "Selecione um projeto": { pt: "Selecione um projeto", en: "Select a project" },
+  "Tipos de Entidade e Permissões": { pt: "Tipos de Entidade e Permissões", en: "Entity Types and Permissions" },
+  "Gestão de empresas": { pt: "Gestão de empresas", en: "Company management" },
+  "Gestão de empresas, utilizadores e submissões": { pt: "Gestão de empresas, utilizadores e submissões", en: "Company, user and submission management" },
+  "Empresas / Entidades": { pt: "Empresas / Entidades", en: "Companies / Entities" },
+  "Timeline do Projeto": { pt: "Timeline do Projeto", en: "Project Timeline" },
+  "Fases dos Projetos": { pt: "Fases dos Projetos", en: "Project Phases" },
+  "Visão rápida do estado de cada projeto": { pt: "Visão rápida do estado de cada projeto", en: "Quick view of each project's status" },
+  "Em curso": { pt: "Em curso", en: "In Progress" },
+  "reportings atribuídos": { pt: "reportings atribuídos", en: "assigned reportings" },
+  "Conformidade (I+C)": { pt: "Conformidade (I+C)", en: "Compliance (I+C)" },
+  "Não Conformidade": { pt: "Não Conformidade", en: "Non-Compliance" },
+  "Visão Agregada — Fichas de Controlo": { pt: "Visão Agregada — Fichas de Controlo", en: "Aggregated View — Control Forms" },
+  "Filtros e gráficos de evolução das fichas submetidas.": { pt: "Filtros e gráficos de evolução das fichas submetidas.", en: "Filters and evolution charts for submitted forms." },
+  "Histórico PDF": { pt: "Histórico PDF", en: "PDF History" },
 };
 
 interface LanguageContextType {
@@ -557,7 +606,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const entry = translations[key];
     if (!entry) return key;
     return entry[language] || key;
-  };
+};
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

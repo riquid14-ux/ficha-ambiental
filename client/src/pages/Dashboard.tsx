@@ -476,7 +476,7 @@ export default function Dashboard() {
             {/* Quick Stats */}
             <Card>
               <CardContent className="p-4 space-y-3">
-                <p className="text-sm font-semibold">Resumo Geral</p>
+                <p className="text-sm font-semibold">{t("Resumo Geral")}</p>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
                     <span className="text-xs font-medium">{t("Total de Fichas")}</span>
@@ -541,7 +541,7 @@ export default function Dashboard() {
                   <FolderKanban className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-sm">Visão Agregada — Fichas de Controlo</p>
+                  <p className="font-semibold text-sm">{t("Visão Agregada — Fichas de Controlo")}</p>
                   <p className="text-xs text-muted-foreground">Filtros e gráficos de evolução das fichas submetidas.</p>
                 </div>
               </div>

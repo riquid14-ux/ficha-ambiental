@@ -319,7 +319,7 @@ export default function Calendario() {
         <Card className="mb-4">
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">{t("Legenda:")}</span>
+              <span className="font-medium text-muted-foreground">{t("Legenda")}:</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-slate-400 border border-slate-500" />
                 <span>{t("Prazo Regulatório de Submissão")}</span>
@@ -491,7 +491,7 @@ export default function Calendario() {
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Evento")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Periodicidade")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Responsável")}</th>
-                      <th className="py-2 px-2 font-medium text-muted-foreground">Estado por Projeto</th>
+                      <th className="py-2 px-2 font-medium text-muted-foreground">{t("Estado por Projeto")}</th>
                       <th className="py-2 px-2 font-medium text-muted-foreground">{t("Próxima Data")}</th>
                     </tr>
                   </thead>

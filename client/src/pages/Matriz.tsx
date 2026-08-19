@@ -95,7 +95,7 @@ export default function Matriz(props: any) {
         <Card>
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">{t("Legenda:")}</span>
+              <span className="font-medium text-muted-foreground">{t("Legenda")}:</span>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-muted border border-border" />
                 <span>{t("Sem ficha")}</span>

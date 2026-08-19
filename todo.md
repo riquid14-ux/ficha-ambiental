@@ -317,7 +317,7 @@
 ## Critical Fixes - Must be 100%
 - [ ] Dark mode must work 100% on ALL pages - iterate until perfect
 - [ ] EN translation must work 100% - zero PT words when in English mode
-- [ ] Upload de fotos nas fichas semanais - verificar SIN03-SIN07 e sub estação
+- [x] Upload de fotos nas fichas semanais (already works for draft/rejected) - verificar SIN03-SIN07 e sub estação
 - [x] Revisão: mostrar quem criou e quem aprovou cada ficha
 - [x] Histórico: botão eliminar com confirmação (admin escreve "eliminar" + nome empresa)
 - [x] Email notificação quando ficha é eliminada (quem eliminou + hora)

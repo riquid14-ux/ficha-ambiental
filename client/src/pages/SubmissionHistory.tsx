@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 type FilterPeriod = "all" | "week" | "month" | "quarter" | "semester";
 
 function getMonthFromWeek(weekNumber: number, year: number): number {
@@ -72,6 +73,17 @@ export default function SubmissionHistory(props: any) {
 
   const companiesQuery = trpc.companies.list.useQuery();
   const companyMap = new Map(companiesQuery.data?.map((c) => [c.id, c]) || []);
+
+  const usersQuery = trpc.users.list.useQuery(undefined, { enabled: user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" });
+  const userMap = new Map((usersQuery.data || []).map((u: any) => [u.id, u.name || u.email]));
+  const getUserName = (id: number | null | undefined) => id ? (userMap.get(id) || `#${id}`) : "-";
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const deleteMutation = trpc.submissions.delete.useMutation({
+    onSuccess: () => { toast.success(t("Ficha eliminada com sucesso")); submissionsQuery.refetch(); setDeleteDialogOpen(false); setDeleteTarget(null); setDeleteConfirmText(""); },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   // Fetch measures and sections for per-measure export
   const measuresQuery = trpc.measures.list.useQuery();
@@ -360,6 +372,10 @@ export default function SubmissionHistory(props: any) {
                               <span className="ml-2">— {companyMap.get(sub.companyId)?.shortName}</span>
                             )}
                           </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {t("Criado por")}: {getUserName(sub.createdBy)}
+                            {sub.reviewedBy && <> · {t("Aprovado por")}: {getUserName(sub.reviewedBy)}</>}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -377,6 +393,20 @@ export default function SubmissionHistory(props: any) {
                             }}
                           >
                             <Download className="w-4 h-4 mr-1" /> PDF
+                          </Button>
+                        )}
+                        {user?.role === "admin" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(sub);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
                         <Badge
@@ -521,8 +551,36 @@ export default function SubmissionHistory(props: any) {
         )}
       </div>
   );
+
+  const deleteDialog = (
+    <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteDialogOpen(false); setDeleteTarget(null); setDeleteConfirmText(""); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-destructive">{t("Eliminar Ficha Semanal")}</DialogTitle>
+        </DialogHeader>
+        {deleteTarget && (
+          <div className="space-y-4">
+            <p className="text-sm">
+              {t("Confirma que quer eliminar a ficha semanal da")} <strong>{companyMap.get(deleteTarget.companyId)?.shortName || "?"}</strong> — S{deleteTarget.weekNumber}/{deleteTarget.weekYear}?
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t("Criado por")}: {getUserName(deleteTarget.createdBy)} | {t("Aprovado por")}: {deleteTarget.reviewedBy ? getUserName(deleteTarget.reviewedBy) : "-"}
+            </p>
+            <div>
+              <label className="text-sm font-medium">{t("Escreva")} "<strong>eliminar</strong>" {t("para confirmar")}:</label>
+              <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="eliminar" className="mt-1" />
+            </div>
+            <Button variant="destructive" disabled={deleteConfirmText.toLowerCase() !== "eliminar" || deleteMutation.isPending} onClick={() => deleteMutation.mutate({ id: deleteTarget.id })} className="w-full">
+              {deleteMutation.isPending ? t("A eliminar...") : t("Confirmar Eliminação")}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   if (embedded) return inner;
-  return <AppLayout>{inner}</AppLayout>;
+  return <AppLayout>{inner}{deleteDialog}</AppLayout>;
 }
 
 function DeletionHistoryView() {

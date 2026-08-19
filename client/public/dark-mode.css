@@ -1,105 +1,138 @@
-/* ===== COMPREHENSIVE DARK MODE OVERRIDES ===== */
-/* This file is NOT processed by Tailwind/Vite CSS optimizer */
-/* It uses html.dark selectors with !important to override ALL hardcoded colors */
+/* ===== DARK MODE — Dual Theme Palette Swap ===== */
+/* When html.dark is active, ALL colors swap to dark equivalents */
 
-html.dark {
-  color-scheme: dark;
-}
-html.dark body {
-  background-color: #0f1117 !important;
-  color: #e5e5e5 !important;
+/* Force dark backgrounds on ALL elements */
+html.dark body,
+html.dark .bg-background,
+html.dark main,
+html.dark [data-sidebar="inset"] {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
 }
 
-/* Backgrounds */
-html.dark .bg-white { background-color: #1a1a2e !important; }
-html.dark .bg-gray-50, html.dark .bg-gray-100 { background-color: #1e1e32 !important; }
-html.dark .bg-gray-200, html.dark .bg-gray-300 { background-color: #2a2a3e !important; }
-html.dark .bg-green-50, html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
-html.dark .bg-green-100, html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
-html.dark .bg-green-600, html.dark .bg-emerald-600 { background-color: #059669 !important; }
-html.dark .bg-green-700, html.dark .bg-emerald-700, html.dark .bg-green-800 { background-color: #047857 !important; }
+/* Cards, dialogs, popovers */
+html.dark .bg-card,
+html.dark [class*="CardContent"],
+html.dark [role="dialog"],
+html.dark [data-radix-popper-content-wrapper] > div,
+html.dark .bg-popover {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+/* White backgrounds → dark */
+html.dark .bg-white { background-color: #1e293b !important; }
+html.dark .bg-gray-50, html.dark .bg-slate-50 { background-color: #1e293b !important; }
+html.dark .bg-gray-100, html.dark .bg-slate-100 { background-color: #334155 !important; }
+html.dark .bg-gray-200, html.dark .bg-slate-200 { background-color: #475569 !important; }
+
+/* Green backgrounds (brand) */
+html.dark .bg-green-50 { background-color: rgba(22, 163, 74, 0.1) !important; }
+html.dark .bg-green-100 { background-color: rgba(22, 163, 74, 0.15) !important; }
+html.dark .bg-green-200 { background-color: rgba(22, 163, 74, 0.2) !important; }
+html.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+
+/* Blue backgrounds */
 html.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
 html.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15) !important; }
-html.dark .bg-red-50, html.dark .bg-rose-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
-html.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
-html.dark .bg-yellow-50, html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
-html.dark .bg-yellow-100, html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.15) !important; }
-html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
-html.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
-html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1) !important; }
-html.dark .bg-cyan-50 { background-color: rgba(6, 182, 212, 0.1) !important; }
-html.dark .bg-green-50\/50, html.dark .bg-red-50\/50 { background-color: transparent !important; }
 
-/* Text colors */
-html.dark .text-gray-900, html.dark .text-gray-800 { color: #e5e5e5 !important; }
-html.dark .text-gray-700, html.dark .text-gray-600 { color: #d1d1d1 !important; }
-html.dark .text-gray-500, html.dark .text-gray-400 { color: #a0a0a0 !important; }
-html.dark .text-black { color: #f0f0f0 !important; }
-html.dark .text-green-600, html.dark .text-green-700, html.dark .text-green-800, html.dark .text-green-900 { color: #6ee7b7 !important; }
-html.dark .text-emerald-600, html.dark .text-emerald-700, html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7 !important; }
-html.dark .text-amber-600, html.dark .text-amber-700, html.dark .text-amber-800 { color: #fcd34d !important; }
-html.dark .text-yellow-600, html.dark .text-yellow-700 { color: #fcd34d !important; }
-html.dark .text-red-600, html.dark .text-red-700, html.dark .text-red-800 { color: #fca5a5 !important; }
-html.dark .text-blue-600, html.dark .text-blue-700, html.dark .text-blue-800 { color: #93c5fd !important; }
-html.dark .text-purple-600, html.dark .text-purple-700, html.dark .text-purple-800 { color: #c4b5fd !important; }
-html.dark .text-orange-600, html.dark .text-orange-700 { color: #fdba74 !important; }
-html.dark .text-indigo-600, html.dark .text-indigo-700 { color: #a5b4fc !important; }
+/* Red backgrounds */
+html.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+html.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
+
+/* Yellow/amber backgrounds */
+html.dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1) !important; }
+html.dark .bg-yellow-100 { background-color: rgba(234, 179, 8, 0.15) !important; }
+html.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+
+/* Purple backgrounds */
+html.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
+html.dark .bg-pink-50 { background-color: rgba(236, 72, 153, 0.1) !important; }
+
+/* Muted backgrounds */
+html.dark .bg-muted { background-color: #334155 !important; }
+html.dark .bg-muted\/50 { background-color: rgba(51, 65, 85, 0.5) !important; }
+html.dark .bg-accent { background-color: #334155 !important; }
+
+/* Dark text → light text */
+html.dark .text-gray-900, html.dark .text-slate-900 { color: #f1f5f9 !important; }
+html.dark .text-gray-800, html.dark .text-slate-800 { color: #e2e8f0 !important; }
+html.dark .text-gray-700, html.dark .text-slate-700 { color: #cbd5e1 !important; }
+html.dark .text-gray-600, html.dark .text-slate-600 { color: #94a3b8 !important; }
+html.dark .text-gray-500, html.dark .text-slate-500 { color: #94a3b8 !important; }
+html.dark .text-black { color: #f1f5f9 !important; }
+html.dark .text-foreground { color: #e2e8f0 !important; }
+
+/* Green text stays readable */
+html.dark .text-green-800, html.dark .text-green-900 { color: #86efac !important; }
+html.dark .text-green-700 { color: #4ade80 !important; }
+html.dark .text-red-800, html.dark .text-red-900 { color: #fca5a5 !important; }
+html.dark .text-blue-800, html.dark .text-blue-900 { color: #93c5fd !important; }
+html.dark .text-yellow-800 { color: #fde047 !important; }
+html.dark .text-purple-800 { color: #d8b4fe !important; }
 
 /* Borders */
-html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color: #333348 !important; }
-html.dark .border-green-200, html.dark .border-green-300, html.dark .border-emerald-200, html.dark .border-emerald-300 { border-color: rgba(16, 185, 129, 0.3) !important; }
-html.dark .border-blue-200, html.dark .border-blue-300 { border-color: rgba(59, 130, 246, 0.3) !important; }
-html.dark .border-red-200, html.dark .border-red-300, html.dark .border-red-500 { border-color: rgba(239, 68, 68, 0.4) !important; }
-html.dark .border-amber-200, html.dark .border-yellow-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
-html.dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3) !important; }
+html.dark .border-gray-200, html.dark .border-slate-200 { border-color: #334155 !important; }
+html.dark .border-gray-300, html.dark .border-slate-300 { border-color: #475569 !important; }
+html.dark .border-border { border-color: #334155 !important; }
+html.dark .border { border-color: #334155 !important; }
+html.dark .divide-gray-200 > * + * { border-color: #334155 !important; }
 
-/* Inputs and form elements */
+/* Inputs */
 html.dark input, html.dark textarea, html.dark select {
-  background-color: #1e1e32 !important;
-  color: #e5e5e5 !important;
-  border-color: #333348 !important;
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }
 html.dark input::placeholder, html.dark textarea::placeholder {
-  color: #666 !important;
+  color: #64748b !important;
 }
 
 /* Tables */
-html.dark table { background-color: #1a1a2e !important; }
-html.dark th { background-color: #1e1e32 !important; color: #e5e5e5 !important; }
-html.dark td { color: #d1d1d1 !important; border-color: #333348 !important; }
-html.dark tr:hover td { background-color: #252540 !important; }
-
-/* Dialogs and modals */
-html.dark [role="dialog"] { background-color: #1a1a2e !important; color: #e5e5e5 !important; }
-
-/* Dropdown menus */
-html.dark [data-radix-popper-content-wrapper] > div {
-  background-color: #1e1e32 !important;
-  border-color: #333348 !important;
-  color: #e5e5e5 !important;
-}
-
-/* Recharts */
-html.dark .recharts-cartesian-axis-tick-value { fill: #a0a0a0 !important; }
-html.dark .recharts-legend-item-text { color: #d1d1d1 !important; }
-html.dark .recharts-default-tooltip { background-color: #1e1e32 !important; border-color: #333348 !important; color: #e5e5e5 !important; }
+html.dark table thead { background-color: #1e293b !important; }
+html.dark table thead th { color: #94a3b8 !important; border-color: #334155 !important; }
+html.dark table tbody td { border-color: #334155 !important; }
+html.dark table tbody tr:hover { background-color: #334155 !important; }
 
 /* Tabs */
-html.dark [data-state="active"][role="tab"] { background-color: #1e1e32 !important; color: #e5e5e5 !important; }
+html.dark [role="tablist"] { background-color: #1e293b !important; }
+html.dark [role="tab"][data-state="active"] { background-color: #334155 !important; color: #e2e8f0 !important; }
+html.dark [role="tab"] { color: #94a3b8 !important; }
 
-/* Badges with colored backgrounds */
-html.dark .bg-green-100.text-green-700, html.dark .bg-green-100.text-green-800 { background-color: rgba(16,185,129,0.15) !important; color: #6ee7b7 !important; }
-html.dark .bg-red-100.text-red-700, html.dark .bg-red-100.text-red-800 { background-color: rgba(239,68,68,0.15) !important; color: #fca5a5 !important; }
-html.dark .bg-blue-100.text-blue-700, html.dark .bg-blue-100.text-blue-800 { background-color: rgba(59,130,246,0.15) !important; color: #93c5fd !important; }
-html.dark .bg-amber-100.text-amber-700, html.dark .bg-amber-100.text-amber-800 { background-color: rgba(245,158,11,0.15) !important; color: #fcd34d !important; }
-html.dark .bg-purple-100.text-purple-700, html.dark .bg-purple-100.text-purple-800 { background-color: rgba(168,85,247,0.15) !important; color: #c4b5fd !important; }
+/* Select/Dropdown */
+html.dark [role="listbox"], html.dark [role="option"] {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html.dark [role="option"]:hover, html.dark [role="option"][data-highlighted] {
+  background-color: #334155 !important;
+}
+
+/* Badges - keep colored but adjust for dark bg */
+html.dark .bg-primary\/10 { background-color: rgba(22, 163, 74, 0.15) !important; }
 
 /* Shadows */
-html.dark .shadow-sm, html.dark .shadow, html.dark .shadow-md, html.dark .shadow-lg {
-  --tw-shadow-color: rgba(0, 0, 0, 0.4) !important;
+html.dark .shadow, html.dark .shadow-sm, html.dark .shadow-md, html.dark .shadow-lg {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Scrollbar */
-html.dark ::-webkit-scrollbar-track { background: #1a1a2e; }
-html.dark ::-webkit-scrollbar-thumb { background: #333348; }
-html.dark ::-webkit-scrollbar-thumb:hover { background: #444460; }
+html.dark ::-webkit-scrollbar-track { background: #1e293b; }
+html.dark ::-webkit-scrollbar-thumb { background: #475569; }
+
+/* Charts - Recharts */
+html.dark .recharts-cartesian-grid line { stroke: #334155 !important; }
+html.dark .recharts-text { fill: #94a3b8 !important; }
+html.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+
+/* Accordion */
+html.dark [data-state="open"] > .border-b { border-color: #334155 !important; }
+
+/* Footer warning bar */
+html.dark footer, html.dark .fixed.bottom-0 {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}

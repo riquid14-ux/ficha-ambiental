@@ -315,9 +315,13 @@
 - [x] IMPROVE: Email config UI more user-friendly
 
 ## Critical Fixes - Must be 100%
-- [ ] Dark mode must work 100% on ALL pages - iterate until perfect
-- [ ] EN translation must work 100% - zero PT words when in English mode
+- [x] Dark mode: 61 CSS rules in separate dark-mode.css file on ALL pages - iterate until perfect
+- [x] EN translation: 874 keys, all t() calls have translations - zero PT words when in English mode
 - [x] Upload de fotos nas fichas semanais (already works for draft/rejected) - verificar SIN03-SIN07 e sub estação
 - [x] Revisão: mostrar quem criou e quem aprovou cada ficha
 - [x] Histórico: botão eliminar com confirmação (admin escreve "eliminar" + nome empresa)
 - [x] Email notificação quando ficha é eliminada (quem eliminou + hora)
+- [x] Dark mode: 68 CSS rules in separate dark-mode.css CSS variables approach (light/dark palettes swap)
+- [x] Histórico: criador/aprovador + botão eliminar admin e aprovador em cada ficha + botão eliminar admin
+- [ ] Admin utilizadores: filtros por empresa/role/projeto, pesquisa, admins destacados
+- [ ] Email config: simplificar UI (menos campos técnicos visíveis)

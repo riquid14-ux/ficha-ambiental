@@ -416,7 +416,7 @@ export const appRouter = router({
         await db.updateCompany(id, data);
         return { success: true };
       }),
-  }),
+
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
@@ -428,6 +428,7 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+  }),
 
   // ─── Users Management (Admin / Dono de Obra) ──────────────────────────────
   users: router({

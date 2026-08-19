@@ -529,6 +529,9 @@ function UsersTab() {
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
 
   const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const deleteUserMutation = trpc.auth.deleteUser.useMutation({
     onSuccess: () => { toast.success(t("Utilizador eliminado")); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
@@ -604,10 +607,53 @@ function UsersTab() {
 
   return (
     <div className="space-y-6">
+      {/* Search and Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex-1 min-w-[200px]">
+          <Input
+            placeholder={t("Pesquisar") + " (nome, email)"}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <select
+          className="border rounded-md px-3 py-2 text-sm bg-background"
+          value={filterRole}
+          onChange={(e) => setFilterRole(e.target.value)}
+        >
+          <option value="all">{t("Todos")} Roles</option>
+          <option value="admin">Admin</option>
+          <option value="dono_obra">Dono de Obra</option>
+          <option value="pm">PM</option>
+          <option value="ee">EE</option>
+          <option value="rap">RAP</option>
+          <option value="raa">RAA</option>
+          <option value="observador">Observador</option>
+        </select>
+        <select
+          className="border rounded-md px-3 py-2 text-sm bg-background"
+          value={filterProject}
+          onChange={(e) => setFilterProject(e.target.value)}
+        >
+          <option value="all">{t("Todos")} {t("Projetos")}</option>
+          {projectsQuery.data?.map((p: any) => (
+            <option key={p.id} value={String(p.id)}>{p.code}</option>
+          ))}
+        </select>
+        <span className="text-sm text-muted-foreground">
+          {usersQuery.data?.filter((u: any) => {
+            const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchRole = filterRole === "all" || u.role === filterRole;
+            const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
+            return matchSearch && matchRole && matchProject;
+          })?.length || 0} {t("Utilizadores")}
+        </span>
+      </div>
       {/* Invite User Button + Dialog */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">{t(Utilizadores)}</CardTitle>
+          <CardTitle className="text-base">{t("Utilizadores")}</CardTitle>
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -684,7 +730,7 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersQuery.data?.map((u) => (
+              {usersQuery.data?.filter((u: any) => { const ms = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase()); const mr = filterRole === "all" || u.role === filterRole; const mp = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject)); return ms && mr && mp; }).map((u: any) => (
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">{u.name || "-"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>

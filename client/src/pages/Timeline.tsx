@@ -279,6 +279,11 @@ export default function Timeline() {
           )}
         </div>
       </div>
+      {/* Sub-navigation: Vista Geral | Fases */}
+      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+        <span className="px-4 py-1.5 rounded text-sm font-medium bg-white shadow text-foreground">Vista Geral</span>
+        <a href="/fases" className="px-4 py-1.5 rounded text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">Fases</a>
+      </div>
 
       {/* Admin Settings Panel */}
       {showSettings && user?.role === "admin" && (

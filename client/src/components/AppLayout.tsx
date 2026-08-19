@@ -54,7 +54,6 @@ const projectMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: Layers, label: "Fases", path: "/fases" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },

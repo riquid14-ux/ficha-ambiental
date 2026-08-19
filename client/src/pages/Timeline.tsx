@@ -57,6 +57,7 @@ export default function Timeline() {
 
   const [showSettings, setShowSettings] = useState(false);
   const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); projectPhasesQuery.refetch(); } });
+  const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">("timeline");
   const projectId = activeProject?.id;
 
   // Fetch all sections and measures
@@ -437,4 +438,3 @@ export default function Timeline() {
     </div>
   </AppLayout>);
 }
-  const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">("timeline");

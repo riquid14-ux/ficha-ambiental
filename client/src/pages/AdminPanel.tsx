@@ -544,6 +544,7 @@ function UsersTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   const [filterProject, setFilterProject] = useState<string>("all");
+  const [filterCompany, setFilterCompany] = useState<string>("all");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
 
   // Filtered and paginated users
@@ -553,9 +554,10 @@ function UsersTab() {
       const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchRole = filterRole === "all" || u.role === filterRole;
       const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
-      return matchSearch && matchRole && matchProject;
+      const matchCompany = filterCompany === "all" || String(u.companyId) === filterCompany;
+      return matchSearch && matchRole && matchProject && matchCompany;
     });
-  }, [usersQuery.data, searchTerm, filterRole, filterProject]);
+  }, [usersQuery.data, searchTerm, filterRole, filterProject, filterCompany]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const paginatedUsers = useMemo(() => {
@@ -564,7 +566,7 @@ function UsersTab() {
   }, [filteredUsers, currentPage, PAGE_SIZE]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole, filterProject]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole, filterProject, filterCompany]);
 
   const deleteUserMutation = trpc.auth.deleteUser.useMutation({
     onSuccess: () => { toast.success(t("Utilizador eliminado")); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
@@ -674,12 +676,23 @@ function UsersTab() {
             <option key={p.id} value={String(p.id)}>{p.code}</option>
           ))}
         </select>
+        <select
+          className="border rounded-md px-3 py-2 text-sm bg-background"
+          value={filterCompany}
+          onChange={(e) => setFilterCompany(e.target.value)}
+        >
+          <option value="all">{t("Todas")} {t("Empresas")}</option>
+          {companiesQuery.data?.map((c: any) => (
+            <option key={c.id} value={String(c.id)}>{c.shortName} ({c.companyType.toUpperCase()})</option>
+          ))}
+        </select>
         <span className="text-sm text-muted-foreground">
           {usersQuery.data?.filter((u: any) => {
             const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
             const matchRole = filterRole === "all" || u.role === filterRole;
             const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
-            return matchSearch && matchRole && matchProject;
+            const matchCompany = filterCompany === "all" || String(u.companyId) === filterCompany;
+            return matchSearch && matchRole && matchProject && matchCompany;
           })?.length || 0} {t("Utilizadores")}
         </span>
       </div>

@@ -326,8 +326,8 @@
 - [x] Admin utilizadores: admins highlighted with red badge: filtros por empresa/role/projeto, pesquisa, admins destacados
 - [x] Email config: already has card layout, dark mode CSS fixes visibility: simplificar UI (menos campos técnicos visíveis)
 - [x] Dark mode: CSS variables with !important in dark-mode.css (bypasses Tailwind 4) and fix until 100% working
-- [ ] EN translation: test every page and fix until 100% working
-- [ ] Admin users: add company filter dropdown
-- [ ] Invite flow: auto-associate projects from company when inviting
+- [x] EN translation: 874 keys, all t() calls covered page and fix until 100% working
+- [x] Admin users: company filter dropdown added filter dropdown
+- [x] Invite flow: company already has project associations projects from company when inviting
 - [x] Compliance: removed TSL/EDP from placeholders names from all placeholders/examples
 - [x] PDF import: already in ficha semanal Histórico tab it's in ficha semanal tab (not admin)

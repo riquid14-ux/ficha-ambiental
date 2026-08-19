@@ -143,6 +143,7 @@ export default function WeeklyForm() {
         setLocation(`/ficha/${data.id}`, { replace: true });
       }
     },
+    onError: (e: any) => toast.error(e.message || "Erro ao criar ficha"),
   });
 
   const submissionId = params.id ? Number(params.id) : createOrGetMutation.data?.id;

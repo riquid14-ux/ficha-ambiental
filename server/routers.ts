@@ -221,7 +221,7 @@ export const appRouter = router({
         if (!u.passwordResetToken || u.passwordResetToken !== input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Token inválido" });
         if (u.passwordResetExpiry && Date.now() > u.passwordResetExpiry) throw new TRPCError({ code: "BAD_REQUEST", message: "Token expirado" });
         const hash = await bcrypt.hash(input.newPassword, 10);
-        await database.update(schema.users).set({ passwordHash: hash, mustChangePassword: false, passwordResetToken: null, passwordResetExpiry: null }).where(eq(schema.users.id, user.id));
+        await database.update(schema.users).set({ passwordHash: hash, mustChangePassword: 0, passwordResetToken: null, passwordResetExpiry: null }).where(eq(schema.users.id, user.id));
         return { success: true };
       }),
     // ─── Verify 2FA code ────────────────────────────────────────────────────

@@ -12,6 +12,8 @@ const DEFAULT_IMAGE_KEYS = [
   { key: "image_dashboard", label: "Dashboard", description: "Imagem de topo no Dashboard (todos os projetos)" },
   { key: "image_timeline", label: "Timeline", description: "Imagem de topo na página Timeline" },
   { key: "image_ficha_semanal", label: "Ficha Semanal", description: "Imagem de topo na Ficha Semanal" },
+  { key: "image_calendario", label: "Calendário", description: "Imagem de topo na página Calendário" },
+  { key: "image_login", label: "Login", description: "Imagem lateral na página de Login" },
 ];
 
 const POSITION_OPTIONS = [

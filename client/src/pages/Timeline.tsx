@@ -62,6 +62,7 @@ export default function Timeline() {
 
   // Fetch all sections and measures
   const { data: allSections } = trpc.sections.list.useQuery();
+  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
   const { data: allMeasures } = trpc.measures.list.useQuery();
 
   // Fetch phase measure statuses for the selected project
@@ -269,7 +270,7 @@ export default function Timeline() {
       <div>
         {/* Brand banner */}
         <div className="relative rounded-xl overflow-hidden h-32 mb-4">
-          <img src="/manus-storage/sc-datacenter-1_78c8d65f.jpg" alt="Start Campus" className="w-full h-full object-cover" />
+          <img src={brandImages?.image_timeline || "/manus-storage/sc-datacenter-1_78c8d65f.jpg"} alt="Start Campus" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_timeline_position || "center" }} />
           <div className="absolute inset-0 bg-gradient-to-r from-green-900/50 to-transparent" />
         </div>
         <div className="flex items-center justify-between">

@@ -31,6 +31,7 @@ export default function Login() {
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const autoLoginRef = useRef(false);
 
+  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: (data) => {
       if (data.requires2FA) {
@@ -153,7 +154,7 @@ export default function Login() {
     <div className="min-h-screen flex bg-gradient-to-br from-green-50 via-white to-emerald-50">
       {/* Left panel - brand image (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative">
-        <img src="/manus-storage/sc-aerial-1_176e4635.jpg" alt="Start Campus Sines" className="w-full h-full object-cover" />
+        <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
         <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
           <h2 className="text-white text-3xl font-bold mb-2">Start Campus</h2>
           <p className="text-white/80 text-lg">Plataforma de Gestão Ambiental</p>

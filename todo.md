@@ -283,3 +283,15 @@
 - [x] Add pagination controls UI to users table
 - [x] Comprehensive mega test of all features (61/61 tests passing)
 - [x] Clean up test data from history (deleted submissions purged)
+
+## Email Notifications & Invitations
+- [ ] Email notifications: ficha submitted → notify RAA users
+- [ ] Email notifications: ficha approved/rejected → notify submitter
+- [ ] Email invitations: send email when inviting new users
+- [ ] Configurable email templates in Admin settings
+- [ ] Improve EN translation coverage (remaining PT strings in charts/dynamic content)
+- [x] Email notifications: ficha submitted → notify RAA users (via nodemailer)
+- [x] Email notifications: ficha approved/rejected → notify submitter
+- [x] Email invitations: send email when inviting new users (with credentials)
+- [x] Configurable email templates in Admin > Email tab (SMTP settings)
+- [x] Improve EN translation coverage (added 15+ new translations for email config, chart labels)

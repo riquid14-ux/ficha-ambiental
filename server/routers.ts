@@ -12,6 +12,7 @@ import { storagePut } from "./storage";
 import bcrypt from "bcryptjs";
 import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
+import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 
 // Helper: check if user has elevated permissions (admin or dono_obra)
 function isAdminOrDono(role: string) {
@@ -512,7 +513,21 @@ export const appRouter = router({
           role: input.role,
           invitedBy: ctx.user.id,
         });
-        return { success: true };
+        // Send invitation email (async, don't block)
+        try {
+          const company = await db.getCompanyById(input.companyId);
+          const roleLabels: Record<string, string> = {
+            user: "Utilizador", admin: "Administrador", ee: "Entidade Executante",
+            raa: "RAA", rap: "RAP", dono_obra: "Dono de Obra", observador: "Observador",
+          };
+          sendInvitationEmail(
+            normalizedEmail, null,
+            company?.shortName || company?.name || "—",
+            roleLabels[input.role] || input.role,
+            ctx.user.name || ctx.user.email || "Admin"
+          ).catch(() => {});
+        } catch {}
+        return { success: true, emailSent: true };
       }),
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
@@ -698,6 +713,19 @@ export const appRouter = router({
           }
         }
         await db.submitWeeklySubmission(input.id, ctx.user.id);
+        // Send email notification to RAA users (async, don't block)
+        try {
+          const project = sub.projectId ? await db.getProjectById(sub.projectId) : null;
+          const companyForNotif = sub.companyId ? await db.getCompanyById(sub.companyId) : null;
+          const allUsersForNotif = await db.getAllUsers();
+          const raaEmails = allUsersForNotif
+            .filter((u: any) => (u.role === "raa" || u.role === "admin" || u.role === "dono_obra") && u.email)
+            .map((u: any) => u.email!);
+          sendFichaSubmittedNotification(
+            input.id, sub.weekNumber, sub.weekYear,
+            companyForNotif?.shortName || "—", project?.code || "—", raaEmails
+          ).catch(() => {});
+        } catch {}
         return { success: true };
       }),
 
@@ -813,6 +841,21 @@ export const appRouter = router({
           await db.bulkUpsertMeasureReviews(input.id, ctx.user.id, input.measureReviews);
         }
         await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
+        // Send email notification to submitter (async, don't block)
+        try {
+          if (input.status === "approved" || input.status === "rejected") {
+            const projectForNotif = sub.projectId ? await db.getProjectById(sub.projectId) : null;
+            const submitterForNotif = sub.submittedBy ? await db.getUserById(sub.submittedBy) : null;
+            if (submitterForNotif?.email) {
+              sendFichaReviewedNotification(
+                input.id, sub.weekNumber, sub.weekYear,
+                projectForNotif?.code || "—",
+                input.status as "approved" | "rejected",
+                input.notes, submitterForNotif.email
+              ).catch(() => {});
+            }
+          }
+        } catch {}
         // FLOW-02 FIX: When a ficha is APPROVED, update phase measure statuses
         // Each measure with status "C" (Conforme) or "I" (Implementado) marks that measure as "concluido"
         if (input.status === "approved" && sub.projectId) {

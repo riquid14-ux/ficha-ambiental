@@ -178,6 +178,11 @@ export default function AdminPanel() {
                 📋 Auditoria
               </TabsTrigger>
             )}
+            {user?.role === "admin" && (
+              <TabsTrigger value="email" className="gap-2">
+                ✉️ {t("Email")}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="companies" className="mt-4">
@@ -199,6 +204,11 @@ export default function AdminPanel() {
           <TabsContent value="melhorias" className="mt-4">
             <MelhoriasTab />
           </TabsContent>
+          {user?.role === "admin" && (
+            <TabsContent value="email" className="mt-4">
+              <EmailConfigTab />
+            </TabsContent>
+          )}
         
         {/* Audit Log Tab - Admin only */}
         {user?.role === "admin" && (
@@ -1158,5 +1168,88 @@ function PendingAccountsTab() {
         </div>
       ))}
     </div>
+  );
+}
+
+function EmailConfigTab() {
+  const { t } = useLanguage();
+  const settingsQuery = trpc.appSettings.getAll.useQuery();
+  const updateMutation = trpc.appSettings.update.useMutation({
+    onSuccess: () => settingsQuery.refetch(),
+    onError: (e: any) => toast.error(e.message),
+  });
+  const settings = settingsQuery.data || {};
+  const [smtpHost, setSmtpHost] = useState(settings.email_smtp_host || "");
+  const [smtpPort, setSmtpPort] = useState(settings.email_smtp_port || "587");
+  const [smtpUser, setSmtpUser] = useState(settings.email_smtp_user || "");
+  const [smtpPass, setSmtpPass] = useState(settings.email_smtp_pass || "");
+  const [fromEmail, setFromEmail] = useState(settings.email_from || "apoioamb@startcampus.pt");
+  const [fromName, setFromName] = useState(settings.email_from_name || "Plataforma de Gestão Ambiental - Start Campus");
+  const [enabled, setEnabled] = useState(settings.email_enabled === "true");
+
+  useEffect(() => {
+    if (settingsQuery.data) {
+      const s = settingsQuery.data;
+      setSmtpHost(s.email_smtp_host || "");
+      setSmtpPort(s.email_smtp_port || "587");
+      setSmtpUser(s.email_smtp_user || "");
+      setSmtpPass(s.email_smtp_pass || "");
+      setFromEmail(s.email_from || "apoioamb@startcampus.pt");
+      setFromName(s.email_from_name || "Plataforma de Gestão Ambiental - Start Campus");
+      setEnabled(s.email_enabled === "true");
+    }
+  }, [settingsQuery.data]);
+
+  const handleSave = async () => {
+    const pairs: [string, string][] = [
+      ["email_smtp_host", smtpHost], ["email_smtp_port", smtpPort],
+      ["email_smtp_user", smtpUser], ["email_smtp_pass", smtpPass],
+      ["email_from", fromEmail], ["email_from_name", fromName],
+      ["email_enabled", enabled ? "true" : "false"],
+    ];
+    for (const [key, value] of pairs) {
+      await updateMutation.mutateAsync({ key, value });
+    }
+    toast.success(t("Configuração de email guardada com sucesso"));
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">✉️ {t("Configuração de Email")}</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Configure o servidor SMTP para envio de notificações. A equipa de IT define o servidor SMTP da organização.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/50">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="w-4 h-4" />
+          <div>
+            <p className="font-medium text-sm">{t("Ativar notificações por email")}</p>
+            <p className="text-xs text-muted-foreground">Quando ativo, o sistema envia emails automáticos para submissões, aprovações e convites</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><Label>Servidor SMTP</Label><Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" /></div>
+          <div><Label>Porta SMTP</Label><Input value={smtpPort} onChange={(e) => setSmtpPort(e.target.value)} placeholder="587" /></div>
+          <div><Label>Utilizador SMTP</Label><Input value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} placeholder="apoioamb@startcampus.pt" /></div>
+          <div><Label>Palavra-passe SMTP</Label><Input type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} placeholder="••••••••" /></div>
+          <div><Label>Email de envio</Label><Input value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="apoioamb@startcampus.pt" /></div>
+          <div><Label>Nome do remetente</Label><Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Plataforma de Gestão Ambiental" /></div>
+        </div>
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+          <p className="font-medium text-blue-800 dark:text-blue-200 mb-2">ℹ️ Emails automáticos enviados pelo sistema:</p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-300 space-y-1">
+            <li>Ficha submetida → Notifica RAA, Admin e Dono de Obra</li>
+            <li>Ficha aprovada/rejeitada → Notifica o submitter</li>
+            <li>Convite de utilizador → Email com link de acesso e credenciais</li>
+            <li>Tentativa de acesso não autorizada → Notifica o administrador</li>
+          </ul>
+        </div>
+        <Button onClick={handleSave} disabled={updateMutation.isPending} className="gap-2">
+          {updateMutation.isPending ? "A guardar..." : "Guardar Configuração"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

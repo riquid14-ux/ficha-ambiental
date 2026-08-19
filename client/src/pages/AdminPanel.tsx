@@ -765,7 +765,10 @@ function UsersTab() {
             <TableBody>
               {paginatedUsers.map((u: any) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name || "-"}</TableCell>
+                  <TableCell className="font-medium">
+                    {u.name || "-"}
+                    {u.role === "admin" && <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 py-0">ADMIN</Badge>}
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>
                   <TableCell>
                     <Select

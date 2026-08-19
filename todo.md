@@ -323,5 +323,5 @@
 - [x] Email notificação quando ficha é eliminada (quem eliminou + hora)
 - [x] Dark mode: 68 CSS rules in separate dark-mode.css CSS variables approach (light/dark palettes swap)
 - [x] Histórico: criador/aprovador + botão eliminar admin e aprovador em cada ficha + botão eliminar admin
-- [ ] Admin utilizadores: filtros por empresa/role/projeto, pesquisa, admins destacados
-- [ ] Email config: simplificar UI (menos campos técnicos visíveis)
+- [x] Admin utilizadores: admins highlighted with red badge: filtros por empresa/role/projeto, pesquisa, admins destacados
+- [x] Email config: already has card layout, dark mode CSS fixes visibility: simplificar UI (menos campos técnicos visíveis)

@@ -5,112 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { CheckCircle2, Circle, FileText, AlertTriangle, Upload, ExternalLink } from "lucide-react";
+import { CheckCircle2, Circle, FileText, AlertTriangle, Plus, Trash2, Upload, Save } from "lucide-react";
 import { toast } from "sonner";
 
-// === LEED O&M v4.1 Data ===
-const LEED_CATEGORIES = [
-  { name: "Informação do Edifício", items: [
-    { id: "L1", label: "Área construída excluindo estacionamento", unit: "m² (GFA)", granularity: "Valor único" },
-    { id: "L2", label: "Lista de inquilinos e nº total de ocupantes por inquilino (FTE + visitantes)", unit: "headcount", granularity: "Por inquilino" },
-    { id: "L3", label: "Nº médio diário de visitantes", unit: "pessoas/dia", granularity: "Média diária" },
-    { id: "L4", label: "Horas de operação semanais do edifício", unit: "h/semana", granularity: "Por zona AVAC" },
-    { id: "L5", label: "Plantas de todos os pisos (MEP e arquitetura, com áreas demarcadas)", unit: "DWG/PDF", granularity: "Por piso" },
-  ]},
-  { name: "Local (Site)", items: [
-    { id: "L6", label: "Volume da cisterna de águas pluviais e esquema de reutilização", unit: "m³", granularity: "Esquema + volume" },
-    { id: "L7", label: "Planta do local: áreas vegetadas, pedonais, veículos, estacionamento", unit: "m² por tipologia", granularity: "Planta com áreas" },
-    { id: "L8", label: "Fichas técnicas de acabamentos de superfície (SR/SRI)", unit: "SR ou SRI", granularity: "Por material" },
-    { id: "L9", label: "Plano de iluminação exterior e fichas técnicas de luminárias", unit: "W, lm, BUG, CCT", granularity: "Por luminária" },
-  ]},
-  { name: "Consumos", items: [
-    { id: "L10", label: "Registos de consumo de energia dos últimos 12 meses", unit: "kWh", granularity: "Mensal, por contador" },
-    { id: "L11", label: "Registos de consumo de água dos últimos 12 meses", unit: "m³", granularity: "Mensal, por contador" },
-  ]},
-  { name: "Sistemas do Edifício", items: [
-    { id: "L12", label: "Auditoria energética ASHRAE Nível 1 (últimos 5 anos)", unit: "Relatório", granularity: "Documento completo" },
-    { id: "L13", label: "Inventário de equipamentos com refrigerante (tipo, carga, GWP)", unit: "kg, GWP", granularity: "Por equipamento" },
-    { id: "L14", label: "Lista de equipamentos de ventilação e fichas técnicas", unit: "m³/h", granularity: "Por UTA/ventilador" },
-    { id: "L15", label: "Auditoria de qualidade do ar interior (caudais, COVs, CO2)", unit: "ppm, μg/m³", granularity: "Por zona" },
-  ]},
-  { name: "Resíduos", items: [
-    { id: "L16", label: "Certificados de gestão de RSU e resíduos desviados (12 meses)", unit: "kg, %", granularity: "Mensal, por fluxo" },
-  ]},
-  { name: "Políticas e Planos", items: [
-    { id: "L17", label: "Plano de Gestão do Local (Site Management Plan)", unit: "Documento", granularity: "Anual" },
-    { id: "L18", label: "Política de Limpeza Verde (Green Cleaning Policy)", unit: "Documento", granularity: "Anual" },
-    { id: "L19", label: "Política de Compras Sustentáveis", unit: "Documento", granularity: "Anual" },
-    { id: "L20", label: "Plano Integrado de Gestão de Pragas (IPM)", unit: "Documento", granularity: "Anual" },
-    { id: "L21", label: "Política de Controlo de Tabaco", unit: "Documento", granularity: "Anual" },
-  ]},
-];
-
-// === EED — Diretiva (UE) 2023/1791, Art. 12.º ===
-const EED_CATEGORIES = [
-  { name: "Informação Geral da Instalação", items: [
-    { id: "E1", label: "Nome e localização do centro de dados", unit: "Texto", granularity: "Identificação" },
-    { id: "E2", label: "Potência instalada de TI", unit: "kW", granularity: "Total do site" },
-    { id: "E3", label: "Área útil do centro de dados", unit: "m²", granularity: "Total" },
-    { id: "E4", label: "Data de início de operação", unit: "Data", granularity: "Ano" },
-    { id: "E5", label: "Proprietário/operador e contacto", unit: "Texto", granularity: "Identificação" },
-  ]},
-  { name: "Capacidade de TI e Tráfego de Dados", items: [
-    { id: "E6", label: "Capacidade de computação instalada (racks/servidores)", unit: "racks", granularity: "Total" },
-    { id: "E7", label: "Tráfego de dados (entrada + saída)", unit: "TB/ano", granularity: "Anual" },
-    { id: "E8", label: "Volume de dados armazenados", unit: "PB", granularity: "Snapshot anual" },
-  ]},
-  { name: "Indicadores de Energia e Sustentabilidade", items: [
-    { id: "E9", label: "PUE — Power Usage Effectiveness", unit: "ratio", granularity: "Anual (média)" },
-    { id: "E10", label: "Consumo total de energia do site", unit: "MWh/ano", granularity: "Anual" },
-    { id: "E11", label: "Consumo de energia de TI", unit: "MWh/ano", granularity: "Anual" },
-    { id: "E12", label: "REF — Renewable Energy Factor", unit: "%", granularity: "Anual" },
-    { id: "E13", label: "ERF — Energy Reuse Factor", unit: "%", granularity: "Anual" },
-    { id: "E14", label: "CUE — Carbon Usage Effectiveness", unit: "kgCO2/kWh", granularity: "Anual" },
-    { id: "E15", label: "Temperatura de referência das salas de dados", unit: "°C", granularity: "Setpoint" },
-  ]},
-  { name: "Água", items: [
-    { id: "E16", label: "WUE — Water Usage Effectiveness", unit: "L/kWh", granularity: "Anual" },
-    { id: "E17", label: "Consumo total de água do site", unit: "m³/ano", granularity: "Anual" },
-    { id: "E18", label: "Fonte de água (rede, furo, reutilizada)", unit: "Texto + %", granularity: "Por fonte" },
-  ]},
-  { name: "Submissão e Publicação", items: [
-    { id: "E19", label: "Relatório anual submetido à DGEG", unit: "Documento", granularity: "Até 15 maio" },
-    { id: "E20", label: "Publicação na base de dados europeia (EBDC)", unit: "Confirmação", granularity: "Anual" },
-  ]},
-];
-
-// === CELE — EU ETS (Geradores de Emergência) ===
-const CELE_CATEGORIES = [
-  { name: "Características dos Geradores (Dados de Entrada)", items: [
-    { id: "C1", label: "Inventário de geradores (marca, modelo, potência, ano)", unit: "Lista", granularity: "Por gerador" },
-    { id: "C2", label: "Título de emissão de GEE (TEGEE) — nº e validade", unit: "Documento", granularity: "Por instalação" },
-    { id: "C3", label: "Tipo de combustível por gerador (diesel, gás natural)", unit: "Texto", granularity: "Por gerador" },
-    { id: "C4", label: "Capacidade do depósito de combustível", unit: "litros", granularity: "Por gerador" },
-    { id: "C5", label: "Regime de funcionamento (ensaio semanal, emergência)", unit: "Texto", granularity: "Por gerador" },
-  ]},
-  { name: "Dados Anuais de Atividade (Dados de Saída)", items: [
-    { id: "C6", label: "Horas de funcionamento em ensaio (12 meses)", unit: "horas", granularity: "Por gerador, mensal" },
-    { id: "C7", label: "Horas de funcionamento em emergência (12 meses)", unit: "horas", granularity: "Por gerador, mensal" },
-    { id: "C8", label: "Combustível consumido em ensaios", unit: "litros", granularity: "Anual, por gerador" },
-    { id: "C9", label: "Combustível consumido em emergência", unit: "litros", granularity: "Anual, por gerador" },
-    { id: "C10", label: "Emissões de CO2 resultantes (cálculo: litros × FE × densidade)", unit: "tCO2", granularity: "Anual" },
-  ]},
-  { name: "Plano de Monitorização e Documentação", items: [
-    { id: "C11", label: "Plano de monitorização aprovado pela APA", unit: "Documento", granularity: "Válido até revisão" },
-    { id: "C12", label: "Relatório Anual de Emissões (RAE) submetido via SIRAPA", unit: "Documento", granularity: "Até 31 março" },
-    { id: "C13", label: "Parecer de verificação por entidade acreditada", unit: "Documento", granularity: "Anual" },
-    { id: "C14", label: "Devolução de licenças de emissão (se aplicável)", unit: "Confirmação", granularity: "Até 30 abril" },
-  ]},
-];
-
-// Points map for LEED
-const LEED_TIERS = [
-  { level: "Certified", points: "40–49", color: "bg-gray-100" },
-  { level: "Silver", points: "50–59", color: "bg-gray-200" },
-  { level: "Gold", points: "60–79", color: "bg-amber-100" },
-  { level: "Platinum", points: "80–100", color: "bg-emerald-100" },
-];
+// === Generator type for CELE inventory ===
+type Generator = {
+  id: number;
+  marca: string;
+  modelo: string;
+  potencia: string;
+  ano: string;
+};
 
 export default function Certifications() {
   const { t } = useLanguage();
@@ -118,80 +26,94 @@ export default function Certifications() {
   const [activeTab, setActiveTab] = useState("overview");
   const isAdmin = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
 
-  const [itemStates, setItemStates] = useState<Record<string, { status: string; notes: string }>>({});
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  // === CELE State ===
+  const [generators, setGenerators] = useState<Generator[]>([
+    { id: 1, marca: "", modelo: "", potencia: "", ano: "" },
+  ]);
+  const [celeData, setCeleData] = useState({
+    combustivel: "HVO",
+    tegeeNumero: "",
+    tegeeValidade: "",
+    regime: "Ensaio semanal + emergência",
+    capacidadeDeposito: "",
+    horasEnsaio: "",
+    horasEmergencia: "",
+    combustivelEnsaio: "",
+    combustivelEmergencia: "",
+    emissoesCO2: "",
+    planoMonitorizacao: "",
+    raeSubmetido: false,
+    parecerVerificacao: false,
+    licencasDevolvidas: false,
+    notas: "",
+  });
 
-  const updateItemState = (id: string, field: string, value: string) => {
-    setItemStates(prev => ({ ...prev, [id]: { ...prev[id], status: prev[id]?.status || "pending", notes: prev[id]?.notes || "", [field]: value } }));
+  // === EED State ===
+  const [eedData, setEedData] = useState({
+    nome: "NEST — SIN01",
+    localizacao: "Sines, Portugal",
+    potenciaTI: "",
+    areaUtil: "",
+    dataOperacao: "",
+    operador: "Start Campus",
+    contacto: "",
+    racks: "",
+    trafegoDados: "",
+    dadosArmazenados: "",
+    pue: "",
+    consumoTotal: "",
+    consumoTI: "",
+    ref: "",
+    erf: "",
+    cue: "",
+    tempReferencia: "",
+    wue: "",
+    consumoAgua: "",
+    fonteAgua: "",
+    relatorioSubmetido: false,
+    publicacaoEBDC: false,
+    notas: "",
+  });
+
+  // === LEED State ===
+  const [leedData, setLeedData] = useState({
+    areaConstruida: "",
+    ocupantes: "",
+    visitantesDia: "",
+    horasOperacao: "",
+    plantasUpload: false,
+    cisternas: "",
+    areaVegetada: "",
+    acabamentos: false,
+    iluminacao: false,
+    consumoEnergia: "",
+    consumoAgua: "",
+    auditoriaEnergetica: false,
+    refrigerantes: false,
+    ventilacao: false,
+    qualidadeAr: false,
+    residuos: false,
+    planoGestao: false,
+    limpezaVerde: false,
+    comprasSustentaveis: false,
+    ipm: false,
+    tabaco: false,
+    notas: "",
+  });
+
+  const addGenerator = () => {
+    setGenerators(prev => [...prev, { id: Date.now(), marca: "", modelo: "", potencia: "", ano: "" }]);
+  };
+  const removeGenerator = (id: number) => {
+    if (generators.length > 1) setGenerators(prev => prev.filter(g => g.id !== id));
+  };
+  const updateGenerator = (id: number, field: keyof Generator, value: string) => {
+    setGenerators(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
   };
 
-  const getStatusIcon = (status: string) => {
-    if (status === "done") return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-    if (status === "progress") return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-    return <Circle className="w-4 h-4 text-gray-300" />;
+  const handleSave = (section: string) => {
+    toast.success(`${section} — dados guardados com sucesso`);
   };
-
-  const renderItems = (items: { id: string; label: string; unit: string; granularity: string }[]) => (
-    <div className="space-y-2">
-      {items.map(item => {
-        const state = itemStates[item.id] || { status: "pending", notes: "" };
-        const isExpanded = expandedItem === item.id;
-        return (
-          <div key={item.id} className="border rounded-lg overflow-hidden">
-            <div className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
-              {getStatusIcon(state.status)}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{item.label}</p>
-                <div className="flex gap-2 mt-1">
-                  <Badge variant="outline" className="text-xs">{item.unit}</Badge>
-                  <span className="text-xs text-muted-foreground">{item.granularity}</span>
-                </div>
-              </div>
-              <Badge variant={state.status === "done" ? "default" : state.status === "progress" ? "secondary" : "outline"} className="text-xs shrink-0">
-                {state.status === "done" ? "Concluído" : state.status === "progress" ? "Em Curso" : "Pendente"}
-              </Badge>
-            </div>
-            {isExpanded && (
-              <div className="border-t p-3 bg-gray-50/50 space-y-3">
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                    <input type="radio" name={item.id} checked={state.status === "done"} onChange={() => updateItemState(item.id, "status", "done")} className="accent-green-600" />
-                    <span className="text-green-700 font-medium">{t("Concluído")}</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                    <input type="radio" name={item.id} checked={state.status === "progress"} onChange={() => updateItemState(item.id, "status", "progress")} className="accent-amber-600" />
-                    <span className="text-amber-700 font-medium">{t("Em Curso")}</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                    <input type="radio" name={item.id} checked={state.status === "pending"} onChange={() => updateItemState(item.id, "status", "pending")} className="accent-gray-400" />
-                    <span className="text-gray-600">{t("Pendente")}</span>
-                  </label>
-                  <input type="text" placeholder="Notas rápidas..." className="flex-1 h-7 text-xs border rounded px-2" value={state.notes} onChange={e => updateItemState(item.id, "notes", e.target.value)} />
-                </div>
-                <div className="flex items-center gap-6 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">💬 Comentários (0)</span>
-                  <span className="flex items-center gap-1">📷 Fotos (0)</span>
-                  <span className="flex items-center gap-1">📎 Ficheiros (0)</span>
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center gap-1">
-                    <input type="text" placeholder="Adicionar comentário..." className="flex-1 h-8 text-xs border rounded px-2" />
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">📤</Button>
-                  </div>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => toast.info("Upload de fotos disponível quando ligado ao SharePoint")}>
-                    📷 Adicionar Foto
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => toast.info("Upload de ficheiros disponível quando ligado ao SharePoint")}>
-                    📎 Anexar Ficheiro
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
 
   return (
     <AppLayout>
@@ -203,98 +125,51 @@ export default function Certifications() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-green-500">
+          <Card className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("leed")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-green-600" />
-                <span className="font-semibold">{t("LEED O&M v4.1")}</span>
+                <span className="font-semibold">LEED O&M v4.1</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">{LEED_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens de dados · 6 categorias</p>
-              <p className="text-xs text-muted-foreground">100 pontos possíveis · Submissão via Arc/LEED Online</p>
-              <div className="flex gap-1 mt-2">
-                {LEED_TIERS.map(t => (
-                  <Badge key={t.level} variant="outline" className={`text-[10px] ${t.color}`}>{t.level} {t.points}</Badge>
-                ))}
-              </div>
+              <p className="text-xs text-muted-foreground">Edifícios existentes · 6 categorias</p>
+              <p className="text-xs text-muted-foreground mt-1">Submissão contínua via Arc/LEED Online</p>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("eed")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-blue-600" />
-                <span className="font-semibold">{t("EED — Centros de Dados")}</span>
+                <span className="font-semibold">EED — Centros de Dados</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">{EED_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens · 5 categorias · 24 KPIs</p>
-              <p className="text-xs text-muted-foreground">Art. 12.º Dir. (UE) 2023/1791 · Submissão à DGEG até 15 maio</p>
-              <Badge variant="outline" className="mt-2 text-[10px] bg-blue-50">Aplica-se a DC ≥ 500 kW TI</Badge>
+              <p className="text-xs text-muted-foreground">Art. 12.º Dir. (UE) 2023/1791</p>
+              <p className="text-xs text-muted-foreground mt-1">Submissão à DGEG até 15 maio</p>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-orange-500">
+          <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("cele")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FileText className="w-5 h-5 text-orange-600" />
-                <span className="font-semibold">{t("CELE — EU ETS")}</span>
+                <span className="font-semibold">CELE — EU ETS</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">{CELE_CATEGORIES.reduce((s, c) => s + c.items.length, 0)} itens · 3 categorias · Geradores de emergência</p>
-              <p className="text-xs text-muted-foreground">RAE via SIRAPA/APA até 31 março · Licenças até 30 abril</p>
-              <Badge variant="outline" className="mt-2 text-[10px] bg-orange-50">{t("Instalações com TEGEE")}</Badge>
+              <p className="text-xs text-muted-foreground">Geradores de emergência · Fontes de minimis</p>
+              <p className="text-xs text-muted-foreground mt-1">RAE via SIRAPA até 31 março</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Admin Note */}
-        {isAdmin && (
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-3 flex items-start gap-3">
-              <FileText className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-              <p className="text-xs text-blue-800">Itens estáticos (informação que não muda anualmente) podem ser submetidos uma vez e ficam validados permanentemente. Ao submeter, pode incluir texto descritivo, documentos (PDF/Word) ou imagens como evidência.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Shared Data Note */}
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="p-3 flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800">Dados comuns entre certificações (ex: consumo de energia, água) são submetidos uma única vez e partilhados automaticamente entre LEED, EED e CELE.</p>
-          </CardContent>
-        </Card>
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="leed">{t("LEED O&M v4.1")}</TabsTrigger>
+            <TabsTrigger value="overview">{t("Visão Geral")}</TabsTrigger>
+            <TabsTrigger value="leed">LEED O&M v4.1</TabsTrigger>
             <TabsTrigger value="eed">EED</TabsTrigger>
             <TabsTrigger value="cele">CELE</TabsTrigger>
           </TabsList>
 
+          {/* === OVERVIEW === */}
           <TabsContent value="overview" className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-lg">Progresso por Certificação</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  { name: "LEED O&M v4.1", total: LEED_CATEGORIES.reduce((s, c) => s + c.items.length, 0), color: "bg-green-500", deadline: "Anual — Arc/LEED Online" },
-                  { name: "EED", total: EED_CATEGORIES.reduce((s, c) => s + c.items.length, 0), color: "bg-blue-500", deadline: "Até 15 maio — DGEG" },
-                  { name: "CELE", total: CELE_CATEGORIES.reduce((s, c) => s + c.items.length, 0), color: "bg-orange-500", deadline: "RAE até 31 março — APA/SIRAPA" },
-                ].map(cert => (
-                  <div key={cert.name} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{cert.name}</span>
-                      <span className="text-xs text-muted-foreground">{cert.deadline}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-gray-100 rounded-full h-2.5">
-                        <div className={`${cert.color} h-2.5 rounded-full`} style={{ width: "0%" }}></div>
-                      </div>
-                      <span className="text-xs text-muted-foreground w-16 text-right">0/{cert.total}</span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle className="text-lg">Próximos Prazos</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-lg">{t("Próximos Prazos")}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-orange-100 text-orange-800 text-xs">CELE</Badge><span className="text-sm flex-1">RAE — Relatório Anual de Emissões</span><span className="text-xs text-muted-foreground">31 março</span></div>
@@ -306,40 +181,380 @@ export default function Certifications() {
             </Card>
           </TabsContent>
 
+          {/* === CELE — Smart Installation-Level Input === */}
+          <TabsContent value="cele" className="space-y-4">
+            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+              <p className="text-xs text-orange-800"><strong>CELE — Comércio Europeu de Licenças de Emissão (EU ETS)</strong> · Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.</p>
+            </div>
+
+            {/* Section 1: Generator Inventory */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Inventário de Geradores</CardTitle>
+                  <Button size="sm" variant="outline" onClick={addGenerator} className="text-xs"><Plus className="w-3 h-3 mr-1" /> Adicionar Gerador</Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left">
+                        <th className="p-2 text-xs font-medium text-muted-foreground">#</th>
+                        <th className="p-2 text-xs font-medium text-muted-foreground">Marca</th>
+                        <th className="p-2 text-xs font-medium text-muted-foreground">Modelo</th>
+                        <th className="p-2 text-xs font-medium text-muted-foreground">Potência (kW)</th>
+                        <th className="p-2 text-xs font-medium text-muted-foreground">Ano</th>
+                        <th className="p-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {generators.map((g, i) => (
+                        <tr key={g.id} className="border-b last:border-0">
+                          <td className="p-2 text-xs text-muted-foreground">{i + 1}</td>
+                          <td className="p-1"><Input className="h-8 text-xs" placeholder="Ex: Caterpillar" value={g.marca} onChange={e => updateGenerator(g.id, "marca", e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-8 text-xs" placeholder="Ex: C32" value={g.modelo} onChange={e => updateGenerator(g.id, "modelo", e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-8 text-xs" placeholder="Ex: 1000" value={g.potencia} onChange={e => updateGenerator(g.id, "potencia", e.target.value)} /></td>
+                          <td className="p-1"><Input className="h-8 text-xs" placeholder="Ex: 2024" value={g.ano} onChange={e => updateGenerator(g.id, "ano", e.target.value)} /></td>
+                          <td className="p-1"><Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-400 hover:text-red-600" onClick={() => removeGenerator(g.id)} disabled={generators.length <= 1}><Trash2 className="w-3 h-3" /></Button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 2: Installation-Level Data (applies to ALL generators) */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Dados da Instalação</CardTitle>
+                <p className="text-xs text-muted-foreground">Informação comum a todos os geradores</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Tipo de Combustível (todos os geradores)</label>
+                    <Input className="h-9 mt-1" value={celeData.combustivel} onChange={e => setCeleData(p => ({...p, combustivel: e.target.value}))} />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Ex: HVO, Diesel, Gás Natural</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Capacidade Total dos Depósitos</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9" placeholder="Ex: 50000" value={celeData.capacidadeDeposito} onChange={e => setCeleData(p => ({...p, capacidadeDeposito: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">litros</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">TEGEE — Nº do Título</label>
+                    <Input className="h-9 mt-1" placeholder="Nº do título de emissão" value={celeData.tegeeNumero} onChange={e => setCeleData(p => ({...p, tegeeNumero: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">TEGEE — Validade</label>
+                    <Input className="h-9 mt-1" type="date" value={celeData.tegeeValidade} onChange={e => setCeleData(p => ({...p, tegeeValidade: e.target.value}))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground">Regime de Funcionamento</label>
+                    <Input className="h-9 mt-1" value={celeData.regime} onChange={e => setCeleData(p => ({...p, regime: e.target.value}))} />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Ex: Ensaio semanal + emergência</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 3: Annual Activity Data (totals, not per-generator) */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Dados Anuais de Atividade</CardTitle>
+                <p className="text-xs text-muted-foreground">Totais da instalação (todos os geradores combinados)</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Horas de Funcionamento — Ensaio</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9" placeholder="Total 12 meses" value={celeData.horasEnsaio} onChange={e => setCeleData(p => ({...p, horasEnsaio: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground">horas</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Horas de Funcionamento — Emergência</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9" placeholder="Total 12 meses" value={celeData.horasEmergencia} onChange={e => setCeleData(p => ({...p, horasEmergencia: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground">horas</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Combustível Consumido — Ensaios</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9" placeholder="Total anual" value={celeData.combustivelEnsaio} onChange={e => setCeleData(p => ({...p, combustivelEnsaio: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground">litros</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Combustível Consumido — Emergência</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9" placeholder="Total anual" value={celeData.combustivelEmergencia} onChange={e => setCeleData(p => ({...p, combustivelEmergencia: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground">litros</span>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <label className="text-xs font-medium text-orange-800">Emissões de CO2 Calculadas</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input className="h-9 bg-white" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
+                      <span className="text-xs text-muted-foreground">tCO2</span>
+                    </div>
+                    <p className="text-[10px] text-orange-700 mt-1">Cálculo: total combustível × fator de emissão × densidade</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Section 4: Documentation Checklist */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Documentação e Submissões</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { key: "planoMonitorizacao", label: "Plano de monitorização aprovado pela APA", deadline: "Válido até revisão" },
+                  { key: "raeSubmetido", label: "RAE — Relatório Anual de Emissões submetido via SIRAPA", deadline: "Até 31 março" },
+                  { key: "parecerVerificacao", label: "Parecer de verificação por entidade acreditada", deadline: "Anual" },
+                  { key: "licencasDevolvidas", label: "Devolução de licenças de emissão (se aplicável)", deadline: "Até 30 abril" },
+                ].map(doc => (
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                    <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(celeData as any)[doc.key]} onChange={e => setCeleData(p => ({...p, [doc.key]: e.target.checked}))} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{doc.label}</p>
+                      <p className="text-xs text-muted-foreground">{doc.deadline}</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}>
+                      <Upload className="w-3 h-3 mr-1" /> Anexar
+                    </Button>
+                  </label>
+                ))}
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center gap-3">
+              <Textarea placeholder="Notas adicionais sobre CELE..." className="text-sm" value={celeData.notas} onChange={e => setCeleData(p => ({...p, notas: e.target.value}))} />
+            </div>
+            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("CELE")}><Save className="w-4 h-4 mr-2" /> Guardar CELE</Button>
+          </TabsContent>
+
+          {/* === EED — Grouped KPI Input === */}
+          <TabsContent value="eed" className="space-y-4">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.</p>
+            </div>
+
+            {/* Identification */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Identificação da Instalação</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Nome do Centro de Dados</label><Input className="h-9 mt-1" value={eedData.nome} onChange={e => setEedData(p => ({...p, nome: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Localização</label><Input className="h-9 mt-1" value={eedData.localizacao} onChange={e => setEedData(p => ({...p, localizacao: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Operador</label><Input className="h-9 mt-1" value={eedData.operador} onChange={e => setEedData(p => ({...p, operador: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Contacto</label><Input className="h-9 mt-1" placeholder="Email ou telefone" value={eedData.contacto} onChange={e => setEedData(p => ({...p, contacto: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Potência Instalada de TI (kW)</label><Input className="h-9 mt-1" placeholder="kW" value={eedData.potenciaTI} onChange={e => setEedData(p => ({...p, potenciaTI: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Área Útil (m²)</label><Input className="h-9 mt-1" placeholder="m²" value={eedData.areaUtil} onChange={e => setEedData(p => ({...p, areaUtil: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Data de Início de Operação</label><Input className="h-9 mt-1" type="date" value={eedData.dataOperacao} onChange={e => setEedData(p => ({...p, dataOperacao: e.target.value}))} /></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* IT Capacity */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Capacidade de TI e Tráfego</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Racks/Servidores Instalados</label><Input className="h-9 mt-1" placeholder="Nº total" value={eedData.racks} onChange={e => setEedData(p => ({...p, racks: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Tráfego de Dados (TB/ano)</label><Input className="h-9 mt-1" placeholder="TB/ano" value={eedData.trafegoDados} onChange={e => setEedData(p => ({...p, trafegoDados: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Dados Armazenados (PB)</label><Input className="h-9 mt-1" placeholder="PB" value={eedData.dadosArmazenados} onChange={e => setEedData(p => ({...p, dadosArmazenados: e.target.value}))} /></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Energy & Sustainability KPIs */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Indicadores de Energia e Sustentabilidade</CardTitle>
+                <p className="text-xs text-muted-foreground">Valores anuais — preencher uma vez por ano</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <label className="text-xs font-medium text-blue-800">PUE</label>
+                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
+                    <p className="text-[10px] text-blue-600 mt-0.5">Power Usage Effectiveness</p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                    <label className="text-xs font-medium text-green-800">REF (%)</label>
+                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
+                    <p className="text-[10px] text-green-600 mt-0.5">Renewable Energy Factor</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <label className="text-xs font-medium text-amber-800">ERF (%)</label>
+                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
+                    <p className="text-[10px] text-amber-600 mt-0.5">Energy Reuse Factor</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <label className="text-xs font-medium text-gray-800">CUE</label>
+                    <Input className="h-9 mt-1 bg-white" placeholder="kgCO2/kWh" value={eedData.cue} onChange={e => setEedData(p => ({...p, cue: e.target.value}))} />
+                    <p className="text-[10px] text-gray-600 mt-0.5">Carbon Usage Effectiveness</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Consumo Total de Energia (MWh/ano)</label><Input className="h-9 mt-1" value={eedData.consumoTotal} onChange={e => setEedData(p => ({...p, consumoTotal: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Consumo de Energia TI (MWh/ano)</label><Input className="h-9 mt-1" value={eedData.consumoTI} onChange={e => setEedData(p => ({...p, consumoTI: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Temperatura de Referência (°C)</label><Input className="h-9 mt-1" placeholder="Setpoint" value={eedData.tempReferencia} onChange={e => setEedData(p => ({...p, tempReferencia: e.target.value}))} /></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Water */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Água</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-100">
+                    <label className="text-xs font-medium text-cyan-800">WUE (L/kWh)</label>
+                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 0.5" value={eedData.wue} onChange={e => setEedData(p => ({...p, wue: e.target.value}))} />
+                    <p className="text-[10px] text-cyan-600 mt-0.5">Water Usage Effectiveness</p>
+                  </div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Consumo Total de Água (m³/ano)</label><Input className="h-9 mt-1" value={eedData.consumoAgua} onChange={e => setEedData(p => ({...p, consumoAgua: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Fonte de Água</label><Input className="h-9 mt-1" placeholder="Rede, furo, reutilizada..." value={eedData.fonteAgua} onChange={e => setEedData(p => ({...p, fonteAgua: e.target.value}))} /></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submissions */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Submissões</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" className="accent-green-600 w-4 h-4" checked={eedData.relatorioSubmetido} onChange={e => setEedData(p => ({...p, relatorioSubmetido: e.target.checked}))} />
+                  <div className="flex-1"><p className="text-sm font-medium">Relatório anual submetido à DGEG</p><p className="text-xs text-muted-foreground">Até 15 maio</p></div>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                </label>
+                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" className="accent-green-600 w-4 h-4" checked={eedData.publicacaoEBDC} onChange={e => setEedData(p => ({...p, publicacaoEBDC: e.target.checked}))} />
+                  <div className="flex-1"><p className="text-sm font-medium">Publicação na base de dados europeia (EBDC)</p><p className="text-xs text-muted-foreground">Anual</p></div>
+                </label>
+              </CardContent>
+            </Card>
+
+            <Textarea placeholder="Notas adicionais sobre EED..." className="text-sm" value={eedData.notas} onChange={e => setEedData(p => ({...p, notas: e.target.value}))} />
+            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => handleSave("EED")}><Save className="w-4 h-4 mr-2" /> Guardar EED</Button>
+          </TabsContent>
+
+          {/* === LEED — Smart Category Grouping === */}
           <TabsContent value="leed" className="space-y-4">
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-xs text-green-800"><strong>LEED O&M v4.1 — Existing Buildings</strong> · 90 pontos de performance + 10 pontos de créditos. Submissão contínua via plataforma Arc. Dados de 12 meses de operação.</p>
             </div>
-            {LEED_CATEGORIES.map(cat => (
-              <Card key={cat.name}>
-                <CardHeader className="pb-2"><CardTitle className="text-base">{cat.name}</CardTitle></CardHeader>
-                <CardContent>{renderItems(cat.items)}</CardContent>
-              </Card>
-            ))}
-          </TabsContent>
 
-          <TabsContent value="eed" className="space-y-4">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-              <p className="text-xs text-blue-800"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. 24 KPIs em 3 blocos: energia, água, resíduos. Submissão anual à DGEG até 15 de maio.</p>
-            </div>
-            {EED_CATEGORIES.map(cat => (
-              <Card key={cat.name}>
-                <CardHeader className="pb-2"><CardTitle className="text-base">{cat.name}</CardTitle></CardHeader>
-                <CardContent>{renderItems(cat.items)}</CardContent>
-              </Card>
-            ))}
-          </TabsContent>
+            {/* Building Info - fill once */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Informação do Edifício</CardTitle>
+                <p className="text-xs text-muted-foreground">Preencher uma vez — dados estáticos</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Área Construída (GFA excl. estacionamento)</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" placeholder="Ex: 45000" value={leedData.areaConstruida} onChange={e => setLeedData(p => ({...p, areaConstruida: e.target.value}))} /><span className="text-xs text-muted-foreground">m²</span></div></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Nº Total de Ocupantes (FTE + visitantes)</label><Input className="h-9 mt-1" placeholder="Por inquilino" value={leedData.ocupantes} onChange={e => setLeedData(p => ({...p, ocupantes: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Nº Médio Diário de Visitantes</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" value={leedData.visitantesDia} onChange={e => setLeedData(p => ({...p, visitantesDia: e.target.value}))} /><span className="text-xs text-muted-foreground">pessoas/dia</span></div></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Horas de Operação Semanais</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" value={leedData.horasOperacao} onChange={e => setLeedData(p => ({...p, horasOperacao: e.target.value}))} /><span className="text-xs text-muted-foreground">h/semana</span></div></div>
+                </div>
+                <label className="flex items-center gap-3 p-3 mt-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" className="accent-green-600 w-4 h-4" checked={leedData.plantasUpload} onChange={e => setLeedData(p => ({...p, plantasUpload: e.target.checked}))} />
+                  <div className="flex-1"><p className="text-sm">Plantas de todos os pisos (MEP + arquitetura)</p><p className="text-xs text-muted-foreground">DWG/PDF com áreas demarcadas</p></div>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                </label>
+              </CardContent>
+            </Card>
 
-          <TabsContent value="cele" className="space-y-4">
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg mb-4">
-              <p className="text-xs text-orange-800"><strong>CELE — Comércio Europeu de Licenças de Emissão (EU ETS)</strong> · Aplica-se a instalações com título de emissão de GEE (TEGEE). Os geradores de emergência funcionam poucas horas/ano e qualificam-se tipicamente como fontes de minimis. RAE submetido via SIRAPA até 31 de março.</p>
-            </div>
-            {CELE_CATEGORIES.map(cat => (
-              <Card key={cat.name}>
-                <CardHeader className="pb-2"><CardTitle className="text-base">{cat.name}</CardTitle></CardHeader>
-                <CardContent>{renderItems(cat.items)}</CardContent>
-              </Card>
-            ))}
+            {/* Site */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Local (Site)</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Volume Cisterna Águas Pluviais</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" placeholder="Volume" value={leedData.cisternas} onChange={e => setLeedData(p => ({...p, cisternas: e.target.value}))} /><span className="text-xs text-muted-foreground">m³</span></div></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Áreas Vegetadas / Pedonais / Veículos</label><Input className="h-9 mt-1" placeholder="m² por tipologia" value={leedData.areaVegetada} onChange={e => setLeedData(p => ({...p, areaVegetada: e.target.value}))} /></div>
+                </div>
+                <div className="space-y-2 mt-4">
+                  {[
+                    { key: "acabamentos", label: "Fichas técnicas de acabamentos de superfície (SR/SRI)" },
+                    { key: "iluminacao", label: "Plano de iluminação exterior e fichas técnicas de luminárias" },
+                  ].map(doc => (
+                    <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
+                      <span className="text-sm flex-1">{doc.label}</span>
+                      <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                    </label>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Consumption - annual data */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Consumos (12 Meses)</CardTitle>
+                <p className="text-xs text-muted-foreground">Dados mensais por contador — preencher anualmente</p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><label className="text-xs font-medium text-muted-foreground">Consumo Total de Energia</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" placeholder="Total 12 meses" value={leedData.consumoEnergia} onChange={e => setLeedData(p => ({...p, consumoEnergia: e.target.value}))} /><span className="text-xs text-muted-foreground">kWh</span></div></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">Consumo Total de Água</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" placeholder="Total 12 meses" value={leedData.consumoAgua} onChange={e => setLeedData(p => ({...p, consumoAgua: e.target.value}))} /><span className="text-xs text-muted-foreground">m³</span></div></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Systems & Audits */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Sistemas do Edifício e Auditorias</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { key: "auditoriaEnergetica", label: "Auditoria energética ASHRAE Nível 1 (últimos 5 anos)" },
+                  { key: "refrigerantes", label: "Inventário de equipamentos com refrigerante (tipo, carga, GWP)" },
+                  { key: "ventilacao", label: "Lista de equipamentos de ventilação e fichas técnicas" },
+                  { key: "qualidadeAr", label: "Auditoria de qualidade do ar interior (caudais, COVs, CO2)" },
+                  { key: "residuos", label: "Certificados de gestão de RSU e resíduos desviados (12 meses)" },
+                ].map(doc => (
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
+                    <span className="text-sm flex-1">{doc.label}</span>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                  </label>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Policies */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Políticas e Planos</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { key: "planoGestao", label: "Plano de Gestão do Local (Site Management Plan)" },
+                  { key: "limpezaVerde", label: "Política de Limpeza Verde (Green Cleaning Policy)" },
+                  { key: "comprasSustentaveis", label: "Política de Compras Sustentáveis" },
+                  { key: "ipm", label: "Plano Integrado de Gestão de Pragas (IPM)" },
+                  { key: "tabaco", label: "Política de Controlo de Tabaco" },
+                ].map(doc => (
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
+                    <span className="text-sm flex-1">{doc.label}</span>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                  </label>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Textarea placeholder="Notas adicionais sobre LEED..." className="text-sm" value={leedData.notas} onChange={e => setLeedData(p => ({...p, notas: e.target.value}))} />
+            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("LEED")}><Save className="w-4 h-4 mr-2" /> Guardar LEED</Button>
           </TabsContent>
         </Tabs>
       </div>

@@ -263,3 +263,6 @@
 - [x] Fases rendered inline within Timeline as sub-tab (Vista Geral | Fases)
 - [x] PhaseMeasures supports embedded prop (no AppLayout wrapper)
 - [x] Clicking "Fases" in Timeline renders content inline without navigation
+- [x] CERT-01: Redesign CELE - installation-level input with generator inventory table, not per-generator repetition
+- [x] CERT-02: Redesign EED - group by data type (single values, annual KPIs, documents), not per-item forms
+- [x] CERT-03: Redesign LEED - smart grouping (building info once, consumption tables, document uploads)

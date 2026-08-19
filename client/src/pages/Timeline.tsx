@@ -24,7 +24,7 @@ const CONSTRUCTION_PHASE_KEYS = ["Preparação Prévia", "Execução da Obra", "
 function getSimplifiedPhaseLabel(phaseKey: string): string {
   if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "Construção";
   const def = PHASE_DEFS.find(p => p.key === phaseKey);
-  return def?.label || phaseKey;
+  return def?.label || phaseKey; // will be wrapped with t() at render
 }
 
 function getPhaseColor(phaseKey: string): string {
@@ -247,8 +247,8 @@ export default function Timeline() {
                         const isCurrent = phaseProgress > 0 && phaseProgress < 100;
                         return (
                           <div key={phase.key} className="flex-1">
-                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`} title={`${phase.label}: ${phaseProgress}%`} />
-                            <p className="text-[8px] text-center text-muted-foreground mt-0.5 truncate">{phase.shortLabel}</p>
+                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`} title={`${t(phase.label)}: ${phaseProgress}%`} />
+                            <p className="text-[8px] text-center text-muted-foreground mt-0.5 truncate">{t(phase.shortLabel)}</p>
                           </div>
                         );
                       })}
@@ -324,7 +324,7 @@ export default function Timeline() {
                   <button onClick={() => updatePhaseMutation.mutate({ id: phase.dbId || 0, hidden: phase.hidden ? 0 : 1 })} className="shrink-0">
                     {phase.hidden ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-green-600" />}
                   </button>
-                  <span className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}>{phase.label}</span>
+                  <span className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}>{t(phase.label)}</span>
                   <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.startDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, startDate: e.target.value || undefined })} placeholder="Início" />
                   <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.endDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, endDate: e.target.value || undefined })} placeholder="Fim" />
                 </div>
@@ -369,7 +369,7 @@ export default function Timeline() {
           {visiblePhaseData.map((phase, idx) => (
             <div key={phase.key} className="flex items-center">
               <div className={`relative px-3 py-2 rounded-lg border min-w-[110px] text-center ${phase.lightColor} ${phase.isComplete ? "ring-2 ring-green-400" : ""}`}>
-                <p className="text-xs font-medium truncate">{phase.shortLabel}</p>
+                <p className="text-xs font-medium truncate">{t(phase.shortLabel)}</p>
                 <p className="text-lg font-bold">{phase.progress}%</p>
                 <p className="text-[10px] text-muted-foreground">{phase.concluido}/{phase.total}</p>
                 {phase.isComplete && (
@@ -399,7 +399,7 @@ export default function Timeline() {
                 <div className="flex-1 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{phase.label}</h3>
+                      <h3 className="font-semibold text-sm">{t(phase.label)}</h3>
                       {phase.isComplete && (
                         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">{t("Concluída")}</Badge>
                       )}

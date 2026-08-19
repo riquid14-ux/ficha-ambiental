@@ -177,7 +177,7 @@ export default function Dashboard() {
                     <Building2 className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-emerald-900">Fase de Operação — {activeProject?.name}</p>
+                    <p className="font-semibold text-emerald-900">{t("Fase de Operação")} — {activeProject?.name}</p>
                     <p className="text-xs text-muted-foreground">{t("Monitorização contínua de medidas ambientais e gestão de resíduos")}</p>
                   </div>
                 </div>
@@ -372,7 +372,7 @@ export default function Dashboard() {
                         <div className={`w-2.5 h-10 rounded-full ${colorClass}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold">{proj.code}</p>
-                          <p className="text-[10px] text-muted-foreground">{currentPhase?.key || "Pré-Licenciamento"}</p>
+                          <p className="text-[10px] text-muted-foreground">{t(currentPhase?.key || "Pré-Licenciamento")}</p>
                         </div>
                         <div className="text-right">
                           <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
@@ -646,7 +646,7 @@ export default function Dashboard() {
                 const now = Date.now();
                 const upcoming = events.filter((e: any) => e.nextDate && Number(e.nextDate) >= now).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5);
                 const overdue = events.filter((e: any) => e.nextDate && Number(e.nextDate) < now && e.status !== "reported" && e.status !== "validated");
-                if (upcoming.length === 0 && overdue.length === 0) return <p className="text-xs text-muted-foreground py-4 text-center">Sem prazos definidos</p>;
+                if (upcoming.length === 0 && overdue.length === 0) return <p className="text-xs text-muted-foreground py-4 text-center">{t("Sem prazos definidos")}</p>;
                 return (
                   <div className="space-y-1.5">
                     {overdue.length > 0 && (
@@ -690,7 +690,7 @@ export default function Dashboard() {
                 <a href="/timeline" className="text-[10px] text-primary hover:underline">{t("Ver timeline")} →</a>
               </div>
               {(() => {
-                const phases = ["Pré-Licenciamento", "Licenciamento", "Pré-Construção", "Preparação", "Execução da Obra", "Finalização", "Final Construção", "Exploração", "Operação"];
+                const phases = ["Pré-Licenciamento", "Licenciamento", "Pré-Construção", "Preparação", "Execução da Obra", "Finalização", "Final Construção", "Exploração", "Operação"].map(p => t(p));
                 return (
                   <div className="space-y-1">
                     {phases.map((phase, i) => {

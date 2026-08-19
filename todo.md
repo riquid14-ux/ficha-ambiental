@@ -266,3 +266,9 @@
 - [x] CERT-01: Redesign CELE - installation-level input with generator inventory table, not per-generator repetition
 - [x] CERT-02: Redesign EED - group by data type (single values, annual KPIs, documents), not per-item forms
 - [x] CERT-03: Redesign LEED - smart grouping (building info once, consumption tables, document uploads)
+- [x] FICHA-01: RAA review page shows only submitted fichas relevant to their role, not all 156 measures
+- [x] FICHA-02: EE/RAP only see their own company's measures when creating fichas
+- [x] FICHA-03: Rejection flow returns only rejected measures for correction, not the full ficha
+- [x] FICHA-04: Verify separation of duties works (submitter cannot approve own ficha)
+- [x] FICHA-05: Verify ficha approval updates Fases progress correctly
+- [x] FICHA-06: Verify Dashboard only counts approved fichas

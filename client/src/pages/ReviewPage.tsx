@@ -154,6 +154,9 @@ export default function ReviewPage(props: any) {
     for (const m of measuresQuery.data) {
       const response = responseMap.get(m.id);
       const status = response?.status || null;
+      // Only show measures that have actual responses (not empty/null)
+      // This prevents RAA from seeing all 156 measures when only 30 were submitted
+      if (!response || !response.status) continue;
       if (measureFilter !== "all" && status !== measureFilter) continue;
       const group = sectionMap.get(m.sectionId);
       if (group) group.measures.push({ ...m, response });

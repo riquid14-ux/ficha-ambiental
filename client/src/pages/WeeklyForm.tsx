@@ -89,6 +89,7 @@ export default function WeeklyForm() {
     { enabled: !!activeProject?.id }
   );
   const [showAllPhases, setShowAllPhases] = useState(false);
+  const [showAllMeasuresOnRejected, setShowAllMeasuresOnRejected] = useState(false);
   // Determine the current phase (first phase with progress < 100)
   const currentPhaseKey = useMemo(() => {
     if (!projectPhasesQuery.data || projectPhasesQuery.data.length === 0) return null;
@@ -368,9 +369,14 @@ export default function WeeklyForm() {
   const measuresBySection = useMemo(() => {
     if (!measuresQuery.data || !sectionsQuery.data) return [];
     // Filter measures: only show those relevant to this user's role
-    const relevantMeasures = measureFilterType
+    let relevantMeasures = measureFilterType
       ? measuresQuery.data.filter((m) => m.responsible.toUpperCase().includes(measureFilterType))
       : measuresQuery.data;
+    // FICHA-03: When ficha is rejected, only show measures marked as 'nok' by reviewer
+    if (isRejected && !showAllMeasuresOnRejected && reviewFeedbackMap.size > 0) {
+      const nokIds = new Set(Array.from(reviewFeedbackMap.entries()).filter(([, v]) => v.verdict === "nok").map(([id]) => id));
+      if (nokIds.size > 0) relevantMeasures = relevantMeasures.filter(m => nokIds.has(m.id));
+    }
     const map = new Map<number, typeof relevantMeasures>();
     for (const m of relevantMeasures) {
       if (!map.has(m.sectionId)) map.set(m.sectionId, []);
@@ -391,7 +397,7 @@ export default function WeeklyForm() {
       section: s,
       measures: map.get(s.id) || [],
     })).filter((s) => s.measures.length > 0);
-  }, [measuresQuery.data, sectionsQuery.data, measureFilterType, showAllPhases, currentPhaseKey]);
+  }, [measuresQuery.data, sectionsQuery.data, measureFilterType, showAllPhases, currentPhaseKey, isRejected, showAllMeasuresOnRejected, reviewFeedbackMap]);
 
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
@@ -640,6 +646,12 @@ export default function WeeklyForm() {
                     <p className="mt-2 text-xs text-red-500 dark:text-red-400 italic">
                       As medidas com problemas estão destacadas a vermelho. Corrija e clique em "Resubmeter".
                     </p>
+                    <button
+                      className="mt-2 text-xs text-red-600 underline hover:text-red-800 font-medium"
+                      onClick={() => setShowAllMeasuresOnRejected(prev => !prev)}
+                    >
+                      {showAllMeasuresOnRejected ? "Mostrar apenas medidas rejeitadas" : "Mostrar todas as medidas"}
+                    </button>
                   </div>
                 )}
                 {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}

@@ -128,9 +128,9 @@ export default function Gamma() {
             <TabsTrigger value="portfolio">Portefólio</TabsTrigger>
             <TabsTrigger value="candidatura">Candidatura</TabsTrigger>
             <TabsTrigger value="avaliacao">Avaliação</TabsTrigger>
-            <TabsTrigger value="necessidades">Necessidades</TabsTrigger>
-            <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
-            <TabsTrigger value="vencedores">Vencedores</TabsTrigger>
+            <TabsTrigger value="necessidades">{t("Necessidades")}</TabsTrigger>
+            <TabsTrigger value="scorecard">{t("Scorecard")}</TabsTrigger>
+            <TabsTrigger value="vencedores">{t("Vencedores")}</TabsTrigger>
             <TabsTrigger value="plano">Plano de Apoio</TabsTrigger>
             {isAdmin && <TabsTrigger value="definicoes">{t("Definições")}</TabsTrigger>}
           </TabsList>

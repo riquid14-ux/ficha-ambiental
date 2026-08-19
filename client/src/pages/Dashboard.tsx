@@ -142,7 +142,7 @@ export default function Dashboard() {
     return entries
       .filter(([, v]) => (v as number) > 0)
       .map(([key, value]) => ({
-        name: STATUS_LABELS[key],
+        name: t(STATUS_LABELS[key]),
         value,
         color: STATUS_COLORS[key],
       }));
@@ -817,7 +817,7 @@ export default function Dashboard() {
         {selectedStatus !== "all" && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
             <span>Filtro ativo:</span>
-            <span className="font-medium" style={{ color: STATUS_COLORS[selectedStatus] }}>{STATUS_LABELS[selectedStatus]}</span>
+            <span className="font-medium" style={{ color: STATUS_COLORS[selectedStatus] }}>{t(STATUS_LABELS[selectedStatus])}</span>
             <button className="ml-2 underline text-xs" onClick={() => setSelectedStatus("all")}>{t("Limpar")}</button>
           </div>
         )}
@@ -835,10 +835,10 @@ export default function Dashboard() {
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -883,10 +883,10 @@ export default function Dashboard() {
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip />
                     <Legend />
-                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
+                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -926,10 +926,10 @@ export default function Dashboard() {
                   <YAxis type="category" dataKey="sectionName" width={200} tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.length > 30 ? v.slice(0, 30) + "..." : v} />
                   <Tooltip />
                   <Legend />
-                  {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name="Implementado" fill={STATUS_COLORS.I} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name="Conforme" fill={STATUS_COLORS.C} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name="Não Conforme" fill={STATUS_COLORS.NC} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name="Não Aplicável" fill={STATUS_COLORS.NA} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
+                  {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

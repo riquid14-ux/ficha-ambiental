@@ -300,3 +300,11 @@
 - [x] Replace all "PGA" with "Plataforma de Gestão Ambiental" across the app
 - [x] Fix dark mode contrast and visibility issues (text invisible, colors wrong)
 - [x] Complete EN translation (sidebar still shows PT, workflow mixed, charts PT)
+
+## Comprehensive EN Translation & Dark Mode Pass
+- [x] Added 115 new EN translations (total 811) covering all toast messages, chart labels, placeholders
+- [x] Wrapped Dashboard chart names with t() (Implementado, Conforme, Não Conforme, Não Aplicável)
+- [x] Wrapped KPI chart names with t() (Trabalhadores, Horas)
+- [x] Wrapped Workflow page strings with t() (16 replacements)
+- [x] Wrapped AdminPanel and Gamma bare PT strings with t()
+- [x] Added comprehensive dark mode CSS overrides for charts, tabs, badges, borders

@@ -99,8 +99,8 @@ export default function AdminPanel() {
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Administração</h1>
-          <p className="text-muted-foreground text-sm mt-1">Gestão de empresas, utilizadores e submissões</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Administração")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("Gestão de empresas, utilizadores e submissões")}</p>
         </div>
 
         {/* Explanatory Roles Panel */}
@@ -108,7 +108,7 @@ export default function AdminPanel() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">Tipos de Entidade e Permissões</h3>
+              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Tipos de Entidade e Permissões")}</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
@@ -215,7 +215,7 @@ export default function AdminPanel() {
           <TabsContent value="auditoria" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Ações</CardTitle>
+                <CardTitle>{t("Histórico de Ações")}</CardTitle>
                 <p className="text-sm text-muted-foreground">Registo de todas as alterações realizadas na plataforma (apenas leitura)</p>
               </CardHeader>
               <CardContent>
@@ -289,18 +289,18 @@ function CompaniesTab() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Empresas / Entidades</CardTitle>
+        <CardTitle className="text-base">{t("Empresas / Entidades")}</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Empresa</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Criar Nova Empresa</DialogTitle>
+              <DialogTitle>{t("Criar Nova Empresa")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div>
-                <Label>Nome completo</Label>
+                <Label>{t("Nome completo")}</Label>
                 <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Empresa ABC, Lda." />
               </div>
               <div>
@@ -696,7 +696,7 @@ function UsersTab() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Convidar Novo Utilizador</DialogTitle>
+                <DialogTitle>{t("Convidar Novo Utilizador")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
@@ -963,13 +963,13 @@ function UsersTab() {
       {deleteUserId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
+            <h3 className="font-semibold text-lg mb-2 text-destructive">{t("Eliminar Utilizador")}</h3>
             <p className="text-sm text-muted-foreground mb-4">Tem a certeza?</p>
             <p className="text-sm mb-2">Escreva o nome para confirmar:</p>
             <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
             <div className="flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>Confirmar</Button>
-              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>Cancelar</Button>
+              <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{t("Confirmar")}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}</Button>
             </div>
           </div>
         </div>
@@ -1162,8 +1162,8 @@ function PendingAccountsTab() {
             <p className="text-sm text-muted-foreground">{p.email}</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>Aprovar</button>
-            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>Rejeitar</button>
+            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}</button>
+            <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}</button>
           </div>
         </div>
       ))}

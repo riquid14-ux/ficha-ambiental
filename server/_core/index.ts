@@ -68,6 +68,11 @@ async function startServer() {
   registerAutodeskRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
+  // Direct logout route (GET) - clears session and redirects to login
+  app.get("/api/auth/logout", (req, res) => {
+    res.clearCookie("app_session_id", { path: "/" });
+    res.redirect("/login");
+  });
   // tRPC API
   app.use(
     "/api/trpc",

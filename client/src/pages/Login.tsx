@@ -45,6 +45,7 @@ export default function Login() {
         // Session was created, but force password change
         window.location.href = "/dashboard";
       } else {
+        sessionStorage.setItem("pw_verified", "1");
         window.location.href = "/dashboard";
       }
     },
@@ -56,6 +57,7 @@ export default function Login() {
       if (data.mustChangePassword) {
         window.location.href = "/dashboard";
       } else {
+        sessionStorage.setItem("pw_verified", "1");
         window.location.href = "/dashboard";
       }
     },
@@ -106,7 +108,8 @@ export default function Login() {
   }, [loading, user, autoLoginAttempted]);
 
   useEffect(() => {
-    if (!loading && user && viewMode === "login") setLocation("/dashboard");
+    if (!loading && user && viewMode === "login" && sessionStorage.getItem("pw_verified") === "1") setLocation("/dashboard");
+    if (!loading && user && viewMode === "login" && sessionStorage.getItem("pw_verified") !== "1" && (user as any).passwordHash) setViewMode("changePassword");
   }, [loading, user, setLocation, viewMode]);
 
   if (loading || autoLoginLoading) {
@@ -120,7 +123,7 @@ export default function Login() {
     );
   }
 
-  if (user && viewMode === "login") return null;
+  if (user && viewMode === "login" && sessionStorage.getItem("pw_verified") === "1") return null;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,7 +180,7 @@ export default function Login() {
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
               {viewMode === "2fa" && "Introduza o código do Authenticator"}
-              {viewMode === "changePassword" && "Defina uma nova palavra-passe"}
+              {viewMode === "changePassword" && "Introduza a sua palavra-passe para continuar"}
               {viewMode === "forgotPassword" && "Recuperação de palavra-passe"}
             </p>
           </div>
@@ -295,6 +298,40 @@ export default function Login() {
         )}
 
         {/* ─── Forgot Password Form ─── */}
+        {viewMode === "changePassword" && (
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            setError("");
+            if (!password.trim()) { setError("Introduza a palavra-passe"); return; }
+            loginMutation.mutate({ email: user?.email || "", password });
+          }} className="space-y-4">
+            <div className="text-center mb-4">
+              <Shield className="w-12 h-12 mx-auto text-green-600 mb-2" />
+              <p className="text-sm text-muted-foreground">Verificação de segurança — confirme a sua identidade.</p>
+              {user?.email && <p className="text-xs text-muted-foreground mt-1 font-medium">{user.email}</p>}
+            </div>
+            {error && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{error}</span>
+              </div>
+            )}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
+            </div>
+            <Button type="submit" size="lg" className="w-full h-12 bg-green-700 hover:bg-green-800 shadow-lg" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Confirmar"}
+            </Button>
+            <div className="flex justify-between text-sm">
+              <button type="button" className="text-muted-foreground hover:underline" onClick={() => setViewMode("forgotPassword")}>
+                Esqueceu a palavra-passe?
+              </button>
+              <button type="button" className="text-red-500 hover:underline" onClick={() => { window.location.href = "/api/auth/logout"; }}>
+                Terminar Sessão
+              </button>
+            </div>
+          </form>
+        )}
         {viewMode === "forgotPassword" && (
           <form onSubmit={(e) => {
             e.preventDefault();

@@ -629,7 +629,7 @@ export default function WeeklyForm() {
                       </div>
                     </div>
                     {submissionQuery.data?.reviewNotes && (
-                      <div className="mt-2 p-3 bg-white dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded">
+                      <div className="mt-2 p-3 bg-background dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded">
                         <p className="text-sm text-red-800 dark:text-red-200">
                           <strong>{t("Notas do revisor:")}</strong> {submissionQuery.data.reviewNotes}
                         </p>
@@ -654,7 +654,7 @@ export default function WeeklyForm() {
                     </button>
                   </div>
                 )}
-                {isUnderReview && <Badge variant="outline" className="mt-1">Em Revisão</Badge>}
+                {isUnderReview && <Badge variant="outline" className="mt-1">{t("Em Revisão")}</Badge>}
               </div>
               {!isReadOnly && (
                 <div className="flex gap-2">

@@ -30,7 +30,7 @@ function getSimplifiedPhaseLabel(phaseKey: string): string {
 function getPhaseColor(phaseKey: string): string {
   if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "bg-emerald-100 text-emerald-800 border-emerald-300";
   const def = PHASE_DEFS.find(p => p.key === phaseKey);
-  if (!def) return "bg-gray-100 text-gray-800";
+  if (!def) return "bg-muted text-foreground";
   return def.lightColor + " " + def.textColor;
 }
 
@@ -47,7 +47,7 @@ const PHASE_DEFS = [
   { key: "Fase Final", label: "Construção (Final)", shortLabel: "Final", color: "bg-emerald-600", lightColor: "bg-emerald-50 border-emerald-200", textColor: "text-emerald-700" },
   { key: "Fase Final Construção", label: "Final da Construção", shortLabel: "Final Const.", color: "bg-amber-500", lightColor: "bg-amber-50 border-amber-200", textColor: "text-amber-700" },
   { key: "Exploração", label: "Exploração", shortLabel: "Expl.", color: "bg-orange-500", lightColor: "bg-orange-50 border-orange-200", textColor: "text-orange-700" },
-  { key: "Desativação (Pós-Exploração)", label: "Desativação", shortLabel: "Desat.", color: "bg-gray-500", lightColor: "bg-gray-50 border-gray-200", textColor: "text-gray-700" },
+  { key: "Desativação (Pós-Exploração)", label: "Desativação", shortLabel: "Desat.", color: "bg-muted0", lightColor: "bg-muted border-border", textColor: "text-foreground" },
 ];
 
 export default function Timeline() {
@@ -293,13 +293,13 @@ export default function Timeline() {
       <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
         <button
           onClick={() => setActiveSubTab("timeline")}
-          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "timeline" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "timeline" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           Vista Geral
         </button>
         <button
           onClick={() => setActiveSubTab("fases")}
-          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "fases" ? "bg-white shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "fases" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           Fases
         </button>
@@ -316,11 +316,11 @@ export default function Timeline() {
       {showSettings && user?.role === "admin" && (
         <Card className="border-amber-200 bg-amber-50/50">
           <CardContent className="p-4 space-y-3">
-            <p className="text-sm font-semibold flex items-center gap-1"><Settings className="w-4 h-4" /> Definições da Timeline</p>
+            <p className="text-sm font-semibold flex items-center gap-1"><Settings className="w-4 h-4" /> {t("Definições da Timeline")}</p>
             <p className="text-xs text-muted-foreground">{t("Ocultar fases, definir datas de início/fim (sincroniza com calendário)")}</p>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {phaseData.map((phase: any) => (
-                <div key={phase.key} className="flex items-center gap-2 p-2 border rounded bg-white text-xs">
+                <div key={phase.key} className="flex items-center gap-2 p-2 border rounded bg-background text-xs">
                   <button onClick={() => updatePhaseMutation.mutate({ id: phase.dbId || 0, hidden: phase.hidden ? 0 : 1 })} className="shrink-0">
                     {phase.hidden ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-green-600" />}
                   </button>

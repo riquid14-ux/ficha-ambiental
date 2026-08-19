@@ -53,7 +53,7 @@ function AuditLogTab() {
   return (
     <div className="max-h-[500px] overflow-y-auto">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-white border-b">
+        <thead className="sticky top-0 bg-background border-b">
           <tr>
             <th className="text-left p-2">{t("Data")}</th>
             <th className="text-left p-2">{t("Utilizador")}</th>
@@ -64,7 +64,7 @@ function AuditLogTab() {
         </thead>
         <tbody>
           {logs.map((log: any) => (
-            <tr key={log.id} className="border-b hover:bg-gray-50">
+            <tr key={log.id} className="border-b hover:bg-muted">
               <td className="p-2 text-xs">{new Date(log.createdAt).toLocaleString("pt-PT")}</td>
               <td className="p-2">{log.userName || "—"}</td>
               <td className="p-2">{log.action}</td>
@@ -111,39 +111,39 @@ export default function AdminPanel() {
               <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Tipos de Entidade e Permissões")}</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
-                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
-                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
-                  <p className="text-xs text-muted-foreground">Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.</p>
+                  <p className="text-xs text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
-                  <p className="text-xs text-muted-foreground">Visão geral do projeto. Acesso de administração e supervisão.</p>
+                  <p className="text-xs font-bold text-foreground">{t("Dono de Obra — Start Campus")}</p>
+                  <p className="text-xs text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-white dark:bg-slate-900 rounded border">
-                <Eye className="w-4 h-4 text-gray-600 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+                <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Observador</p>
-                  <p className="text-xs text-muted-foreground">Acesso de leitura. Pode ver dashboard, histórico e revisões.</p>
+                  <p className="text-xs text-muted-foreground">{t("Acesso de leitura. Pode ver dashboard, histórico e revisões.")}</p>
                 </div>
               </div>
             </div>
@@ -205,8 +205,8 @@ export default function AdminPanel() {
           <TabsContent value="auditoria" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Histórico de Ações</CardTitle>
-                <p className="text-sm text-muted-foreground">Registo de todas as alterações realizadas na plataforma (apenas leitura)</p>
+                <CardTitle>{t("Histórico de Ações")}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t("Registo de todas as alterações realizadas na plataforma (apenas leitura)")}</p>
               </CardHeader>
               <CardContent>
                 <AuditLogTab />
@@ -282,23 +282,23 @@ function CompaniesTab() {
         <CardTitle className="text-base">{t("Empresas / Entidades")}</CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Nova Empresa</Button>
+            <Button size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Nova Empresa")}</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Criar Nova Empresa</DialogTitle>
+              <DialogTitle>{t("Criar Nova Empresa")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div>
-                <Label>Nome completo</Label>
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Empresa ABC, Lda." />
+                <Label>{t("Nome completo")}</Label>
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("Ex: Empresa ABC, Lda.")} />
               </div>
               <div>
-                <Label>Sigla / Nome curto</Label>
+                <Label>{t("Sigla / Nome curto")}</Label>
                 <Input value={newShortName} onChange={(e) => setNewShortName(e.target.value)} placeholder="Ex: ABC" />
               </div>
               <div>
-                <Label>Tipo</Label>
+                <Label>{t("Tipo")}</Label>
                 <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "rap" | "dono_obra" | "raa" | "observador")}>
                   <SelectTrigger>
                     <SelectValue />
@@ -330,8 +330,8 @@ function CompaniesTab() {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>{t("Nome")}</TableHead>
-              <TableHead>Sigla</TableHead>
-              <TableHead>Tipo</TableHead>
+              <TableHead>{t("Sigla")}</TableHead>
+              <TableHead>{t("Tipo")}</TableHead>
               <TableHead>{t("Projetos")}</TableHead>
               <TableHead>{t("Estado")}</TableHead>
             </TableRow>
@@ -363,7 +363,7 @@ function CompaniesTab() {
                                   setSelectedProjectIds(prev => prev.filter(id => id !== p.id));
                                 }
                               }}
-                              className="rounded border-gray-300"
+                              className="rounded border-border"
                             />
                             {p.code}
                           </label>
@@ -461,7 +461,7 @@ function SubmissionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Todas as Submissões</CardTitle>
+        <CardTitle className="text-base">{t("Todas as Submissões")}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -617,7 +617,7 @@ function UsersTab() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Convidar Novo Utilizador</DialogTitle>
+                <DialogTitle>{t("Convidar Novo Utilizador")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
@@ -680,7 +680,7 @@ function UsersTab() {
                <TableHead>{t("Papel")}</TableHead>
                <TableHead>{t("Empresa")}</TableHead>
                <TableHead>{t("Projetos")}</TableHead>
-                <TableHead>Fases</TableHead>
+                <TableHead>{t("Fases")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -742,7 +742,7 @@ function UsersTab() {
                                     setSelectedProjectIds(prev => prev.filter(id => id !== p.id));
                                   }
                                 }}
-                                className="rounded border-gray-300"
+                                className="rounded border-border"
                               />
                               {p.code}
                             </label>
@@ -799,9 +799,9 @@ function UsersTab() {
                   <TableCell>
                     <div className="flex flex-wrap gap-0.5">
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700">Todas</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 text-green-700">{t("Todas")}</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">Construção</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">{t("Construção")}</Badge>
                       )}
                     </div>
                   </TableCell>
@@ -868,11 +868,11 @@ function UsersTab() {
       )}
       {deleteUserId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2 text-destructive">Eliminar Utilizador</h3>
+          <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg mb-2 text-destructive">{t("Eliminar Utilizador")}</h3>
             <p className="text-sm text-muted-foreground mb-4">Tem a certeza?</p>
             <p className="text-sm mb-2">Escreva o nome para confirmar:</p>
-            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder="Nome completo" className="mb-4" />
+            <Input value={deleteConfirmName} onChange={e => setDeleteConfirmName(e.target.value)} placeholder={t("Nome completo")} className="mb-4" />
             <div className="flex gap-2">
               <Button variant="destructive" className="flex-1" onClick={() => deleteUserMutation.mutate({ userId: deleteUserId!, confirmName: deleteConfirmName })} disabled={!deleteConfirmName || deleteUserMutation.isPending}>{t("Confirmar")}</Button>
               <Button variant="outline" className="flex-1" onClick={() => { setDeleteUserId(null); setDeleteConfirmName(""); }}>{t("Cancelar")}</Button>
@@ -928,7 +928,7 @@ function HistoricalTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Carregar Ficha Histórica (PDF)</CardTitle>
+          <CardTitle className="text-base">{t("Carregar Ficha Histórica (PDF)")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -956,7 +956,7 @@ function HistoricalTab() {
               <Input type="number" min={2020} max={2030} value={weekYear} onChange={(e) => setWeekYear(e.target.value)} />
             </div>
             <div>
-              <Label>Ficheiro PDF</Label>
+              <Label>{t("Ficheiro PDF")}</Label>
               <Input type="file" accept=".pdf" ref={fileInputRef} />
             </div>
           </div>
@@ -977,7 +977,7 @@ function HistoricalTab() {
               <TableRow>
                 <TableHead>{t("Semana")}</TableHead>
                 <TableHead>{t("Empresa")}</TableHead>
-                <TableHead>Ficheiro</TableHead>
+                <TableHead>{t("Ficheiro")}</TableHead>
                 <TableHead>Data Upload</TableHead>
               </TableRow>
             </TableHeader>
@@ -1021,13 +1021,13 @@ function MelhoriasTab() {
   
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold">Feedback e Melhorias dos Utilizadores</h3>
+      <h3 className="font-semibold">{t("Feedback e Melhorias dos Utilizadores")}</h3>
       {!feedbacks || feedbacks.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">Sem feedback recebido. Os utilizadores podem enviar sugestões pelo menu do perfil.</p>
       ) : (
         <div className="space-y-3">
           {feedbacks.map((fb: any) => (
-            <div key={fb.id} className={`border rounded-lg p-4 ${fb.status === "implementado" ? "border-green-200 bg-green-50/30" : fb.status === "rejeitado" ? "border-red-200 bg-red-50/30" : "border-gray-200"}`}>
+            <div key={fb.id} className={`border rounded-lg p-4 ${fb.status === "implementado" ? "border-green-200 bg-green-50/30" : fb.status === "rejeitado" ? "border-red-200 bg-red-50/30" : "border-border"}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium">{fb.userName || fb.userEmail || "Anónimo"}</p>
@@ -1060,7 +1060,7 @@ function PendingAccountsTab() {
   if (pending.length === 0) return <div className="text-center py-8 text-muted-foreground">Nenhum pedido de acesso pendente.</div>;
   return (
     <div className="space-y-3">
-      <h3 className="text-lg font-semibold">Pedidos de Acesso Pendentes</h3>
+      <h3 className="text-lg font-semibold">{t("Pedidos de Acesso Pendentes")}</h3>
       {pending.map((p: any) => (
         <div key={p.id} className="flex items-center justify-between p-4 border rounded-lg">
           <div>

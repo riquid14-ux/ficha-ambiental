@@ -106,11 +106,11 @@ export default function Matriz(props: any) {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-blue-400" />
-                <span>Em Revisão</span>
+                <span>{t("Em Revisão")}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-emerald-500" />
-                <span>Entregue</span>
+                <span>{t("Entregue")}</span>
               </div>
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
@@ -251,7 +251,7 @@ export default function Matriz(props: any) {
                   <p className="text-2xl font-bold text-blue-500">
                     {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "submitted" || c.status === "under_review").length, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Em Revisão</p>
+                  <p className="text-xs text-muted-foreground">{t("Em Revisão")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-amber-500">

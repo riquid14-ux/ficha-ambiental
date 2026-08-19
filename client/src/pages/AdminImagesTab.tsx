@@ -215,7 +215,7 @@ export default function ImagesTab() {
                   <Label className="text-xs text-muted-foreground">{t("Página onde inserir")}</Label>
                   <Select value={newLocationPage} onValueChange={setNewLocationPage}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione a página..." />
+                      <SelectValue placeholder={t("Selecione a página...")} />
                     </SelectTrigger>
                     <SelectContent>
                       {PAGE_OPTIONS.map(p => (

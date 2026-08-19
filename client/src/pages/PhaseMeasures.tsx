@@ -30,7 +30,7 @@ const ALL_PHASES = [
   { key: "Fase Final", label: "Fase Final", shortLabel: "Fase Final", order: 6, color: "bg-rose-500" },
   { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 7, color: "bg-orange-500" },
   { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 8, color: "bg-green-500" },
-  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-gray-500" },
+  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-muted0" },
 ];
 
 export default function PhaseMeasures({ embedded = false }: { embedded?: boolean }) {
@@ -327,7 +327,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                   <p className="text-xs text-muted-foreground mb-3">{t("Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.")}</p>
                   {(phaseData[phase.key] || []).map(({ measures: phaseMeasures }: any) =>
                     phaseMeasures.map((m: any) => (
-                      <div key={m.id} className="flex items-center gap-2 p-2 rounded border bg-white">
+                      <div key={m.id} className="flex items-center gap-2 p-2 rounded border bg-background">
                         {editingMeasure?.id === m.id ? (
                           <>
                             <Input className="w-20 h-8 text-xs" value={editingMeasure!.number} onChange={e => setEditingMeasure({ ...editingMeasure!, number: e.target.value })} />
@@ -365,7 +365,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>{t("Nenhuma medida registada nesta fase.")}</p>
-                    {isAdminOrDono && <p className="text-sm">Use o botão "Adicionar Medida" para começar.</p>}
+                    {isAdminOrDono && <p className="text-sm">{t("Use o botão 'Adicionar Medida' para começar.")}</p>}
                   </div>
                 ) : measures.map((measure: any) => (
                   <MeasureCard
@@ -487,7 +487,7 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Não Aplicável")}</Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-muted-foreground cursor-pointer">{t("Não Aplicável")}</Label>
                     </div>
                   </>
                 ) : (
@@ -502,7 +502,7 @@ function MeasureCard({
                     </div>
                     <div className="flex items-center gap-1.5">
                       <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-gray-500 cursor-pointer">{t("Pendente")}</Label>
+                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-muted-foreground cursor-pointer">{t("Pendente")}</Label>
                     </div>
                   </>
                 )}
@@ -658,7 +658,7 @@ function StatusBadge({ status }: { status?: string }) {
     case "em_curso":
       return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
     case "pendente":
-      return <Badge className="text-xs bg-gray-100 text-gray-600 hover:bg-gray-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}</Badge>;
+      return <Badge className="text-xs bg-muted text-muted-foreground hover:bg-muted px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}</Badge>;
     default:
       return null;
   }

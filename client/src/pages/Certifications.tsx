@@ -132,7 +132,7 @@ export default function Certifications() {
                 <span className="font-semibold">LEED O&M v4.1</span>
               </div>
               <p className="text-xs text-muted-foreground">Edifícios existentes · 6 categorias</p>
-              <p className="text-xs text-muted-foreground mt-1">Submissão contínua via Arc/LEED Online</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("Submissão contínua via Arc/LEED Online")}</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("eed")}>
@@ -142,7 +142,7 @@ export default function Certifications() {
                 <span className="font-semibold">EED — Centros de Dados</span>
               </div>
               <p className="text-xs text-muted-foreground">Art. 12.º Dir. (UE) 2023/1791</p>
-              <p className="text-xs text-muted-foreground mt-1">Submissão à DGEG até 15 maio</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("Submissão à DGEG até 15 maio")}</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("cele")}>
@@ -175,7 +175,7 @@ export default function Certifications() {
                   <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-orange-100 text-orange-800 text-xs">CELE</Badge><span className="text-sm flex-1">RAE — Relatório Anual de Emissões</span><span className="text-xs text-muted-foreground">31 março</span></div>
                   <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-orange-100 text-orange-800 text-xs">CELE</Badge><span className="text-sm flex-1">Devolução de licenças de emissão</span><span className="text-xs text-muted-foreground">30 abril</span></div>
                   <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-blue-100 text-blue-800 text-xs">EED</Badge><span className="text-sm flex-1">Relatório anual à DGEG</span><span className="text-xs text-muted-foreground">15 maio</span></div>
-                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-green-100 text-green-800 text-xs">LEED</Badge><span className="text-sm flex-1">Submissão de dados de performance (Arc)</span><span className="text-xs text-muted-foreground">Contínuo</span></div>
+                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-green-100 text-green-800 text-xs">LEED</Badge><span className="text-sm flex-1">{t("Submissão de dados de performance (Arc)")}</span><span className="text-xs text-muted-foreground">Contínuo</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -192,7 +192,7 @@ export default function Certifications() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">Inventário de Geradores</CardTitle>
-                  <Button size="sm" variant="outline" onClick={addGenerator} className="text-xs"><Plus className="w-3 h-3 mr-1" /> Adicionar Gerador</Button>
+                  <Button size="sm" variant="outline" onClick={addGenerator} className="text-xs"><Plus className="w-3 h-3 mr-1" /> {t("Adicionar Gerador")}</Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -234,7 +234,7 @@ export default function Certifications() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Tipo de Combustível (todos os geradores)</label>
+                    <label className="text-xs font-medium text-muted-foreground">{t("Tipo de Combustível (todos os geradores)")}</label>
                     <Input className="h-9 mt-1" value={celeData.combustivel} onChange={e => setCeleData(p => ({...p, combustivel: e.target.value}))} />
                     <p className="text-[10px] text-muted-foreground mt-0.5">Ex: HVO, Diesel, Gás Natural</p>
                   </div>
@@ -301,7 +301,7 @@ export default function Certifications() {
                   <div className="md:col-span-2 p-3 bg-orange-50 rounded-lg border border-orange-100">
                     <label className="text-xs font-medium text-orange-800">Emissões de CO2 Calculadas</label>
                     <div className="flex items-center gap-2 mt-1">
-                      <Input className="h-9 bg-white" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
+                      <Input className="h-9 bg-background" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
                       <span className="text-xs text-muted-foreground">tCO2</span>
                     </div>
                     <p className="text-[10px] text-orange-700 mt-1">Cálculo: total combustível × fator de emissão × densidade</p>
@@ -322,7 +322,7 @@ export default function Certifications() {
                   { key: "parecerVerificacao", label: "Parecer de verificação por entidade acreditada", deadline: "Anual" },
                   { key: "licencasDevolvidas", label: "Devolução de licenças de emissão (se aplicável)", deadline: "Até 30 abril" },
                 ].map(doc => (
-                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer transition-colors">
                     <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(celeData as any)[doc.key]} onChange={e => setCeleData(p => ({...p, [doc.key]: e.target.checked}))} />
                     <div className="flex-1">
                       <p className="text-sm font-medium">{doc.label}</p>
@@ -337,9 +337,9 @@ export default function Certifications() {
             </Card>
 
             <div className="flex items-center gap-3">
-              <Textarea placeholder="Notas adicionais sobre CELE..." className="text-sm" value={celeData.notas} onChange={e => setCeleData(p => ({...p, notas: e.target.value}))} />
+              <Textarea placeholder={t("Notas adicionais sobre CELE...")} className="text-sm" value={celeData.notas} onChange={e => setCeleData(p => ({...p, notas: e.target.value}))} />
             </div>
-            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("CELE")}><Save className="w-4 h-4 mr-2" /> Guardar CELE</Button>
+            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("CELE")}><Save className="w-4 h-4 mr-2" /> {t("Guardar CELE")}</Button>
           </TabsContent>
 
           {/* === EED — Grouped KPI Input === */}
@@ -353,13 +353,13 @@ export default function Certifications() {
               <CardHeader className="pb-3"><CardTitle className="text-base">Identificação da Instalação</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="text-xs font-medium text-muted-foreground">Nome do Centro de Dados</label><Input className="h-9 mt-1" value={eedData.nome} onChange={e => setEedData(p => ({...p, nome: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">{t("Nome do Centro de Dados")}</label><Input className="h-9 mt-1" value={eedData.nome} onChange={e => setEedData(p => ({...p, nome: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Localização</label><Input className="h-9 mt-1" value={eedData.localizacao} onChange={e => setEedData(p => ({...p, localizacao: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Operador</label><Input className="h-9 mt-1" value={eedData.operador} onChange={e => setEedData(p => ({...p, operador: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Contacto</label><Input className="h-9 mt-1" placeholder="Email ou telefone" value={eedData.contacto} onChange={e => setEedData(p => ({...p, contacto: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Potência Instalada de TI (kW)</label><Input className="h-9 mt-1" placeholder="kW" value={eedData.potenciaTI} onChange={e => setEedData(p => ({...p, potenciaTI: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Área Útil (m²)</label><Input className="h-9 mt-1" placeholder="m²" value={eedData.areaUtil} onChange={e => setEedData(p => ({...p, areaUtil: e.target.value}))} /></div>
-                  <div><label className="text-xs font-medium text-muted-foreground">Data de Início de Operação</label><Input className="h-9 mt-1" type="date" value={eedData.dataOperacao} onChange={e => setEedData(p => ({...p, dataOperacao: e.target.value}))} /></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">{t("Data de Início de Operação")}</label><Input className="h-9 mt-1" type="date" value={eedData.dataOperacao} onChange={e => setEedData(p => ({...p, dataOperacao: e.target.value}))} /></div>
                 </div>
               </CardContent>
             </Card>
@@ -386,23 +386,23 @@ export default function Certifications() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <label className="text-xs font-medium text-blue-800">PUE</label>
-                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
+                    <Input className="h-9 mt-1 bg-background" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
                     <p className="text-[10px] text-blue-600 mt-0.5">Power Usage Effectiveness</p>
                   </div>
                   <div className="p-3 bg-green-50 rounded-lg border border-green-100">
                     <label className="text-xs font-medium text-green-800">REF (%)</label>
-                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
+                    <Input className="h-9 mt-1 bg-background" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
                     <p className="text-[10px] text-green-600 mt-0.5">Renewable Energy Factor</p>
                   </div>
                   <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
                     <label className="text-xs font-medium text-amber-800">ERF (%)</label>
-                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
+                    <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
                     <p className="text-[10px] text-amber-600 mt-0.5">Energy Reuse Factor</p>
                   </div>
-                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <label className="text-xs font-medium text-gray-800">CUE</label>
-                    <Input className="h-9 mt-1 bg-white" placeholder="kgCO2/kWh" value={eedData.cue} onChange={e => setEedData(p => ({...p, cue: e.target.value}))} />
-                    <p className="text-[10px] text-gray-600 mt-0.5">Carbon Usage Effectiveness</p>
+                  <div className="p-3 bg-muted rounded-lg border border-border">
+                    <label className="text-xs font-medium text-foreground">CUE</label>
+                    <Input className="h-9 mt-1 bg-background" placeholder="kgCO2/kWh" value={eedData.cue} onChange={e => setEedData(p => ({...p, cue: e.target.value}))} />
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Carbon Usage Effectiveness</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -420,7 +420,7 @@ export default function Certifications() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-100">
                     <label className="text-xs font-medium text-cyan-800">WUE (L/kWh)</label>
-                    <Input className="h-9 mt-1 bg-white" placeholder="Ex: 0.5" value={eedData.wue} onChange={e => setEedData(p => ({...p, wue: e.target.value}))} />
+                    <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0.5" value={eedData.wue} onChange={e => setEedData(p => ({...p, wue: e.target.value}))} />
                     <p className="text-[10px] text-cyan-600 mt-0.5">Water Usage Effectiveness</p>
                   </div>
                   <div><label className="text-xs font-medium text-muted-foreground">Consumo Total de Água (m³/ano)</label><Input className="h-9 mt-1" value={eedData.consumoAgua} onChange={e => setEedData(p => ({...p, consumoAgua: e.target.value}))} /></div>
@@ -433,20 +433,20 @@ export default function Certifications() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">Submissões</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer">
                   <input type="checkbox" className="accent-green-600 w-4 h-4" checked={eedData.relatorioSubmetido} onChange={e => setEedData(p => ({...p, relatorioSubmetido: e.target.checked}))} />
                   <div className="flex-1"><p className="text-sm font-medium">Relatório anual submetido à DGEG</p><p className="text-xs text-muted-foreground">Até 15 maio</p></div>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> {t("Anexar")}</Button>
                 </label>
-                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                <label className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer">
                   <input type="checkbox" className="accent-green-600 w-4 h-4" checked={eedData.publicacaoEBDC} onChange={e => setEedData(p => ({...p, publicacaoEBDC: e.target.checked}))} />
                   <div className="flex-1"><p className="text-sm font-medium">Publicação na base de dados europeia (EBDC)</p><p className="text-xs text-muted-foreground">Anual</p></div>
                 </label>
               </CardContent>
             </Card>
 
-            <Textarea placeholder="Notas adicionais sobre EED..." className="text-sm" value={eedData.notas} onChange={e => setEedData(p => ({...p, notas: e.target.value}))} />
-            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => handleSave("EED")}><Save className="w-4 h-4 mr-2" /> Guardar EED</Button>
+            <Textarea placeholder={t("Notas adicionais sobre EED...")} className="text-sm" value={eedData.notas} onChange={e => setEedData(p => ({...p, notas: e.target.value}))} />
+            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => handleSave("EED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar EED")}</Button>
           </TabsContent>
 
           {/* === LEED — Smart Category Grouping === */}
@@ -466,12 +466,12 @@ export default function Certifications() {
                   <div><label className="text-xs font-medium text-muted-foreground">Área Construída (GFA excl. estacionamento)</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" placeholder="Ex: 45000" value={leedData.areaConstruida} onChange={e => setLeedData(p => ({...p, areaConstruida: e.target.value}))} /><span className="text-xs text-muted-foreground">m²</span></div></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Nº Total de Ocupantes (FTE + visitantes)</label><Input className="h-9 mt-1" placeholder="Por inquilino" value={leedData.ocupantes} onChange={e => setLeedData(p => ({...p, ocupantes: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">Nº Médio Diário de Visitantes</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" value={leedData.visitantesDia} onChange={e => setLeedData(p => ({...p, visitantesDia: e.target.value}))} /><span className="text-xs text-muted-foreground">pessoas/dia</span></div></div>
-                  <div><label className="text-xs font-medium text-muted-foreground">Horas de Operação Semanais</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" value={leedData.horasOperacao} onChange={e => setLeedData(p => ({...p, horasOperacao: e.target.value}))} /><span className="text-xs text-muted-foreground">h/semana</span></div></div>
+                  <div><label className="text-xs font-medium text-muted-foreground">{t("Horas de Operação Semanais")}</label><div className="flex items-center gap-2 mt-1"><Input className="h-9" value={leedData.horasOperacao} onChange={e => setLeedData(p => ({...p, horasOperacao: e.target.value}))} /><span className="text-xs text-muted-foreground">h/semana</span></div></div>
                 </div>
-                <label className="flex items-center gap-3 p-3 mt-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                <label className="flex items-center gap-3 p-3 mt-4 border rounded-lg hover:bg-muted cursor-pointer">
                   <input type="checkbox" className="accent-green-600 w-4 h-4" checked={leedData.plantasUpload} onChange={e => setLeedData(p => ({...p, plantasUpload: e.target.checked}))} />
                   <div className="flex-1"><p className="text-sm">Plantas de todos os pisos (MEP + arquitetura)</p><p className="text-xs text-muted-foreground">DWG/PDF com áreas demarcadas</p></div>
-                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                  <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> {t("Anexar")}</Button>
                 </label>
               </CardContent>
             </Card>
@@ -489,10 +489,10 @@ export default function Certifications() {
                     { key: "acabamentos", label: "Fichas técnicas de acabamentos de superfície (SR/SRI)" },
                     { key: "iluminacao", label: "Plano de iluminação exterior e fichas técnicas de luminárias" },
                   ].map(doc => (
-                    <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer">
                       <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
                       <span className="text-sm flex-1">{doc.label}</span>
-                      <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                      <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> {t("Anexar")}</Button>
                     </label>
                   ))}
                 </div>
@@ -524,10 +524,10 @@ export default function Certifications() {
                   { key: "qualidadeAr", label: "Auditoria de qualidade do ar interior (caudais, COVs, CO2)" },
                   { key: "residuos", label: "Certificados de gestão de RSU e resíduos desviados (12 meses)" },
                 ].map(doc => (
-                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer">
                     <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
                     <span className="text-sm flex-1">{doc.label}</span>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> {t("Anexar")}</Button>
                   </label>
                 ))}
               </CardContent>
@@ -535,7 +535,7 @@ export default function Certifications() {
 
             {/* Policies */}
             <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-base">Políticas e Planos</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-base">{t("Políticas e Planos")}</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {[
                   { key: "planoGestao", label: "Plano de Gestão do Local (Site Management Plan)" },
@@ -544,17 +544,17 @@ export default function Certifications() {
                   { key: "ipm", label: "Plano Integrado de Gestão de Pragas (IPM)" },
                   { key: "tabaco", label: "Política de Controlo de Tabaco" },
                 ].map(doc => (
-                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <label key={doc.key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted cursor-pointer">
                     <input type="checkbox" className="accent-green-600 w-4 h-4" checked={!!(leedData as any)[doc.key]} onChange={e => setLeedData(p => ({...p, [doc.key]: e.target.checked}))} />
                     <span className="text-sm flex-1">{doc.label}</span>
-                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> Anexar</Button>
+                    <Button variant="outline" size="sm" className="text-xs h-7" onClick={e => { e.preventDefault(); toast.info("Upload disponível quando ligado ao SharePoint"); }}><Upload className="w-3 h-3 mr-1" /> {t("Anexar")}</Button>
                   </label>
                 ))}
               </CardContent>
             </Card>
 
-            <Textarea placeholder="Notas adicionais sobre LEED..." className="text-sm" value={leedData.notas} onChange={e => setLeedData(p => ({...p, notas: e.target.value}))} />
-            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("LEED")}><Save className="w-4 h-4 mr-2" /> Guardar LEED</Button>
+            <Textarea placeholder={t("Notas adicionais sobre LEED...")} className="text-sm" value={leedData.notas} onChange={e => setLeedData(p => ({...p, notas: e.target.value}))} />
+            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("LEED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar LEED")}</Button>
           </TabsContent>
         </Tabs>
       </div>

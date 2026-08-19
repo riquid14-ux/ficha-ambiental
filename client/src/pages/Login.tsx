@@ -167,16 +167,16 @@ export default function Login() {
       {/* Right panel - login form */}
       <div className="flex-1 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl border border-green-100/50 p-8">
+        <div className="bg-background rounded-2xl shadow-xl border border-green-100/50 p-8">
         <div className="flex flex-col items-center gap-5 mb-8">
           <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl shadow-lg">
             <img src={LOGO_URL} alt="Start Campus" className="h-10 object-contain brightness-0 invert" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Plataforma de Gestão Ambiental
             </h1>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
               {viewMode === "2fa" && "Introduza o código do Authenticator"}
@@ -271,8 +271,8 @@ export default function Login() {
         {/* ─── Register Form ─── */}
         {viewMode === "register" && (
           <form onSubmit={handleRegister} className="space-y-4">
-            <Input type="text" placeholder="Nome completo" value={registerName} onChange={(e) => { setRegisterName(e.target.value); setError(""); }} className="h-12" autoFocus />
-            <Input type="text" placeholder="Empresa (ex: TSL, EDP...)" value={registerCompany} onChange={(e) => { setRegisterCompany(e.target.value); }} className="h-12" />
+            <Input type="text" placeholder={t("Nome completo")} value={registerName} onChange={(e) => { setRegisterName(e.target.value); setError(""); }} className="h-12" autoFocus />
+            <Input type="text" placeholder={t("Empresa (ex: TSL, EDP...)")} value={registerCompany} onChange={(e) => { setRegisterCompany(e.target.value); }} className="h-12" />
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" />
@@ -283,7 +283,7 @@ export default function Login() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="Confirmar palavra-passe" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
+              <Input type="password" placeholder={t("Confirmar palavra-passe")} value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
             </div>
             <Button type="submit" size="lg" className="w-full h-12" disabled={registerMutation.isPending}>
               {registerMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A criar...</>) : "Solicitar Acesso"}

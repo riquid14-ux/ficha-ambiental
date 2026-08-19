@@ -480,7 +480,7 @@ export default function Calendario() {
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3">
-              Elementos a Reportar {!projectId && <span className="text-sm font-normal text-muted-foreground">— Todos os projetos</span>}
+              Elementos a Reportar {!projectId && <span className="text-sm font-normal text-muted-foreground">{t("— Todos os projetos")}</span>}
             </h3>
             {/* Smart aggregation for "Todos os Projetos" */}
             {!projectId && calEvents && calEvents.length > 0 ? (
@@ -649,7 +649,7 @@ export default function Calendario() {
                                     Marcar Reportado
                                   </Button>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground italic">Data avançada automaticamente</span>
+                                  <span className="text-xs text-muted-foreground italic">{t("Data avançada automaticamente")}</span>
                                 )}
                               </td>
                             )}
@@ -761,7 +761,7 @@ export default function Calendario() {
                   <Input value={editingEvent.entityToDeliver || ""} onChange={e => setEditingEvent({...editingEvent, entityToDeliver: e.target.value})} placeholder="Ex: APA, CCDR Alentejo" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Link da Entidade (URL do portal de submissão)</label>
+                  <label className="text-xs text-muted-foreground">{t("Link da Entidade (URL do portal de submissão)")}</label>
                   <Input value={editingEvent.entityLink || ""} onChange={e => setEditingEvent({...editingEvent, entityLink: e.target.value})} placeholder="https://siliamb.apambiente.pt" />
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -776,10 +776,10 @@ export default function Calendario() {
         {showCreateEvent && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateEvent(false)}>
             <div className="bg-background rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-4">Novo Evento de Reporting</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("Novo Evento de Reporting")}</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Nome do evento</label>
+                  <label className="text-xs text-muted-foreground">{t("Nome do evento")}</label>
                   <Input value={newEvent.name} onChange={e => setNewEvent(prev => ({ ...prev, name: e.target.value }))} placeholder="Ex: Gases Fluorados - APA" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -799,7 +799,7 @@ export default function Calendario() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Próxima data de entrega</label>
+                  <label className="text-xs text-muted-foreground">{t("Próxima data de entrega")}</label>
                   <Input type="date" value={newEvent.date} onChange={e => setNewEvent(prev => ({ ...prev, date: e.target.value }))} />
                 </div>
                 <div>

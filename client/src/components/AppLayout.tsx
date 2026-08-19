@@ -434,7 +434,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       )}
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">Deixar Feedback</h3>
             <p className="text-sm text-muted-foreground mb-4">Partilhe sugestões de melhoria ou reporte problemas.</p>
             <textarea className="w-full border rounded-md p-3 text-sm min-h-[100px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />

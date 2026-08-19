@@ -213,11 +213,11 @@ export default function MIRR() {
               </SelectContent>
             </Select>
             {isAdminOrDono && <>
-              <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> Nova e-GAR</Button>
-              <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info("Importação de e-GAR via ficheiro em desenvolvimento."); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> Importar e-GAR</Button>
-              {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> Definições</Button>}
+              <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Nova e-GAR")}</Button>
+              <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info("Importação de e-GAR via ficheiro em desenvolvimento."); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> {t("Importar e-GAR")}</Button>
+              {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
             </>}
-            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> Exportar Excel MIRR</Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> {t("Exportar Excel MIRR")}</Button>
           </div>
         </div>
 
@@ -244,7 +244,7 @@ export default function MIRR() {
                 </div>
                 <div className="flex gap-2 items-end">
                   <div><label className="text-[10px] text-muted-foreground">{t("Código")}</label><Input className="h-7 text-xs w-20" value={newLer.code} onChange={e => setNewLer(p => ({ ...p, code: e.target.value }))} placeholder="170904" /></div>
-                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Designação")}</label><Input className="h-7 text-xs" value={newLer.name} onChange={e => setNewLer(p => ({ ...p, name: e.target.value }))} placeholder="Nome do resíduo" /></div>
+                  <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Designação")}</label><Input className="h-7 text-xs" value={newLer.name} onChange={e => setNewLer(p => ({ ...p, name: e.target.value }))} placeholder={t("Nome do resíduo")} /></div>
                   <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={newLer.hazardous} onChange={e => setNewLer(p => ({ ...p, hazardous: e.target.checked }))} /> Perigoso</label>
                   <Button size="sm" className="h-7 text-xs" onClick={() => { if (newLer.code && newLer.name) { setLerCodes([...lerCodes, newLer]); setNewLer({ code: "", name: "", hazardous: false }); toast.success("Código LER adicionado"); } }}>{t("Adicionar")}</Button>
                 </div>
@@ -314,9 +314,9 @@ export default function MIRR() {
               ))}
             </div>
             <div className="flex gap-4 mt-3 text-xs">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> Reciclado</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400" /> Incinerado</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> Aterro</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-400" /> {t("Reciclado")}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400" /> {t("Incinerado")}</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> {t("Aterro")}</span>
             </div>
           </CardContent>
         </Card>

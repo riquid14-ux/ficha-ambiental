@@ -277,7 +277,7 @@ export default function Dashboard() {
                         <span className="text-sm">Total: <strong>{total.toFixed(3)} t</strong></span>
                         <span className="text-sm text-green-600">Desvio aterro: <strong>{total > 0 ? ((recycled / total) * 100).toFixed(0) : 0}%</strong></span>
                       </div>
-                      <div className="h-4 rounded-full overflow-hidden flex bg-gray-100">
+                      <div className="h-4 rounded-full overflow-hidden flex bg-muted">
                         {recycled > 0 && <div className="bg-emerald-400 h-full" style={{ width: `${(recycled/total)*100}%` }} />}
                         {incinerated > 0 && <div className="bg-amber-400 h-full" style={{ width: `${(incinerated/total)*100}%` }} />}
                         {landfill > 0 && <div className="bg-red-400 h-full" style={{ width: `${(landfill/total)*100}%` }} />}
@@ -375,7 +375,7 @@ export default function Dashboard() {
                           <p className="text-[10px] text-muted-foreground">{currentPhase?.key || "Pré-Licenciamento"}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-gray-500"}`}>{statusText}</p>
+                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
                         </div>
                       </div>
                     );
@@ -503,7 +503,7 @@ export default function Dashboard() {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">{t("Fases dos Projetos")}</p>
-                <span className="text-[10px] text-muted-foreground">Visão rápida do estado de cada projecto</span>
+                <span className="text-[10px] text-muted-foreground">{t("Visão rápida do estado de cada projecto")}</span>
               </div>
               <div className="space-y-2">
                 {projects.map((p: any) => {
@@ -514,7 +514,7 @@ export default function Dashboard() {
                       <span className="text-[10px] font-mono w-14 shrink-0 text-muted-foreground">{p.code}</span>
                       <div className="flex-1 flex gap-0.5">
                         {phases.map((ph, i) => (
-                          <div key={i} className={`h-3 flex-1 rounded-sm text-[6px] flex items-center justify-center font-medium ${i < currentIdx ? "bg-emerald-500 text-white" : i === currentIdx ? "bg-amber-400 text-amber-900" : "bg-gray-100 text-gray-400"}`} title={ph}>
+                          <div key={i} className={`h-3 flex-1 rounded-sm text-[6px] flex items-center justify-center font-medium ${i < currentIdx ? "bg-emerald-500 text-white" : i === currentIdx ? "bg-amber-400 text-amber-900" : "bg-muted text-gray-400"}`} title={ph}>
                             {ph.slice(0, 3)}
                           </div>
                         ))}
@@ -525,8 +525,8 @@ export default function Dashboard() {
               </div>
               <div className="flex gap-4 text-[9px] text-muted-foreground pt-1">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span> Concluída</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400"></span> Em curso</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-gray-100 border"></span> Por iniciar</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400"></span>  {t("Em curso")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-muted border"></span> Por iniciar</span>
               </div>
             </CardContent>
           </Card>
@@ -542,7 +542,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="font-semibold text-sm">{t("Visão Agregada — Fichas de Controlo")}</p>
-                  <p className="text-xs text-muted-foreground">Filtros e gráficos de evolução das fichas submetidas.</p>
+                  <p className="text-xs text-muted-foreground">{t("Filtros e gráficos de evolução das fichas submetidas.")}</p>
                 </div>
               </div>
             </CardContent>
@@ -698,13 +698,13 @@ export default function Dashboard() {
                       const isDone = i < 3;
                       return (
                         <div key={i} className="flex items-center gap-2">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-amber-400 text-amber-900 ring-2 ring-amber-200" : "bg-gray-100 text-gray-400"}`}>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-amber-400 text-amber-900 ring-2 ring-amber-200" : "bg-muted text-gray-400"}`}>
                             {isDone ? "✓" : i + 1}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
                               <span className={`text-[11px] ${isActive ? "font-semibold text-amber-800" : isDone ? "text-emerald-700" : "text-muted-foreground"}`}>{phase}</span>
-                              {isActive && <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Em curso</span>}
+                              {isActive && <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">{t("Em curso")}</span>}
                             </div>
                           </div>
                           {isDone && <span className="text-[9px] text-emerald-600">100%</span>}
@@ -722,7 +722,7 @@ export default function Dashboard() {
             {canSeeAll && (
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Empresa" />
+                  <SelectValue placeholder={t("Empresa")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("Todas as empresas")}</SelectItem>
@@ -736,7 +736,7 @@ export default function Dashboard() {
             )}
             <Select value={selectedWeek} onValueChange={setSelectedWeek}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Semana" />
+                <SelectValue placeholder={t("Semana")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("Todas as semanas")}</SelectItem>
@@ -749,7 +749,7 @@ export default function Dashboard() {
             </Select>
             <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as StatusFilter)}>
               <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Estado" />
+                <SelectValue placeholder={t("Estado")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("Todos os estados")}</SelectItem>

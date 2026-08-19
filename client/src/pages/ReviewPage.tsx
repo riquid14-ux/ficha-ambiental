@@ -398,7 +398,7 @@ export default function ReviewPage(props: any) {
                 <div className="border-t pt-4 space-y-3">
                   <div>
                     <label className="text-sm font-medium">{t("Notas gerais da revisão")}</label>
-                    <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Adicione notas gerais sobre a revisão (opcional)..." rows={3} />
+                    <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder={t("Adicione notas gerais sobre a revisão (opcional)...")} rows={3} />
                   </div>
                   <div className="flex gap-3">
                     {/* FLOW-04: Block self-approval in UI */}

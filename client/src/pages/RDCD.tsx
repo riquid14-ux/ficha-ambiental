@@ -267,7 +267,7 @@ export default function RDCD() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Definir Período")}</h2>
-              <p className="text-sm text-muted-foreground mb-4">Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).</p>
+              <p className="text-sm text-muted-foreground mb-4">{t("Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).")}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-sm font-medium">{t("Semana de início")}</label>
@@ -382,9 +382,9 @@ export default function RDCD() {
                   <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
                   <p className="text-xs text-red-600">{t("Não Conforme")}</p>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-                  <p className="text-lg font-bold text-gray-700">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
-                  <p className="text-xs text-gray-600">{t("N/A")}</p>
+                <div className="bg-muted border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
+                  <p className="text-xs text-muted-foreground">{t("N/A")}</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold text-amber-700">{compiledMeasures.filter(m => m.autoStatus === "pending").length}</p>
@@ -398,7 +398,7 @@ export default function RDCD() {
                   const statusColors: Record<string, string> = {
                     conform: "bg-green-100 text-green-800 border-green-200",
                     nc: "bg-red-100 text-red-800 border-red-200",
-                    na: "bg-gray-100 text-gray-800 border-gray-200",
+                    na: "bg-muted text-foreground border-border",
                     pending: "bg-amber-100 text-amber-800 border-amber-200",
                   };
                   const statusLabels: Record<string, string> = {
@@ -489,7 +489,7 @@ export default function RDCD() {
                     {compiledMeasures.filter(m => m.totalResponses > 0).length} medidas ·
                     <span className="text-green-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} conformes</span> ·
                     <span className="text-red-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "nc").length} NC</span> ·
-                    <span className="text-gray-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "na").length} N/A</span>
+                    <span className="text-muted-foreground ml-1">{compiledMeasures.filter(m => m.autoStatus === "na").length} N/A</span>
                   </p>
                 </div>
                 <div>

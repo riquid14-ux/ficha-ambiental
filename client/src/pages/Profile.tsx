@@ -143,7 +143,7 @@ export default function Profile() {
                     <Label htmlFor="displayName">{t("Nome de Perfil")}</Label>
                     <Input
                       id="displayName"
-                      placeholder="Nome de perfil"
+                      placeholder={t("Nome de perfil")}
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                     />
@@ -156,7 +156,7 @@ export default function Profile() {
                     <Label htmlFor="fullName">{t("Nome Completo")}</Label>
                     <Input
                       id="fullName"
-                      placeholder="Nome completo"
+                      placeholder={t("Nome completo")}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                     />
@@ -169,7 +169,7 @@ export default function Profile() {
                     <Label htmlFor="jobTitle">{t("Cargo")}</Label>
                     <Input
                       id="jobTitle"
-                      placeholder="Cargo ou função"
+                      placeholder={t("Cargo ou função")}
                       value={jobTitle}
                       onChange={(e) => setJobTitle(e.target.value)}
                     />
@@ -218,11 +218,11 @@ export default function Profile() {
             </div>
             <div className="space-y-2">
               <Label>{t("Nova palavra-passe")}</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nova palavra-passe (min. 6 caracteres)" />
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("Nova palavra-passe (min. 6 caracteres)")} />
             </div>
             <div className="space-y-2">
               <Label>{t("Confirmar nova palavra-passe")}</Label>
-              <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="Confirmar nova palavra-passe" />
+              <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder={t("Confirmar nova palavra-passe")} />
             </div>
             <Button onClick={() => {
               if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; }

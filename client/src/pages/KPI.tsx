@@ -133,7 +133,7 @@ export default function KPI() {
     const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.csv`; a.click(); URL.revokeObjectURL(url);
   };
 
-  if (isAllProjects) return <AppLayout><div className="p-6 text-center text-muted-foreground">Selecione um projeto individual para ver os KPI's.</div></AppLayout>;
+  if (isAllProjects) return <AppLayout><div className="p-6 text-center text-muted-foreground">{t("Selecione um projeto individual para ver os KPI's.")}</div></AppLayout>;
 
   // Current category for step form
   const currentCat = categories[formStep] || categories[0];
@@ -169,18 +169,18 @@ export default function KPI() {
             <CardContent className="space-y-2">
               <div className="grid gap-1 max-h-40 overflow-y-auto text-xs">
                 {metrics.map((m: any) => (
-                  <div key={m.id} className="flex items-center gap-2 p-1 rounded border bg-white">
+                  <div key={m.id} className="flex items-center gap-2 p-1 rounded border bg-background">
                     <span className="flex-1 truncate">{m.name}</span><Badge variant="outline" className="text-[9px]">{m.unit}</Badge>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setEditingMetric(m)}><Pencil className="w-3 h-3" /></Button>
                     <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-500" onClick={() => { if (confirm("Remover?")) deleteMetricMutation.mutate({ id: m.id }); }}><Trash2 className="w-3 h-3" /></Button>
                   </div>
                 ))}
               </div>
-              <Button size="sm" variant="outline" onClick={() => setEditingMetric({ name: "", unit: "", category: "other", inputType: "manual" })}><Plus className="w-3 h-3 mr-1" /> Nova Métrica</Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingMetric({ name: "", unit: "", category: "other", inputType: "manual" })}><Plus className="w-3 h-3 mr-1" /> {t("Nova Métrica")}</Button>
               {editingMetric && (
-                <div className="p-3 border rounded bg-white space-y-2">
+                <div className="p-3 border rounded bg-background space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Nome" value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
+                    <Input placeholder={t("Nome")} value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
                     <Input placeholder="Unidade" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" />
                     <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
                     <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">{t("Manual")}</SelectItem><SelectItem value="calculated">{t("Calculado")}</SelectItem></SelectContent></Select>
@@ -203,7 +203,7 @@ export default function KPI() {
 
           {/* Matrix */}
           <TabsContent value="overview">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Matriz de Submissão</CardTitle></CardHeader><CardContent>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t("Matriz de Submissão")}</CardTitle></CardHeader><CardContent>
               {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sem submissões.</p> : (
                 <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">{t("Empresa")}</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
                   <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
@@ -217,10 +217,10 @@ export default function KPI() {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap gap-4 items-end">
-                  <div><label className="text-xs text-muted-foreground block mb-1">Semana</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
+                  <div><label className="text-xs text-muted-foreground block mb-1">{t("Semana")}</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
                   <div><label className="text-xs text-muted-foreground block mb-1">Ano</label><Select value={formYear} onValueChange={setFormYear}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 bg-muted/50 px-3 py-1.5 rounded">Período: <strong>{weekPeriod}</strong></p>
+                <p className="text-xs text-muted-foreground mt-2 bg-muted/50 px-3 py-1.5 rounded">{t("Período:")} <strong>{weekPeriod}</strong></p>
               </CardHeader>
               <CardContent>
                 {/* Step navigation */}
@@ -263,9 +263,9 @@ export default function KPI() {
 
                 {/* Navigation + Submit */}
                 <div className="flex justify-between mt-4">
-                  <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>← Anterior</Button>
+                  <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>{t("← Anterior")}</Button>
                   {formStep < categories.length - 1 ? (
-                    <Button onClick={() => setFormStep(formStep + 1)}>Seguinte →</Button>
+                    <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
                   ) : (
                     <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending ? "A submeter..." : "Submeter KPIs"}</Button>
                   )}
@@ -324,11 +324,11 @@ export default function KPI() {
                 <Card className="mt-3"><CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold">{t("Registo de Incidentes")}</p>
-                    {isAdminOrDO && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>+ Adicionar</Button>}
+                    {isAdminOrDO && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>{t("+ Adicionar")}</Button>}
                   </div>
                   {showIncidentForm && isAdminOrDO && (
                     <div className="grid grid-cols-5 gap-2 mb-3 p-3 bg-muted/30 rounded-lg">
-                      <Input placeholder="Nome do incidente" value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
+                      <Input placeholder={t("Nome do incidente")} value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
                       <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm({...incidentForm, date: e.target.value})} />
                       <select className="border rounded px-2 py-1 text-sm" value={incidentForm.status} onChange={e => setIncidentForm({...incidentForm, status: e.target.value})}>
                         <option value="aberto">{t("Aberto")}</option><option value="em_investigacao">Em Investigação</option><option value="resolvido">{t("Resolvido")}</option><option value="encerrado">{t("Encerrado")}</option>
@@ -351,7 +351,7 @@ export default function KPI() {
                             <td className="p-2 font-medium">{inc.name}</td>
                             <td className="p-2 text-center">{inc.date}</td>
                             <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === "resolvido" || inc.status === "encerrado" ? "bg-green-100 text-green-700" : inc.status === "em_investigacao" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{inc.status}</span></td>
-                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.severity === "critico" ? "bg-red-200 text-red-800" : inc.severity === "alto" ? "bg-orange-100 text-orange-700" : inc.severity === "medio" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"}`}>{inc.severity}</span></td>
+                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.severity === "critico" ? "bg-red-200 text-red-800" : inc.severity === "alto" ? "bg-orange-100 text-orange-700" : inc.severity === "medio" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{inc.severity}</span></td>
                             <td className="p-2 text-center">{inc.link ? <a href={inc.link} target="_blank" rel="noopener" className="text-blue-600 underline">{t("Ver")}</a> : "—"}</td>
                             {isAdminOrDO && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
                           </tr>
@@ -372,7 +372,7 @@ export default function KPI() {
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">Ano:</span>
                 <Select value={String(targetYear)} onValueChange={v => setTargetYear(Number(v))}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select>
-                <Button size="sm" onClick={() => setEditingTarget({ metricId: metrics[0]?.id || 1, projectId, targetType: "monthly", targetValue: "", targetDirection: "max", year: targetYear })}><Plus className="w-3 h-3 mr-1" /> Nova Meta</Button>
+                <Button size="sm" onClick={() => setEditingTarget({ metricId: metrics[0]?.id || 1, projectId, targetType: "monthly", targetValue: "", targetDirection: "max", year: targetYear })}><Plus className="w-3 h-3 mr-1" /> {t("Nova Meta")}</Button>
               </div>
               {editingTarget && (
                 <Card className="border-emerald-200 bg-emerald-50/30"><CardContent className="p-4 space-y-3">
@@ -395,7 +395,7 @@ export default function KPI() {
                   <Card key={t.id} className={`border-l-4 ${isGood ? "border-l-green-500" : "border-l-red-500"}`}><CardContent className="p-4 flex items-center gap-4">
                     <div className="flex-1"><p className="text-sm font-medium">{metric?.name || "—"}</p><p className="text-xs text-muted-foreground">{t.targetType === "monthly" ? "Mensal" : "Anual"} • {t.targetDirection === "max" ? "Não exceder" : "Atingir"} {t.targetValue} {metric?.unit}</p></div>
                     <div className="text-right"><p className={`text-lg font-bold ${isGood ? "text-green-600" : "text-red-600"}`}>{formatNumber(current)}</p><p className="text-[10px] text-muted-foreground">de {t.targetValue}</p></div>
-                    <div className="w-16"><div className="h-2 rounded-full bg-gray-100 overflow-hidden"><div className={`h-full ${isGood ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div><p className="text-[10px] text-center">{progress.toFixed(0)}%</p></div>
+                    <div className="w-16"><div className="h-2 rounded-full bg-muted overflow-hidden"><div className={`h-full ${isGood ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div><p className="text-[10px] text-center">{progress.toFixed(0)}%</p></div>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => { if (confirm("Eliminar?")) deleteTargetMutation.mutate({ id: t.id }); }}><Trash2 className="w-3 h-3" /></Button>
                   </CardContent></Card>
                 );

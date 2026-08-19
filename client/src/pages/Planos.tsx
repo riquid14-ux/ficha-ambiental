@@ -140,7 +140,7 @@ export default function Planos() {
                 <DialogTitle>{t("Criar Novo Plano")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <Input placeholder="Nome do plano" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
+                <Input placeholder={t("Nome do plano")} value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
                 <Select value={newPlan.category} onValueChange={(v: any) => setNewPlan(p => ({ ...p, category: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -150,7 +150,7 @@ export default function Planos() {
                 </Select>
                 <Input placeholder="Periodicidade (ex: Semestral, Trimestral)" value={newPlan.periodicity} onChange={e => setNewPlan(p => ({ ...p, periodicity: e.target.value }))} />
                 <Select value={newPlan.projectId} onValueChange={(v) => setNewPlan(p => ({ ...p, projectId: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Projeto (opcional)" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("Projeto (opcional)")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">{t("Todos os projetos")}</SelectItem>
                     {projects.map(p => (
@@ -158,7 +158,7 @@ export default function Planos() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Textarea placeholder="Notas adicionais" value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
+                <Textarea placeholder={t("Notas adicionais")} value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
                 <Button onClick={() => createMutation.mutate({ name: newPlan.name, category: newPlan.category, periodicity: newPlan.periodicity || undefined, notes: newPlan.notes || undefined, projectId: newPlan.projectId && newPlan.projectId !== "none" ? parseInt(newPlan.projectId) : undefined })} disabled={!newPlan.name || createMutation.isPending}>
                   {createMutation.isPending ? "A criar..." : "Criar Plano"}
                 </Button>
@@ -182,7 +182,7 @@ export default function Planos() {
           <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
           <p className="text-xs text-blue-600">{t("Próximos meses")}</p>
         </div>
-        <div className="p-3 rounded-lg border bg-gray-50 border-gray-200 text-center">
+        <div className="p-3 rounded-lg border bg-muted border-border text-center">
           <p className="text-2xl font-bold text-muted-foreground">{stats.noDate}</p>
           <p className="text-xs text-muted-foreground">{t("Sem data definida")}</p>
         </div>
@@ -338,7 +338,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
 
       {/* Confirm delivery dialog */}
       {showConfirm && (
-        <div className="mt-2 p-3 rounded-lg bg-white border-2 border-primary shadow-lg space-y-2">
+        <div className="mt-2 p-3 rounded-lg bg-background border-2 border-primary shadow-lg space-y-2">
           <p className="text-sm font-medium">{t("Confirma que o plano foi entregue à entidade competente?")}</p>
           <p className="text-xs text-muted-foreground">Ao confirmar, a próxima data de entrega será atualizada automaticamente com base na periodicidade ({plan.periodicity || "anual"}).</p>
           <div className="flex gap-2">

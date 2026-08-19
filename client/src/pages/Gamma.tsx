@@ -91,7 +91,7 @@ export default function Gamma() {
                 {editions.map((ed, i) => <SelectItem key={i} value={String(i)}>{ed.name} {ed.status === "draft" ? "(Rascunho)" : ""}</SelectItem>)}
               </SelectContent>
             </Select>
-            {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowNewEdition(true)}><Plus className="w-4 h-4 mr-1" /> Nova Edição</Button>}
+            {isAdmin && <Button size="sm" variant="outline" onClick={() => setShowNewEdition(true)}><Plus className="w-4 h-4 mr-1" /> {t("Nova Edição")}</Button>}
           </div>
         </div>
 
@@ -101,8 +101,8 @@ export default function Gamma() {
             <CardContent className="p-4">
               <h3 className="font-semibold mb-2">{t("Criar Nova Edição")}</h3>
               <div className="flex gap-2">
-                <Input placeholder="Nome da edição (ex: GAMMA 3.0)" value={newEditionName} onChange={e => setNewEditionName(e.target.value)} />
-                <Button onClick={createNewEdition}>Criar</Button>
+                <Input placeholder={t("Nome da edição (ex: GAMMA 3.0)")} value={newEditionName} onChange={e => setNewEditionName(e.target.value)} />
+                <Button onClick={createNewEdition}>{t("Criar")}</Button>
                 <Button variant="outline" onClick={() => setShowNewEdition(false)}>{t("Cancelar")}</Button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">{t("A nova edição será criada com os pilares e critérios padrão. Pode editá-los depois na tab Definições.")}</p>
@@ -140,10 +140,10 @@ export default function Gamma() {
             <Card>
               <CardHeader className="flex-row items-center justify-between">
                 <CardTitle className="text-lg">Projetos — {edition.name}</CardTitle>
-                <Button size="sm" onClick={() => setActiveTab("candidatura")}><Plus className="w-4 h-4 mr-1" /> Nova Candidatura</Button>
+                <Button size="sm" onClick={() => setActiveTab("candidatura")}><Plus className="w-4 h-4 mr-1" /> {t("Nova Candidatura")}</Button>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma candidatura submetida nesta edição.</p>
+                <p className="text-sm text-muted-foreground text-center py-8">{t("Nenhuma candidatura submetida nesta edição.")}</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -154,12 +154,12 @@ export default function Gamma() {
               <CardHeader><CardTitle className="text-lg">Ficha de Candidatura — {edition.name}</CardTitle></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-sm border-b pb-1">A. Identificação do Projeto e da Entidade</h3>
+                  <h3 className="font-semibold text-sm border-b pb-1">{t("A. Identificação do Projeto e da Entidade")}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className="text-xs font-medium">Nome do Projeto *</label><Input placeholder="Nome do projeto comunitário" /></div>
-                    <div><label className="text-xs font-medium">Entidade Proponente *</label><Input placeholder="Nome da entidade" /></div>
-                    <div><label className="text-xs font-medium">Tipo de Entidade *</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs font-medium">Pessoa Responsável</label><Input placeholder="Nome completo" /></div>
+                    <div><label className="text-xs font-medium">{t("Nome do Projeto *")}</label><Input placeholder={t("Nome do projeto comunitário")} /></div>
+                    <div><label className="text-xs font-medium">Entidade Proponente *</label><Input placeholder={t("Nome da entidade")} /></div>
+                    <div><label className="text-xs font-medium">{t("Tipo de Entidade *")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
+                    <div><label className="text-xs font-medium">Pessoa Responsável</label><Input placeholder={t("Nome completo")} /></div>
                     <div><label className="text-xs font-medium">E-mail</label><Input type="email" placeholder="email@entidade.pt" /></div>
                     <div><label className="text-xs font-medium">Telefone</label><Input placeholder="+351..." /></div>
                     <div><label className="text-xs font-medium">Município(s) Beneficiado(s) *</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{MUNICIPALITIES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
@@ -176,18 +176,18 @@ export default function Gamma() {
                 </div>
                 <div className="space-y-4">
                   <h3 className="font-semibold text-sm border-b pb-1">B. Necessidade, Solução e Impacto</h3>
-                  <div><label className="text-xs font-medium">1. Resumo Executivo (máx. 200 palavras)</label><Textarea placeholder="Síntese do projeto..." rows={3} /></div>
-                  <div><label className="text-xs font-medium">2. Necessidade Local</label><Textarea placeholder="Que necessidade da comunidade este projeto pretende resolver?" rows={3} /></div>
+                  <div><label className="text-xs font-medium">1. Resumo Executivo (máx. 200 palavras)</label><Textarea placeholder={t("Síntese do projeto...")} rows={3} /></div>
+                  <div><label className="text-xs font-medium">2. Necessidade Local</label><Textarea placeholder={t("Que necessidade da comunidade este projeto pretende resolver?")} rows={3} /></div>
                   <div><label className="text-xs font-medium">3. Evidência da Necessidade</label><Textarea placeholder="Dados, estudos ou testemunhos que comprovam a necessidade" rows={2} /></div>
                   <div><label className="text-xs font-medium">4. Beneficiários (quem, quantos, como são selecionados)</label><Textarea placeholder="Descrever beneficiários diretos e indiretos" rows={2} /></div>
-                  <div><label className="text-xs font-medium">5. Equidade e Grupos Prioritários</label><Textarea placeholder="Como o projeto promove equidade e inclusão?" rows={2} /></div>
-                  <div><label className="text-xs font-medium">6. Objetivo Geral e Objetivos Específicos</label><Textarea placeholder="Objetivos SMART..." rows={2} /></div>
+                  <div><label className="text-xs font-medium">5. Equidade e Grupos Prioritários</label><Textarea placeholder={t("Como o projeto promove equidade e inclusão?")} rows={2} /></div>
+                  <div><label className="text-xs font-medium">{t("6. Objetivo Geral e Objetivos Específicos")}</label><Textarea placeholder="Objetivos SMART..." rows={2} /></div>
                   <div><label className="text-xs font-medium">7. Mudanças Esperadas (outcomes)</label><Textarea placeholder="Que mudanças concretas se esperam?" rows={2} /></div>
                   <div><label className="text-xs font-medium">8. Atividades e Metodologia</label><Textarea placeholder="Descrição das atividades, faseamento, metodologia" rows={3} /></div>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
-                  <Button onClick={() => { toast.success("Candidatura submetida!"); setActiveTab("portfolio"); }}>Submeter Candidatura</Button>
-                  <Button variant="outline">Guardar Rascunho</Button>
+                  <Button onClick={() => { toast.success("Candidatura submetida!"); setActiveTab("portfolio"); }}>{t("Submeter Candidatura")}</Button>
+                  <Button variant="outline">{t("Guardar Rascunho")}</Button>
                   <Button variant="outline" onClick={() => {
                     const fields = [
                       "FICHA DE CANDIDATURA — PROGRAMA GAMMA\n",
@@ -249,7 +249,7 @@ export default function Gamma() {
           {/* Avaliação */}
           <TabsContent value="avaliacao" className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-lg">Matriz de Avaliação Individual</CardTitle><p className="text-xs text-muted-foreground">Classificar de 1 a 5 e justificar com base na candidatura.</p></CardHeader>
+              <CardHeader><CardTitle className="text-lg">{t("Matriz de Avaliação Individual")}</CardTitle><p className="text-xs text-muted-foreground">Classificar de 1 a 5 e justificar com base na candidatura.</p></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">
                   <h3 className="font-semibold text-sm">1. Verificação de Elegibilidade (Sim/Não)</h3>
@@ -281,7 +281,7 @@ export default function Gamma() {
                   <h3 className="font-semibold text-sm">3. Parecer e Condições</h3>
                   <div><label className="text-xs font-medium">Pontos Fortes</label><Textarea rows={2} placeholder="Identificar os pontos fortes da candidatura..." /></div>
                   <div><label className="text-xs font-medium">Lacunas / Condições antes de Financiar</label><Textarea rows={2} placeholder="Condições que devem ser cumpridas..." /></div>
-                  <div><label className="text-xs font-medium">Parecer Final do Avaliador</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}</SelectItem><SelectItem value="conditional">Aprovar com Condições</SelectItem><SelectItem value="reject">{t("Rejeitar")}</SelectItem></SelectContent></Select></div>
+                  <div><label className="text-xs font-medium">{t("Parecer Final do Avaliador")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}</SelectItem><SelectItem value="conditional">Aprovar com Condições</SelectItem><SelectItem value="reject">{t("Rejeitar")}</SelectItem></SelectContent></Select></div>
                   <div><label className="text-xs font-medium">Conflitos de Interesse Declarados</label><Input placeholder="Declarar ou indicar 'Nenhum'" /></div>
                 </div>
               </CardContent>
@@ -292,11 +292,11 @@ export default function Gamma() {
           <TabsContent value="necessidades" className="space-y-4">
             <Card>
               <CardHeader className="flex-row items-center justify-between">
-                <div><CardTitle className="text-lg">Registo de Necessidades</CardTitle><p className="text-xs text-muted-foreground">Necessidades identificadas na comunidade que podem originar candidaturas futuras.</p></div>
-                {isAdmin && <Button size="sm"><Plus className="w-4 h-4 mr-1" /> Registar Necessidade</Button>}
+                <div><CardTitle className="text-lg">{t("Registo de Necessidades")}</CardTitle><p className="text-xs text-muted-foreground">Necessidades identificadas na comunidade que podem originar candidaturas futuras.</p></div>
+                {isAdmin && <Button size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Registar Necessidade")}</Button>}
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-sm text-muted-foreground">Nenhuma necessidade registada. Utilize este espaço para documentar necessidades da comunidade local.</div>
+                <div className="text-center py-8 text-sm text-muted-foreground">{t("Nenhuma necessidade registada. Utilize este espaço para documentar necessidades da comunidade local.")}</div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -305,12 +305,12 @@ export default function Gamma() {
           <TabsContent value="scorecard" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Scorecard de Projetos</CardTitle>
-                <p className="text-sm text-muted-foreground">Pontuação agregada dos projetos candidatos por critério de avaliação.</p>
+                <CardTitle>{t("Scorecard de Projetos")}</CardTitle>
+                <p className="text-sm text-muted-foreground">{t("Pontuação agregada dos projetos candidatos por critério de avaliação.")}</p>
               </CardHeader>
               <CardContent>
                 {winners.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">Sem projetos avaliados. Submeta candidaturas e avalie-as na tab Avaliação.</p>
+                  <p className="text-muted-foreground text-center py-8">{t("Sem projetos avaliados. Submeta candidaturas e avalie-as na tab Avaliação.")}</p>
                 ) : (
                   <div className="space-y-4">
                     <div className="overflow-x-auto">
@@ -347,21 +347,21 @@ export default function Gamma() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Projetos Vencedores</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Timeline de execução dos projetos aprovados e financiados.</p>
+                  <CardTitle>{t("Projetos Vencedores")}</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">{t("Timeline de execução dos projetos aprovados e financiados.")}</p>
                 </div>
-                {isAdmin && <Button size="sm" onClick={() => { setWinners([...winners, { name: "", pillar: DEFAULT_PILLARS[0], startDate: "", endDate: "", milestones: "", budget: "", status: "Em curso", timeline: [] }]); }}><Plus className="w-4 h-4 mr-1" /> Adicionar Vencedor</Button>}
+                {isAdmin && <Button size="sm" onClick={() => { setWinners([...winners, { name: "", pillar: DEFAULT_PILLARS[0], startDate: "", endDate: "", milestones: "", budget: "", status: "Em curso", timeline: [] }]); }}><Plus className="w-4 h-4 mr-1" /> {t("Adicionar Vencedor")}</Button>}
               </CardHeader>
               <CardContent>
                 {winners.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">Sem projetos vencedores registados. O admin pode adicionar projetos aprovados.</p>
+                  <p className="text-muted-foreground text-center py-8">{t("Sem projetos vencedores registados. O admin pode adicionar projetos aprovados.")}</p>
                 ) : (
                   <div className="space-y-4">
                     {winners.map((w, i) => (
                       <div key={i} className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           {isAdmin ? (
-                            <Input value={w.name} placeholder="Nome do projeto vencedor" onChange={(e) => { const nw = [...winners]; nw[i].name = e.target.value; setWinners(nw); }} className="font-semibold text-base max-w-md" />
+                            <Input value={w.name} placeholder={t("Nome do projeto vencedor")} onChange={(e) => { const nw = [...winners]; nw[i].name = e.target.value; setWinners(nw); }} className="font-semibold text-base max-w-md" />
                           ) : (
                             <h3 className="font-semibold text-base">{w.name || "Sem nome"}</h3>
                           )}
@@ -386,7 +386,7 @@ export default function Gamma() {
                               <div><span className="text-xs text-muted-foreground">Pilar:</span> <Badge variant="outline">{w.pillar}</Badge></div>
                               <div><span className="text-xs text-muted-foreground">Início:</span> {w.startDate || "—"}</div>
                               <div><span className="text-xs text-muted-foreground">Fim:</span> {w.endDate || "—"}</div>
-                              <div><span className="text-xs text-muted-foreground">Estado:</span> <Badge>{w.status}</Badge></div>
+                              <div><span className="text-xs text-muted-foreground">{t("Estado:")}</span> <Badge>{w.status}</Badge></div>
                             </>
                           )}
                         </div>
@@ -422,9 +422,9 @@ export default function Gamma() {
 
           <TabsContent value="plano" className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-lg">Plano de Apoio</CardTitle><p className="text-xs text-muted-foreground">Acompanhamento dos projetos aprovados: marcos, desembolsos e relatórios.</p></CardHeader>
+              <CardHeader><CardTitle className="text-lg">Plano de Apoio</CardTitle><p className="text-xs text-muted-foreground">{t("Acompanhamento dos projetos aprovados: marcos, desembolsos e relatórios.")}</p></CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-sm text-muted-foreground">Nenhum projeto aprovado nesta edição. Os planos de apoio são criados automaticamente após aprovação.</div>
+                <div className="text-center py-8 text-sm text-muted-foreground">{t("Nenhum projeto aprovado nesta edição. Os planos de apoio são criados automaticamente após aprovação.")}</div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -436,15 +436,15 @@ export default function Gamma() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Projetos Vencedores — {edition.name}</CardTitle>
-                  {isAdmin && <Button size="sm" onClick={() => setShowAddWinner(!showAddWinner)}><Plus className="w-3 h-3 mr-1" /> Adicionar Vencedor</Button>}
+                  {isAdmin && <Button size="sm" onClick={() => setShowAddWinner(!showAddWinner)}><Plus className="w-3 h-3 mr-1" /> {t("Adicionar Vencedor")}</Button>}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {showAddWinner && isAdmin && (
                   <div className="p-4 border-2 border-dashed rounded-lg space-y-3 bg-green-50/50">
-                    <h4 className="font-semibold text-sm">Novo Projeto Vencedor</h4>
+                    <h4 className="font-semibold text-sm">{t("Novo Projeto Vencedor")}</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      <Input placeholder="Nome do projeto..." value={newWinner.name} onChange={e => setNewWinner({...newWinner, name: e.target.value})} className="h-8 text-sm" />
+                      <Input placeholder={t("Nome do projeto...")} value={newWinner.name} onChange={e => setNewWinner({...newWinner, name: e.target.value})} className="h-8 text-sm" />
                       <Input placeholder="Entidade promotora..." value={newWinner.entity} onChange={e => setNewWinner({...newWinner, entity: e.target.value})} className="h-8 text-sm" />
                       <select className="h-8 text-sm border rounded px-2" value={newWinner.pillar} onChange={e => setNewWinner({...newWinner, pillar: e.target.value})}>
                         <option value="">Pilar...</option>
@@ -456,7 +456,7 @@ export default function Gamma() {
                   </div>
                 )}
                 {winners.length === 0 ? (
-                  <div className="text-center py-8 text-sm text-muted-foreground">Nenhum projeto vencedor registado nesta edição.</div>
+                  <div className="text-center py-8 text-sm text-muted-foreground">{t("Nenhum projeto vencedor registado nesta edição.")}</div>
                 ) : (
                   <div className="space-y-4">
                     {winners.map((w, wi) => (
@@ -470,12 +470,12 @@ export default function Gamma() {
                             <Badge variant={w.status === "Concluído" ? "default" : "secondary"}>{w.status}</Badge>
                           </div>
                           <div>
-                            <p className="text-xs font-medium mb-2">Timeline do Projeto:</p>
+                            <p className="text-xs font-medium mb-2">{t("Timeline do Projeto:")}</p>
                             <div className="flex items-center gap-2">
                               {w.timeline.map((t, ti) => (
                                 <div key={ti} className="flex-1">
                                   <div className="flex items-center gap-1">
-                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${t.done ? "bg-green-500 border-green-500" : "border-gray-300"}`}>
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${t.done ? "bg-green-500 border-green-500" : "border-border"}`}>
                                       {t.done && <span className="text-white text-[8px]">✓</span>}
                                     </div>
                                     <span className="text-xs">{t.phase}</span>
@@ -496,7 +496,7 @@ export default function Gamma() {
                           {isAdmin && (
                             <div className="flex gap-2 pt-2 border-t">
                               <select className="h-7 text-xs border rounded px-2" value={w.status} onChange={e => { const updated = [...winners]; updated[wi].status = e.target.value; setWinners(updated); }}>
-                                <option value="Em curso">Em curso</option><option value="Concluído">{t("Concluído")}</option><option value="Suspenso">Suspenso</option>
+                                <option value="Em curso">{t("Em curso")}</option><option value="Concluído">{t("Concluído")}</option><option value="Suspenso">Suspenso</option>
                               </select>
                               <Button size="sm" variant="ghost" className="h-7 text-xs text-red-500" onClick={() => { setWinners(winners.filter((_, i) => i !== wi)); }}>
                                 <Trash2 className="w-3 h-3 mr-1" /> Remover
@@ -515,7 +515,7 @@ export default function Gamma() {
           {isAdmin && (
             <TabsContent value="definicoes" className="space-y-4">
               <Card>
-                <CardHeader><div className="flex items-center gap-3"><CardTitle className="text-lg">Definições da Edição:</CardTitle><Input className="h-8 text-sm w-48" value={edition.name} onChange={e => { const updated = [...editions]; updated[activeEdition].name = e.target.value; setEditions(updated); }} /></div></CardHeader>
+                <CardHeader><div className="flex items-center gap-3"><CardTitle className="text-lg">{t("Definições da Edição:")}</CardTitle><Input className="h-8 text-sm w-48" value={edition.name} onChange={e => { const updated = [...editions]; updated[activeEdition].name = e.target.value; setEditions(updated); }} /></div></CardHeader>
                 <CardContent className="space-y-6">
                   {/* Pillars */}
                   <div>
@@ -539,8 +539,8 @@ export default function Gamma() {
                         </div>
                       ))}
                       <div className="flex gap-2 mt-2">
-                        <Input placeholder="Novo pilar..." value={newPillar} onChange={e => setNewPillar(e.target.value)} className="h-8 text-sm" />
-                        <Button size="sm" className="h-8" onClick={() => { if (newPillar.trim()) { const updated = [...editions]; updated[activeEdition].pillars.push(newPillar.trim()); setEditions(updated); setNewPillar(""); } }}><Plus className="w-3 h-3 mr-1" /> Adicionar</Button>
+                        <Input placeholder={t("Novo pilar...")} value={newPillar} onChange={e => setNewPillar(e.target.value)} className="h-8 text-sm" />
+                        <Button size="sm" className="h-8" onClick={() => { if (newPillar.trim()) { const updated = [...editions]; updated[activeEdition].pillars.push(newPillar.trim()); setEditions(updated); setNewPillar(""); } }}><Plus className="w-3 h-3 mr-1" /> {t("Adicionar")}</Button>
                       </div>
                     </div>
                   </div>
@@ -556,7 +556,7 @@ export default function Gamma() {
                           <Button size="sm" variant="ghost" className="h-7 text-red-500" onClick={() => { const updated = [...editions]; updated[activeEdition].eligibility.splice(i, 1); setEditions(updated); }}><Trash2 className="w-3 h-3" /></Button>
                         </div>
                       ))}
-                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].eligibility.length + 1; updated[activeEdition].eligibility.push({key: "E" + n, label: "Novo critério..."}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> Adicionar Critério</Button>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].eligibility.length + 1; updated[activeEdition].eligibility.push({key: "E" + n, label: "Novo critério..."}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> {t("Adicionar Critério")}</Button>
                     </div>
                   </div>
 
@@ -572,12 +572,12 @@ export default function Gamma() {
                           <Button size="sm" variant="ghost" className="h-7 text-red-500" onClick={() => { const updated = [...editions]; updated[activeEdition].scoring.splice(i, 1); setEditions(updated); }}><Trash2 className="w-3 h-3" /></Button>
                         </div>
                       ))}
-                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].scoring.length + 1; updated[activeEdition].scoring.push({key: "C" + n, label: "Novo critério...", weight: 5, question: ""}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> Adicionar Critério</Button>
+                      <Button size="sm" variant="outline" className="mt-2 text-xs" onClick={() => { const updated = [...editions]; const n = updated[activeEdition].scoring.length + 1; updated[activeEdition].scoring.push({key: "C" + n, label: "Novo critério...", weight: 5, question: ""}); setEditions(updated); }}><Plus className="w-3 h-3 mr-1" /> {t("Adicionar Critério")}</Button>
                     </div>
                   </div>
 
                   <div className="pt-4 border-t">
-                    <Button variant="outline" className="w-full" onClick={() => toast.success("Definições guardadas!")}>Guardar Alterações</Button>
+                    <Button variant="outline" className="w-full" onClick={() => toast.success("Definições guardadas!")}>{t("Guardar Alterações")}</Button>
                   </div>
                 </CardContent>
               </Card>

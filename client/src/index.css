@@ -52,6 +52,8 @@
   }
   body {
     font-family: "Inter", sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;

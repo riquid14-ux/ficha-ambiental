@@ -1028,6 +1028,20 @@ export const appRouter = router({
         return db.getResponsesBySubmission(input.submissionId);
       }),
 
+    // Get responses for multiple submissions at once (for RDCD report)
+    getBySubmissions: protectedProcedure
+      .input(z.object({ submissionIds: z.array(z.number()) }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "pm") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin, DO ou PM podem gerar RDCD" });
+        }
+        if (input.submissionIds.length === 0) return [];
+        const database = await db.getDb();
+        if (!database) return [];
+        const results = await database.execute(sql`SELECT mr.submissionId, mr.measureId, mr.status, mr.observations FROM measure_responses mr WHERE mr.submissionId IN (${sql.join(input.submissionIds.map(id => sql`${id}`), sql`, `)})`);
+        return (results as any)[0] || [];
+      }),
+
     save: protectedProcedure
       .input(
         z.object({
@@ -1067,6 +1081,28 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         return db.getImagesBySubmission(input.submissionId);
+      }),
+
+    // Get evidence images for multiple submissions at once (for RDCD report)
+    getBySubmissions: protectedProcedure
+      .input(z.object({ submissionIds: z.array(z.number()) }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "pm") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin, DO ou PM" });
+        }
+        if (input.submissionIds.length === 0) return [];
+        const database = await db.getDb();
+        if (!database) return [];
+        const responsesResult = await database.execute(sql`SELECT id, submissionId, measureId FROM measure_responses WHERE submissionId IN (${sql.join(input.submissionIds.map(id => sql`${id}`), sql`, `)})`);
+        const responses = (responsesResult as any)[0] || [];
+        if (responses.length === 0) return [];
+        const responseIds = responses.map((r: any) => r.id);
+        const imagesResult = await database.execute(sql`SELECT ei.id, ei.responseId, ei.url, ei.filename, ei.mimeType FROM evidence_images ei WHERE ei.responseId IN (${sql.join(responseIds.map((id: number) => sql`${id}`), sql`, `)})`);
+        const images = (imagesResult as any)[0] || [];
+        return images.map((img: any) => {
+          const resp = responses.find((r: any) => r.id === img.responseId);
+          return { ...img, measureId: resp?.measureId, submissionId: resp?.submissionId };
+        });
       }),
 
     delete: protectedProcedure

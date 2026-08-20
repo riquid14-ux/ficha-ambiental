@@ -42,7 +42,7 @@ export default function KPI() {
   const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId }, { enabled: projectId > 0 });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery();
-  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
+  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success(t("KPIs submetidos com sucesso!")); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success(t("Métrica guardada.")); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success(t("Métrica removida.")); } });
   const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
@@ -51,7 +51,7 @@ export default function KPI() {
   const [showIncidentForm, setShowIncidentForm] = useState(false);
   const [incidentForm, setIncidentForm] = useState({ name: "", date: "", status: "aberto", severity: "baixo", link: "" });
   const upsertTargetMutation = trpc.kpi.upsertTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); setEditingTarget(null); toast.success("Meta guardada."); } });
-  const deleteTargetMutation = trpc.kpi.deleteTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); toast.success("Meta removida."); } });
+  const deleteTargetMutation = trpc.kpi.deleteTarget.useMutation({ onSuccess: () => { targetsQuery.refetch(); toast.success(t("Meta removida.")); } });
 
   const metrics = (metricsQuery.data || []) as any[];
   const manualMetrics = metrics.filter((m: any) => m.inputType === "manual");
@@ -119,9 +119,9 @@ export default function KPI() {
   const findMetric = (cat: string, name: string) => metrics.find((m: any) => m.category === cat && m.name.toLowerCase().includes(name.toLowerCase()));
 
   const handleSubmit = () => {
-    if (!user?.companyId || !projectId) { toast.error("Verifique a sua empresa e projeto."); return; }
+    if (!user?.companyId || !projectId) { toast.error(t("Verifique a sua empresa e projeto.")); return; }
     const values = Object.entries(formValues).filter(([, v]) => v.trim() !== "").map(([metricId, value]) => ({ metricId: Number(metricId), value }));
-    if (values.length === 0) { toast.error("Preencha pelo menos um campo."); return; }
+    if (values.length === 0) { toast.error(t("Preencha pelo menos um campo.")); return; }
     submitMutation.mutate({ projectId, companyId: user.companyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values });
   };
 
@@ -182,7 +182,7 @@ export default function KPI() {
                   <div className="grid grid-cols-2 gap-2">
                     <Input placeholder={t("Nome")} value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
                     <Input placeholder="Unidade" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" />
-                    <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
+                    <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{t(v)}</SelectItem>)}</SelectContent></Select>
                     <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">{t("Manual")}</SelectItem><SelectItem value="calculated">{t("Calculado")}</SelectItem></SelectContent></Select>
                   </div>
                   {editingMetric.inputType === "calculated" && <div className="grid grid-cols-3 gap-2"><Input placeholder="PCI" value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="text-sm" /><Input placeholder="FE" value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="text-sm" /><Input placeholder="Densidade" value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="text-sm" /></div>}
@@ -227,7 +227,7 @@ export default function KPI() {
                 <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
                   {categories.map((cat, idx) => (
                     <Button key={cat} size="sm" variant={formStep === idx ? "default" : "outline"} onClick={() => setFormStep(idx)} className="text-xs whitespace-nowrap">
-                      {CAT_ICONS[cat]} {CAT_LABELS[cat] || cat}
+                      {CAT_ICONS[cat]} {t(CAT_LABELS[cat] || cat)}
                     </Button>
                   ))}
                 </div>

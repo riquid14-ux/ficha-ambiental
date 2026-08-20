@@ -1,75 +1,253 @@
-/* Dark Mode - CSS Filter Inversion + Contrast Fixes */
-/* Applied via inline style on #root by ThemeContext.tsx */
+/* Dark Mode - CSS Filter Inversion + Comprehensive Contrast Fixes */
+/* The filter invert(1) hue-rotate(180deg) on #root inverts ALL colors. */
+/* This means: white bg → dark bg, black text → white text (mostly works) */
+/* But grays, muted colors, and some semantic colors need manual overrides */
 
-/* Force white text on headings and titles when dark mode is active */
+/* ===== CORE TEXT FIXES ===== */
+/* After inversion, most dark text becomes light. But some grays/muted colors */
+/* invert to mid-tones that are hard to read. Force them to be clearly visible. */
+
 html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
   color: #ffffff !important;
 }
-html.dark [data-slot="card-title"] {
+
+html.dark [data-slot="card-title"],
+html.dark .card-title,
+html.dark .font-semibold,
+html.dark .font-bold {
   color: #ffffff !important;
 }
-html.dark p, html.dark span, html.dark label, html.dark td, html.dark th {
+
+html.dark p {
   color: #e2e8f0 !important;
 }
-html.dark .text-muted-foreground {
+
+html.dark span {
+  color: #e2e8f0 !important;
+}
+
+html.dark label {
+  color: #e2e8f0 !important;
+}
+
+html.dark td, html.dark th {
+  color: #e2e8f0 !important;
+}
+
+html.dark a {
+  color: #93c5fd !important;
+}
+
+html.dark li {
+  color: #e2e8f0 !important;
+}
+
+/* Muted/secondary text - make it lighter gray, not invisible */
+html.dark .text-muted-foreground,
+html.dark .text-gray-500,
+html.dark .text-gray-600,
+html.dark .text-gray-400,
+html.dark .text-slate-500,
+html.dark .text-slate-600 {
   color: #94a3b8 !important;
 }
-/* Keep sidebar dark (re-invert since the filter inverts it to light) */
+
+html.dark .text-foreground {
+  color: #f1f5f9 !important;
+}
+
+/* ===== SIDEBAR - Re-invert to keep original dark appearance ===== */
 html.dark [data-slot="sidebar"] {
   filter: invert(1) hue-rotate(180deg);
 }
-/* Re-invert images, videos, iframes so they look normal */
-html.dark img, html.dark video, html.dark iframe, html.dark canvas, html.dark svg {
+
+/* ===== MEDIA - Re-invert images, videos, iframes ===== */
+html.dark img,
+html.dark video,
+html.dark iframe,
+html.dark canvas,
+html.dark svg:not(.lucide) {
   filter: invert(1) hue-rotate(180deg);
 }
-/* Fix the footer warning to be visible in dark mode */
-html.dark .bg-amber-100 {
-  background-color: #78350f !important;
-  border-color: #d97706 !important;
+
+/* Don't re-invert Lucide icons (they're inline SVGs that should follow text color) */
+html.dark .lucide {
+  filter: none !important;
+  color: #e2e8f0 !important;
 }
-html.dark .text-amber-900 {
-  color: #fef3c7 !important;
+
+/* ===== CARDS AND CONTAINERS ===== */
+html.dark [data-slot="card"],
+html.dark .rounded-lg.border,
+html.dark .rounded-xl.border {
+  border-color: #334155 !important;
 }
-/* Fix green gradient banner */
-html.dark .from-green-800 {
-  filter: invert(1) hue-rotate(180deg);
-}
-/* Tabs active state */
-html.dark [data-state="active"] {
-  color: #ffffff !important;
-}
-/* Table headers */
-html.dark thead th {
-  color: #cbd5e1 !important;
-}
-/* Input fields */
-html.dark input, html.dark textarea, html.dark select {
+
+/* ===== FORM ELEMENTS ===== */
+html.dark input,
+html.dark textarea,
+html.dark select {
   color: #e2e8f0 !important;
   background-color: #1e293b !important;
   border-color: #475569 !important;
 }
-/* Buttons text */
-html.dark .text-foreground {
-  color: #f1f5f9 !important;
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
 }
-/* Badge text */
+
+/* ===== TABLE ===== */
+html.dark thead th {
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+html.dark tbody td {
+  border-color: #1e293b !important;
+}
+
+/* ===== TABS ===== */
+html.dark [data-state="active"] {
+  color: #ffffff !important;
+}
+
+html.dark [role="tab"] {
+  color: #94a3b8 !important;
+}
+
+html.dark [role="tab"][data-state="active"] {
+  color: #ffffff !important;
+}
+
+/* ===== BADGES ===== */
 html.dark [data-slot="badge"] {
   color: #e2e8f0 !important;
 }
 
-/* Fix chart colors in dark mode - re-invert so original colors show correctly */
+/* ===== AMBER WARNING BANNER ===== */
+html.dark .bg-amber-100 {
+  background-color: #78350f !important;
+  border-color: #d97706 !important;
+}
+
+html.dark .text-amber-900,
+html.dark .text-amber-800,
+html.dark .text-amber-700 {
+  color: #fef3c7 !important;
+}
+
+/* ===== GREEN ELEMENTS ===== */
+html.dark .text-green-700,
+html.dark .text-green-800,
+html.dark .text-green-600 {
+  color: #86efac !important;
+}
+
+html.dark .bg-green-50,
+html.dark .bg-green-100 {
+  background-color: #052e16 !important;
+  border-color: #166534 !important;
+}
+
+/* ===== RED ELEMENTS ===== */
+html.dark .text-red-700,
+html.dark .text-red-800,
+html.dark .text-red-600 {
+  color: #fca5a5 !important;
+}
+
+html.dark .bg-red-50,
+html.dark .bg-red-100 {
+  background-color: #450a0a !important;
+  border-color: #991b1b !important;
+}
+
+/* ===== BLUE ELEMENTS ===== */
+html.dark .text-blue-700,
+html.dark .text-blue-800,
+html.dark .text-blue-600 {
+  color: #93c5fd !important;
+}
+
+html.dark .bg-blue-50,
+html.dark .bg-blue-100 {
+  background-color: #172554 !important;
+  border-color: #1e40af !important;
+}
+
+/* ===== CHARTS - Re-invert to show original colors ===== */
 html.dark .recharts-wrapper,
 html.dark .recharts-surface,
 html.dark .recharts-layer {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* Fix YouTube embed in Welcome page */
+/* ===== YOUTUBE EMBED ===== */
 html.dark iframe[src*="youtube"] {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* Ensure footer warning is always visible in dark mode */
-html.dark [class*="fixed bottom"] {
+/* ===== WELCOME PAGE GREEN BANNER - Re-invert ===== */
+html.dark .from-green-800,
+html.dark .bg-gradient-to-br.from-green-800 {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* ===== PROGRESS BARS ===== */
+html.dark [role="progressbar"] {
+  background-color: #1e293b !important;
+}
+
+/* ===== DROPDOWN/POPOVER ===== */
+html.dark [data-radix-popper-content-wrapper] {
   filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== DIALOG/MODAL ===== */
+html.dark [role="dialog"] {
+  border-color: #334155 !important;
+}
+
+/* ===== TOOLTIP ===== */
+html.dark [role="tooltip"] {
+  color: #e2e8f0 !important;
+}
+
+/* ===== SPECIFIC COMPONENT FIXES ===== */
+
+/* Timeline phase circles - text inside colored circles */
+html.dark .rounded-full span,
+html.dark .rounded-full p {
+  color: #ffffff !important;
+}
+
+/* KPI metric cards */
+html.dark .text-2xl,
+html.dark .text-3xl,
+html.dark .text-4xl {
+  color: #ffffff !important;
+}
+
+/* Small text that might be invisible */
+html.dark .text-xs,
+html.dark .text-sm {
+  color: #cbd5e1 !important;
+}
+
+/* Checkbox labels */
+html.dark [data-slot="checkbox"] + label,
+html.dark label[for] {
+  color: #e2e8f0 !important;
+}
+
+/* Button text - primary buttons should keep their own colors */
+html.dark button.bg-primary {
+  color: #ffffff !important;
+}
+
+/* Outline buttons */
+html.dark button[data-variant="outline"] {
+  color: #e2e8f0 !important;
+  border-color: #475569 !important;
 }

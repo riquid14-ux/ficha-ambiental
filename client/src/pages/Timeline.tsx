@@ -56,7 +56,7 @@ export default function Timeline() {
   const { activeProject, isAllProjects, projects } = useProject();
 
   const [showSettings, setShowSettings] = useState(false);
-  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); projectPhasesQuery.refetch(); } });
+  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success(t("Fase atualizada")); projectPhasesQuery.refetch(); } });
   const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">("timeline");
   const projectId = activeProject?.id;
 

@@ -335,7 +335,7 @@ export default function WeeklyForm() {
             toast.error(t("Erro ao carregar imagem"));
           }
         } catch {
-          toast.error("Erro ao carregar imagem");
+          toast.error(t("Erro ao carregar imagem"));
         }
         setUploadingMeasure(null);
       };

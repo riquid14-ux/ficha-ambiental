@@ -243,7 +243,7 @@ function CompaniesTab() {
   });
   const setCompanyProjectsMutation = trpc.projects.setCompanyProjects.useMutation({
     onSuccess: () => {
-      toast.success("Projetos da empresa atualizados");
+      toast.success(t("Projetos da empresa atualizados"));
       utils.projects.allCompanyAssignments.invalidate();
       setEditingCompanyId(null);
     },
@@ -567,7 +567,7 @@ function UsersTab() {
 
   const updateRoleMutation = trpc.users.updateRole.useMutation({
     onSuccess: () => {
-      toast.success("Papel atualizado");
+      toast.success(t("Papel atualizado"));
       utils.users.list.invalidate();
     },
   });
@@ -595,7 +595,7 @@ function UsersTab() {
 
   const setUserProjectsMutation = trpc.projects.setUserProjects.useMutation({
     onSuccess: () => {
-      toast.success("Projetos atualizados");
+      toast.success(t("Projetos atualizados"));
       utils.projects.allUserAssignments.invalidate();
       setEditingProjectsUserId(null);
     },
@@ -616,7 +616,7 @@ function UsersTab() {
 
   const handleInvite = () => {
     if (!inviteEmail || !inviteCompanyId || !inviteRole) {
-      toast.error("Preencha todos os campos");
+      toast.error(t("Preencha todos os campos"));
       return;
     }
     createInviteMutation.mutate({
@@ -1001,7 +1001,7 @@ function HistoricalTab() {
   const handleUpload = async () => {
     const file = fileInputRef.current?.files?.[0];
     if (!file || !selectedCompany || !weekNumber || !weekYear) {
-      toast.error("Preencha todos os campos e selecione um ficheiro.");
+      toast.error(t("Preencha todos os campos e selecione um ficheiro."));
       return;
     }
 

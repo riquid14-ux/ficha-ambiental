@@ -74,7 +74,7 @@ async function startServer() {
     // Content-Security-Policy: allow framing from Autodesk
     res.setHeader(
       "Content-Security-Policy",
-      "frame-ancestors 'self' https://*.autodesk.com https://*.autodesk.io https://acc.autodesk.com https://construction.autodesk.com"
+      "frame-ancestors 'self' https://*.autodesk.com https://*.autodesk.io https://acc.autodesk.com https://construction.autodesk.com; frame-src 'self' https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com"
     );
     // Required for cookies in cross-origin iframes
     if (req.headers.origin && (req.headers.origin.includes("autodesk.com") || req.headers.origin.includes("autodesk.io"))) {

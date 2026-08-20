@@ -63,8 +63,8 @@ function Router() {
       <Route path="/mirr" component={MIRR} />
       <Route path="/residuos" component={MIRR} />
       <Route path="/kpi" component={KPI} />
-            <Route path="/certificacoes" component={Certifications} />
-            <Route path="/gamma" component={Gamma} />
+      <Route path="/certificacoes" component={Certifications} />
+      <Route path="/gamma" component={Gamma} />
       <Route path="/ficha" component={WeeklyForm} />
       <Route path="/ficha/:id" component={WeeklyForm} />
       <Route path="/historico" component={SubmissionHistory} />
@@ -79,6 +79,29 @@ function Router() {
   );
 }
 
+class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold mb-2">Erro ao carregar página</h2>
+            <button onClick={() => window.location.reload()} className="text-primary underline">Recarregar</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -86,7 +109,7 @@ function App() {
         <TooltipProvider>
           <LanguageProvider>
             <ProjectProvider>
-              <Toaster />
+              <Toaster richColors position="top-right" />
               <Router />
             </ProjectProvider>
           </LanguageProvider>
@@ -97,31 +120,3 @@ function App() {
 }
 
 export default App;
-
-// Per-route error boundary that shows a friendly message instead of crashing the whole app
-class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center min-h-[60vh] p-8">
-          <div className="text-center max-w-md">
-            <div className="text-4xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold mb-2">Erro ao carregar esta página</h2>
-            <p className="text-muted-foreground mb-4">Ocorreu um erro inesperado. Tente recarregar a página ou voltar ao Dashboard.</p>
-            <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.href = "/dashboard"; }} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
-              Voltar ao Dashboard
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}

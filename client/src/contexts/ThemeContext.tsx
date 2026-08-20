@@ -42,7 +42,7 @@ export function ThemeProvider({
     const rootEl = document.getElementById("root");
     if (rootEl) {
       if (theme === "dark") {
-        rootEl.style.filter = "invert(0.93) hue-rotate(180deg)";
+        rootEl.style.filter = "invert(1) hue-rotate(180deg)";
         const reInvert = (el: Element) => { (el as HTMLElement).style.filter = "invert(1) hue-rotate(180deg)"; };
         // Re-invert media AND sidebar (sidebar is already dark, inversion makes it light)
         const mediaSelector = "img, video, canvas, picture, .recharts-wrapper, iframe, [data-slot='sidebar']";

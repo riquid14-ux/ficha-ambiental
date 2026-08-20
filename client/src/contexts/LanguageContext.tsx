@@ -1114,6 +1114,10 @@ const translations: Record<string, Record<Lang, string>> = {
   "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes.": { pt: "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes.", en: "Submit weekly sustainability data including workers, energy consumption, water and incidents." },
   "Consulte os prazos de reporting ambiental e as datas importantes do projeto.": { pt: "Consulte os prazos de reporting ambiental e as datas importantes do projeto.", en: "View environmental reporting deadlines and important project dates." },
   "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.": { pt: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.", en: "Track project phase progress, from pre-licensing to operation." },
+  "Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.": { pt: "Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.", en: "Select the week and year for the control form you want to fill in." },
+  "Iniciar Ficha": { pt: "Iniciar Ficha", en: "Start Form" },
+  "Evidências": { pt: "Evidências", en: "Evidence" },
+  "Próximo": { pt: "Próximo", en: "Next" },
 };
 interface LanguageContextType {
   language: Lang;

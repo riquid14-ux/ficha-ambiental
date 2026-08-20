@@ -222,7 +222,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 11 }, (_, i) => 2023 + i).map(y => (
-                  <SelectItem key={y} value={String(y)}>Evidências {y}</SelectItem>
+                  <SelectItem key={y} value={String(y)}>{t("Evidências")} {y}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

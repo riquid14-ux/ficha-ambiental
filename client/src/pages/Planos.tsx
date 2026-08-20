@@ -356,7 +356,7 @@ function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutat
       {/* Mobile dates */}
       <div className="flex gap-4 mt-2 text-xs text-muted-foreground md:hidden">
         <span>Último: {formatDate(plan.lastReportingDate)}</span>
-        <span>Próximo: {formatDate(plan.nextReportingDate)}</span>
+        <span>{t("Próximo")}: {formatDate(plan.nextReportingDate)}</span>
       </div>
 
       {/* Edit form */}

@@ -533,7 +533,7 @@ export default function WeeklyForm() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.
+                {t("Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.")}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -577,7 +577,7 @@ export default function WeeklyForm() {
               ) : (
                 <div className="space-y-2">
                   <Button onClick={() => setStarted(true)} size="lg" className="w-full">
-                    Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
+                    {t("Iniciar Ficha")} — {t("Semana")} {selectedWeek}/{selectedYear}
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">{t("As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.")}</p>
                 </div>

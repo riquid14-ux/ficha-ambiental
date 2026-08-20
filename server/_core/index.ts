@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -36,6 +38,30 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // ─── Security Headers ───────────────────────────────────────────────────
+  app.use(helmet({
+    contentSecurityPolicy: false, // We set CSP manually below for ACC iframe support
+    crossOriginEmbedderPolicy: false, // Required for ACC iframe
+    frameguard: false, // We handle X-Frame-Options manually for ACC
+  }));
+
+  // ─── Rate Limiting on Auth Endpoints ────────────────────────────────────
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // max 10 attempts per 15 min per IP
+    message: { error: "Demasiadas tentativas. Tente novamente em 15 minutos." },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown",
+  });
+  // Apply rate limiting to auth-related tRPC mutations
+  app.use("/api/trpc/auth.login", authLimiter);
+  app.use("/api/trpc/auth.register", authLimiter);
+  app.use("/api/trpc/auth.verify2FA", authLimiter);
+  app.use("/api/trpc/auth.forgotPassword", authLimiter);
+  app.use("/api/trpc/auth.resetPasswordWithToken", authLimiter);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

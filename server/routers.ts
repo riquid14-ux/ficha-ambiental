@@ -14,6 +14,16 @@ import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 
+// Security: Allowed MIME types for file uploads
+const ALLOWED_FILE_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+  "application/pdf",
+  "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain", "text/csv",
+]);
+const MAX_FILE_SIZE_B64 = 15 * 1024 * 1024; // ~10MB file = ~13.3MB base64
+
 // Helper: check if user has elevated permissions (admin or dono_obra)
 function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
@@ -70,6 +80,9 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
+        // Security: validate file type and size
+        if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
+        if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
         const ext = input.filename.split(".").pop() || "bin";
         const timestamp = Date.now();
@@ -102,7 +115,7 @@ export const appRouter = router({
   }),
 
   appSettings: router({
-    get: publicProcedure
+    get: protectedProcedure
       .input(z.object({ key: z.string() }))
       .query(async ({ input }) => {
         const database = await db.getDb();
@@ -110,7 +123,7 @@ export const appRouter = router({
         const rows = await database.execute(sql`SELECT value FROM app_settings WHERE \`key\` = ${input.key}`);
         return (rows as any)?.[0]?.[0]?.value || null;
       }),
-    getAll: publicProcedure
+    getAll: protectedProcedure
       .query(async () => {
         const database = await db.getDb();
         if (!database) return {};
@@ -191,7 +204,7 @@ export const appRouter = router({
         // Create session
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || email });
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
         return { success: true, requires2FA: false, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
       }),
 
@@ -212,7 +225,7 @@ export const appRouter = router({
       }),
     // ─── Reset Password with Token ──────────────────────────────────────
     resetPasswordWithToken: publicProcedure
-      .input(z.object({ email: z.string().email(), token: z.string(), newPassword: z.string().min(6) }))
+      .input(z.object({ email: z.string().email(), token: z.string(), newPassword: z.string().min(8) }))
       .mutation(async ({ input }) => {
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -238,7 +251,7 @@ export const appRouter = router({
         if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido. Tente novamente." });
         const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "" });
         const cookieOptions = getSessionCookieOptions(ctx.req);
-        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
         return { success: true, mustChangePassword: !!(user as any).mustChangePassword };
       }),
 
@@ -249,7 +262,7 @@ export const appRouter = router({
         const email = input.email.toLowerCase().trim();
         const existingUsers = await db.getAllUsers();
         if (existingUsers.find((u) => u.email?.toLowerCase().trim() === email)) {
-          throw new TRPCError({ code: "CONFLICT", message: "Este email já está registado." });
+          return { success: true, message: "Conta criada com sucesso. Aguarde aprovação do administrador." };
         }
         const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
         const passwordHash = await bcrypt.hash(input.password, 10);
@@ -264,7 +277,7 @@ export const appRouter = router({
 
     // ─── Change password ────────────────────────────────────────────────────
     changePassword: protectedProcedure
-      .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(6) }))
+      .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }))
       .mutation(async ({ input, ctx }) => {
         const user = await db.getUserById(ctx.user.id);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
@@ -378,21 +391,6 @@ export const appRouter = router({
       return (rows as any)?.[0] || [];
     }),
 
-    // ─── Legacy emailLogin (for ACC iframe auto-login) ──────────────────────
-    emailLogin: publicProcedure
-      .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ input, ctx }) => {
-        const email = input.email.toLowerCase().trim();
-        const existingUsers = await db.getAllUsers();
-        const existingUser = existingUsers.find((u) => u.email?.toLowerCase().trim() === email);
-        if (existingUser && (existingUser as any).accountStatus === "active") {
-          const sessionToken = await sdk.createSessionToken(existingUser.openId, { name: existingUser.name || email });
-          const cookieOptions = getSessionCookieOptions(ctx.req);
-          ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 365 * 24 * 60 * 60 * 1000 });
-          return { success: true, user: existingUser };
-        }
-        throw new TRPCError({ code: "FORBIDDEN", message: "Não tem acesso. Contacte apoioamb@startcampus.pt" });
-      }),
   }),
 
   // ─── Companies ───────────────────────────────────────────────────────────
@@ -1151,6 +1149,9 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
 
+        // Security: validate file type and size
+        if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
+        if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
         const company = await db.getCompanyById(input.companyId);
         const companyName = company?.shortName || `EE${input.companyId}`;
@@ -1375,6 +1376,9 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         // Decode base64
+        // Security: validate file type and size
+        if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
+        if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
         const timestamp = new Date().toISOString().slice(0, 10);
         const ext = input.filename.split(".").pop() || "bin";

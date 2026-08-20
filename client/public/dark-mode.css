@@ -1,59 +1,64 @@
-/* Dark Mode - CSS Filter Inversion + Comprehensive Contrast Fixes */
-/* The filter invert(1) hue-rotate(180deg) on #root inverts ALL colors. */
-/* This means: white bg → dark bg, black text → white text (mostly works) */
-/* But grays, muted colors, and some semantic colors need manual overrides */
+/* Dark Mode - CSS Filter Inversion Contrast Fixes */
+/* CRITICAL: The filter invert(1) hue-rotate(180deg) on #root transforms colors AFTER CSS.
+   So to make text appear WHITE on screen, we must set it to BLACK (#000000) in CSS.
+   To make text appear LIGHT GRAY on screen, we set it to DARK GRAY in CSS.
+   The filter then inverts these to the desired light colors. */
 
-/* ===== CORE TEXT FIXES ===== */
-/* After inversion, most dark text becomes light. But some grays/muted colors */
-/* invert to mid-tones that are hard to read. Force them to be clearly visible. */
-
+/* ===== CORE TEXT - Set to BLACK so filter inverts to WHITE ===== */
 html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
-  color: #ffffff !important;
+  color: #000000 !important;
 }
 
 html.dark [data-slot="card-title"],
 html.dark .card-title,
 html.dark .font-semibold,
-html.dark .font-bold {
-  color: #ffffff !important;
+html.dark .font-bold,
+html.dark .font-medium {
+  color: #000000 !important;
 }
 
-html.dark p {
-  color: #e2e8f0 !important;
-}
-
-html.dark span {
-  color: #e2e8f0 !important;
-}
-
-html.dark label {
-  color: #e2e8f0 !important;
+html.dark p,
+html.dark span,
+html.dark label,
+html.dark li,
+html.dark div {
+  color: #111827 !important;
 }
 
 html.dark td, html.dark th {
-  color: #e2e8f0 !important;
+  color: #111827 !important;
 }
 
 html.dark a {
-  color: #93c5fd !important;
+  color: #1e3a5f !important;
 }
 
-html.dark li {
-  color: #e2e8f0 !important;
-}
-
-/* Muted/secondary text - make it lighter gray, not invisible */
+/* Muted/secondary text - dark gray that inverts to light gray */
 html.dark .text-muted-foreground,
 html.dark .text-gray-500,
 html.dark .text-gray-600,
 html.dark .text-gray-400,
 html.dark .text-slate-500,
 html.dark .text-slate-600 {
-  color: #94a3b8 !important;
+  color: #374151 !important;
 }
 
 html.dark .text-foreground {
-  color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Small text */
+html.dark .text-xs,
+html.dark .text-sm {
+  color: #1e293b !important;
+}
+
+/* Large numbers/metrics */
+html.dark .text-2xl,
+html.dark .text-3xl,
+html.dark .text-4xl,
+html.dark .text-5xl {
+  color: #000000 !important;
 }
 
 /* ===== SIDEBAR - Re-invert to keep original dark appearance ===== */
@@ -61,119 +66,60 @@ html.dark [data-slot="sidebar"] {
   filter: invert(1) hue-rotate(180deg);
 }
 
-/* ===== MEDIA - Re-invert images, videos, iframes ===== */
+/* ===== MEDIA - Re-invert images, videos, iframes to show correctly ===== */
 html.dark img,
 html.dark video,
 html.dark iframe,
-html.dark canvas,
-html.dark svg:not(.lucide) {
+html.dark canvas {
   filter: invert(1) hue-rotate(180deg);
 }
 
-/* Don't re-invert Lucide icons (they're inline SVGs that should follow text color) */
+/* SVG icons should follow text color, not be re-inverted */
+html.dark svg.lucide,
 html.dark .lucide {
   filter: none !important;
-  color: #e2e8f0 !important;
+  color: #111827 !important;
 }
 
-/* ===== CARDS AND CONTAINERS ===== */
-html.dark [data-slot="card"],
-html.dark .rounded-lg.border,
-html.dark .rounded-xl.border {
-  border-color: #334155 !important;
+/* Non-icon SVGs (charts, diagrams) should be re-inverted */
+html.dark svg:not(.lucide) {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 /* ===== FORM ELEMENTS ===== */
 html.dark input,
 html.dark textarea,
 html.dark select {
-  color: #e2e8f0 !important;
-  background-color: #1e293b !important;
-  border-color: #475569 !important;
+  color: #111827 !important;
+  border-color: #9ca3af !important;
 }
 
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #64748b !important;
+  color: #6b7280 !important;
 }
 
 /* ===== TABLE ===== */
 html.dark thead th {
-  color: #cbd5e1 !important;
-  border-color: #334155 !important;
-}
-
-html.dark tbody td {
-  border-color: #1e293b !important;
+  color: #1e293b !important;
 }
 
 /* ===== TABS ===== */
 html.dark [data-state="active"] {
-  color: #ffffff !important;
+  color: #000000 !important;
 }
 
 html.dark [role="tab"] {
-  color: #94a3b8 !important;
+  color: #374151 !important;
 }
 
 html.dark [role="tab"][data-state="active"] {
-  color: #ffffff !important;
+  color: #000000 !important;
 }
 
 /* ===== BADGES ===== */
 html.dark [data-slot="badge"] {
-  color: #e2e8f0 !important;
-}
-
-/* ===== AMBER WARNING BANNER ===== */
-html.dark .bg-amber-100 {
-  background-color: #78350f !important;
-  border-color: #d97706 !important;
-}
-
-html.dark .text-amber-900,
-html.dark .text-amber-800,
-html.dark .text-amber-700 {
-  color: #fef3c7 !important;
-}
-
-/* ===== GREEN ELEMENTS ===== */
-html.dark .text-green-700,
-html.dark .text-green-800,
-html.dark .text-green-600 {
-  color: #86efac !important;
-}
-
-html.dark .bg-green-50,
-html.dark .bg-green-100 {
-  background-color: #052e16 !important;
-  border-color: #166534 !important;
-}
-
-/* ===== RED ELEMENTS ===== */
-html.dark .text-red-700,
-html.dark .text-red-800,
-html.dark .text-red-600 {
-  color: #fca5a5 !important;
-}
-
-html.dark .bg-red-50,
-html.dark .bg-red-100 {
-  background-color: #450a0a !important;
-  border-color: #991b1b !important;
-}
-
-/* ===== BLUE ELEMENTS ===== */
-html.dark .text-blue-700,
-html.dark .text-blue-800,
-html.dark .text-blue-600 {
-  color: #93c5fd !important;
-}
-
-html.dark .bg-blue-50,
-html.dark .bg-blue-100 {
-  background-color: #172554 !important;
-  border-color: #1e40af !important;
+  color: #111827 !important;
 }
 
 /* ===== CHARTS - Re-invert to show original colors ===== */
@@ -188,66 +134,23 @@ html.dark iframe[src*="youtube"] {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* ===== WELCOME PAGE GREEN BANNER - Re-invert ===== */
-html.dark .from-green-800,
-html.dark .bg-gradient-to-br.from-green-800 {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-/* ===== PROGRESS BARS ===== */
-html.dark [role="progressbar"] {
-  background-color: #1e293b !important;
-}
-
-/* ===== DROPDOWN/POPOVER ===== */
+/* ===== DROPDOWN/POPOVER - Re-invert so they look normal ===== */
 html.dark [data-radix-popper-content-wrapper] {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-/* ===== DIALOG/MODAL ===== */
-html.dark [role="dialog"] {
-  border-color: #334155 !important;
+/* ===== PROGRESS BARS ===== */
+html.dark [role="progressbar"] {
+  background-color: #e2e8f0 !important;
 }
 
-/* ===== TOOLTIP ===== */
-html.dark [role="tooltip"] {
-  color: #e2e8f0 !important;
+/* ===== BUTTONS ===== */
+html.dark button {
+  color: #111827 !important;
 }
 
-/* ===== SPECIFIC COMPONENT FIXES ===== */
-
-/* Timeline phase circles - text inside colored circles */
-html.dark .rounded-full span,
-html.dark .rounded-full p {
-  color: #ffffff !important;
-}
-
-/* KPI metric cards */
-html.dark .text-2xl,
-html.dark .text-3xl,
-html.dark .text-4xl {
-  color: #ffffff !important;
-}
-
-/* Small text that might be invisible */
-html.dark .text-xs,
-html.dark .text-sm {
-  color: #cbd5e1 !important;
-}
-
-/* Checkbox labels */
-html.dark [data-slot="checkbox"] + label,
-html.dark label[for] {
-  color: #e2e8f0 !important;
-}
-
-/* Button text - primary buttons should keep their own colors */
-html.dark button.bg-primary {
-  color: #ffffff !important;
-}
-
-/* Outline buttons */
-html.dark button[data-variant="outline"] {
-  color: #e2e8f0 !important;
-  border-color: #475569 !important;
+/* Primary buttons - keep their green/colored appearance */
+html.dark button.bg-primary,
+html.dark .bg-primary {
+  color: #000000 !important;
 }

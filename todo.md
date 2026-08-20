@@ -356,3 +356,8 @@
 - [x] RDCD: Embed evidence photos directly in Word export (Cenário A)
 - [x] RDCD: Auto-download Word file when generated
 - [x] RDCD: Backend procedure to fetch evidence images for multiple submissions
+
+## Remove English & Fix Dark Mode
+- [x] Remove English language toggle completely - app stays 100% Portuguese
+- [x] Remove language warning banner from footer
+- [x] Fix dark mode CSS - use inverted color values (since filter inverts AFTER CSS)

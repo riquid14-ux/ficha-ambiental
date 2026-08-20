@@ -343,11 +343,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   <UserCircle className="mr-2 h-4 w-4" />
                   <span>{t("Perfil")}</span>
                 </DropdownMenuItem>
-                {["admin", "dono_obra", "pm"].includes(userRole) && (
-                  <DropdownMenuItem onClick={() => setLanguage(language === "pt" ? "en" : "pt")} className="cursor-pointer">
-                    <span>{language === "pt" ? "🇬🇧 English" : "🇵🇹 Português"}</span>
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem onClick={() => toggleTheme?.()} className="cursor-pointer">
                   <span>{theme === "light" ? "🌙 Dark Mode" : "☀️ Light Mode"}</span>
                 </DropdownMenuItem>
@@ -429,11 +424,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         </div>
       )}
       {/* English Translation Warning */}
-      {language === "en" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-amber-100 border-t-2 border-amber-400 py-3 px-4 text-center z-40 shadow-lg">
-          <p className="text-sm font-semibold text-amber-900">⚠️ {t("Nota: toda a documentação submetida nesta plataforma deve ser escrita em Português, independentemente do idioma de visualização.")}</p>
-        </div>
-      )}
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>

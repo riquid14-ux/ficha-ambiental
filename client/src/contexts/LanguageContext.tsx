@@ -1088,6 +1088,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Visão consolidada de todos os projetos Start Campus.": { pt: "Visão consolidada de todos os projetos Start Campus.", en: "Consolidated view of all Start Campus projects." },
   "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.": { pt: "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.", en: "Project in operation phase: annual environmental deliverables, waste and certifications." },
   "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.": { pt: "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.", en: "Monitoring compliance with DCAPE environmental measures during construction." },
+  "Alterne entre modo claro/escuro e PT/EN no menu do utilizador.": { pt: "Alterne entre modo claro/escuro e PT/EN no menu do utilizador.", en: "Switch between light/dark mode and PT/EN in the user menu." },
   "Dashboard Global": { pt: "Dashboard Global", en: "Global Dashboard" },
   "Visão geral do cumprimento ambiental de todos os projetos Start Campus.": { pt: "Visão geral do cumprimento ambiental de todos os projetos Start Campus.", en: "Overview of environmental compliance across all Start Campus projects." },
   "Calendário Integrado": { pt: "Calendário Integrado", en: "Integrated Calendar" },
@@ -1122,87 +1123,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Exportação Word em desenvolvimento": { pt: "Exportação Word em desenvolvimento", en: "Word export in development" },
   "Entrega confirmada": { pt: "Entrega confirmada", en: "Delivery confirmed" },
   "A gerar PDF de evolução...": { pt: "A gerar PDF de evolução...", en: "Generating evolution PDF..." },
-
-  // ─── Missing Toast Messages ───
-  "e-GAR eliminada": { pt: "e-GAR eliminada", en: "e-GAR deleted" },
-  "e-GAR registada com sucesso": { pt: "e-GAR registada com sucesso", en: "e-GAR registered successfully" },
-  "2FA ativado com sucesso!": { pt: "2FA ativado com sucesso!", en: "2FA enabled successfully!" },
-  "2FA desativado": { pt: "2FA desativado", en: "2FA disabled" },
-
-  // ─── Status Labels ───
-  "Observador": { pt: "Observador", en: "Observer" },
-
-  // ─── KPI Categories ───
-  "Mão de Obra": { pt: "Mão de Obra", en: "Workforce" },
-  "Combustível": { pt: "Combustível", en: "Fuel" },
-  "Energia": { pt: "Energia", en: "Energy" },
-  "Emissões": { pt: "Emissões", en: "Emissions" },
-  "Outros": { pt: "Outros", en: "Others" },
-
-  // ─── Calendar ───
-  "Prazo Interno": { pt: "Prazo Interno", en: "Internal Deadline" },
-  "Prazo Regulatório": { pt: "Prazo Regulatório", en: "Regulatory Deadline" },
-
-  // ─── Timeline Phases ───
-  "Construção (Final)": { pt: "Construção (Final)", en: "Construction (Final)" },
-  "Overall Progress": { pt: "Progresso Geral", en: "Overall Progress" },
-  "Settings": { pt: "Definições", en: "Settings" },
-  "Completed": { pt: "Concluído", en: "Completed" },
-
-  // ─── Admin Panel ───
-
-  // ─── RDCD Additional ───
-  "Selecionar semana": { pt: "Selecionar semana", en: "Select week" },
-  "Desselecionar todos": { pt: "Desselecionar todos", en: "Deselect all" },
-  "Selecionar todos": { pt: "Selecionar todos", en: "Select all" },
-  "planos selecionados para o RDCD.": { pt: "planos selecionados para o RDCD.", en: "plans selected for the RDCD." },
-  "Nenhum plano encontrado. Crie planos na tab Planos.": { pt: "Nenhum plano encontrado. Crie planos na tab Planos.", en: "No plans found. Create plans in the Plans tab." },
-  "O sistema analisou": { pt: "O sistema analisou", en: "The system analyzed" },
-  "fichas aprovadas no período.": { pt: "fichas aprovadas no período.", en: "approved forms in the period." },
-  "Reveja o estado de cada medida.": { pt: "Reveja o estado de cada medida.", en: "Review the status of each measure." },
-  "A carregar dados das fichas semanais...": { pt: "A carregar dados das fichas semanais...", en: "Loading weekly form data..." },
-  "Parcial": { pt: "Parcial", en: "Partial" },
-  "Sem dados nesta secção para o período selecionado.": { pt: "Sem dados nesta secção para o período selecionado.", en: "No data in this section for the selected period." },
-  "fichas aprovadas": { pt: "fichas aprovadas", en: "approved forms" },
-  "conformes": { pt: "conformes", en: "compliant" },
-  "parciais": { pt: "parciais", en: "partial" },
-  "Incluídos": { pt: "Incluídos", en: "Included" },
-  "Não incluídos": { pt: "Não incluídos", en: "Not included" },
-  "A gerar...": { pt: "A gerar...", en: "Generating..." },
-  "Gerar RDCD (.docx)": { pt: "Gerar RDCD (.docx)", en: "Generate RDCD (.docx)" },
-  "Erro ao gerar RDCD": { pt: "Erro ao gerar RDCD", en: "Error generating RDCD" },
-  "A descarregar": { pt: "A descarregar", en: "Downloading" },
-  "imagens de evidência...": { pt: "imagens de evidência...", en: "evidence images..." },
-
-  // ─── Misc Missing ───
-  "Cada linha representa uma empresa. Verde = todas as fichas entregues nessa semana.": { pt: "Cada linha representa uma empresa. Verde = todas as fichas entregues nessa semana.", en: "Each row represents a company. Green = all forms delivered that week." },
-  "Plano de Apoio": { pt: "Plano de Apoio", en: "Support Plan" },
-  "Educação": { pt: "Educação", en: "Education" },
-  "Saúde Mental e Bem-Estar": { pt: "Saúde Mental e Bem-Estar", en: "Mental Health & Well-being" },
-  "Inclusão Social e Integração": { pt: "Inclusão Social e Integração", en: "Social Inclusion & Integration" },
-  "Sustentabilidade": { pt: "Sustentabilidade", en: "Sustainability" },
-  "Inovação e Abordagem": { pt: "Inovação e Abordagem", en: "Innovation & Approach" },
-
-  // ─── Calendar Months & Days ───
-  "Janeiro": { pt: "Janeiro", en: "January" },
-  "Fevereiro": { pt: "Fevereiro", en: "February" },
-  "Março": { pt: "Março", en: "March" },
-  "Abril": { pt: "Abril", en: "April" },
-  "Maio": { pt: "Maio", en: "May" },
-  "Junho": { pt: "Junho", en: "June" },
-  "Julho": { pt: "Julho", en: "July" },
-  "Agosto": { pt: "Agosto", en: "August" },
-  "Setembro": { pt: "Setembro", en: "September" },
-  "Outubro": { pt: "Outubro", en: "October" },
-  "Novembro": { pt: "Novembro", en: "November" },
-  "Dezembro": { pt: "Dezembro", en: "December" },
-  "Seg": { pt: "Seg", en: "Mon" },
-  "Ter": { pt: "Ter", en: "Tue" },
-  "Qua": { pt: "Qua", en: "Wed" },
-  "Qui": { pt: "Qui", en: "Thu" },
-  "Sex": { pt: "Sex", en: "Fri" },
-  "Sáb": { pt: "Sáb", en: "Sat" },
-  "Dom": { pt: "Dom", en: "Sun" },
 };
 interface LanguageContextType {
   language: Lang;

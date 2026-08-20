@@ -31,7 +31,6 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
   year: number; month: number; events: CalendarEvent[];
   selectedDay: Date | null; onSelectDay: (d: Date) => void;
 }) {
-  const { t } = useLanguage();
   const today = new Date();
   const isToday = (day: number) => day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
@@ -62,10 +61,10 @@ function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
 
   return (
     <div>
-      <h3 className="text-center font-semibold text-sm mb-2">{t(MONTHS_PT[month])} {year}</h3>
+      <h3 className="text-center font-semibold text-sm mb-2">{MONTHS_PT[month]} {year}</h3>
       <div className="grid grid-cols-7 gap-px mb-1">
         {DAYS_PT.map(d => (
-          <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{t(d)}</div>
+          <div key={d} className="text-center text-[10px] font-medium text-muted-foreground py-1">{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
@@ -155,11 +154,11 @@ export default function Calendario() {
     onError: (e: any) => toast.error(e.message),
   });
   const updateStatusMutation = trpc.calendarEvents.updateStatus.useMutation({
-    onSuccess: () => { refetchCalEvents(); toast.success(t("Estado atualizado")); },
+    onSuccess: () => { refetchCalEvents(); toast.success("Estado atualizado"); },
     onError: (e: any) => toast.error(e.message),
   });
   const deleteEventMutation = trpc.calendarEvents.delete.useMutation({
-    onSuccess: () => { refetchCalEvents(); toast.success(t("Evento removido")); },
+    onSuccess: () => { refetchCalEvents(); toast.success("Evento removido"); },
     onError: (e: any) => toast.error(e.message),
   });
   const assignOwnerMutation = trpc.calendarEvents.assignOwner.useMutation({
@@ -412,7 +411,7 @@ export default function Calendario() {
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <span className="text-sm text-muted-foreground">
-                {t(MONTHS_PT[month1])} — {t(MONTHS_PT[month2])} {year2}
+                {MONTHS_PT[month1]} — {MONTHS_PT[month2]} {year2}
               </span>
               <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                 <ChevronRight className="w-5 h-5" />
@@ -810,7 +809,7 @@ export default function Calendario() {
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button onClick={() => {
-                    if (!newEvent.name || !newEvent.date) { toast.error(t("Preencha nome e data")); return; }
+                    if (!newEvent.name || !newEvent.date) { toast.error("Preencha nome e data"); return; }
                     const dateMs = new Date(newEvent.date).getTime();
                     createEventMutation.mutate({
                       projectId: projectId || undefined,

@@ -1,2 +1,75 @@
-/* Empty - dark mode handled by CSS variables in index.css */
+/* Dark Mode - CSS Filter Inversion + Contrast Fixes */
+/* Applied via inline style on #root by ThemeContext.tsx */
 
+/* Force white text on headings and titles when dark mode is active */
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+  color: #ffffff !important;
+}
+html.dark [data-slot="card-title"] {
+  color: #ffffff !important;
+}
+html.dark p, html.dark span, html.dark label, html.dark td, html.dark th {
+  color: #e2e8f0 !important;
+}
+html.dark .text-muted-foreground {
+  color: #94a3b8 !important;
+}
+/* Keep sidebar dark (re-invert since the filter inverts it to light) */
+html.dark [data-slot="sidebar"] {
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Re-invert images, videos, iframes so they look normal */
+html.dark img, html.dark video, html.dark iframe, html.dark canvas, html.dark svg {
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Fix the footer warning to be visible in dark mode */
+html.dark .bg-amber-100 {
+  background-color: #78350f !important;
+  border-color: #d97706 !important;
+}
+html.dark .text-amber-900 {
+  color: #fef3c7 !important;
+}
+/* Fix green gradient banner */
+html.dark .from-green-800 {
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Tabs active state */
+html.dark [data-state="active"] {
+  color: #ffffff !important;
+}
+/* Table headers */
+html.dark thead th {
+  color: #cbd5e1 !important;
+}
+/* Input fields */
+html.dark input, html.dark textarea, html.dark select {
+  color: #e2e8f0 !important;
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+/* Buttons text */
+html.dark .text-foreground {
+  color: #f1f5f9 !important;
+}
+/* Badge text */
+html.dark [data-slot="badge"] {
+  color: #e2e8f0 !important;
+}
+
+/* Fix chart colors in dark mode - re-invert so original colors show correctly */
+html.dark .recharts-wrapper,
+html.dark .recharts-surface,
+html.dark .recharts-layer {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Fix YouTube embed in Welcome page */
+html.dark iframe[src*="youtube"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Ensure footer warning is always visible in dark mode */
+html.dark [class*="fixed bottom"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}

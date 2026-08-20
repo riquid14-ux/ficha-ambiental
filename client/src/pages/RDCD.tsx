@@ -9,39 +9,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2 } from "lucide-react";
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun } from "docx";
+import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye } from "lucide-react";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 
 // Wizard steps
 const STEPS = [
-  { id: 1, labelKey: "Projetos", descKey: "Selecionar projeto(s)" },
-  { id: 2, labelKey: "Período", descKey: "Definir semanas do relatório" },
-  { id: 3, labelKey: "Medidas", descKey: "Compilar e selecionar evidências" },
-  { id: 4, labelKey: "Pré-visualização", descKey: "Rever e gerar Word" },
+  { id: 1, label: "Projetos", desc: "Selecionar projeto(s)" },
+  { id: 2, label: "Período", desc: "Definir semanas do relatório" },
+  { id: 3, label: "Medidas", desc: "Compilar e selecionar evidências" },
+  { id: 4, label: "Pré-visualização", desc: "Rever e gerar Word" },
 ];
 
 export default function RDCD() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { projects } = useProject();
-  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
+  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
   const [step, setStep] = useState(1);
   const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
   const [startWeek, setStartWeek] = useState("");
   const [endWeek, setEndWeek] = useState("");
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [includePlans, setIncludePlans] = useState(true);
   const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const [measureSelections, setMeasureSelections] = useState<Record<number, { status: string; selectedWeeks: string[]; notes: string }>>({});
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch submissions for selected projects and period
-  const { data: allSubmissions, isLoading: loadingSubs } = trpc.submissions.listAll.useQuery(undefined, { enabled: step >= 3 });
+  const { data: allSubmissions } = trpc.submissions.listAll.useQuery(undefined, { enabled: step >= 3 });
   const { data: sections } = trpc.sections.list.useQuery(undefined, { enabled: step >= 3 });
   const { data: measures } = trpc.measures.list.useQuery(undefined, { enabled: step >= 3 });
-  const { data: plans } = trpc.monitoringPlans.list.useQuery(undefined, { enabled: step >= 2 && includePlans });
+  const { data: plans } = trpc.monitoringPlans.list.useQuery(undefined, { enabled: step >= 3 && includePlans });
 
   // Filter submissions by selected projects and period
   const filteredSubmissions = useMemo(() => {
@@ -53,94 +52,41 @@ export default function RDCD() {
     });
   }, [allSubmissions, selectedProjects, startWeek, endWeek]);
 
-  // Fetch actual measure responses for filtered submissions
-  const submissionIds = useMemo(() => filteredSubmissions.map((s: any) => s.id), [filteredSubmissions]);
-  const { data: allResponses, isLoading: loadingResponses } = trpc.responses.getBySubmissions.useQuery(
-    { submissionIds },
-    { enabled: submissionIds.length > 0 && step >= 3 }
-  );
-  // Fetch evidence images for filtered submissions
-  const { data: allEvidence } = trpc.evidence.getBySubmissions.useQuery(
-    { submissionIds },
-    { enabled: submissionIds.length > 0 && step >= 3 }
-  );
-  // Build evidence map: measureId -> array of image URLs
-  const evidenceByMeasure = useMemo(() => {
-    if (!allEvidence) return {} as Record<number, Array<{ url: string; filename: string }>>;
-    const map: Record<number, Array<{ url: string; filename: string }>> = {};
-    for (const img of allEvidence as any[]) {
-      if (!map[img.measureId]) map[img.measureId] = [];
-      map[img.measureId].push({ url: img.url, filename: img.filename || "evidência" });
-    }
-    return map;
-  }, [allEvidence]);
-
-  // Compile measures with real response data
+  // Compile measures: for each measure, determine dominant status across all submissions in period
   const compiledMeasures = useMemo(() => {
-    if (!measures || !filteredSubmissions.length || !allResponses) return [];
-    
-    // Build a map: measureId -> array of responses with status
-    const responseMap: Record<number, Array<{ submissionId: number; status: string; observations: string | null; week: number; year: number; companyId: number }>> = {};
-    
-    for (const resp of allResponses as any[]) {
-      if (!responseMap[resp.measureId]) responseMap[resp.measureId] = [];
-      // Find the submission to get week/year/company
-      const sub = filteredSubmissions.find((s: any) => s.id === resp.submissionId);
-      if (sub) {
-        responseMap[resp.measureId].push({
-          submissionId: resp.submissionId,
-          status: resp.status,
-          observations: resp.observations,
-          week: (sub as any).weekNumber,
-          year: (sub as any).weekYear,
-          companyId: (sub as any).companyId,
-        });
-      }
-    }
-
+    if (!measures || !filteredSubmissions.length) return [];
     return measures.map((m: any) => {
-      const responses = responseMap[m.id] || [];
-      const statuses = responses.map(r => r.status).filter(Boolean);
-      
+      // Find all responses for this measure across filtered submissions
+      const responses: any[] = filteredSubmissions.map((sub: any) => ({
+        submissionId: sub.id,
+        week: sub.weekNumber,
+        year: sub.weekYear,
+        companyId: sub.companyId,
+      }));
       // Determine dominant status
-      const allNA = statuses.length > 0 && statuses.every(s => s === "NA");
-      const hasNC = statuses.some(s => s === "NC");
-      const allConform = statuses.length > 0 && statuses.every(s => s === "C" || s === "I");
+      const statuses = responses.map(r => r.status).filter(Boolean);
+      const allNA = statuses.length > 0 && statuses.every(s => s === "na");
+      const hasNC = statuses.some(s => s === "nc");
+      const allConform = statuses.length > 0 && statuses.every(s => s === "c" || s === "i");
       let autoStatus = "pending";
-      if (statuses.length === 0) autoStatus = "no_data";
-      else if (allNA) autoStatus = "na";
+      if (allNA) autoStatus = "na";
       else if (hasNC) autoStatus = "nc";
       else if (allConform) autoStatus = "conform";
-      else autoStatus = "partial";
       
       return {
         ...m,
         responses,
         autoStatus,
         totalResponses: responses.length,
-        conformCount: statuses.filter(s => s === "C" || s === "I").length,
-        ncCount: statuses.filter(s => s === "NC").length,
-        naCount: statuses.filter(s => s === "NA").length,
-        latestObservation: responses.find(r => r.observations)?.observations || "",
+        conformCount: statuses.filter(s => s === "c" || s === "i").length,
+        ncCount: statuses.filter(s => s === "nc").length,
+        naCount: statuses.filter(s => s === "na").length,
       };
     });
-  }, [measures, filteredSubmissions, allResponses]);
-
-  // Group compiled measures by section
-  const measuresBySection = useMemo(() => {
-    if (!sections || !compiledMeasures.length) return [];
-    return sections.map((sec: any) => ({
-      ...sec,
-      measures: compiledMeasures.filter(m => m.sectionId === sec.id),
-    })).filter(s => s.measures.length > 0);
-  }, [sections, compiledMeasures]);
+  }, [measures, filteredSubmissions]);
 
   // Available projects (exclude operation-only)
   const availableProjects = projects.filter(p => p.code !== "SIN01");
-
-  // Year options
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
   function toggleProject(id: number) {
     setSelectedProjects(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
@@ -150,17 +96,6 @@ export default function RDCD() {
     setSelectedProjects(availableProjects.map(p => p.id));
   }
 
-  // Week date formatter
-  function getWeekDates(year: number, week: number) {
-    const jan4 = new Date(year, 0, 4);
-    const dow = jan4.getDay() || 7;
-    const mon = new Date(jan4);
-    mon.setDate(jan4.getDate() - dow + 1 + (week - 1) * 7);
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    const fmt = (d: Date) => `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
-    return { mon, sun, label: `S${week} — ${fmt(mon)} a ${fmt(sun)}` };
-  }
-
   async function generateWord() {
     setIsGenerating(true);
     try {
@@ -168,58 +103,24 @@ export default function RDCD() {
         ? projects.filter(p => selectedProjects.includes(p.id)).map(p => `${p.code} — ${p.name}`).join(", ")
         : "Todos os projetos";
 
-      const measuresWithData = compiledMeasures.filter(m => m.totalResponses > 0);
-
-      // Download evidence images as ArrayBuffers for embedding in Word
-      const imageCache: Record<string, ArrayBuffer> = {};
-      const allImageUrls: Array<{ measureId: number; url: string; filename: string }> = [];
-      for (const m of measuresWithData) {
-        const imgs = evidenceByMeasure[m.id] || [];
-        for (const img of imgs.slice(0, 4)) {
-          allImageUrls.push({ measureId: m.id, url: img.url, filename: img.filename });
-        }
-      }
-      if (allImageUrls.length > 0) {
-        toast.info(t("A descarregar") + ` ${allImageUrls.length} ` + t("imagens de evidência..."));
-        const batchSize = 8;
-        for (let i = 0; i < allImageUrls.length; i += batchSize) {
-          const batch = allImageUrls.slice(i, i + batchSize);
-          const results = await Promise.allSettled(
-            batch.map(async (img) => {
-              try {
-                const resp = await fetch(img.url);
-                if (!resp.ok) return null;
-                return { url: img.url, buf: await resp.arrayBuffer() };
-              } catch { return null; }
-            })
-          );
-          for (const r of results) {
-            if (r.status === "fulfilled" && r.value) imageCache[r.value.url] = r.value.buf;
-          }
-        }
-      }
-
       // Build measure rows for the table
-      const measureRows = measuresWithData.map(m => {
-        const sel = measureSelections[m.id];
-        const status = sel?.status || m.autoStatus;
-        const statusText = status === "na" ? "N.A." : status === "conform" ? "Cumprido" : status === "nc" ? "Não Conforme" : status === "partial" ? "Parcialmente Cumprido" : "Em curso";
-        const notes = sel?.notes || m.latestObservation || "";
-        const imgs = evidenceByMeasure[m.id] || [];
-        const evidenceText = imgs.length > 0 ? `${imgs.length} foto(s) — ver Anexo` : `Fichas S${startWeek.split("-W")[1]} a S${endWeek.split("-W")[1]}`;
-        return new TableRow({
-          children: [
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: m.number || `${m.id}`, size: 20 })] })], width: { size: 8, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (m.description || "").substring(0, 200), size: 18 })] })], width: { size: 32, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: notes.substring(0, 300), size: 18 })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: evidenceText, size: 18 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: statusText, bold: true, size: 20, color: status === "conform" ? "008000" : status === "nc" ? "FF0000" : "000000" })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-          ],
+      const measureRows = compiledMeasures
+        .filter(m => m.totalResponses > 0 || measureSelections[m.id])
+        .map(m => {
+          const sel = measureSelections[m.id];
+          const status = sel?.status || m.autoStatus;
+          const statusText = status === "na" ? "N.A." : status === "conform" ? "Cumprido" : status === "nc" ? "Não Conforme" : "Em curso";
+          const notes = sel?.notes || (m.responses.length > 0 ? m.responses[0].observation || "" : "");
+          return new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Medida ${m.id}`, size: 20 })] })], width: { size: 10, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: m.text || "", size: 20 })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: notes, size: 20 })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Ver fichas S${startWeek} a S${endWeek}`, size: 20 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: statusText, bold: true, size: 20 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+            ],
+          });
         });
-      });
-
-      // Build selected plans content
-      const selectedPlans = (plans || []).filter((p: any) => selectedPlanIds.includes(p.id));
 
       const doc = new Document({
         sections: [{
@@ -227,12 +128,11 @@ export default function RDCD() {
             new Paragraph({ text: "RDCD — Relatório de Demonstração de Cumprimento da DCAPE", heading: HeadingLevel.TITLE }),
             new Paragraph({ text: "" }),
             new Paragraph({ children: [new TextRun({ text: "Projeto: ", bold: true }), new TextRun({ text: projNames })] }),
-            new Paragraph({ children: [new TextRun({ text: "Período: ", bold: true }), new TextRun({ text: `Semana ${startWeek.split("-W")[1]} a Semana ${endWeek.split("-W")[1]} de ${selectedYear}` })] }),
+            new Paragraph({ children: [new TextRun({ text: "Período: ", bold: true }), new TextRun({ text: `${startWeek} a ${endWeek}` })] }),
             new Paragraph({ children: [new TextRun({ text: "Data de emissão: ", bold: true }), new TextRun({ text: new Date().toLocaleDateString("pt-PT") })] }),
-            new Paragraph({ children: [new TextRun({ text: "Fichas analisadas: ", bold: true }), new TextRun({ text: `${filteredSubmissions.length} fichas aprovadas` })] }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "1. Introdução", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "O presente relatório visa demonstrar o cumprimento das condições ambientais definidas na DCAPE, para o período indicado. Este documento compila as evidências recolhidas nas fichas de controlo semanais submetidas pelas entidades executantes e verificadas pela RAA." }),
+            new Paragraph({ text: "O presente relatório visa demonstrar o cumprimento das condições ambientais definidas na DCAPE, para o período indicado." }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "2. Descrição sumária do projeto", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: "[A preencher — descrição do projeto e componentes]" }),
@@ -241,16 +141,15 @@ export default function RDCD() {
             new Paragraph({ text: "[A preencher — atividades realizadas no período]" }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "4. Demonstração do cumprimento das condições ambientais", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: `Total de medidas analisadas: ${measuresWithData.length}. Fichas aprovadas no período: ${filteredSubmissions.length}.` }),
-            new Paragraph({ text: `Resumo: ${compiledMeasures.filter(m => m.autoStatus === "conform").length} conformes, ${compiledMeasures.filter(m => m.autoStatus === "nc").length} não conformes, ${compiledMeasures.filter(m => m.autoStatus === "na").length} N/A.` }),
+            new Paragraph({ text: `Total de medidas analisadas: ${compiledMeasures.filter(m => m.totalResponses > 0).length}. Período: ${startWeek} a ${endWeek}.` }),
             new Paragraph({ text: "" }),
             new Table({
               rows: [
                 new TableRow({
                   children: [
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "N.º", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Descrição da Medida", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Modo de Implementação / Observações", bold: true, size: 20 })] })] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "N.º Medida", bold: true, size: 20 })] })] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Descrição", bold: true, size: 20 })] })] }),
+                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Modo de implementação", bold: true, size: 20 })] })] }),
                     new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Evidências", bold: true, size: 20 })] })] }),
                     new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Estado", bold: true, size: 20 })] })] }),
                   ],
@@ -264,9 +163,12 @@ export default function RDCD() {
             new Paragraph({ text: "[A preencher / Não aplicável]" }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "6. Monitorização", heading: HeadingLevel.HEADING_1 }),
-            ...(includePlans && selectedPlans.length > 0 ? [
-              new Paragraph({ text: `Planos de monitorização incluídos: ${selectedPlans.length}` }),
-              ...selectedPlans.map((p: any) => new Paragraph({ text: `• ${p.name} — Periodicidade: ${p.periodicity || "—"} — Estado: ${p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}` })),
+            ...(includePlans && plans ? [
+              new Paragraph({ text: `Planos de monitorização em curso: ${plans.length}` }),
+              ...plans.map((p: any) => new Paragraph({ text: `• ${p.name} — Periodicidade: ${p.periodicity || "—"} — Último reporting: ${p.lastReportingDate ? new Date(p.lastReportingDate).toLocaleDateString("pt-PT") : "—"} — Estado: ${p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}` })),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [new TextRun({ text: "Planos a entregar em anexo ao presente RDCD:", bold: true })] }),
+              ...plans.filter((p: any) => p.submissionStatus === "submitted" || p.submissionStatus === "delivered").map((p: any) => new Paragraph({ text: `  — ${p.name} (${p.submissionStatus === "delivered" ? "entregue à entidade competente" : "submetido na plataforma"})` })),
             ] : [new Paragraph({ text: "[Não incluído neste relatório]" })]),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "7. Auditorias de Pós-Avaliação", heading: HeadingLevel.HEADING_1 }),
@@ -274,49 +176,16 @@ export default function RDCD() {
             new Paragraph({ text: "" }),
             new Paragraph({ text: "8. Reclamações associadas ao projeto", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: "[Sem reclamações no período em análise]" }),
-            // Annex: Evidence Photos (embedded)
-            ...(() => {
-              const annexItems: any[] = [];
-              let hasPhotos = false;
-              for (const m of measuresWithData) {
-                const imgs = (evidenceByMeasure[m.id] || []).filter(img => imageCache[img.url]).slice(0, 4);
-                if (imgs.length > 0) {
-                  if (!hasPhotos) {
-                    annexItems.push(
-                      new Paragraph({ text: "" }),
-                      new Paragraph({ text: "Anexo — Evidências Fotográficas", heading: HeadingLevel.HEADING_1 }),
-                      new Paragraph({ text: "As seguintes fotografias foram recolhidas durante o período de análise e documentam o cumprimento das medidas ambientais." }),
-                    );
-                    hasPhotos = true;
-                  }
-                  annexItems.push(
-                    new Paragraph({ text: "" }),
-                    new Paragraph({ children: [new TextRun({ text: `Medida ${m.number || m.id}: `, bold: true, size: 22 }), new TextRun({ text: (m.description || "").substring(0, 120), size: 20 })] }),
-                  );
-                  for (const img of imgs) {
-                    try {
-                      annexItems.push(
-                        new Paragraph({ children: [new ImageRun({ data: imageCache[img.url], transformation: { width: 450, height: 340 }, type: "jpg" })] }),
-                        new Paragraph({ children: [new TextRun({ text: img.filename, size: 16, italics: true, color: "666666" })] }),
-                      );
-                    } catch {
-                      annexItems.push(new Paragraph({ children: [new TextRun({ text: `[Imagem: ${img.filename}]`, size: 18, italics: true })] }));
-                    }
-                  }
-                }
-              }
-              return annexItems;
-            })(),
           ],
         }],
       });
 
       const blob = await Packer.toBlob(doc);
-      const filename = `RDCD_${projNames.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30)}_S${startWeek.split("-W")[1]}-S${endWeek.split("-W")[1]}_${selectedYear}.docx`;
+      const filename = `RDCD_${projNames.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30)}_${startWeek}_${endWeek}.docx`;
       saveAs(blob, filename);
-      toast.success(t("RDCD gerado com sucesso!"));
+      toast.success("RDCD gerado com sucesso!");
     } catch (err: any) {
-      toast.error(t("Erro ao gerar RDCD") + ": " + err.message);
+      toast.error("Erro ao gerar RDCD: " + err.message);
     } finally {
       setIsGenerating(false);
     }
@@ -331,23 +200,6 @@ export default function RDCD() {
       </AppLayout>
     );
   }
-
-  const statusColors: Record<string, string> = {
-    conform: "bg-green-100 text-green-800 border-green-200",
-    nc: "bg-red-100 text-red-800 border-red-200",
-    na: "bg-muted text-foreground border-border",
-    pending: "bg-amber-100 text-amber-800 border-amber-200",
-    partial: "bg-blue-100 text-blue-800 border-blue-200",
-    no_data: "bg-gray-100 text-gray-500 border-gray-200",
-  };
-  const statusLabels: Record<string, string> = {
-    conform: "Cumprido",
-    nc: "Não Conforme",
-    na: "N.A.",
-    pending: "Em curso",
-    partial: "Parcial",
-    no_data: "Sem dados",
-  };
 
   return (
     <AppLayout>
@@ -365,7 +217,7 @@ export default function RDCD() {
             <div key={s.id} className="flex items-center">
               <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${step === s.id ? "bg-primary text-primary-foreground" : step > s.id ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
                 {step > s.id ? <Check className="w-4 h-4" /> : <span className="w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold">{s.id}</span>}
-                <span className="font-medium">{t(s.labelKey)}</span>
+                <span className="font-medium">{s.label}</span>
               </div>
               {i < STEPS.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground mx-1" />}
             </div>
@@ -398,8 +250,8 @@ export default function RDCD() {
                 ))}
               </div>
               <div className="flex justify-end mt-6">
-                <Button onClick={() => { if (selectedProjects.length === 0) { toast.error(t("Selecione pelo menos um projeto")); return; } setStep(2); }}>
-                  {t("Seguinte")} <ChevronRight className="w-4 h-4 ml-1" />
+                <Button onClick={() => { if (selectedProjects.length === 0) { toast.error("Selecione pelo menos um projeto"); return; } setStep(2); }}>
+                  Seguinte <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             </CardContent>
@@ -412,37 +264,36 @@ export default function RDCD() {
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Definir Período")}</h2>
               <p className="text-sm text-muted-foreground mb-4">{t("Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).")}</p>
-              
-              {/* Year selector */}
-              <div className="mb-4">
-                <label className="text-sm font-medium">{t("Ano")}</label>
-                <div className="flex gap-2 mt-1">
-                  {yearOptions.map(y => (
-                    <Button key={y} size="sm" variant={selectedYear === y ? "default" : "outline"} onClick={() => { setSelectedYear(y); setStartWeek(""); setEndWeek(""); }}>
-                      {y}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-sm font-medium">{t("Semana de início")}</label>
                   <select className="w-full h-9 border rounded-md px-3 text-sm mt-1 bg-background" value={startWeek} onChange={e => setStartWeek(e.target.value)}>
-                    <option value="">{t("Selecionar semana")}...</option>
+                    <option value="">Selecionar semana...</option>
                     {Array.from({length: 53}, (_, i) => i + 1).map(w => {
-                      const { label } = getWeekDates(selectedYear, w);
-                      return <option key={w} value={`${selectedYear}-W${w.toString().padStart(2,"0")}`}>{label}</option>;
+                      const year = new Date().getFullYear();
+                      const jan4 = new Date(year, 0, 4);
+                      const dow = jan4.getDay() || 7;
+                      const mon = new Date(jan4);
+                      mon.setDate(jan4.getDate() - dow + 1 + (w - 1) * 7);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      const fmt = (d: Date) => `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
+                      return <option key={w} value={`${year}-W${w.toString().padStart(2,"0")}`}>S{w} — {fmt(mon)} a {fmt(sun)}</option>;
                     })}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">{t("Semana de fim")}</label>
                   <select className="w-full h-9 border rounded-md px-3 text-sm mt-1 bg-background" value={endWeek} onChange={e => setEndWeek(e.target.value)}>
-                    <option value="">{t("Selecionar semana")}...</option>
+                    <option value="">Selecionar semana...</option>
                     {Array.from({length: 53}, (_, i) => i + 1).map(w => {
-                      const { label } = getWeekDates(selectedYear, w);
-                      return <option key={w} value={`${selectedYear}-W${w.toString().padStart(2,"0")}`}>{label}</option>;
+                      const year = new Date().getFullYear();
+                      const jan4 = new Date(year, 0, 4);
+                      const dow = jan4.getDay() || 7;
+                      const mon = new Date(jan4);
+                      mon.setDate(jan4.getDate() - dow + 1 + (w - 1) * 7);
+                      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                      const fmt = (d: Date) => `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}`;
+                      return <option key={w} value={`${year}-W${w.toString().padStart(2,"0")}`}>S{w} — {fmt(mon)} a {fmt(sun)}</option>;
                     })}
                   </select>
                 </div>
@@ -450,12 +301,12 @@ export default function RDCD() {
               {startWeek && endWeek && (
                 <div className="bg-muted/50 rounded-lg p-3 mb-4">
                   <p className="text-sm">
-                    <span className="font-medium">{t("Período selecionado:")}</span> {t("Semana")} {startWeek.split("-W")[1]} {t("a")} {t("Semana")} {endWeek.split("-W")[1]} {t("de")} {selectedYear}
+                    <span className="font-medium">{t("Período selecionado:")}</span> {startWeek} a {endWeek}
                     {(() => {
-                      const w1 = parseInt(startWeek.split("-W")[1]);
-                      const w2 = parseInt(endWeek.split("-W")[1]);
-                      const totalWeeks = w2 - w1 + 1;
-                      return <span className="ml-2 text-muted-foreground">({totalWeeks} {t("semanas")})</span>;
+                      const [y1, w1] = startWeek.split("-W").map(Number);
+                      const [y2, w2] = endWeek.split("-W").map(Number);
+                      const totalWeeks = (y2 - y1) * 52 + (w2 - w1) + 1;
+                      return <span className="ml-2 text-muted-foreground">({totalWeeks} semanas)</span>;
                     })()}
                   </p>
                 </div>
@@ -471,7 +322,7 @@ export default function RDCD() {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">{t("Selecione os planos a incluir:")}</p>
                       <button className="text-[10px] text-blue-600 hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
-                        {selectedPlanIds.length === plans.length ? t("Desselecionar todos") : t("Selecionar todos")}
+                        {selectedPlanIds.length === plans.length ? "Desselecionar todos" : "Selecionar todos"}
                       </button>
                     </div>
                     {plans.map((p: any) => (
@@ -484,25 +335,25 @@ export default function RDCD() {
                         <span className="font-medium">{p.name}</span>
                         <span className="text-muted-foreground">— {p.periodicity || "—"}</span>
                         <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-green-100 text-green-700" : p.submissionStatus === "submitted" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
-                          {p.submissionStatus === "delivered" ? t("Entregue") : p.submissionStatus === "submitted" ? t("Submetido") : t("Pendente")}
+                          {p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}
                         </span>
                       </div>
                     ))}
                     <p className="text-[10px] text-muted-foreground mt-2 italic">
-                      {selectedPlanIds.length} {t("de")} {plans.length} {t("planos selecionados para o RDCD.")}
+                      {selectedPlanIds.length} de {plans.length} planos selecionados para o RDCD.
                     </p>
                   </div>
                 )}
                 {includePlans && (!plans || plans.length === 0) && (
-                  <p className="ml-6 text-xs text-muted-foreground">{t("Nenhum plano encontrado. Crie planos na tab Planos.")}</p>
+                  <p className="ml-6 text-xs text-muted-foreground">Nenhum plano encontrado. Crie planos na tab "Planos".</p>
                 )}
               </div>
               <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> {t("Anterior")}
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
                 <Button onClick={() => { if (!startWeek || !endWeek) { toast.error(t("Defina o período")); return; } setStep(3); }}>
-                  {t("Seguinte")} <ChevronRight className="w-4 h-4 ml-1" />
+                  Seguinte <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             </CardContent>
@@ -514,107 +365,94 @@ export default function RDCD() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Compilação de Medidas")}</h2>
-              {(loadingSubs || loadingResponses) ? (
-                <div className="flex items-center gap-2 py-8 justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="text-sm text-muted-foreground">{t("A carregar dados das fichas semanais...")}</span>
+              <p className="text-sm text-muted-foreground mb-4">
+                O sistema analisou {filteredSubmissions.length} fichas aprovadas no período. Reveja o estado de cada medida e selecione as evidências a incluir.
+              </p>
+              {/* Summary */}
+              <div className="grid grid-cols-4 gap-3 mb-4">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-green-700">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
+                  <p className="text-xs text-green-600">{t("Conforme")}</p>
                 </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {t("O sistema analisou")} {filteredSubmissions.length} {t("fichas aprovadas no período.")} {t("Reveja o estado de cada medida.")}
-                  </p>
-                  {/* Summary */}
-                  <div className="grid grid-cols-5 gap-3 mb-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-green-700">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
-                      <p className="text-xs text-green-600">{t("Conforme")}</p>
-                    </div>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
-                      <p className="text-xs text-red-600">{t("Não Conforme")}</p>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-blue-700">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
-                      <p className="text-xs text-blue-600">{t("Parcial")}</p>
-                    </div>
-                    <div className="bg-muted border border-border rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
-                      <p className="text-xs text-muted-foreground">{t("N/A")}</p>
-                    </div>
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-gray-500">{compiledMeasures.filter(m => m.autoStatus === "no_data").length}</p>
-                      <p className="text-xs text-gray-500">{t("Sem dados")}</p>
-                    </div>
-                  </div>
-                  {/* Measures grouped by section */}
-                  <div className="max-h-[500px] overflow-y-auto space-y-4">
-                    {measuresBySection.map(sec => (
-                      <div key={sec.id}>
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 sticky top-0 bg-background py-1 border-b">
-                          {sec.name}
-                        </h3>
-                        <div className="space-y-1.5">
-                          {sec.measures.filter((m: any) => m.totalResponses > 0).map((m: any) => (
-                            <div key={m.id} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium">{t("Medida")} {m.number}: {(m.description || "").substring(0, 100)}{(m.description || "").length > 100 ? "..." : ""}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {m.totalResponses} {t("respostas")} · {m.conformCount} {t("conformes")} · {m.ncCount} NC · {m.naCount} NA
-                                    {m.latestObservation && <span className="ml-2 italic">— {m.latestObservation.substring(0, 60)}...</span>}
-                                  </p>
-                                </div>
-                                <Badge className={`ml-2 text-[10px] ${statusColors[m.autoStatus] || ""}`}>
-                                  {statusLabels[m.autoStatus] || m.autoStatus}
-                                </Badge>
-                              </div>
-                              {(m.autoStatus === "conform" || m.autoStatus === "partial") && m.responses.length > 0 && (
-                                <div className="mt-2 pl-3 border-l-2 border-green-200">
-                                  <p className="text-xs text-muted-foreground mb-1">{t("Selecione semanas a incluir como evidência:")}</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {m.responses.slice(0, 10).map((r: any, i: number) => {
-                                      const weekKey = `${r.year}-W${r.week}`;
-                                      const sel = measureSelections[m.id];
-                                      const isSelected = sel?.selectedWeeks?.includes(weekKey);
-                                      return (
-                                        <button
-                                          key={i}
-                                          className={`px-2 py-0.5 rounded text-[10px] border ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border hover:border-primary"}`}
-                                          onClick={() => {
-                                            const current = measureSelections[m.id] || { status: m.autoStatus, selectedWeeks: [], notes: "" };
-                                            const weeks = current.selectedWeeks.includes(weekKey)
-                                              ? current.selectedWeeks.filter((w: string) => w !== weekKey)
-                                              : [...current.selectedWeeks, weekKey];
-                                            setMeasureSelections(prev => ({ ...prev, [m.id]: { ...current, selectedWeeks: weeks } }));
-                                          }}
-                                        >
-                                          S{r.week} [{r.status}] {r.observations ? "📝" : ""}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          {sec.measures.filter((m: any) => m.totalResponses > 0).length === 0 && (
-                            <p className="text-xs text-muted-foreground italic pl-2">{t("Sem dados nesta secção para o período selecionado.")}</p>
-                          )}
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
+                  <p className="text-xs text-red-600">{t("Não Conforme")}</p>
+                </div>
+                <div className="bg-muted border border-border rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
+                  <p className="text-xs text-muted-foreground">{t("N/A")}</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-amber-700">{compiledMeasures.filter(m => m.autoStatus === "pending").length}</p>
+                  <p className="text-xs text-amber-600">{t("Sem dados")}</p>
+                </div>
+              </div>
+              {/* Measures list */}
+              <div className="max-h-[400px] overflow-y-auto space-y-2">
+                {compiledMeasures.filter(m => m.totalResponses > 0).map(m => {
+                  const sel = measureSelections[m.id];
+                  const statusColors: Record<string, string> = {
+                    conform: "bg-green-100 text-green-800 border-green-200",
+                    nc: "bg-red-100 text-red-800 border-red-200",
+                    na: "bg-muted text-foreground border-border",
+                    pending: "bg-amber-100 text-amber-800 border-amber-200",
+                  };
+                  const statusLabels: Record<string, string> = {
+                    conform: "Cumprido",
+                    nc: "Não Conforme",
+                    na: "N.A.",
+                    pending: "Em curso",
+                  };
+                  return (
+                    <div key={m.id} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">Medida {m.id}: {m.text?.substring(0, 80)}...</p>
+                          <p className="text-xs text-muted-foreground">{m.totalResponses} respostas · {m.conformCount} conformes · {m.ncCount} NC · {m.naCount} NA</p>
                         </div>
+                        <Badge className={`ml-2 text-[10px] ${statusColors[m.autoStatus] || ""}`}>
+                          {statusLabels[m.autoStatus] || m.autoStatus}
+                        </Badge>
                       </div>
-                    ))}
-                    {filteredSubmissions.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">{t("Nenhuma ficha aprovada encontrada no período selecionado. Verifique os projetos e semanas escolhidos.")}</p>
-                    )}
-                  </div>
-                </>
-              )}
+                      {m.autoStatus === "conform" && m.responses.length > 0 && (
+                        <div className="mt-2 pl-3 border-l-2 border-green-200">
+                          <p className="text-xs text-muted-foreground mb-1">{t("Selecione semanas a incluir como evidência:")}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {m.responses.slice(0, 10).map((r: any, i: number) => {
+                              const weekKey = `${r.year}-W${r.week}`;
+                              const isSelected = sel?.selectedWeeks?.includes(weekKey);
+                              return (
+                                <button
+                                  key={i}
+                                  className={`px-2 py-0.5 rounded text-[10px] border ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border hover:border-primary"}`}
+                                  onClick={() => {
+                                    const current = measureSelections[m.id] || { status: m.autoStatus, selectedWeeks: [], notes: "" };
+                                    const weeks = current.selectedWeeks.includes(weekKey)
+                                      ? current.selectedWeeks.filter(w => w !== weekKey)
+                                      : [...current.selectedWeeks, weekKey];
+                                    setMeasureSelections(prev => ({ ...prev, [m.id]: { ...current, selectedWeeks: weeks } }));
+                                  }}
+                                >
+                                  S{r.week}/{r.year} {r.observation ? "📝" : ""} {r.companyName ? `(${r.companyName})` : ""}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {compiledMeasures.filter(m => m.totalResponses > 0).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">{t("Nenhuma ficha aprovada encontrada no período selecionado. Verifique os projetos e semanas escolhidos.")}</p>
+                )}
+              </div>
               <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(2)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> {t("Anterior")}
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
-                <Button onClick={() => setStep(4)}>{t("Pré-visualizar")}<Eye className="w-4 h-4 ml-1" /></Button>
+                <Button onClick={() => setStep(4)}>{t("Pré-visualizar")}<Eye className="w-4 h-4 ml-1" />
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -630,39 +468,38 @@ export default function RDCD() {
               <div className="border rounded-lg p-4 space-y-4 bg-muted/20 mb-6">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Projetos")}</p>
-                  <p className="text-sm">{projects.filter(p => selectedProjects.includes(p.id)).map(p => `${p.code} — ${p.name}`).join(", ")}</p>
+                  <p className="text-sm">{projects.filter(p => selectedProjects.includes(p.id)).map(p => p.code).join(", ")}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Período")}</p>
-                  <p className="text-sm">{t("Semana")} {startWeek.split("-W")[1]} {t("a")} {t("Semana")} {endWeek.split("-W")[1]} {t("de")} {selectedYear}</p>
+                  <p className="text-sm">{startWeek} a {endWeek}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Fichas analisadas")}</p>
-                  <p className="text-sm">{filteredSubmissions.length} {t("fichas aprovadas")}</p>
+                  <p className="text-sm">{filteredSubmissions.length} fichas aprovadas</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Medidas no relatório")}</p>
                   <p className="text-sm">
-                    {compiledMeasures.filter(m => m.totalResponses > 0).length} {t("medidas")} ·
-                    <span className="text-green-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} {t("conformes")}</span> ·
+                    {compiledMeasures.filter(m => m.totalResponses > 0).length} medidas ·
+                    <span className="text-green-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} conformes</span> ·
                     <span className="text-red-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "nc").length} NC</span> ·
-                    <span className="text-blue-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "partial").length} {t("parciais")}</span> ·
                     <span className="text-muted-foreground ml-1">{compiledMeasures.filter(m => m.autoStatus === "na").length} N/A</span>
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Planos de Monitorização")}</p>
-                  <p className="text-sm">{includePlans ? `${t("Incluídos")} (${selectedPlanIds.length} ${t("de")} ${plans?.length || 0} ${t("planos")})` : t("Não incluídos")}</p>
+                  <p className="text-sm">{includePlans ? `Incluídos (${selectedPlanIds.length} de ${plans?.length || 0} planos)` : "Não incluídos"}</p>
                 </div>
               </div>
 
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep(3)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> {t("Anterior")}
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
                 <Button onClick={generateWord} disabled={isGenerating} className="gap-2">
-                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  {isGenerating ? t("A gerar...") : t("Gerar RDCD (.docx)")}
+                  <Download className="w-4 h-4" />
+                  {isGenerating ? "A gerar..." : "Gerar RDCD (.docx)"}
                 </Button>
               </div>
             </CardContent>

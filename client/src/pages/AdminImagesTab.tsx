@@ -48,7 +48,7 @@ export default function ImagesTab() {
   const updateMutation = trpc.appSettings.update.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success(t("Guardado com sucesso"));
+      toast.success("Guardado com sucesso");
     },
     onError: (e: any) => toast.error(e.message),
   });

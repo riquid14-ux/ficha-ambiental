@@ -25,11 +25,11 @@ export default function CalendarioControl() {
     onError: (e: any) => toast.error(e.message),
   });
   const updateMutation = trpc.calendarEvents.update.useMutation({
-    onSuccess: () => { refetch(); toast.success(t("Evento atualizado")); setEditingId(null); },
+    onSuccess: () => { refetch(); toast.success("Evento atualizado"); setEditingId(null); },
     onError: (e: any) => toast.error(e.message),
   });
   const deleteMutation = trpc.calendarEvents.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success(t("Evento eliminado")); },
+    onSuccess: () => { refetch(); toast.success("Evento eliminado"); },
     onError: (e: any) => toast.error(e.message),
   });
   const assignOwnerMutation = trpc.calendarEvents.assignOwner.useMutation({
@@ -37,7 +37,7 @@ export default function CalendarioControl() {
     onError: (e: any) => toast.error(e.message),
   });
   const updateStatusMutation = trpc.calendarEvents.updateStatus.useMutation({
-    onSuccess: () => { refetch(); toast.success(t("Estado atualizado")); },
+    onSuccess: () => { refetch(); toast.success("Estado atualizado"); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -140,7 +140,7 @@ export default function CalendarioControl() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button size="sm" onClick={() => {
-                    if (!newEvent.name || !newEvent.date) { toast.error(t("Preencha nome e data")); return; }
+                    if (!newEvent.name || !newEvent.date) { toast.error("Preencha nome e data"); return; }
                     createMutation.mutate({
                       name: newEvent.name,
                       projectId: newEvent.projectId ? parseInt(newEvent.projectId) : undefined,

@@ -88,7 +88,7 @@ export default function Welcome() {
   const isNest = projectCode === "SIN01";
 
   const settingsQuery = trpc.appSettings.getAll.useQuery();
-  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube-nocookie.com/embed/IsjSfMUIWzE";
+  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/AD20S-5QE64";
   const embedUrl = (videoUrl.includes("watch?v=")
     ? videoUrl.replace("watch?v=", "embed/")
     : videoUrl.includes("youtu.be/")

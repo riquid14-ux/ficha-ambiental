@@ -47,6 +47,7 @@ async function startServer() {
     contentSecurityPolicy: false, // We set CSP manually below for ACC iframe support
     crossOriginEmbedderPolicy: false, // Required for ACC iframe
     frameguard: false, // We handle X-Frame-Options manually for ACC
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" }, // Required for YouTube embeds (no-referrer blocks them)
   }));
 
   // ─── Rate Limiting on Auth Endpoints ────────────────────────────────────

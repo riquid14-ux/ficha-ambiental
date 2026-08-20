@@ -1,4 +1,3 @@
-import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "../contexts/ProjectContext";
@@ -89,19 +88,12 @@ export default function Welcome() {
   const isNest = projectCode === "SIN01";
 
   const settingsQuery = trpc.appSettings.getAll.useQuery();
-  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/watch?v=IsjSfMUIWzE";
-  // Extract video ID for thumbnail
-  const videoId = videoUrl.includes("watch?v=")
-    ? videoUrl.split("watch?v=")[1]?.split("&")[0]
+  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE";
+  const embedUrl = (videoUrl.includes("watch?v=")
+    ? videoUrl.replace("watch?v=", "embed/")
     : videoUrl.includes("youtu.be/")
-    ? videoUrl.split("youtu.be/")[1]?.split("?")[0]
-    : videoUrl.includes("embed/")
-    ? videoUrl.split("embed/")[1]?.split("?")[0]
-    : "IsjSfMUIWzE";
-  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1`;
-  const [iframeError, setIframeError] = useState(false);
+    ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
+    : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
 
   const features = getFeatures(userRole, projectCode, isAllProjects, isNest);
   const roleLabel = ROLE_LABELS[userRole] || userRole;
@@ -154,26 +146,13 @@ export default function Welcome() {
             </CardHeader>
             <CardContent>
               <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
-                {!iframeError ? (
-                  <iframe
-                    className="absolute top-0 left-0 w-full h-full"
-                    src={embedSrc}
-                    title="Start Campus"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    onError={() => setIframeError(true)}
-                  />
-                ) : (
-                  <a href={watchUrl} target="_blank" rel="noopener noreferrer" className="absolute inset-0 group cursor-pointer">
-                    <img src={thumbnailUrl} alt="Start Campus Video" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; }} />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors duration-300">
-                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                        <Play className="w-8 h-8 text-white ml-1" fill="white" />
-                      </div>
-                    </div>
-                  </a>
-                )}
+                <iframe
+                  className="absolute top-0 left-0 w-full h-full"
+                  src={embedUrl}
+                  title="Start Campus"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
             </CardContent>
           </Card>

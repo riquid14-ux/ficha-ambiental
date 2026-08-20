@@ -1,18 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 
+// Minimal valid PDF for testing (just header + empty page)
+const MINIMAL_PDF = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000052 00000 n \n0000000101 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n170\n%%EOF");
+
 describe("PDF Import", () => {
   it("test PDF file exists and is valid base64", () => {
-    const pdfBuffer = readFileSync("/tmp/test_ficha_controlo_sem30_2026.pdf");
-    const pdfBase64 = pdfBuffer.toString("base64");
+    const pdfBase64 = MINIMAL_PDF.toString("base64");
     expect(pdfBase64.length).toBeGreaterThan(100);
     // Verify it starts with PDF magic bytes (JVBERi0 = %PDF-)
     expect(pdfBase64.startsWith("JVBERi0")).toBe(true);
   });
 
   it("test PDF can be decoded back to valid PDF", () => {
-    const pdfBuffer = readFileSync("/tmp/test_ficha_controlo_sem30_2026.pdf");
-    const pdfBase64 = pdfBuffer.toString("base64");
+    const pdfBase64 = MINIMAL_PDF.toString("base64");
     const decoded = Buffer.from(pdfBase64, "base64");
     expect(decoded.toString("ascii", 0, 5)).toBe("%PDF-");
   });

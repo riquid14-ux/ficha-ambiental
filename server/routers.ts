@@ -1027,7 +1027,19 @@ export const appRouter = router({
         }
         return db.getResponsesBySubmission(input.submissionId);
       }),
-
+    // Get responses for multiple submissions at once (for RDCD report)
+    getBySubmissions: protectedProcedure
+      .input(z.object({ submissionIds: z.array(z.number()) }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "pm") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin, DO ou PM podem gerar RDCD" });
+        }
+        if (input.submissionIds.length === 0) return [];
+        const database = await db.getDb();
+        if (!database) return [];
+        const results = await database.execute(sql`SELECT mr.submissionId, mr.measureId, mr.status, mr.observations FROM measure_responses mr WHERE mr.submissionId IN (${sql.join(input.submissionIds.map(id => sql`${id}`), sql`, `)})`);
+        return (results as any)[0] || [];
+      }),
     save: protectedProcedure
       .input(
         z.object({

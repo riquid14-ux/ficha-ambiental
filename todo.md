@@ -339,3 +339,17 @@
 - [x] Move Workflow diagram into Welcome page (before the 4 guide points)
 - [x] Redesign Home/landing page to look premium/corporate
 - [x] Home page needs Start Campus branding, professional images, feature sections
+
+## RDCD Module Fixes
+- [x] RDCD: Fix compiledMeasures to fetch actual measure_responses data (was showing all as "Em curso")
+- [x] RDCD: Fix measure description field (was using m.text, correct is m.description)
+- [x] RDCD: Add year selector for period definition
+- [x] RDCD: Group measures by section in Step 3
+- [x] RDCD: Add loading indicator while fetching data
+- [x] RDCD: Translate all hardcoded buttons (Seguinte, Anterior, etc.)
+- [x] RDCD: Add new backend procedure responses.getBySubmissions for bulk fetch
+- [x] RDCD: Include observations text in Word export
+- [x] RDCD: Show monitoring plans in Step 2 (fixed query)
+- [x] RDCD: Add "Parcial" status for measures with mixed responses
+- [x] RDCD: Show actual status [I/C/NC/NA] in week selection buttons
+- [x] RDCD: Word export includes colored status text and proper measure numbers

@@ -1,3 +1,71 @@
-/* Dark mode is now handled by CSS variables in index.css */
-/* This file is kept empty to avoid 404 errors from the link in index.html */
+/* Dark Mode - CSS Filter Inversion Contrast Fixes */
+/* The filter invert(1) hue-rotate(180deg) on #root transforms VISUAL output. */
+/* To make text appear WHITE on screen: set it to BLACK in CSS. */
+/* To make text appear LIGHT GRAY: set it to DARK GRAY in CSS. */
 
+/* ===== UNIVERSAL TEXT FIX ===== */
+/* Force ALL text inside #root to be very dark (inverts to very light) */
+html.dark #root * {
+  color: #0a0a0a !important;
+}
+
+/* ===== SIDEBAR - Re-invert to keep original dark appearance ===== */
+html.dark [data-slot="sidebar"],
+html.dark [data-slot="sidebar"] * {
+  filter: none !important;
+}
+html.dark [data-slot="sidebar"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== MEDIA - Re-invert images, videos, iframes ===== */
+html.dark #root img,
+html.dark #root video,
+html.dark #root iframe,
+html.dark #root canvas {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* SVG icons should follow text color (already dark from universal rule) */
+html.dark #root svg.lucide,
+html.dark #root .lucide {
+  filter: none !important;
+}
+
+/* Non-icon SVGs (charts, diagrams) should be re-inverted */
+html.dark #root svg:not(.lucide) {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== CHARTS - Re-invert to show original colors ===== */
+html.dark #root .recharts-wrapper,
+html.dark #root .recharts-surface,
+html.dark #root .recharts-layer {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== YOUTUBE EMBED ===== */
+html.dark #root iframe[src*="youtube"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== DROPDOWN/POPOVER - Re-invert so they look normal ===== */
+html.dark [data-radix-popper-content-wrapper],
+html.dark [data-radix-popper-content-wrapper] * {
+  filter: none !important;
+}
+html.dark [data-radix-popper-content-wrapper] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* ===== FORM ELEMENTS ===== */
+html.dark #root input,
+html.dark #root textarea,
+html.dark #root select {
+  border-color: #9ca3af !important;
+}
+
+/* ===== MUTED TEXT - slightly lighter (dark gray inverts to light gray) ===== */
+html.dark #root .text-muted-foreground {
+  color: #374151 !important;
+}

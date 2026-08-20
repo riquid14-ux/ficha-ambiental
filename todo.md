@@ -353,3 +353,6 @@
 - [x] RDCD: Add "Parcial" status for measures with mixed responses
 - [x] RDCD: Show actual status [I/C/NC/NA] in week selection buttons
 - [x] RDCD: Word export includes colored status text and proper measure numbers
+- [x] RDCD: Embed evidence photos directly in Word export (Cenário A)
+- [x] RDCD: Auto-download Word file when generated
+- [x] RDCD: Backend procedure to fetch evidence images for multiple submissions

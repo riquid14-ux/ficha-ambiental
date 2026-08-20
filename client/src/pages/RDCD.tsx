@@ -59,6 +59,21 @@ export default function RDCD() {
     { submissionIds },
     { enabled: submissionIds.length > 0 && step >= 3 }
   );
+  // Fetch evidence images for filtered submissions
+  const { data: allEvidence } = trpc.evidence.getBySubmissions.useQuery(
+    { submissionIds },
+    { enabled: submissionIds.length > 0 && step >= 3 }
+  );
+  // Build evidence map: measureId -> array of image URLs
+  const evidenceByMeasure = useMemo(() => {
+    if (!allEvidence) return {} as Record<number, Array<{ url: string; filename: string }>>;
+    const map: Record<number, Array<{ url: string; filename: string }>> = {};
+    for (const img of allEvidence as any[]) {
+      if (!map[img.measureId]) map[img.measureId] = [];
+      map[img.measureId].push({ url: img.url, filename: img.filename || "evidência" });
+    }
+    return map;
+  }, [allEvidence]);
 
   // Compile measures with real response data
   const compiledMeasures = useMemo(() => {
@@ -153,19 +168,51 @@ export default function RDCD() {
         ? projects.filter(p => selectedProjects.includes(p.id)).map(p => `${p.code} — ${p.name}`).join(", ")
         : "Todos os projetos";
 
-      // Build measure rows for the table - only measures with data
       const measuresWithData = compiledMeasures.filter(m => m.totalResponses > 0);
+
+      // Download evidence images as ArrayBuffers for embedding in Word
+      const imageCache: Record<string, ArrayBuffer> = {};
+      const allImageUrls: Array<{ measureId: number; url: string; filename: string }> = [];
+      for (const m of measuresWithData) {
+        const imgs = evidenceByMeasure[m.id] || [];
+        for (const img of imgs.slice(0, 4)) {
+          allImageUrls.push({ measureId: m.id, url: img.url, filename: img.filename });
+        }
+      }
+      if (allImageUrls.length > 0) {
+        toast.info(t("A descarregar") + ` ${allImageUrls.length} ` + t("imagens de evidência..."));
+        const batchSize = 8;
+        for (let i = 0; i < allImageUrls.length; i += batchSize) {
+          const batch = allImageUrls.slice(i, i + batchSize);
+          const results = await Promise.allSettled(
+            batch.map(async (img) => {
+              try {
+                const resp = await fetch(img.url);
+                if (!resp.ok) return null;
+                return { url: img.url, buf: await resp.arrayBuffer() };
+              } catch { return null; }
+            })
+          );
+          for (const r of results) {
+            if (r.status === "fulfilled" && r.value) imageCache[r.value.url] = r.value.buf;
+          }
+        }
+      }
+
+      // Build measure rows for the table
       const measureRows = measuresWithData.map(m => {
         const sel = measureSelections[m.id];
         const status = sel?.status || m.autoStatus;
         const statusText = status === "na" ? "N.A." : status === "conform" ? "Cumprido" : status === "nc" ? "Não Conforme" : status === "partial" ? "Parcialmente Cumprido" : "Em curso";
         const notes = sel?.notes || m.latestObservation || "";
+        const imgs = evidenceByMeasure[m.id] || [];
+        const evidenceText = imgs.length > 0 ? `${imgs.length} foto(s) — ver Anexo` : `Fichas S${startWeek.split("-W")[1]} a S${endWeek.split("-W")[1]}`;
         return new TableRow({
           children: [
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: m.number || `${m.id}`, size: 20 })] })], width: { size: 8, type: WidthType.PERCENTAGE } }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (m.description || "").substring(0, 200), size: 18 })] })], width: { size: 32, type: WidthType.PERCENTAGE } }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: notes.substring(0, 300), size: 18 })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Fichas S${startWeek.split("-W")[1]} a S${endWeek.split("-W")[1]}`, size: 18 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
+            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: evidenceText, size: 18 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
             new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: statusText, bold: true, size: 20, color: status === "conform" ? "008000" : status === "nc" ? "FF0000" : "000000" })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
           ],
         });
@@ -227,6 +274,39 @@ export default function RDCD() {
             new Paragraph({ text: "" }),
             new Paragraph({ text: "8. Reclamações associadas ao projeto", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: "[Sem reclamações no período em análise]" }),
+            // Annex: Evidence Photos (embedded)
+            ...(() => {
+              const annexItems: any[] = [];
+              let hasPhotos = false;
+              for (const m of measuresWithData) {
+                const imgs = (evidenceByMeasure[m.id] || []).filter(img => imageCache[img.url]).slice(0, 4);
+                if (imgs.length > 0) {
+                  if (!hasPhotos) {
+                    annexItems.push(
+                      new Paragraph({ text: "" }),
+                      new Paragraph({ text: "Anexo — Evidências Fotográficas", heading: HeadingLevel.HEADING_1 }),
+                      new Paragraph({ text: "As seguintes fotografias foram recolhidas durante o período de análise e documentam o cumprimento das medidas ambientais." }),
+                    );
+                    hasPhotos = true;
+                  }
+                  annexItems.push(
+                    new Paragraph({ text: "" }),
+                    new Paragraph({ children: [new TextRun({ text: `Medida ${m.number || m.id}: `, bold: true, size: 22 }), new TextRun({ text: (m.description || "").substring(0, 120), size: 20 })] }),
+                  );
+                  for (const img of imgs) {
+                    try {
+                      annexItems.push(
+                        new Paragraph({ children: [new ImageRun({ data: imageCache[img.url], transformation: { width: 450, height: 340 }, type: "jpg" })] }),
+                        new Paragraph({ children: [new TextRun({ text: img.filename, size: 16, italics: true, color: "666666" })] }),
+                      );
+                    } catch {
+                      annexItems.push(new Paragraph({ children: [new TextRun({ text: `[Imagem: ${img.filename}]`, size: 18, italics: true })] }));
+                    }
+                  }
+                }
+              }
+              return annexItems;
+            })(),
           ],
         }],
       });

@@ -31,10 +31,21 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = document.documentElement;
+    const rootEl = document.getElementById("root");
+
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
+      // Clean up any residual inline styles from old filter-based dark mode
+      document.body.style.backgroundColor = "";
+      if (rootEl) {
+        rootEl.style.filter = "";
+        // Also clean up any re-inverted elements from old approach
+        rootEl.querySelectorAll("[style*='filter']").forEach(el => {
+          (el as HTMLElement).style.filter = "";
+        });
+      }
     }
     if (switchable) {
       localStorage.setItem("theme", theme);

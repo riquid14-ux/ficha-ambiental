@@ -8,7 +8,7 @@ import { trpc } from "@/lib/trpc";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
-  Quote, Leaf, ArrowRight
+  Quote, Leaf, ArrowRight, FileText, Send, Eye, XCircle, RotateCcw, ArrowDown
 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -198,6 +198,51 @@ export default function Welcome() {
         </div>
 
         {/* Quick tips */}
+        {/* Workflow Diagram - How the process works */}
+        {!isAllProjects && !isNest && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BookOpen className="w-4 h-4 text-indigo-600" />
+                {t("Fluxo de Submissão")}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">{t("Como funciona o processo de submissão e aprovação das fichas de controlo ambiental.")}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-0 py-2">
+                <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc="EE/RAP preenche a ficha semanal" color="blue" actor="EE / RAP" />
+                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
+                <WelcomeFlowStep icon={<Send className="w-4 h-4" />} title={t("2. Submissão")} desc={t("Ficha submetida para revisão")} color="indigo" actor="EE / RAP" />
+                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
+                <WelcomeFlowStep icon={<Eye className="w-4 h-4" />} title={t("3. Revisão pela RAA")} desc={t("RAA analisa e verifica conformidade")} color="amber" actor="RAA" />
+                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
+                <div className="w-full max-w-lg border-2 border-dashed border-muted-foreground/30 rounded-xl p-3 bg-muted/20">
+                  <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Decisão da RAA")}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-2 rounded-lg bg-green-50 border border-green-200">
+                      <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-green-800">{t("Aprovada")}</p>
+                      <p className="text-[10px] text-green-700 mt-0.5">{t("Arquivada no histórico")}</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-red-50 border border-red-200">
+                      <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-red-800">{t("Rejeitada")}</p>
+                      <p className="text-[10px] text-red-700 mt-0.5">{t("Volta para rascunhos")}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{t("Ação EE/RAP")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{t("Ação RAA")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />{t("Aprovado")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />{t("Rejeitado")}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick tips */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="flex gap-3 items-start p-4 rounded-xl bg-blue-50 border border-blue-100">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
@@ -239,5 +284,28 @@ export default function Welcome() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function WelcomeFlowStep({ icon, title, desc, color, actor }: { icon: React.ReactNode; title: string; desc: string; color: string; actor: string }) {
+  const colors: Record<string, string> = {
+    blue: "bg-blue-50 border-blue-200 text-blue-700",
+    indigo: "bg-indigo-50 border-indigo-200 text-indigo-700",
+    amber: "bg-amber-50 border-amber-200 text-amber-700",
+  };
+  const badges: Record<string, string> = {
+    blue: "bg-blue-100 text-blue-800",
+    indigo: "bg-indigo-100 text-indigo-800",
+    amber: "bg-amber-100 text-amber-800",
+  };
+  return (
+    <div className={`w-full max-w-lg p-3 rounded-lg border ${colors[color]} flex items-center gap-3`}>
+      <div className="flex-shrink-0">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs opacity-80">{desc}</p>
+      </div>
+      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badges[color]}`}>{actor}</span>
+    </div>
   );
 }

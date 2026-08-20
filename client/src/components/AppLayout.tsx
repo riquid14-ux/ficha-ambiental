@@ -55,7 +55,6 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const projectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: BookOpen, label: "Workflow", path: "/workflow" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },

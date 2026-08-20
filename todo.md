@@ -336,3 +336,6 @@
 - [x] Personalize content by project (SIN01-NEST vs SIN02-SIN07)
 - [x] Make configurable via admin (video URL in Imagens)
 - [x] Add route and sidebar link, default landing for new users
+- [x] Move Workflow diagram into Welcome page (before the 4 guide points)
+- [x] Redesign Home/landing page to look premium/corporate
+- [x] Home page needs Start Campus branding, professional images, feature sections

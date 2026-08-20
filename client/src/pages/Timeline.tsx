@@ -210,7 +210,7 @@ export default function Timeline() {
     return (
       <AppLayout><div className="max-w-5xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
-          <Layers className="w-6 h-6" /> Timeline do Projeto
+          <Layers className="w-6 h-6" /> {t("Timeline do Projeto")}
         </h1>
         <p className="text-muted-foreground">{t("Visão geral do estado de cada projeto e a fase em que se encontra.")}</p>
 
@@ -286,10 +286,10 @@ export default function Timeline() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Layers className="w-6 h-6" /> Timeline do Projeto
+              <Layers className="w-6 h-6" /> {t("Timeline do Projeto")}
             </h1>
             <p className="text-muted-foreground text-sm">
-              Visão geral do cumprimento de medidas por fase — {activeProject?.name}
+              {t("Visão geral do cumprimento de medidas por fase")} — {activeProject?.name}
             </p>
           </div>
           {user?.role === "admin" && (
@@ -351,7 +351,7 @@ export default function Timeline() {
               <p className="text-3xl font-bold">{overallProgress}%</p>
             </div>
             <div className="text-right text-sm">
-              <p className="text-muted-foreground">{totalMeasures} medidas total</p>
+              <p className="text-muted-foreground">{totalMeasures} {t("medidas total")}</p>
               <div className="flex gap-3 mt-1">
                 <span className="flex items-center gap-1 text-green-700">
                   <CheckCircle2 className="w-3.5 h-3.5" /> {totalConcluido}
@@ -426,13 +426,13 @@ export default function Timeline() {
 
                   <div className="flex gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500" /> Concluídas: {phase.concluido}
+                      <span className="w-2 h-2 rounded-full bg-green-500" /> {t("Concluídas")}: {phase.concluido}
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" /> Em curso: {phase.emCurso}
+                      <span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Em curso")}: {phase.emCurso}
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" /> Pendentes: {phase.pendente}
+                      <span className="w-2 h-2 rounded-full bg-gray-300" /> {t("Pendentes")}: {phase.pendente}
                     </span>
                     <span className="ml-auto font-medium">{phase.total} medidas</span>
                   </div>

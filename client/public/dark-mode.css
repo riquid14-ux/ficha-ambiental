@@ -1,6 +1,4 @@
-/* ===== DARK MODE — CSS Filter Inversion + Contrast Fixes ===== */
-
-/* Body dark background */
+/* ===== DARK MODE - CSS Filter Inversion + Contrast Fixes ===== */
 html.dark {
   color-scheme: dark;
 }
@@ -8,43 +6,48 @@ html.dark body {
   background-color: #0f172a !important;
 }
 
-/* Note: The main filter inversion is applied via inline JavaScript in ThemeContext.tsx */
-/* These rules handle elements that need extra contrast or are portaled outside #root */
+/* Sidebar re-inversion: sidebar is already dark, the #root invert makes it light.
+   Re-invert it so it stays dark. Applied via JS too but CSS as fallback. */
+html.dark [data-slot="sidebar"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+html.dark [data-slot="sidebar"] img {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
 
 /* Dropdown/popover - portaled outside #root */
 html.dark [data-radix-popper-content-wrapper] {
-  filter: invert(0.88) hue-rotate(180deg);
+  filter: invert(0.88) hue-rotate(180deg) !important;
 }
 html.dark [data-radix-popper-content-wrapper] img {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(1) hue-rotate(180deg) !important;
 }
 
 /* Dialog overlay and content - portaled outside #root */
 html.dark [data-slot="dialog-overlay"] {
-  filter: invert(0.88) hue-rotate(180deg);
+  filter: invert(0.88) hue-rotate(180deg) !important;
 }
 html.dark [role="dialog"] {
-  filter: invert(0.88) hue-rotate(180deg);
+  filter: invert(0.88) hue-rotate(180deg) !important;
 }
 html.dark [role="dialog"] img {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(1) hue-rotate(180deg) !important;
 }
 
 /* Toast notifications */
 html.dark [data-sonner-toaster] {
-  filter: invert(0.88) hue-rotate(180deg);
+  filter: invert(0.88) hue-rotate(180deg) !important;
 }
 
-/* Footer warning bar - needs high contrast in dark mode */
+/* Footer warning bar */
 html.dark .fixed.bottom-0 {
-  filter: invert(1) hue-rotate(180deg);
+  filter: invert(1) hue-rotate(180deg) !important;
 }
 
 /* Print: reset all filters */
 @media print {
   html.dark #root,
-  html.dark #root img,
-  html.dark #root .recharts-wrapper,
+  html.dark #root *,
   html.dark .fixed.bottom-0 {
     filter: none !important;
   }

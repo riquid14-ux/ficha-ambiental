@@ -43,10 +43,9 @@ export function ThemeProvider({
     if (rootEl) {
       if (theme === "dark") {
         rootEl.style.filter = "invert(0.88) hue-rotate(180deg)";
-        // Re-invert media elements so they look normal
         const reInvert = (el: Element) => { (el as HTMLElement).style.filter = "invert(1) hue-rotate(180deg)"; };
-        const clearFilter = (el: Element) => { (el as HTMLElement).style.filter = ""; };
-        const mediaSelector = "img, video, canvas, picture, .recharts-wrapper, iframe";
+        // Re-invert media AND sidebar (sidebar is already dark, inversion makes it light)
+        const mediaSelector = "img, video, canvas, picture, .recharts-wrapper, iframe, [data-slot='sidebar']";
         rootEl.querySelectorAll(mediaSelector).forEach(reInvert);
         // MutationObserver to handle dynamically loaded images/iframes
         const observer = new MutationObserver((mutations) => {

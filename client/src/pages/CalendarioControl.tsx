@@ -242,11 +242,11 @@ export default function CalendarioControl() {
                             </td>
                             <td className="py-2.5 px-2">
                               {isOverdue ? (
-                                <Badge className="bg-red-100 text-red-800 border-red-200 text-[10px]">Em atraso</Badge>
+                                <Badge className="bg-red-100 text-red-800 border-red-200 text-[10px]">{ t("Em atraso") }</Badge>
                               ) : evt.status === "reported" ? (
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px]">Reportado</Badge>
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px]">{ t("Reportado") }</Badge>
                               ) : evt.status === "confirmed" ? (
-                                <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">Confirmado</Badge>
+                                <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">{ t("Confirmado") }</Badge>
                               ) : (
                                 <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{t("Pendente")}</Badge>
                               )}

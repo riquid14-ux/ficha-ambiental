@@ -204,7 +204,7 @@ export default function KPI() {
           {/* Matrix */}
           <TabsContent value="overview">
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t("Matriz de Submissão")}</CardTitle></CardHeader><CardContent>
-              {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sem submissões.</p> : (
+              {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">{ t("Sem submissões.") }</p> : (
                 <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">{t("Empresa")}</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
                   <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
                 ))}</tbody></table></div>
@@ -318,7 +318,7 @@ export default function KPI() {
                 <div className="grid grid-cols-2 gap-3">
                   <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
                   <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
-                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Derrames</p></Card>
+                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">{ t("Derrames") }</p></Card>
                   <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-green-50"><Activity className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.filter(d => Object.values(d).some(v => typeof v === "number" && v > 0)).length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
                 </div>
                 <Card className="mt-3"><CardContent className="p-4">
@@ -356,7 +356,7 @@ export default function KPI() {
                             {isAdminOrDO && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
                           </tr>
                         ))}
-                        {(!incidentsQuery.data || incidentsQuery.data.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Sem incidentes registados</td></tr>}
+                        {(!incidentsQuery.data || incidentsQuery.data.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">{ t("Sem incidentes registados") }</td></tr>}
                       </tbody>
                     </table>
                   </div>

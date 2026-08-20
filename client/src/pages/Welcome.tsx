@@ -35,12 +35,12 @@ function getFeatures(role: string, projectCode: string, isAllProjects: boolean, 
       { icon: CalendarDays, title: "Calendário Integrado", description: "Consulte todos os prazos regulatórios e internos de reporting num único calendário." },
       { icon: GitBranch, title: "Timeline de Projetos", description: "Acompanhe o progresso de cada projeto e em que fase se encontra." },
       { icon: FileBarChart, title: "RDCD", description: "Gere relatórios de demonstração de cumprimento da DCAPE." },
-      { icon: Heart, title: "GAMMA", description: "Programa comunitário GAMMA — candidaturas, avaliações e projetos vencedores." },
+      { icon: Heart, title: "GAMMA", description: "Programa comunitário GAMMA com candidaturas, avaliações e projetos vencedores." },
     ];
   }
   if (isNest) {
     const features: FeatureCard[] = [
-      { icon: CalendarDays, title: "Calendário de Reporting", description: "Consulte e atualize os prazos de reporting ambiental — MIRR, gases fluorados, medidas de operação e outros entregáveis." },
+      { icon: CalendarDays, title: "Calendário de Reporting", description: "Consulte e atualize os prazos de reporting ambiental, incluindo MIRR, gases fluorados, medidas de operação e outros entregáveis." },
       { icon: Recycle, title: "MIRR", description: "Registe e acompanhe os resíduos do projeto. Importe e-GARs, gere o Wastemap e exporte o MIRR anual." },
       { icon: Layers, title: "Fases de Exploração", description: "Submeta evidências anuais das medidas de exploração da DCAPE, organizadas por ano." },
       { icon: FileBarChart, title: "Certificações", description: "Acompanhe as certificações LEED O&M, EED e CELE com submissão de evidências." },
@@ -52,7 +52,7 @@ function getFeatures(role: string, projectCode: string, isAllProjects: boolean, 
   }
   const features: FeatureCard[] = [];
   if (["admin", "dono_obra", "pm"].includes(role)) {
-    features.push({ icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental — fichas aprovadas, em revisão, rascunhos e alertas de incumprimento." });
+    features.push({ icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental com fichas aprovadas, em revisão, rascunhos e alertas de incumprimento." });
   }
   if (["admin", "dono_obra", "pm", "ee", "raa", "rap"].includes(role)) {
     features.push({ icon: BookOpen, title: "Workflow", description: "Consulte o fluxo de submissão e aprovação das fichas de controlo ambiental." });
@@ -72,10 +72,10 @@ function getFeatures(role: string, projectCode: string, isAllProjects: boolean, 
     features.push({ icon: Recycle, title: "Gestão de Resíduos", description: "Registe resíduos por código LER, crie sub-projetos, gere Wastemap e exporte MIRR." });
   }
   if (["admin", "dono_obra", "pm", "ee", "rap"].includes(role)) {
-    features.push({ icon: BarChart3, title: "KPI's", description: "Submeta dados semanais de sustentabilidade — trabalhadores, consumos de energia, água e incidentes." });
+    features.push({ icon: BarChart3, title: "KPI's", description: "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes." });
   }
   features.push({ icon: CalendarDays, title: "Calendário", description: "Consulte os prazos de reporting ambiental e as datas importantes do projeto." });
-  features.push({ icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto — desde o pré-licenciamento até à operação." });
+  features.push({ icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação." });
   return features;
 }
 
@@ -109,7 +109,7 @@ export default function Welcome() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative z-10 max-w-3xl">
             <p className="text-emerald-200 text-sm font-medium mb-2 uppercase tracking-wider">
-              Plataforma de Gestão Ambiental — Start Campus
+              Plataforma de Gestão Ambiental, Start Campus
             </p>
             <h1 className="text-3xl font-bold mb-3">
               Obrigado por te juntares, {userName}!
@@ -130,9 +130,9 @@ export default function Welcome() {
           <Leaf className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-base italic text-emerald-900 leading-relaxed">
-              "É importante termos a informação atualizada, para tomarmos decisões informadas, com o menor impacto ambiental possível."
+              "Esta plataforma foi pensada para cada um de nós. Para que a informação esteja sempre atualizada, para que possamos tomar decisões mais conscientes e para que, juntos, consigamos reduzir ao máximo o nosso impacto ambiental. Cada dado que aqui registamos contribui para um futuro mais sustentável."
             </p>
-            <p className="text-sm text-emerald-700 mt-2 font-medium">— Equipa de Sustentabilidade, Start Campus</p>
+            <p className="text-sm text-emerald-700 mt-2 font-medium">Equipa de Sustentabilidade, Start Campus</p>
           </div>
         </div>
 
@@ -173,7 +173,7 @@ export default function Welcome() {
                 {isAllProjects
                   ? "Visão consolidada de todos os projetos Start Campus."
                   : isNest
-                  ? "Projeto em fase de operação — entregáveis ambientais anuais, resíduos e certificações."
+                  ? "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações."
                   : "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção."
                 }
               </p>
@@ -204,7 +204,7 @@ export default function Welcome() {
           <div className="flex gap-3 items-start p-4 rounded-xl bg-blue-50 border border-blue-100">
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-0.5">Menu lateral</p>
+              <p className="text-sm font-medium text-blue-900 mb-0.5">{ t("Menu lateral") }</p>
               <p className="text-xs text-blue-700">Navegue entre as secções da plataforma usando o menu à esquerda.</p>
             </div>
           </div>
@@ -227,14 +227,14 @@ export default function Welcome() {
           <div className="flex gap-3 items-start p-4 rounded-xl bg-amber-50 border border-amber-100">
             <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
             <div>
-              <p className="text-sm font-medium text-amber-900 mb-0.5">Personalização</p>
+              <p className="text-sm font-medium text-amber-900 mb-0.5">{ t("Personalização") }</p>
               <p className="text-xs text-amber-700">Alterne entre modo claro/escuro e PT/EN no menu do utilizador.</p>
             </div>
           </div>
           <div className="flex gap-3 items-start p-4 rounded-xl bg-purple-50 border border-purple-100">
             <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">4</div>
             <div>
-              <p className="text-sm font-medium text-purple-900 mb-0.5">Suporte</p>
+              <p className="text-sm font-medium text-purple-900 mb-0.5">{ t("Suporte") }</p>
               <p className="text-xs text-purple-700">Contacte apoioamb@startcampus.pt ou use "Deixar Feedback".</p>
             </div>
           </div>

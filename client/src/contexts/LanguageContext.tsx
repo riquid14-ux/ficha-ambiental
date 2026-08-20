@@ -936,8 +936,28 @@ const translations: Record<string, Record<Lang, string>> = {
   "O que pode fazer na visão global": { pt: "O que pode fazer na visão global", en: "What you can do in the global view" },
   "Dicas rápidas": { pt: "Dicas rápidas", en: "Quick tips" },
   "Importar Fichas": { pt: "Importar Fichas", en: "Import Forms" },
-};
-
+  "Reportado": { pt: "Reportado", en: "Reported" },
+  "Confirmado": { pt: "Confirmado", en: "Confirmed" },
+  "Marca": { pt: "Marca", en: "Brand" },
+  "Modelo": { pt: "Modelo", en: "Model" },
+  "Por iniciar": { pt: "Por iniciar", en: "Not started" },
+  "Portefólio": { pt: "Portefólio", en: "Portfolio" },
+  "Avaliação": { pt: "Avaliação", en: "Evaluation" },
+  "Telefone": { pt: "Telefone", en: "Phone" },
+  "Sem submissões.": { pt: "Sem submissões.", en: "No submissions." },
+  "Derrames": { pt: "Derrames", en: "Spills" },
+  "Incidente": { pt: "Incidente", en: "Incident" },
+  "Sem incidentes registados": { pt: "Sem incidentes registados", en: "No incidents recorded" },
+  "A verificar...": { pt: "A verificar...", en: "Verifying..." },
+  "A criar...": { pt: "A criar...", en: "Creating..." },
+  "A enviar...": { pt: "A enviar...", en: "Sending..." },
+  "Selecionar semana...": { pt: "Selecionar semana...", en: "Select week..." },
+  "Menu lateral": { pt: "Menu lateral", en: "Side menu" },
+  "Personalização": { pt: "Personalização", en: "Customization" },
+  "Suporte": { pt: "Suporte", en: "Support" },
+  "Devolução de licenças de emissão": { pt: "Devolução de licenças de emissão", en: "Return of emission licenses" },
+  "Contínuo": { pt: "Contínuo", en: "Continuous" },
+  "Informação comum a todos os geradores": { pt: "Informação comum a todos os geradores", en: "Information common to all generators" },};
 interface LanguageContextType {
   language: Lang;
   setLanguage: (lang: Lang) => void;

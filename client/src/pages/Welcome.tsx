@@ -233,10 +233,44 @@ export default function Welcome() {
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{t("Ação EE/RAP")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{t("Ação RAA")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />{t("Aprovado")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />{t("Rejeitado")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> {t("Ação EE/RAP")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Ação RAA")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {t("Aprovado")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> {t("Rejeitado")}</span>
+              </div>
+              {/* Entity roles legend */}
+              <div className="mt-4 pt-3 border-t">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Entidades no Processo")}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-50/50 border border-blue-100">
+                    <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded mt-0.5">EE</span>
+                    <div>
+                      <p className="text-xs font-medium text-blue-900">{t("Entidade Executante")}</p>
+                      <p className="text-[10px] text-blue-700/70">{t("Cria e submete fichas semanais")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100">
+                    <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded mt-0.5">RAP</span>
+                    <div>
+                      <p className="text-xs font-medium text-indigo-900">{t("Resp. Ambiental Projeto")}</p>
+                      <p className="text-[10px] text-indigo-700/70">{t("Submete fichas da sua responsabilidade")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50/50 border border-amber-100">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded mt-0.5">RAA</span>
+                    <div>
+                      <p className="text-xs font-medium text-amber-900">{t("Resp. Ambiental Atividade")}</p>
+                      <p className="text-[10px] text-amber-700/70">{t("Revê, aprova ou rejeita fichas")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100">
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded mt-0.5">DO</span>
+                    <div>
+                      <p className="text-xs font-medium text-emerald-900">{t("Dono de Obra")}</p>
+                      <p className="text-[10px] text-emerald-700/70">{t("Visão completa e gestão de acessos")}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -244,20 +278,20 @@ export default function Welcome() {
 
         {/* Quick tips */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-blue-50 border border-blue-100">
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/30 border border-blue-200/50 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
             <div>
               <p className="text-sm font-medium text-blue-900 mb-0.5">{ t("Menu lateral") }</p>
               <p className="text-xs text-blue-700">{t("Navegue entre as secções da plataforma usando o menu à esquerda.")}</p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-green-50 border border-green-100">
-            <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/30 border border-emerald-200/50 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
             <div>
-              <p className="text-sm font-medium text-green-900 mb-0.5">
+              <p className="text-sm font-medium text-emerald-900 mb-0.5">
                 {userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard"}
               </p>
-              <p className="text-xs text-green-700">
+              <p className="text-xs text-emerald-700">
                 {userRole === "ee" || userRole === "rap"
                   ? "Submeta atempadamente para evitar alertas."
                   : userRole === "raa"
@@ -267,18 +301,18 @@ export default function Welcome() {
               </p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-amber-50 border border-amber-100">
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-100/30 border border-amber-200/50 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
             <div>
               <p className="text-sm font-medium text-amber-900 mb-0.5">{ t("Personalização") }</p>
               <p className="text-xs text-amber-700">Alterne entre modo claro/escuro e PT/EN no menu do utilizador.</p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-purple-50 border border-purple-100">
-            <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">4</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-100/30 border border-violet-200/50 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-violet-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">4</div>
             <div>
-              <p className="text-sm font-medium text-purple-900 mb-0.5">{ t("Suporte") }</p>
-              <p className="text-xs text-purple-700">Contacte apoioamb@startcampus.pt ou use "Deixar Feedback".</p>
+              <p className="text-sm font-medium text-violet-900 mb-0.5">{ t("Suporte") }</p>
+              <p className="text-xs text-violet-700">{t("Contacte apoioamb@startcampus.pt ou use Deixar Feedback.")}</p>
             </div>
           </div>
         </div>

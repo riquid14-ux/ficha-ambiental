@@ -1,3 +1,4 @@
+import { useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "../contexts/ProjectContext";
@@ -99,6 +100,8 @@ export default function Welcome() {
     : "IsjSfMUIWzE";
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
   const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1`;
+  const [iframeError, setIframeError] = useState(false);
 
   const features = getFeatures(userRole, projectCode, isAllProjects, isNest);
   const roleLabel = ROLE_LABELS[userRole] || userRole;
@@ -150,34 +153,28 @@ export default function Welcome() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <a
-                href={watchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="relative block w-full rounded-lg overflow-hidden group cursor-pointer"
-                style={{ paddingBottom: "56.25%" }}
-              >
-                <img
-                  src={thumbnailUrl}
-                  alt="Start Campus Video"
-                  className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  onError={(e) => {
-                    // Fallback to hqdefault if maxresdefault doesn't exist
-                    (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                  }}
-                />
-                {/* Play button overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors duration-300">
-                  <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <Play className="w-8 h-8 text-white ml-1" fill="white" />
-                  </div>
-                </div>
-                {/* YouTube badge */}
-                <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                  <svg className="w-4 h-3" viewBox="0 0 24 17" fill="currentColor"><path d="M23.5 2.5c-.3-1-1-1.8-2-2C19.6 0 12 0 12 0S4.4 0 2.5.5c-1 .3-1.8 1-2 2C0 4.4 0 8.5 0 8.5s0 4 .5 6c.3 1 1 1.8 2 2C4.4 17 12 17 12 17s7.6 0 9.5-.5c1-.3 1.8-1 2-2 .5-2 .5-6 .5-6s0-4-.5-6z"/><path d="M9.5 12.2V4.8l6.5 3.7-6.5 3.7z" fill="red"/></svg>
-                  YouTube
-                </div>
-              </a>
+              <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
+                {!iframeError ? (
+                  <iframe
+                    className="absolute top-0 left-0 w-full h-full"
+                    src={embedSrc}
+                    title="Start Campus"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    onError={() => setIframeError(true)}
+                  />
+                ) : (
+                  <a href={watchUrl} target="_blank" rel="noopener noreferrer" className="absolute inset-0 group cursor-pointer">
+                    <img src={thumbnailUrl} alt="Start Campus Video" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`; }} />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors duration-300">
+                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <Play className="w-8 h-8 text-white ml-1" fill="white" />
+                      </div>
+                    </div>
+                  </a>
+                )}
+              </div>
             </CardContent>
           </Card>
 

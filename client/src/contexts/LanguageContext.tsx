@@ -1077,6 +1077,10 @@ const translations: Record<string, Record<Lang, string>> = {
   "· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.": { pt: "· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.", en: "· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março." },
   "Área Construída (GFA excl. estacionamento)": { pt: "Área Construída (GFA excl. estacionamento)", en: "Área Construída (GFA excl. estacionamento)" },
   "Área Útil (m²)": { pt: "Área Útil (m²)", en: "Área Útil (m²)" },
+  "Nenhum evento de reporting criado": { pt: "Nenhum evento de reporting criado", en: "No reporting events created" },
+  "2. Introduza o código de 6 dígitos:": { pt: "2. Introduza o código de 6 dígitos:", en: "2. Enter the 6-digit code:" },
+  "Não consegue aceder ao autenticador? Contacte": { pt: "Não consegue aceder ao autenticador? Contacte", en: "Cannot access the authenticator? Contact" },
+  "Partilhe sugestões de melhoria ou reporte problemas.": { pt: "Partilhe sugestões de melhoria ou reporte problemas.", en: "Share improvement suggestions or report issues." },
   "Áreas Vegetadas / Pedonais / Veículos": { pt: "Áreas Vegetadas / Pedonais / Veículos", en: "Áreas Vegetadas / Pedonais / Veículos" },};
 interface LanguageContextType {
   language: Lang;

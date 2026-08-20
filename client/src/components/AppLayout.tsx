@@ -410,7 +410,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                     <img src={qrData.qrCode} alt="QR Code 2FA" className="w-40 h-40 border rounded" />
                   </div>
                   <p className="text-xs text-muted-foreground text-center break-all">Chave: {qrData.secret}</p>
-                  <p className="text-sm font-medium">2. Introduza o código de 6 dígitos:</p>
+                  <p className="text-sm font-medium">{t("2. Introduza o código de 6 dígitos:")}</p>
                   <div className="flex gap-2">
                     <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="font-mono text-lg tracking-widest" maxLength={6} />
                     <Button onClick={() => confirm2FAMutation.mutate({ code: totpCode })} disabled={totpCode.length !== 6 || confirm2FAMutation.isPending}>
@@ -420,7 +420,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 </div>
               )}
               <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground mb-2">Não consegue aceder ao autenticador? Contacte <strong>apoioamb@startcampus.pt</strong></p>
+                <p className="text-xs text-muted-foreground mb-2">{t("Não consegue aceder ao autenticador? Contacte")} <strong>apoioamb@startcampus.pt</strong></p>
                 <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { window.location.href = "/api/auth/logout"; }}>
                   Terminar Sessão
                 </button>
@@ -431,15 +431,15 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       )}
       {/* English Translation Warning */}
       {language === "en" && (
-        <div className="fixed bottom-0 left-0 right-0 bg-amber-100 border-t border-amber-300 p-2 text-center z-40">
-          <p className="text-xs text-amber-800">⚠️ {t("Nota: toda a documentação submetida nesta plataforma deve ser escrita em Português, independentemente do idioma de visualização.")}</p>
+        <div className="fixed bottom-0 left-0 right-0 bg-amber-100 border-t-2 border-amber-400 py-3 px-4 text-center z-40 shadow-lg">
+          <p className="text-sm font-semibold text-amber-900">⚠️ {t("Nota: toda a documentação submetida nesta plataforma deve ser escrita em Português, independentemente do idioma de visualização.")}</p>
         </div>
       )}
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg mb-2">Deixar Feedback</h3>
-            <p className="text-sm text-muted-foreground mb-4">Partilhe sugestões de melhoria ou reporte problemas.</p>
+            <p className="text-sm text-muted-foreground mb-4">{t("Partilhe sugestões de melhoria ou reporte problemas.")}</p>
             <textarea className="w-full border rounded-md p-3 text-sm min-h-[100px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
             <div className="mb-3">
               <label className="text-xs font-medium text-muted-foreground block mb-1">Anexar fotografias (opcional)</label>

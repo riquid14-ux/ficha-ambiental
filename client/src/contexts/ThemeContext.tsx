@@ -33,10 +33,27 @@ export function ThemeProvider({
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
+      document.body.style.backgroundColor = "#0f172a";
     } else {
       root.classList.remove("dark");
+      document.body.style.backgroundColor = "";
     }
-
+    // Apply filter directly to #root element via inline style — guarantees dark mode
+    const rootEl = document.getElementById("root");
+    if (rootEl) {
+      if (theme === "dark") {
+        rootEl.style.filter = "invert(0.88) hue-rotate(180deg)";
+        // Re-invert images so they look normal
+        rootEl.querySelectorAll("img, video, canvas, picture, .recharts-wrapper").forEach(el => {
+          (el as HTMLElement).style.filter = "invert(1) hue-rotate(180deg)";
+        });
+      } else {
+        rootEl.style.filter = "";
+        rootEl.querySelectorAll("img, video, canvas, picture, .recharts-wrapper").forEach(el => {
+          (el as HTMLElement).style.filter = "";
+        });
+      }
+    }
     if (switchable) {
       localStorage.setItem("theme", theme);
     }

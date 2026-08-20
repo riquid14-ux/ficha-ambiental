@@ -376,3 +376,34 @@ html.dark select option { background-color: #1f2937 !important; color: #e5e7eb !
 @media print {
   html.dark * { color: #000 !important; background-color: #fff !important; }
 }
+
+/* ===== UNIVERSAL DARK MODE TEXT FIX ===== */
+/* Catch-all for elements that don't use Tailwind text color classes */
+/* These elements inherit color from body or have no explicit color set */
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+  color: #f2f2f2 !important;
+}
+html.dark p, html.dark span, html.dark label, html.dark li, html.dark a {
+  color: #e5e5e5 !important;
+}
+html.dark div {
+  color: #e5e5e5 !important;
+}
+html.dark button {
+  color: #e5e5e5 !important;
+}
+/* Muted/secondary text - keep lighter */
+html.dark .text-muted-foreground {
+  color: #a0a0a0 !important;
+}
+/* Colored text overrides - keep their semantic colors but lighter */
+html.dark .text-green-600, html.dark .text-emerald-600 { color: #6ee7b7 !important; }
+html.dark .text-red-600 { color: #fca5a5 !important; }
+html.dark .text-blue-600 { color: #93c5fd !important; }
+html.dark .text-amber-600, html.dark .text-yellow-600 { color: #fcd34d !important; }
+html.dark .text-purple-600 { color: #d8b4fe !important; }
+/* White text on colored backgrounds should stay white */
+html.dark .text-white { color: #ffffff !important; }
+/* Primary button text */
+html.dark .bg-primary { color: #ffffff !important; }
+html.dark .bg-primary button, html.dark .bg-primary span { color: #ffffff !important; }

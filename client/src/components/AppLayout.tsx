@@ -323,7 +323,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 pb-14">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none">
@@ -381,7 +381,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-16 overflow-auto">{children}</main>
       </SidebarInset>
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (

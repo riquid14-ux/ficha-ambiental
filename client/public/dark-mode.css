@@ -1,108 +1,58 @@
-/* ===== DARK MODE - CSS Filter Inversion + Contrast Fixes ===== */
-html.dark {
-  color-scheme: dark;
-}
-html.dark body {
-  background-color: #0f172a !important;
-}
+/* Dark Mode - CSS Filter Inversion + Contrast Fixes */
+/* Applied via inline style on #root by ThemeContext.tsx */
 
-/* Sidebar re-inversion: sidebar is already dark, the #root invert makes it light.
-   Re-invert it so it stays dark. Applied via JS too but CSS as fallback. */
-html.dark [data-slot="sidebar"] {
-  filter: invert(1) hue-rotate(180deg) !important;
+/* Force white text on headings and titles when dark mode is active */
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark h6 {
+  color: #ffffff !important;
 }
-html.dark [data-slot="sidebar"] img {
-  filter: invert(1) hue-rotate(180deg) !important;
+html.dark [data-slot="card-title"] {
+  color: #ffffff !important;
 }
-
-/* Dropdown/popover - portaled outside #root */
-html.dark [data-radix-popper-content-wrapper] {
-  filter: invert(0.93) hue-rotate(180deg) !important;
-}
-html.dark [data-radix-popper-content-wrapper] img {
-  filter: invert(1) hue-rotate(180deg) !important;
-}
-
-/* Dialog overlay and content - portaled outside #root */
-html.dark [data-slot="dialog-overlay"] {
-  filter: invert(0.93) hue-rotate(180deg) !important;
-}
-html.dark [role="dialog"] {
-  filter: invert(0.93) hue-rotate(180deg) !important;
-}
-html.dark [role="dialog"] img {
-  filter: invert(1) hue-rotate(180deg) !important;
-}
-
-/* Toast notifications */
-html.dark [data-sonner-toaster] {
-  filter: invert(0.93) hue-rotate(180deg) !important;
-}
-
-/* Footer warning bar */
-html.dark .fixed.bottom-0 {
-  filter: invert(1) hue-rotate(180deg) !important;
-}
-
-/* Print: reset all filters */
-@media print {
-  html.dark #root,
-  html.dark #root *,
-  html.dark .fixed.bottom-0 {
-    filter: none !important;
-  }
-}
-
-/* ===== FORCE WHITE TEXT ON TITLES AND HEADINGS IN DARK MODE ===== */
-/* The filter inversion makes backgrounds dark but dark text stays dark.
-   These rules force all text to be white/light in dark mode. */
-html.dark #root h1,
-html.dark #root h2,
-html.dark #root h3,
-html.dark #root h4,
-html.dark #root h5,
-html.dark #root h6,
-html.dark #root p,
-html.dark #root span,
-html.dark #root label,
-html.dark #root td,
-html.dark #root th,
-html.dark #root li,
-html.dark #root a,
-html.dark #root div {
-  color: inherit;
-}
-
-/* After inversion, the inverted colors should work. But if text is still dark,
-   force it white with higher specificity */
-html.dark #root [data-slot="sidebar-inset"] h1,
-html.dark #root [data-slot="sidebar-inset"] h2,
-html.dark #root [data-slot="sidebar-inset"] h3,
-html.dark #root [data-slot="sidebar-inset"] h4,
-html.dark #root [data-slot="sidebar-inset"] .font-bold,
-html.dark #root [data-slot="sidebar-inset"] .font-semibold,
-html.dark #root [data-slot="sidebar-inset"] .text-foreground {
-  color: white !important;
-}
-
-/* Card titles */
-html.dark #root [data-slot="card-title"],
-html.dark #root [data-slot="sidebar-inset"] [data-slot="card-title"] {
-  color: white !important;
-}
-
-/* Ensure all text in the main content area is light */
-html.dark #root [data-slot="sidebar-inset"] {
+html.dark p, html.dark span, html.dark label, html.dark td, html.dark th {
   color: #e2e8f0 !important;
 }
-
-/* Muted text should be lighter gray */
-html.dark #root .text-muted-foreground {
+html.dark .text-muted-foreground {
   color: #94a3b8 !important;
 }
-
-/* Badge text */
-html.dark #root .badge,
-html.dark #root [data-slot="badge"] {
+/* Keep sidebar dark (re-invert since the filter inverts it to light) */
+html.dark [data-slot="sidebar"] {
   filter: invert(1) hue-rotate(180deg);
+}
+/* Re-invert images, videos, iframes so they look normal */
+html.dark img, html.dark video, html.dark iframe, html.dark canvas, html.dark svg {
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Fix the footer warning to be visible in dark mode */
+html.dark .bg-amber-100 {
+  background-color: #78350f !important;
+  border-color: #d97706 !important;
+}
+html.dark .text-amber-900 {
+  color: #fef3c7 !important;
+}
+/* Fix green gradient banner */
+html.dark .from-green-800 {
+  filter: invert(1) hue-rotate(180deg);
+}
+/* Tabs active state */
+html.dark [data-state="active"] {
+  color: #ffffff !important;
+}
+/* Table headers */
+html.dark thead th {
+  color: #cbd5e1 !important;
+}
+/* Input fields */
+html.dark input, html.dark textarea, html.dark select {
+  color: #e2e8f0 !important;
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+/* Buttons text */
+html.dark .text-foreground {
+  color: #f1f5f9 !important;
+}
+/* Badge text */
+html.dark [data-slot="badge"] {
+  color: #e2e8f0 !important;
 }

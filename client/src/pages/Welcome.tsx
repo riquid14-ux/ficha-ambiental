@@ -110,7 +110,7 @@ export default function Welcome() {
           <div className="relative z-10 max-w-3xl">
             <p className="text-emerald-200 text-sm font-medium mb-2 uppercase tracking-wider">{t("Plataforma de Gestão Ambiental, Start Campus")}</p>
             <h1 className="text-3xl font-bold mb-3">
-              Obrigado por te juntares, {userName}!
+              {t("Obrigado por te juntares")}, {userName}!
             </h1>
             <div className="flex gap-2 flex-wrap mb-5">
               <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
@@ -130,7 +130,7 @@ export default function Welcome() {
             <p className="text-base italic text-emerald-900 leading-relaxed">
               "Esta plataforma foi pensada para cada um de nós. Para que a informação esteja sempre atualizada, para que possamos tomar decisões mais conscientes e para que, juntos, consigamos reduzir ao máximo o nosso impacto ambiental. Cada dado que aqui registamos contribui para um futuro mais sustentável."
             </p>
-            <p className="text-sm text-emerald-700 mt-2 font-medium">Equipa de Sustentabilidade, Start Campus</p>
+            <p className="text-sm text-emerald-700 mt-2 font-medium">{t("Equipa de Sustentabilidade, Start Campus")}</p>
           </div>
         </div>
 
@@ -163,16 +163,16 @@ export default function Welcome() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <Info className="w-4 h-4 text-blue-600" />
                 {isAllProjects
-                  ? "O que pode fazer na visão global"
-                  : `O que pode fazer em ${projectName}`
+                  ? t("O que pode fazer na visão global")
+                  : `${t("O que pode fazer em")} ${projectName}`
                 }
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {isAllProjects
-                  ? "Visão consolidada de todos os projetos Start Campus."
+                  ? t("Visão consolidada de todos os projetos Start Campus.")
                   : isNest
-                  ? "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações."
-                  : "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção."
+                  ? t("Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.")
+                  : t("Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.")
                 }
               </p>
             </CardHeader>
@@ -185,10 +185,10 @@ export default function Welcome() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
-                        <h3 className="font-semibold text-sm">{feature.title}</h3>
+                        <h3 className="font-semibold text-sm">{t(feature.title)}</h3>
                         <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{feature.description}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{t(feature.description)}</p>
                     </div>
                   </div>
                 ))}
@@ -305,7 +305,7 @@ export default function Welcome() {
             <div className="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
             <div>
               <p className="text-sm font-medium text-amber-900 mb-0.5">{ t("Personalização") }</p>
-              <p className="text-xs text-amber-700">Alterne entre modo claro/escuro e PT/EN no menu do utilizador.</p>
+              <p className="text-xs text-amber-700">{t("Alterne entre modo claro/escuro e PT/EN no menu do utilizador.")}</p>
             </div>
           </div>
           <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-100/30 border border-violet-200/50 shadow-sm">

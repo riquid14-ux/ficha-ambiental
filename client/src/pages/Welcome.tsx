@@ -88,12 +88,12 @@ export default function Welcome() {
   const isNest = projectCode === "SIN01";
 
   const settingsQuery = trpc.appSettings.getAll.useQuery();
-  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE";
+  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube-nocookie.com/embed/IsjSfMUIWzE";
   const embedUrl = (videoUrl.includes("watch?v=")
     ? videoUrl.replace("watch?v=", "embed/")
     : videoUrl.includes("youtu.be/")
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
-    : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
+    : videoUrl) + "?mute=1&controls=1&rel=0&modestbranding=1";
 
   const features = getFeatures(userRole, projectCode, isAllProjects, isNest);
   const roleLabel = ROLE_LABELS[userRole] || userRole;

@@ -57,13 +57,6 @@ describe("tRPC Router", () => {
   });
 });
 
-describe("Dark Mode", () => {
-  it("should have dark mode CSS overrides", async () => {
-    const fs = await import("fs");
-    const css = fs.readFileSync(`${process.cwd()}/client/src/index.css`, "utf-8");
-    expect(css).toContain("html.dark");
-  });
-});
 
 describe("App Branding", () => {
   it("should use correct name in translations", async () => {

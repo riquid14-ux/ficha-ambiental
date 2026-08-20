@@ -494,7 +494,7 @@ export default function WeeklyForm() {
 
         {/* Tabs: Nova Ficha / Rascunhos */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="nova" className="gap-1 text-xs">
               <FilePlus className="w-3.5 h-3.5" />
               Nova Ficha
@@ -520,13 +520,10 @@ export default function WeeklyForm() {
               <FileText className="w-3.5 h-3.5" />
               {t("Revisão")}
             </TabsTrigger>
-            <TabsTrigger value="submissoes" className="gap-1 text-xs">
-              <ClipboardList className="w-3.5 h-3.5" />
-              {t("Submissões")}
-            </TabsTrigger>
+
             <TabsTrigger value="pdf-historico" className="gap-1 text-xs">
               <FileUp className="w-3.5 h-3.5" />
-              {t("Histórico PDF")}
+              {t("Importar Fichas")}
             </TabsTrigger>
           </TabsList>
 

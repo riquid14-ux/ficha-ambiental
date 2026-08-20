@@ -935,6 +935,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Conheça a Start Campus": { pt: "Conheça a Start Campus", en: "Discover Start Campus" },
   "O que pode fazer na visão global": { pt: "O que pode fazer na visão global", en: "What you can do in the global view" },
   "Dicas rápidas": { pt: "Dicas rápidas", en: "Quick tips" },
+  "Importar Fichas": { pt: "Importar Fichas", en: "Import Forms" },
 };
 
 interface LanguageContextType {

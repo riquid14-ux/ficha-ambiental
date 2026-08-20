@@ -1,5 +1,4 @@
-/* ===== DARK MODE — CSS Filter Inversion ===== */
-/* Inverts ALL colors when dark mode is active */
+/* ===== DARK MODE — CSS Filter Inversion + Contrast Fixes ===== */
 
 /* Body dark background */
 html.dark {
@@ -9,29 +8,10 @@ html.dark body {
   background-color: #0f172a !important;
 }
 
-/* Invert the ENTIRE page content */
-html.dark #root {
-  filter: invert(0.88) hue-rotate(180deg);
-}
+/* Note: The main filter inversion is applied via inline JavaScript in ThemeContext.tsx */
+/* These rules handle elements that need extra contrast or are portaled outside #root */
 
-/* Re-invert images, videos so they look normal */
-html.dark #root img,
-html.dark #root video,
-html.dark #root canvas,
-html.dark #root [style*="background-image"],
-html.dark #root picture {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-/* Re-invert SVG icons (lucide) - they should follow text color */
-/* Don't re-invert lucide icons as they should be inverted with text */
-
-/* Re-invert Recharts so chart colors stay correct */
-html.dark #root .recharts-wrapper {
-  filter: invert(1) hue-rotate(180deg);
-}
-
-/* Dropdown/popover - these are portaled and may be outside #root */
+/* Dropdown/popover - portaled outside #root */
 html.dark [data-radix-popper-content-wrapper] {
   filter: invert(0.88) hue-rotate(180deg);
 }
@@ -54,7 +34,9 @@ html.dark [role="dialog"] img {
 html.dark [data-sonner-toaster] {
   filter: invert(0.88) hue-rotate(180deg);
 }
-html.dark [data-sonner-toaster] img {
+
+/* Footer warning bar - needs high contrast in dark mode */
+html.dark .fixed.bottom-0 {
   filter: invert(1) hue-rotate(180deg);
 }
 
@@ -62,7 +44,8 @@ html.dark [data-sonner-toaster] img {
 @media print {
   html.dark #root,
   html.dark #root img,
-  html.dark #root .recharts-wrapper {
+  html.dark #root .recharts-wrapper,
+  html.dark .fixed.bottom-0 {
     filter: none !important;
   }
 }

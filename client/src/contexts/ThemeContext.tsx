@@ -31,17 +31,10 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = document.documentElement;
-    const rootEl = document.getElementById("root");
-
     if (theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
-      // Clean up residual inline styles from old filter-based dark mode
-      document.body.style.backgroundColor = "";
-      if (rootEl) {
-        rootEl.style.filter = "";
-      }
     }
     if (switchable) {
       localStorage.setItem("theme", theme);
@@ -49,9 +42,7 @@ export function ThemeProvider({
   }, [theme, switchable]);
 
   const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
+    ? () => setTheme(prev => (prev === "light" ? "dark" : "light"))
     : undefined;
 
   return (
@@ -63,8 +54,6 @@ export function ThemeProvider({
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within ThemeProvider");
-  }
+  if (!context) throw new Error("useTheme must be used within ThemeProvider");
   return context;
 }

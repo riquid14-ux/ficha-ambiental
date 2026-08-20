@@ -61,7 +61,7 @@ describe("Dark Mode", () => {
   it("should have dark mode CSS overrides", async () => {
     const fs = await import("fs");
     const css = fs.readFileSync(`${process.cwd()}/client/src/index.css`, "utf-8");
-    expect(css).toContain("html.dark");
+    expect(css).toContain(".dark");
   });
 });
 

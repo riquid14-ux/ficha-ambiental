@@ -931,6 +931,10 @@ const translations: Record<string, Record<Lang, string>> = {
   "Sem dados para exibir.": { pt: "Sem dados para exibir.", en: "No data to display." },
   "Sem ficha submetida": { pt: "Sem ficha submetida", en: "No form submitted" },
   "Visão geral do estado das fichas por empresa e semana": { pt: "Visão geral do estado das fichas por empresa e semana", en: "Overview of form status by company and week" },
+  "Bem-vindo": { pt: "Bem-vindo", en: "Welcome" },
+  "Conheça a Start Campus": { pt: "Conheça a Start Campus", en: "Discover Start Campus" },
+  "O que pode fazer na visão global": { pt: "O que pode fazer na visão global", en: "What you can do in the global view" },
+  "Dicas rápidas": { pt: "Dicas rápidas", en: "Quick tips" },
 };
 
 interface LanguageContextType {

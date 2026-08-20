@@ -331,3 +331,8 @@
 - [x] Invite flow: company already has project associations projects from company when inviting
 - [x] Compliance: removed TSL/EDP from placeholders names from all placeholders/examples
 - [x] PDF import: already in ficha semanal Histórico tab it's in ficha semanal tab (not admin)
+- [x] Create Welcome/Intro page with YouTube video embed and role-based content
+- [x] Personalize content by role (EE, RAP, RAA, Admin, DO, PM, Observador)
+- [x] Personalize content by project (SIN01-NEST vs SIN02-SIN07)
+- [x] Make configurable via admin (video URL in Imagens)
+- [x] Add route and sidebar link, default landing for new users

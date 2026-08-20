@@ -28,6 +28,7 @@ import CalendarioControl from "./pages/CalendarioControl";
 import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";
 import KPI from "./pages/KPI";
+import Welcome from "./pages/Welcome";
 
 function Router() {
   return (
@@ -35,6 +36,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
+      <Route path="/welcome" component={Welcome} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/matriz" component={Matriz} />
       <Route path="/workflow" component={Workflow} />

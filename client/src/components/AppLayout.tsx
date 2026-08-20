@@ -46,13 +46,14 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle } from "lucide-react";
+import { Recycle, Home } from "lucide-react";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 
 // Menu items for individual project view
 const projectMenuItems = [
+  { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: BookOpen, label: "Workflow", path: "/workflow" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
@@ -64,6 +65,7 @@ const projectMenuItems = [
 
 // Menu items for operation-only projects (no construction workflow)
 const operationProjectMenuItems = [
+  { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
@@ -73,6 +75,7 @@ const operationProjectMenuItems = [
 
 // Menu items for "Todos os Projetos" view
 const allProjectsMenuItems = [
+  { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: Grid3X3, label: "Matriz Acompanhamento", path: "/matriz" },
   { icon: FileText, label: "Planos", path: "/planos" },
@@ -184,14 +187,14 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     if (isOperationOnly) return operationProjectMenuItems;
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
-      admin: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      dono_obra: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      pm: ["/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      ee: ["/workflow", "/ficha", "/residuos", "/kpi"],
-      raa: ["/workflow", "/ficha", "/residuos", "/kpi"],
-      rap: ["/workflow", "/ficha", "/kpi"],
-      observador: ["/dashboard", "/ficha"],
-      user: ["/ficha"],
+      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
+      raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
+      rap: ["/welcome", "/workflow", "/ficha", "/kpi"],
+      observador: ["/welcome", "/dashboard", "/ficha"],
+      user: ["/welcome", "/ficha"],
     };
     const allowed = allowedPaths[userRole] || allowedPaths.user;
     return projectMenuItems.filter(item => allowed.includes(item.path));
@@ -207,7 +210,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // NAV-01 FIX: Route guard — when project mode changes, if current route is not
   // in the new menu, redirect to Dashboard to avoid orphan pages
   useEffect(() => {
-    if (location === "/" || location === "/login" || location === "/perfil" || location === "/admin") return;
+    if (location === "/" || location === "/login" || location === "/perfil" || location === "/welcome" || location === "/admin") return;
     // Don't redirect if menu items haven't loaded yet or are empty
     if (allItems.length === 0) return;
     const validPaths = allItems.map(item => item.path);

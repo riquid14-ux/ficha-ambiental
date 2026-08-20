@@ -1116,8 +1116,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.": { pt: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.", en: "Track project phase progress, from pre-licensing to operation." },
   "Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.": { pt: "Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.", en: "Select the week and year for the control form you want to fill in." },
   "Iniciar Ficha": { pt: "Iniciar Ficha", en: "Start Form" },
-  "Evidências": { pt: "Evidências", en: "Evidence" },
-  "Próximo": { pt: "Próximo", en: "Next" },
 };
 interface LanguageContextType {
   language: Lang;

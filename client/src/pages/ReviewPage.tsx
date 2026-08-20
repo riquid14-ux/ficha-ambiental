@@ -94,7 +94,7 @@ export default function ReviewPage(props: any) {
 
   const reviewMutation = trpc.submissions.review.useMutation({
     onSuccess: () => {
-      toast.success("Revisão submetida com sucesso");
+      toast.success(t("Revisão submetida com sucesso"));
       utils.submissions.listAll.invalidate();
       setReviewDialogOpen(false);
       setSelectedSubmission(null);

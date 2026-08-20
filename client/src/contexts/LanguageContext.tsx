@@ -1118,6 +1118,11 @@ const translations: Record<string, Record<Lang, string>> = {
   "medidas total": { pt: "medidas total", en: "total measures" },
   "Concluídas": { pt: "Concluídas", en: "Completed" },
   "Pendentes": { pt: "Pendentes", en: "Pending" },
+  "Localização adicionada": { pt: "Localização adicionada", en: "Location added" },
+  "Edição criada com sucesso": { pt: "Edição criada com sucesso", en: "Edition created successfully" },
+  "Exportação Word em desenvolvimento": { pt: "Exportação Word em desenvolvimento", en: "Word export in development" },
+  "Entrega confirmada": { pt: "Entrega confirmada", en: "Delivery confirmed" },
+  "A gerar PDF de evolução...": { pt: "A gerar PDF de evolução...", en: "Generating evolution PDF..." },
 };
 interface LanguageContextType {
   language: Lang;

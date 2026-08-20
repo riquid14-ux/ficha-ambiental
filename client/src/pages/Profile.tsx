@@ -213,8 +213,8 @@ export default function Profile() {
               <Input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder={t("Confirmar nova palavra-passe")} />
             </div>
             <Button onClick={() => {
-              if (newPassword.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
-              if (newPassword !== confirmNewPassword) { toast.error("As palavras-passe não coincidem"); return; }
+              if (newPassword.length < 6) { toast.error(t("Mínimo 6 caracteres")); return; }
+              if (newPassword !== confirmNewPassword) { toast.error(t("As palavras-passe não coincidem")); return; }
               changePasswordMutation.mutate({ currentPassword, newPassword });
             }} disabled={changePasswordMutation.isPending || !currentPassword || !newPassword}>
               {changePasswordMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Lock className="h-4 w-4 mr-2" />}

@@ -43,8 +43,8 @@ export default function KPI() {
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery();
   const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
-  const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success("Métrica guardada."); } });
-  const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success("Métrica removida."); } });
+  const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success(t("Métrica guardada.")); } });
+  const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success(t("Métrica removida.")); } });
   const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
   const createIncidentMut = trpc.kpi.createIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });
   const deleteIncidentMut = trpc.kpi.deleteIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });

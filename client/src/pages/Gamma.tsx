@@ -73,7 +73,7 @@ export default function Gamma() {
     setActiveEdition(editions.length);
     setShowNewEdition(false);
     setNewEditionName("");
-    toast.success(`Edição "${newEditionName}" criada com sucesso!`);
+    toast.success(t("Edição criada com sucesso"));
   };
 
   return (
@@ -222,7 +222,7 @@ export default function Gamma() {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a"); a.href = url; a.download = "GAMMA_Candidatura_Formulario.doc"; a.click();
                     URL.revokeObjectURL(url);
-                    toast.success("Formulário exportado em Word");
+                    toast.success(t("Formulário exportado em Word"));
                   }}>
                     <Download className="w-4 h-4 mr-1" /> Exportar Word
                   </Button>
@@ -577,7 +577,7 @@ export default function Gamma() {
                   </div>
 
                   <div className="pt-4 border-t">
-                    <Button variant="outline" className="w-full" onClick={() => toast.success("Definições guardadas!")}>{t("Guardar Alterações")}</Button>
+                    <Button variant="outline" className="w-full" onClick={() => toast.success(t("Definições guardadas!"))}>{t("Guardar Alterações")}</Button>
                   </div>
                 </CardContent>
               </Card>

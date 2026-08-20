@@ -33,7 +33,7 @@ export default function CalendarioControl() {
     onError: (e: any) => toast.error(e.message),
   });
   const assignOwnerMutation = trpc.calendarEvents.assignOwner.useMutation({
-    onSuccess: () => { refetch(); toast.success("Responsável atualizado"); },
+    onSuccess: () => { refetch(); toast.success(t("Responsável atualizado")); },
     onError: (e: any) => toast.error(e.message),
   });
   const updateStatusMutation = trpc.calendarEvents.updateStatus.useMutation({

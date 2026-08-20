@@ -164,7 +164,7 @@ export default function MIRR() {
   }
 
   function handleCreate() {
-    if (!projectId || !newEgar.lerCode || !newEgar.quantity) { toast.error("Preencha Código LER e Quantidade"); return; }
+    if (!projectId || !newEgar.lerCode || !newEgar.quantity) { toast.error(t("Preencha Código LER e Quantidade")); return; }
     const ler = lerCodes.find(l => l.code === newEgar.lerCode);
     createMutation.mutate({
       projectId,
@@ -214,7 +214,7 @@ export default function MIRR() {
             </Select>
             {isAdminOrDono && <>
               <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Nova e-GAR")}</Button>
-              <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info("Importação de e-GAR via ficheiro em desenvolvimento."); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> {t("Importar e-GAR")}</Button>
+              <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info(t("Importação de e-GAR via ficheiro em desenvolvimento.")); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> {t("Importar e-GAR")}</Button>
               {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
             </>}
             <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> {t("Exportar Excel MIRR")}</Button>
@@ -246,7 +246,7 @@ export default function MIRR() {
                   <div><label className="text-[10px] text-muted-foreground">{t("Código")}</label><Input className="h-7 text-xs w-20" value={newLer.code} onChange={e => setNewLer(p => ({ ...p, code: e.target.value }))} placeholder="170904" /></div>
                   <div className="flex-1"><label className="text-[10px] text-muted-foreground">{t("Designação")}</label><Input className="h-7 text-xs" value={newLer.name} onChange={e => setNewLer(p => ({ ...p, name: e.target.value }))} placeholder={t("Nome do resíduo")} /></div>
                   <label className="flex items-center gap-1 text-[10px]"><input type="checkbox" checked={newLer.hazardous} onChange={e => setNewLer(p => ({ ...p, hazardous: e.target.checked }))} /> Perigoso</label>
-                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newLer.code && newLer.name) { setLerCodes([...lerCodes, newLer]); setNewLer({ code: "", name: "", hazardous: false }); toast.success("Código LER adicionado"); } }}>{t("Adicionar")}</Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={() => { if (newLer.code && newLer.name) { setLerCodes([...lerCodes, newLer]); setNewLer({ code: "", name: "", hazardous: false }); toast.success(t("Código LER adicionado")); } }}>{t("Adicionar")}</Button>
                 </div>
               </div>
               {/* Destinations Management */}

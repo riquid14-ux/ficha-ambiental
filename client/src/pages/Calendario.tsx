@@ -162,7 +162,7 @@ export default function Calendario() {
     onError: (e: any) => toast.error(e.message),
   });
   const assignOwnerMutation = trpc.calendarEvents.assignOwner.useMutation({
-    onSuccess: () => { refetchCalEvents(); toast.success("Responsável atribuído"); },
+    onSuccess: () => { refetchCalEvents(); toast.success(t("Responsável atribuído")); },
     onError: (e: any) => toast.error(e.message),
   });
 

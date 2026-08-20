@@ -3,36 +3,50 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { Component, ReactNode } from "react";
+import { Component, ReactNode, lazy, Suspense } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProjectProvider } from "./contexts/ProjectContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import WeeklyForm from "./pages/WeeklyForm";
-import AdminPanel from "./pages/AdminPanel";
-import SubmissionHistory from "./pages/SubmissionHistory";
-import ReviewPage from "./pages/ReviewPage";
 import AppLayout from "./components/AppLayout";
-import Profile from "./pages/Profile";
-import Matriz from "./pages/Matriz";
-import Workflow from "./pages/Workflow";
-import Planos from "./pages/Planos";
-import Calendario from "./pages/Calendario";
-import PhaseMeasures from "./pages/PhaseMeasures";
-import Timeline from "./pages/Timeline";
-import Certifications from "./pages/Certifications";
-import Gamma from "./pages/Gamma";
-import CalendarioControl from "./pages/CalendarioControl";
-import RDCD from "./pages/RDCD";
-import MIRR from "./pages/MIRR";
-import KPI from "./pages/KPI";
-import Welcome from "./pages/Welcome";
+
+// Lazy-loaded pages for code splitting
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const WeeklyForm = lazy(() => import("./pages/WeeklyForm"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const SubmissionHistory = lazy(() => import("./pages/SubmissionHistory"));
+const ReviewPage = lazy(() => import("./pages/ReviewPage"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Matriz = lazy(() => import("./pages/Matriz"));
+const Workflow = lazy(() => import("./pages/Workflow"));
+const Planos = lazy(() => import("./pages/Planos"));
+const Calendario = lazy(() => import("./pages/Calendario"));
+const PhaseMeasures = lazy(() => import("./pages/PhaseMeasures"));
+const Timeline = lazy(() => import("./pages/Timeline"));
+const Certifications = lazy(() => import("./pages/Certifications"));
+const Gamma = lazy(() => import("./pages/Gamma"));
+const CalendarioControl = lazy(() => import("./pages/CalendarioControl"));
+const RDCD = lazy(() => import("./pages/RDCD"));
+const MIRR = lazy(() => import("./pages/MIRR"));
+const KPI = lazy(() => import("./pages/KPI"));
+const Welcome = lazy(() => import("./pages/Welcome"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-green-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground">A carregar...</p>
+      </div>
+    </div>
+  );
+}
 
 function Router() {
   return (
     <RouteErrorBoundary>
+    <Suspense fallback={<PageLoader />}>
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
@@ -60,6 +74,7 @@ function Router() {
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
     </RouteErrorBoundary>
   );
 }

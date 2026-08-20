@@ -56,3 +56,20 @@ html.dark .text-foreground {
 html.dark [data-slot="badge"] {
   color: #e2e8f0 !important;
 }
+
+/* Fix chart colors in dark mode - re-invert so original colors show correctly */
+html.dark .recharts-wrapper,
+html.dark .recharts-surface,
+html.dark .recharts-layer {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Fix YouTube embed in Welcome page */
+html.dark iframe[src*="youtube"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Ensure footer warning is always visible in dark mode */
+html.dark [class*="fixed bottom"] {
+  filter: invert(1) hue-rotate(180deg) !important;
+}

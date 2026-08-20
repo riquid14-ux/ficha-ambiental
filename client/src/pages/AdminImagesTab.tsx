@@ -55,7 +55,7 @@ export default function ImagesTab() {
   const deleteMutation = trpc.appSettings.delete.useMutation({
     onSuccess: () => {
       refetch();
-      toast.success("Localização eliminada");
+      toast.success(t("Localização eliminada"));
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -101,12 +101,12 @@ export default function ImagesTab() {
 
   function handleAddLocation() {
     if (!newLocationName.trim() || !newLocationPage) {
-      toast.error("Preencha o nome e selecione a página");
+      toast.error(t("Preencha o nome e selecione a página"));
       return;
     }
     const key = "image_custom_" + newLocationName.trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
     if (allLocations.some(l => l.key === key)) {
-      toast.error("Já existe uma localização com esse nome");
+      toast.error(t("Já existe uma localização com esse nome"));
       return;
     }
     setCustomLocations(prev => [...prev, { key, label: newLocationName.trim(), page: newLocationPage }]);
@@ -115,7 +115,7 @@ export default function ImagesTab() {
     setNewLocationName("");
     setNewLocationPage("");
     setShowNewForm(false);
-    toast.success(`Localização "${newLocationName.trim()}" adicionada para a página "${newLocationPage}". Cole o URL e guarde.`);
+    toast.success(t("Localização adicionada") + `: ${newLocationName.trim()} - ${newLocationPage}`);
   }
 
   function handleDeleteLocation(key: string) {
@@ -184,7 +184,7 @@ export default function ImagesTab() {
                     alt={label}
                     className="w-full h-full object-cover"
                     style={{ objectPosition: positions[key] || "center" }}
-                    onError={(e) => { (e.target as HTMLImageElement).src = ""; toast.error("URL inválido"); }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = ""; toast.error(t("URL inválido")); }}
                   />
                 </div>
               )}

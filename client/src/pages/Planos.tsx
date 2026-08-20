@@ -41,7 +41,7 @@ export default function Planos() {
     onSuccess: (data: any) => {
       refetch();
       const nextDate = data.nextReportingDate ? new Date(data.nextReportingDate).toLocaleDateString("pt-PT") : "";
-      toast.success(`Entrega confirmada! Próxima data: ${nextDate}`);
+      toast.success(t("Entrega confirmada") + `: ${nextDate}`);
     },
     onError: (e: any) => toast.error(e.message),
   });

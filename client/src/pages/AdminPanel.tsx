@@ -987,7 +987,7 @@ function HistoricalTab() {
   const historicalQuery = trpc.historical.list.useQuery({});
   const uploadMutation = trpc.historical.upload.useMutation({
     onSuccess: () => {
-      toast.success("PDF histórico carregado com sucesso");
+      toast.success(t("PDF histórico carregado com sucesso"));
       utils.historical.list.invalidate();
     },
     onError: (err) => toast.error(err.message),

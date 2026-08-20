@@ -55,7 +55,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
   });
 
   const addCommentMutation = trpc.phaseEvidence.addComment.useMutation({
-    onSuccess: () => { evidenceQuery.refetch(); toast.success("Comentário adicionado"); },
+    onSuccess: () => { evidenceQuery.refetch(); toast.success(t("Comentário adicionado")); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -226,7 +226,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => toast.info(`Exportação Word "Exploração ${evidenceYear}" em desenvolvimento.`)}>
+            <Button variant="outline" size="sm" onClick={() => toast.info(t("Exportação Word em desenvolvimento"))}>
               <Download className="w-4 h-4 mr-1" /> Criar Doc {evidenceYear}
             </Button>
           </div>
@@ -292,7 +292,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                         <Textarea placeholder={t("Descrição da medida/condição")} value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
                         <Button onClick={() => {
                           const sec = (phaseData[phase.key] || [])[0]?.section;
-                          if (!sec) { toast.error("Secção não encontrada"); return; }
+                          if (!sec) { toast.error(t("Secção não encontrada")); return; }
                           addMeasureMutation?.mutate?.({
                             number: newMeasure.number,
                             description: newMeasure.description,

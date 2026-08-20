@@ -117,11 +117,11 @@ export default function SubmissionHistory(props: any) {
       return;
     }
     if (!measureStartDate || !measureEndDate) {
-      toast.error("Selecione as datas de início e fim do período.");
+      toast.error(t("Selecione as datas de início e fim do período."));
       return;
     }
     setExportingMeasure(true);
-    toast.info(`A gerar PDF de evolução para ${selectedMeasureIds.length} medida(s)...`);
+    toast.info(t("A gerar PDF de evolução..."));
 
     const params = new URLSearchParams({
       measureIds: selectedMeasureIds.join(","),
@@ -219,7 +219,7 @@ export default function SubmissionHistory(props: any) {
   const handleExportAll = async () => {
     const exportable = filteredSubmissions.filter((s) => s.status === "submitted" || s.status === "approved");
     if (exportable.length === 0) {
-      toast.error("Nenhuma ficha submetida/aprovada para exportar neste período.");
+      toast.error(t("Nenhuma ficha submetida/aprovada para exportar neste período."));
       return;
     }
     setExporting(true);

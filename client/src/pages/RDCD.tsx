@@ -352,7 +352,7 @@ export default function RDCD() {
                 <Button variant="outline" onClick={() => setStep(1)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
-                <Button onClick={() => { if (!startWeek || !endWeek) { toast.error("Defina o período"); return; } setStep(3); }}>
+                <Button onClick={() => { if (!startWeek || !endWeek) { toast.error(t("Defina o período")); return; } setStep(3); }}>
                   Seguinte <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>

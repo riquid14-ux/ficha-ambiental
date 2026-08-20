@@ -423,7 +423,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           </Card>
         </div>
       )}
-      {/* English Translation Warning */}
+
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>

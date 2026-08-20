@@ -277,7 +277,7 @@ export default function Welcome() {
         )}
 
         {/* Quick tips */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/30 border border-blue-200/50 shadow-sm">
             <div className="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
             <div>
@@ -289,27 +289,20 @@ export default function Welcome() {
             <div className="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
             <div>
               <p className="text-sm font-medium text-emerald-900 mb-0.5">
-                {userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard"}
+                {userRole === "ee" || userRole === "rap" ? t("Fichas semanais") : userRole === "raa" ? t("Revisão") : t("Dashboard")}
               </p>
               <p className="text-xs text-emerald-700">
                 {userRole === "ee" || userRole === "rap"
-                  ? "Submeta atempadamente para evitar alertas."
+                  ? t("Submeta atempadamente para evitar alertas.")
                   : userRole === "raa"
-                  ? "Reveja e forneça feedback detalhado."
-                  : "Consulte o estado de cumprimento."
+                  ? t("Reveja e forneça feedback detalhado.")
+                  : t("Consulte o estado de cumprimento.")
                 }
               </p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-100/30 border border-amber-200/50 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
-            <div>
-              <p className="text-sm font-medium text-amber-900 mb-0.5">{ t("Personalização") }</p>
-              <p className="text-xs text-amber-700">{t("Alterne entre modo claro/escuro e PT/EN no menu do utilizador.")}</p>
-            </div>
-          </div>
           <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-100/30 border border-violet-200/50 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-violet-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">4</div>
+            <div className="w-9 h-9 rounded-lg bg-violet-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
             <div>
               <p className="text-sm font-medium text-violet-900 mb-0.5">{ t("Suporte") }</p>
               <p className="text-xs text-violet-700">{t("Contacte apoioamb@startcampus.pt ou use Deixar Feedback.")}</p>

@@ -1088,7 +1088,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Visão consolidada de todos os projetos Start Campus.": { pt: "Visão consolidada de todos os projetos Start Campus.", en: "Consolidated view of all Start Campus projects." },
   "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.": { pt: "Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.", en: "Project in operation phase: annual environmental deliverables, waste and certifications." },
   "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.": { pt: "Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.", en: "Monitoring compliance with DCAPE environmental measures during construction." },
-  "Alterne entre modo claro/escuro e PT/EN no menu do utilizador.": { pt: "Alterne entre modo claro/escuro e PT/EN no menu do utilizador.", en: "Switch between light/dark mode and PT/EN in the user menu." },
   "Dashboard Global": { pt: "Dashboard Global", en: "Global Dashboard" },
   "Visão geral do cumprimento ambiental de todos os projetos Start Campus.": { pt: "Visão geral do cumprimento ambiental de todos os projetos Start Campus.", en: "Overview of environmental compliance across all Start Campus projects." },
   "Calendário Integrado": { pt: "Calendário Integrado", en: "Integrated Calendar" },

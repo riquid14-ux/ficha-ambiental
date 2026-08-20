@@ -294,8 +294,7 @@ export default function Timeline() {
           </div>
           {user?.role === "admin" && (
             <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
-              <Settings className="w-4 h-4 mr-1" /> Definições
-            </Button>
+              <Settings className="w-4 h-4 mr-1" />{t("Definições")}</Button>
           )}
         </div>
       </div>
@@ -335,7 +334,7 @@ export default function Timeline() {
                     {phase.hidden ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-green-600" />}
                   </button>
                   <span className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}>{t(phase.label)}</span>
-                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.startDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, startDate: e.target.value || undefined })} placeholder="Início" />
+                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.startDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, startDate: e.target.value || undefined })} placeholder={t("Início")} />
                   <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.endDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, endDate: e.target.value || undefined })} placeholder="Fim" />
                 </div>
               ))}

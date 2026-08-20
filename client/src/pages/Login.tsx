@@ -43,10 +43,10 @@ export default function Login() {
         setViewMode("changePassword");
         setError("");
         // Session was created, but force password change
-        window.location.href = "/dashboard";
+        window.location.href = "/welcome";
       } else {
         sessionStorage.setItem("pw_verified", "1");
-        window.location.href = "/dashboard";
+        window.location.href = "/welcome";
       }
     },
     onError: (err) => setError(err.message),
@@ -55,10 +55,10 @@ export default function Login() {
   const verify2FAMutation = trpc.auth.verify2FA.useMutation({
     onSuccess: (data) => {
       if (data.mustChangePassword) {
-        window.location.href = "/dashboard";
+        window.location.href = "/welcome";
       } else {
         sessionStorage.setItem("pw_verified", "1");
-        window.location.href = "/dashboard";
+        window.location.href = "/welcome";
       }
     },
     onError: (err) => setError(err.message),
@@ -98,7 +98,7 @@ export default function Login() {
       setAutoLoginLoading(true);
       fetch("/api/autodesk/auto-login", { method: "POST", credentials: "include" })
         .then(async (res) => {
-          if (res.ok) { window.location.href = "/dashboard"; }
+          if (res.ok) { window.location.href = "/welcome"; }
           else { setAutoLoginAttempted(true); setAutoLoginLoading(false); }
         })
         .catch(() => { setAutoLoginAttempted(true); setAutoLoginLoading(false); });
@@ -108,7 +108,7 @@ export default function Login() {
   }, [loading, user, autoLoginAttempted]);
 
   useEffect(() => {
-    if (!loading && user && viewMode === "login") setLocation("/dashboard");
+    if (!loading && user && viewMode === "login") setLocation("/welcome");
     // OAuth users go directly to dashboard
   }, [loading, user, setLocation, viewMode]);
 
@@ -173,9 +173,7 @@ export default function Login() {
             <img src={LOGO_URL} alt="Start Campus" className="h-10 object-contain brightness-0 invert" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Plataforma de Gestão Ambiental
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Plataforma de Gestão Ambiental")}</h1>
             <p className="text-sm text-muted-foreground mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
@@ -264,7 +262,7 @@ export default function Login() {
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setTotpCode(""); setError(""); setUserId(null); }}>
               ← Voltar ao login
             </button>
-            <p className="text-xs text-muted-foreground text-center">Não tem acesso ao autenticador? Contacte <strong>apoioamb@startcampus.pt</strong></p>
+            <p className="text-xs text-muted-foreground text-center">{t("Não tem acesso ao autenticador? Contacte")}<strong>apoioamb@startcampus.pt</strong></p>
           </form>
         )}
 
@@ -279,7 +277,7 @@ export default function Login() {
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="Palavra-passe (mín. 8 caracteres)" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
+              <Input type="password" placeholder={t("Palavra-passe (mín. 8 caracteres)")} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -288,12 +286,8 @@ export default function Login() {
             <Button type="submit" size="lg" className="w-full h-12" disabled={registerMutation.isPending}>
               {registerMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A criar...</>) : "Solicitar Acesso"}
             </Button>
-            <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>
-              Já tenho conta — Entrar
-            </button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Após criar conta, o administrador irá aprovar o seu acesso.
-            </p>
+            <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>{t("Já tenho conta — Entrar")}</button>
+            <p className="text-xs text-muted-foreground text-center mt-2">{t("Após criar conta, o administrador irá aprovar o seu acesso.")}</p>
           </form>
         )}
 
@@ -326,9 +320,7 @@ export default function Login() {
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => setViewMode("forgotPassword")}>
                 Esqueceu a palavra-passe?
               </button>
-              <button type="button" className="text-red-500 hover:underline" onClick={() => { window.location.href = "/api/auth/logout"; }}>
-                Terminar Sessão
-              </button>
+              <button type="button" className="text-red-500 hover:underline" onClick={() => { window.location.href = "/api/auth/logout"; }}>{t("Terminar Sessão")}</button>
             </div>
           </form>
         )}
@@ -354,8 +346,7 @@ export default function Login() {
               ← Voltar ao login
             </button>
             <p className="text-xs text-muted-foreground text-center">
-              Contacte <strong>apoioamb@startcampus.pt</strong> para assistência imediata.
-            </p>
+              Contacte <strong>apoioamb@startcampus.pt</strong>{t("para assistência imediata.")}</p>
           </form>
         )}
         </div>

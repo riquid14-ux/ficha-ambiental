@@ -393,10 +393,9 @@ export default function ReviewPage(props: any) {
                                     className={`h-8 px-3 ${v?.verdict === "nok" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-50 dark:bg-red-900/20 hover:border-red-300"}`}
                                     onClick={() => setVerdict(m.id, v?.verdict === "nok" ? null : "nok")}
                                   >
-                                    <XIcon className="w-4 h-4 mr-1" /> Não Conforme
-                                  </Button>
+                                    <XIcon className="w-4 h-4 mr-1" />{t("Não Conforme")}</Button>
                                   <Input
-                                    placeholder="Comentário RAA (opcional)..."
+                                    placeholder={t("Comentário RAA (opcional)...")}
                                     value={v?.comment || ""}
                                     onChange={(e) => setVerdictComment(m.id, e.target.value)}
                                     className="flex-1 h-8 text-xs"

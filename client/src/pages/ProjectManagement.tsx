@@ -83,7 +83,7 @@ function CreateProjectDialog() {
           </div>
           <div>
             <Label>{t("Descrição (opcional)")}</Label>
-            <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Descrição breve" />
+            <Input value={description} onChange={e => setDescription(e.target.value)} placeholder={t("Descrição breve")} />
           </div>
           <Button
             className="w-full"

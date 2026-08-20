@@ -292,9 +292,7 @@ export default function Calendario() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Calendar className="w-6 h-6" />
-              Calendário de Reporting
-            </h1>
+              <Calendar className="w-6 h-6" />{t("Calendário de Reporting")}</h1>
             <p className="text-muted-foreground text-sm">
               {isAllProjects ? t("Todos os Projetos") : activeProject?.name || "Projeto"} — {t("Datas de entrega de reportings")}
             </p>
@@ -660,7 +658,7 @@ export default function Calendario() {
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhum evento de reporting criado. Use o botão "Novo Evento" para adicionar.</p>
+              <p className="text-sm text-muted-foreground">{t("Nenhum evento de reporting criado")}</p>
             )}
           </CardContent>
         </Card>
@@ -670,8 +668,7 @@ export default function Calendario() {
           <Card className="border-purple-200">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Settings2 className="w-4 h-4" /> Gestão de Eventos
-              </h3>
+                <Settings2 className="w-4 h-4" />{t("Gestão de Eventos")}</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -804,7 +801,7 @@ export default function Calendario() {
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("Entidade")}</label>
-                  <Input value={newEvent.entityToDeliver} onChange={e => setNewEvent(prev => ({ ...prev, entityToDeliver: e.target.value }))} placeholder="Ex: APA, CCDR, Câmara Municipal" />
+                  <Input value={newEvent.entityToDeliver} onChange={e => setNewEvent(prev => ({ ...prev, entityToDeliver: e.target.value }))} placeholder={t("Ex: APA, CCDR, Câmara Municipal")} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Link da Entidade (URL do portal)</label>

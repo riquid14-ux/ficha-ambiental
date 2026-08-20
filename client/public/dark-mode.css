@@ -17,7 +17,7 @@ html.dark [data-slot="sidebar"] img {
 
 /* Dropdown/popover - portaled outside #root */
 html.dark [data-radix-popper-content-wrapper] {
-  filter: invert(0.88) hue-rotate(180deg) !important;
+  filter: invert(0.93) hue-rotate(180deg) !important;
 }
 html.dark [data-radix-popper-content-wrapper] img {
   filter: invert(1) hue-rotate(180deg) !important;
@@ -25,10 +25,10 @@ html.dark [data-radix-popper-content-wrapper] img {
 
 /* Dialog overlay and content - portaled outside #root */
 html.dark [data-slot="dialog-overlay"] {
-  filter: invert(0.88) hue-rotate(180deg) !important;
+  filter: invert(0.93) hue-rotate(180deg) !important;
 }
 html.dark [role="dialog"] {
-  filter: invert(0.88) hue-rotate(180deg) !important;
+  filter: invert(0.93) hue-rotate(180deg) !important;
 }
 html.dark [role="dialog"] img {
   filter: invert(1) hue-rotate(180deg) !important;
@@ -36,7 +36,7 @@ html.dark [role="dialog"] img {
 
 /* Toast notifications */
 html.dark [data-sonner-toaster] {
-  filter: invert(0.88) hue-rotate(180deg) !important;
+  filter: invert(0.93) hue-rotate(180deg) !important;
 }
 
 /* Footer warning bar */
@@ -51,4 +51,58 @@ html.dark .fixed.bottom-0 {
   html.dark .fixed.bottom-0 {
     filter: none !important;
   }
+}
+
+/* ===== FORCE WHITE TEXT ON TITLES AND HEADINGS IN DARK MODE ===== */
+/* The filter inversion makes backgrounds dark but dark text stays dark.
+   These rules force all text to be white/light in dark mode. */
+html.dark #root h1,
+html.dark #root h2,
+html.dark #root h3,
+html.dark #root h4,
+html.dark #root h5,
+html.dark #root h6,
+html.dark #root p,
+html.dark #root span,
+html.dark #root label,
+html.dark #root td,
+html.dark #root th,
+html.dark #root li,
+html.dark #root a,
+html.dark #root div {
+  color: inherit;
+}
+
+/* After inversion, the inverted colors should work. But if text is still dark,
+   force it white with higher specificity */
+html.dark #root [data-slot="sidebar-inset"] h1,
+html.dark #root [data-slot="sidebar-inset"] h2,
+html.dark #root [data-slot="sidebar-inset"] h3,
+html.dark #root [data-slot="sidebar-inset"] h4,
+html.dark #root [data-slot="sidebar-inset"] .font-bold,
+html.dark #root [data-slot="sidebar-inset"] .font-semibold,
+html.dark #root [data-slot="sidebar-inset"] .text-foreground {
+  color: white !important;
+}
+
+/* Card titles */
+html.dark #root [data-slot="card-title"],
+html.dark #root [data-slot="sidebar-inset"] [data-slot="card-title"] {
+  color: white !important;
+}
+
+/* Ensure all text in the main content area is light */
+html.dark #root [data-slot="sidebar-inset"] {
+  color: #e2e8f0 !important;
+}
+
+/* Muted text should be lighter gray */
+html.dark #root .text-muted-foreground {
+  color: #94a3b8 !important;
+}
+
+/* Badge text */
+html.dark #root .badge,
+html.dark #root [data-slot="badge"] {
+  filter: invert(1) hue-rotate(180deg);
 }

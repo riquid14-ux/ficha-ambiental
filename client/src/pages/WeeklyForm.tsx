@@ -453,9 +453,7 @@ export default function WeeklyForm() {
       <AppLayout>
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">
-              A sua conta ainda não está associada a nenhuma empresa. Contacte apoioamb@startcampus.pt.
-            </p>
+            <p className="text-muted-foreground">{t("A sua conta ainda não está associada a nenhuma empresa. Contacte apoioamb@startcampus.pt.")}</p>
           </CardContent>
         </Card>
       </AppLayout>
@@ -513,9 +511,7 @@ export default function WeeklyForm() {
               Matriz
             </TabsTrigger>
             <TabsTrigger value="historico" className="gap-1 text-xs">
-              <History className="w-3.5 h-3.5" />
-              Histórico
-            </TabsTrigger>
+              <History className="w-3.5 h-3.5" />{t("Histórico")}</TabsTrigger>
             <TabsTrigger value="revisao" className="gap-1 text-xs">
               <FileText className="w-3.5 h-3.5" />
               {t("Revisão")}
@@ -568,8 +564,7 @@ export default function WeeklyForm() {
                 </div>
               </div>
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground">
-                  Período: <strong>{weekDates.start}</strong> a <strong>{weekDates.end}</strong>
+                <p className="text-sm text-muted-foreground">{t("Período:")}<strong>{weekDates.start}</strong> a <strong>{weekDates.end}</strong>
                 </p>
               </div>
               {isAllProjects && !params.id ? (
@@ -584,9 +579,7 @@ export default function WeeklyForm() {
                   <Button onClick={() => setStarted(true)} size="lg" className="w-full">
                     Iniciar Ficha — Semana {selectedWeek}/{selectedYear}
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">
-                    As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.
-                  </p>
+                  <p className="text-xs text-center text-muted-foreground">{t("As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.")}</p>
                 </div>
               )}
             </CardContent>
@@ -629,8 +622,7 @@ export default function WeeklyForm() {
                       <div className="mt-2 flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-300">
                         <XCircle className="w-4 h-4 shrink-0" />
                         <span>
-                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong> medida(s) marcada(s) como não conforme — corrija os itens assinalados abaixo e resubmeta.
-                        </span>
+                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong>{t("medida(s) marcada(s) como não conforme — corrija os itens assinalados abaixo e resubmeta.")}</span>
                       </div>
                     )}
                     <p className="mt-2 text-xs text-red-500 dark:text-red-400 italic">
@@ -847,9 +839,7 @@ export default function WeeklyForm() {
                   <FileText className="w-5 h-5" />
                   Rascunhos e Rejeitadas
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Fichas em rascunho ou rejeitadas que necessitam de atenção.
-                </p>
+                <p className="text-sm text-muted-foreground">{t("Fichas em rascunho ou rejeitadas que necessitam de atenção.")}</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 {mySubmissionsQuery.isLoading && (
@@ -869,9 +859,7 @@ export default function WeeklyForm() {
                     <p className="text-sm text-muted-foreground">
                       Sem rascunhos ou fichas rejeitadas neste projeto.
                     </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">
-                      Quando criar uma nova ficha ou receber uma rejeição, ela aparecerá aqui.
-                    </p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">{t("Quando criar uma nova ficha ou receber uma rejeição, ela aparecerá aqui.")}</p>
                   </div>
                 )}
                 {draftsAndRejected.map((sub: any) => (

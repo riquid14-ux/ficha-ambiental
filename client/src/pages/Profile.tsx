@@ -93,17 +93,13 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("Perfil")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gerir as suas informações pessoais
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">{t("Gerir as suas informações pessoais")}</p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <User className="h-5 w-5" />
-              Informações Pessoais
-            </CardTitle>
+              <User className="h-5 w-5" />{t("Informações Pessoais")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             {profileQuery.isLoading ? (
@@ -120,9 +116,7 @@ export default function Profile() {
                     disabled
                     className="bg-muted/50"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    O email não pode ser alterado.
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("O email não pode ser alterado.")}</p>
                 </div>
 
                 <div className="space-y-2">
@@ -133,9 +127,7 @@ export default function Profile() {
                     disabled
                     className="bg-muted/50"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    O papel é definido pelo administrador.
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t("O papel é definido pelo administrador.")}</p>
                 </div>
 
                 <div className="border-t pt-5 space-y-4">
@@ -160,9 +152,7 @@ export default function Profile() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Nome completo para documentos oficiais e relatórios.
-                    </p>
+                    <p className="text-xs text-muted-foreground">{t("Nome completo para documentos oficiais e relatórios.")}</p>
                   </div>
 
                   <div className="space-y-2">
@@ -173,9 +163,7 @@ export default function Profile() {
                       value={jobTitle}
                       onChange={(e) => setJobTitle(e.target.value)}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Cargo ou função na empresa.
-                    </p>
+                    <p className="text-xs text-muted-foreground">{t("Cargo ou função na empresa.")}</p>
                   </div>
                 </div>
 
@@ -239,14 +227,10 @@ export default function Profile() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5" />
-              Autenticação de Dois Fatores (2FA)
-            </CardTitle>
+              <Shield className="h-5 w-5" />{t("Autenticação de Dois Fatores (2FA)")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Adicione uma camada extra de segurança à sua conta usando o Google Authenticator ou Microsoft Authenticator.
-            </p>
+            <p className="text-sm text-muted-foreground">{t("Adicione uma camada extra de segurança à sua conta usando o Google Authenticator ou Microsoft Authenticator.")}</p>
             {!qrData ? (
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setup2FAMutation.mutate()} disabled={setup2FAMutation.isPending}>
@@ -263,7 +247,7 @@ export default function Profile() {
                   <img src={qrData.qrCode} alt="QR Code 2FA" className="w-48 h-48 border rounded" />
                 </div>
                 <p className="text-xs text-muted-foreground text-center">Chave manual: {qrData.secret}</p>
-                <p className="text-sm font-medium">2. Introduza o código de 6 dígitos para confirmar:</p>
+                <p className="text-sm font-medium">{t("2. Introduza o código de 6 dígitos para confirmar:")}</p>
                 <div className="flex gap-2">
                   <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="font-mono text-lg tracking-widest" maxLength={6} />
                   <Button onClick={() => confirm2FAMutation.mutate({ code: totpCode })} disabled={totpCode.length !== 6 || confirm2FAMutation.isPending}>

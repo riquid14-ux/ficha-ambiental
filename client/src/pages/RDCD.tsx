@@ -207,12 +207,8 @@ export default function RDCD() {
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileBarChart className="w-6 h-6" />
-            RDCD — Relatório de Demonstração de Cumprimento
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Compilar fichas semanais e gerar o relatório semestral para a APA
-          </p>
+            <FileBarChart className="w-6 h-6" />{t("RDCD — Relatório de Demonstração de Cumprimento")}</h1>
+          <p className="text-muted-foreground text-sm">{t("Compilar fichas semanais e gerar o relatório semestral para a APA")}</p>
         </div>
 
         {/* Wizard Steps */}
@@ -455,8 +451,7 @@ export default function RDCD() {
                 <Button variant="outline" onClick={() => setStep(2)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
-                <Button onClick={() => setStep(4)}>
-                  Pré-visualizar <Eye className="w-4 h-4 ml-1" />
+                <Button onClick={() => setStep(4)}>{t("Pré-visualizar")}<Eye className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             </CardContent>

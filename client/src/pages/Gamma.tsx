@@ -125,9 +125,9 @@ export default function Gamma() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">
-            <TabsTrigger value="portfolio">Portefólio</TabsTrigger>
+            <TabsTrigger value="portfolio">{t("Portefólio")}</TabsTrigger>
             <TabsTrigger value="candidatura">Candidatura</TabsTrigger>
-            <TabsTrigger value="avaliacao">Avaliação</TabsTrigger>
+            <TabsTrigger value="avaliacao">{t("Avaliação")}</TabsTrigger>
             <TabsTrigger value="necessidades">{t("Necessidades")}</TabsTrigger>
             <TabsTrigger value="scorecard">{t("Scorecard")}</TabsTrigger>
             <TabsTrigger value="vencedores">{t("Vencedores")}</TabsTrigger>
@@ -159,31 +159,31 @@ export default function Gamma() {
                     <div><label className="text-xs font-medium">{t("Nome do Projeto *")}</label><Input placeholder={t("Nome do projeto comunitário")} /></div>
                     <div><label className="text-xs font-medium">Entidade Proponente *</label><Input placeholder={t("Nome da entidade")} /></div>
                     <div><label className="text-xs font-medium">{t("Tipo de Entidade *")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{ENTITY_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs font-medium">Pessoa Responsável</label><Input placeholder={t("Nome completo")} /></div>
+                    <div><label className="text-xs font-medium">{t("Pessoa Responsável")}</label><Input placeholder={t("Nome completo")} /></div>
                     <div><label className="text-xs font-medium">E-mail</label><Input type="email" placeholder="email@entidade.pt" /></div>
                     <div><label className="text-xs font-medium">Telefone</label><Input placeholder="+351..." /></div>
-                    <div><label className="text-xs font-medium">Município(s) Beneficiado(s) *</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{MUNICIPALITIES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs font-medium">Localidade(s) / Área de Intervenção</label><Input placeholder="Localidades específicas" /></div>
+                    <div><label className="text-xs font-medium">{t("Município(s) Beneficiado(s) *")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent>{MUNICIPALITIES.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select></div>
+                    <div><label className="text-xs font-medium">{t("Localidade(s) / Área de Intervenção")}</label><Input placeholder={t("Localidades específicas")} /></div>
                     <div><label className="text-xs font-medium">Pilar Principal *</label><Select><SelectTrigger><SelectValue placeholder="Selecionar pilar..." /></SelectTrigger><SelectContent>{edition.pillars.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs font-medium">Pilar Secundário</label><Select><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{edition.pillars.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
-                    <div><label className="text-xs font-medium">Duração Estimada (meses)</label><Input type="number" placeholder="6" /></div>
-                    <div><label className="text-xs font-medium">Data Prevista de Início</label><Input type="date" /></div>
-                    <div><label className="text-xs font-medium">Orçamento Total (€) *</label><Input type="number" placeholder="0.00" /></div>
+                    <div><label className="text-xs font-medium">{t("Pilar Secundário")}</label><Select><SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger><SelectContent>{edition.pillars.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
+                    <div><label className="text-xs font-medium">{t("Duração Estimada (meses)")}</label><Input type="number" placeholder="6" /></div>
+                    <div><label className="text-xs font-medium">{t("Data Prevista de Início")}</label><Input type="date" /></div>
+                    <div><label className="text-xs font-medium">{t("Orçamento Total (€) *")}</label><Input type="number" placeholder="0.00" /></div>
                     <div><label className="text-xs font-medium">Financiamento Solicitado ao GAMMA (€)</label><Input type="number" placeholder="0.00" /></div>
-                    <div><label className="text-xs font-medium">Cofinanciamento / Recursos Próprios (€)</label><Input type="number" placeholder="0.00" /></div>
+                    <div><label className="text-xs font-medium">{t("Cofinanciamento / Recursos Próprios (€)")}</label><Input type="number" placeholder="0.00" /></div>
                     <div><label className="text-xs font-medium">Outros Financiamentos ou Apoios</label><Input placeholder="Descrever" /></div>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-sm border-b pb-1">B. Necessidade, Solução e Impacto</h3>
-                  <div><label className="text-xs font-medium">1. Resumo Executivo (máx. 200 palavras)</label><Textarea placeholder={t("Síntese do projeto...")} rows={3} /></div>
+                  <h3 className="font-semibold text-sm border-b pb-1">{t("B. Necessidade, Solução e Impacto")}</h3>
+                  <div><label className="text-xs font-medium">{t("1. Resumo Executivo (máx. 200 palavras)")}</label><Textarea placeholder={t("Síntese do projeto...")} rows={3} /></div>
                   <div><label className="text-xs font-medium">2. Necessidade Local</label><Textarea placeholder={t("Que necessidade da comunidade este projeto pretende resolver?")} rows={3} /></div>
-                  <div><label className="text-xs font-medium">3. Evidência da Necessidade</label><Textarea placeholder="Dados, estudos ou testemunhos que comprovam a necessidade" rows={2} /></div>
-                  <div><label className="text-xs font-medium">4. Beneficiários (quem, quantos, como são selecionados)</label><Textarea placeholder="Descrever beneficiários diretos e indiretos" rows={2} /></div>
-                  <div><label className="text-xs font-medium">5. Equidade e Grupos Prioritários</label><Textarea placeholder={t("Como o projeto promove equidade e inclusão?")} rows={2} /></div>
+                  <div><label className="text-xs font-medium">{t("3. Evidência da Necessidade")}</label><Textarea placeholder="Dados, estudos ou testemunhos que comprovam a necessidade" rows={2} /></div>
+                  <div><label className="text-xs font-medium">{t("4. Beneficiários (quem, quantos, como são selecionados)")}</label><Textarea placeholder={t("Descrever beneficiários diretos e indiretos")} rows={2} /></div>
+                  <div><label className="text-xs font-medium">{t("5. Equidade e Grupos Prioritários")}</label><Textarea placeholder={t("Como o projeto promove equidade e inclusão?")} rows={2} /></div>
                   <div><label className="text-xs font-medium">{t("6. Objetivo Geral e Objetivos Específicos")}</label><Textarea placeholder="Objetivos SMART..." rows={2} /></div>
-                  <div><label className="text-xs font-medium">7. Mudanças Esperadas (outcomes)</label><Textarea placeholder="Que mudanças concretas se esperam?" rows={2} /></div>
-                  <div><label className="text-xs font-medium">8. Atividades e Metodologia</label><Textarea placeholder="Descrição das atividades, faseamento, metodologia" rows={3} /></div>
+                  <div><label className="text-xs font-medium">{t("7. Mudanças Esperadas (outcomes)")}</label><Textarea placeholder={t("Que mudanças concretas se esperam?")} rows={2} /></div>
+                  <div><label className="text-xs font-medium">8. Atividades e Metodologia</label><Textarea placeholder={t("Descrição das atividades, faseamento, metodologia")} rows={3} /></div>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-4 border-t">
                   <Button onClick={() => { toast.success("Candidatura submetida!"); setActiveTab("portfolio"); }}>{t("Submeter Candidatura")}</Button>
@@ -252,14 +252,14 @@ export default function Gamma() {
               <CardHeader><CardTitle className="text-lg">{t("Matriz de Avaliação Individual")}</CardTitle><p className="text-xs text-muted-foreground">Classificar de 1 a 5 e justificar com base na candidatura.</p></CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-sm">1. Verificação de Elegibilidade (Sim/Não)</h3>
+                  <h3 className="font-semibold text-sm">{t("1. Verificação de Elegibilidade (Sim/Não)")}</h3>
                   {edition.eligibility.map(e => (
                     <div key={e.key} className="flex items-center gap-3 p-3 border rounded-lg">
                       <Badge variant="outline" className="shrink-0 w-8 justify-center">{e.key}</Badge>
                       <span className="text-sm flex-1">{e.label}</span>
                       <div className="flex gap-1">
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><CheckCircle2 className="w-3 h-3 text-green-600" />Sim</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><XCircle className="w-3 h-3 text-red-600" />Não</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><XCircle className="w-3 h-3 text-red-600" />{t("Não")}</Button>
                       </div>
                     </div>
                   ))}
@@ -278,10 +278,10 @@ export default function Gamma() {
                   ))}
                 </div>
                 <div className="space-y-3 pt-4 border-t">
-                  <h3 className="font-semibold text-sm">3. Parecer e Condições</h3>
+                  <h3 className="font-semibold text-sm">{t("3. Parecer e Condições")}</h3>
                   <div><label className="text-xs font-medium">Pontos Fortes</label><Textarea rows={2} placeholder="Identificar os pontos fortes da candidatura..." /></div>
-                  <div><label className="text-xs font-medium">Lacunas / Condições antes de Financiar</label><Textarea rows={2} placeholder="Condições que devem ser cumpridas..." /></div>
-                  <div><label className="text-xs font-medium">{t("Parecer Final do Avaliador")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}</SelectItem><SelectItem value="conditional">Aprovar com Condições</SelectItem><SelectItem value="reject">{t("Rejeitar")}</SelectItem></SelectContent></Select></div>
+                  <div><label className="text-xs font-medium">{t("Lacunas / Condições antes de Financiar")}</label><Textarea rows={2} placeholder={t("Condições que devem ser cumpridas...")} /></div>
+                  <div><label className="text-xs font-medium">{t("Parecer Final do Avaliador")}</label><Select><SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger><SelectContent><SelectItem value="approve">{t("Aprovar")}</SelectItem><SelectItem value="conditional">{t("Aprovar com Condições")}</SelectItem><SelectItem value="reject">{t("Rejeitar")}</SelectItem></SelectContent></Select></div>
                   <div><label className="text-xs font-medium">Conflitos de Interesse Declarados</label><Input placeholder="Declarar ou indicar 'Nenhum'" /></div>
                 </div>
               </CardContent>
@@ -319,7 +319,7 @@ export default function Gamma() {
                           <tr className="border-b">
                             <th className="text-left p-2">{t("Projeto")}</th>
                             <th className="text-left p-2">Pilar</th>
-                            <th className="text-center p-2">Pontuação</th>
+                            <th className="text-center p-2">{t("Pontuação")}</th>
                             <th className="text-center p-2">{t("Estado")}</th>
                             <th className="text-center p-2">Prioridade</th>
                           </tr>
@@ -384,7 +384,7 @@ export default function Gamma() {
                           ) : (
                             <>
                               <div><span className="text-xs text-muted-foreground">Pilar:</span> <Badge variant="outline">{w.pillar}</Badge></div>
-                              <div><span className="text-xs text-muted-foreground">Início:</span> {w.startDate || "—"}</div>
+                              <div><span className="text-xs text-muted-foreground">{t("Início:")}</span> {w.startDate || "—"}</div>
                               <div><span className="text-xs text-muted-foreground">Fim:</span> {w.endDate || "—"}</div>
                               <div><span className="text-xs text-muted-foreground">{t("Estado:")}</span> <Badge>{w.status}</Badge></div>
                             </>
@@ -392,12 +392,12 @@ export default function Gamma() {
                         </div>
                         {isAdmin ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <Input value={w.budget} placeholder="Orçamento (ex: 15.000€)" onChange={(e) => { const nw = [...winners]; nw[i].budget = e.target.value; setWinners(nw); }} />
+                            <Input value={w.budget} placeholder={t("Orçamento (ex: 15.000€)")} onChange={(e) => { const nw = [...winners]; nw[i].budget = e.target.value; setWinners(nw); }} />
                             <Input value={w.milestones} placeholder="Marcos (ex: Kick-off Jan, Entrega Jun)" onChange={(e) => { const nw = [...winners]; nw[i].milestones = e.target.value; setWinners(nw); }} />
                           </div>
                         ) : (
                           <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div><span className="text-muted-foreground">Orçamento:</span> {w.budget || "—"}</div>
+                            <div><span className="text-muted-foreground">{t("Orçamento:")}</span> {w.budget || "—"}</div>
                             <div><span className="text-muted-foreground">Marcos:</span> {w.milestones || "—"}</div>
                           </div>
                         )}

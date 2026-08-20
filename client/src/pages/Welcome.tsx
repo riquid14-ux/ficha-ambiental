@@ -108,9 +108,7 @@ export default function Welcome() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
           <div className="relative z-10 max-w-3xl">
-            <p className="text-emerald-200 text-sm font-medium mb-2 uppercase tracking-wider">
-              Plataforma de Gestão Ambiental, Start Campus
-            </p>
+            <p className="text-emerald-200 text-sm font-medium mb-2 uppercase tracking-wider">{t("Plataforma de Gestão Ambiental, Start Campus")}</p>
             <h1 className="text-3xl font-bold mb-3">
               Obrigado por te juntares, {userName}!
             </h1>
@@ -205,7 +203,7 @@ export default function Welcome() {
             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
             <div>
               <p className="text-sm font-medium text-blue-900 mb-0.5">{ t("Menu lateral") }</p>
-              <p className="text-xs text-blue-700">Navegue entre as secções da plataforma usando o menu à esquerda.</p>
+              <p className="text-xs text-blue-700">{t("Navegue entre as secções da plataforma usando o menu à esquerda.")}</p>
             </div>
           </div>
           <div className="flex gap-3 items-start p-4 rounded-xl bg-green-50 border border-green-100">

@@ -216,7 +216,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     const validPaths = allItems.map(item => item.path);
     const isCurrentRouteValid = validPaths.some(p => location.startsWith(p));
     if (!isCurrentRouteValid) {
-      setLocation("/dashboard");
+      setLocation("/welcome");
     }
   }, [isAllProjects, activeProject?.id, isOperationOnly]);
 

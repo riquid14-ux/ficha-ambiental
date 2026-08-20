@@ -288,8 +288,8 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                         <DialogTitle>Nova Medida — {phase.label}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-3">
-                        <Input placeholder="Número (ex: PL-4)" value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
-                        <Textarea placeholder="Descrição da medida/condição" value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
+                        <Input placeholder={t("Número (ex: PL-4)")} value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
+                        <Textarea placeholder={t("Descrição da medida/condição")} value={newMeasure.description} onChange={e => setNewMeasure(p => ({ ...p, description: e.target.value }))} />
                         <Button onClick={() => {
                           const sec = (phaseData[phase.key] || [])[0]?.section;
                           if (!sec) { toast.error("Secção não encontrada"); return; }
@@ -307,7 +307,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
                   </Dialog>
                 )}
                 {isAdmin && (
-                  <Button size="sm" variant={showSettings ? "default" : "ghost"} onClick={() => setShowSettings(!showSettings)} title="Definições (Admin)">
+                  <Button size="sm" variant={showSettings ? "default" : "ghost"} onClick={() => setShowSettings(!showSettings)} title={t("Definições (Admin)")}>
                     <SettingsGear className="w-4 h-4" />
                   </Button>
                 )}
@@ -319,9 +319,7 @@ export default function PhaseMeasures({ embedded = false }: { embedded?: boolean
               <Card className="border-amber-200 bg-amber-50/30">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <SettingsGear className="w-4 h-4 text-amber-600" />
-                    Definições de Medidas (Admin)
-                  </CardTitle>
+                    <SettingsGear className="w-4 h-4 text-amber-600" />{t("Definições de Medidas (Admin)")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">{t("Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.")}</p>

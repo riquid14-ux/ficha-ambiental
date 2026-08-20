@@ -139,7 +139,7 @@ export default function Workflow() {
                   <Textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    placeholder="Escreva uma nova nota... (será adicionada ao histórico)"
+                    placeholder={t("Escreva uma nova nota... (será adicionada ao histórico)")}
                     className="min-h-[150px] text-sm"
                   />
                   <div className="flex items-center gap-2">
@@ -221,7 +221,7 @@ function WorkflowDiagram() {
         {/* Step 1: EE/RAP creates draft */}
         <FlowStep
           icon={<FileText className="w-5 h-5" />}
-          title="1. Criação da Ficha"
+          title={t("1. Criação da Ficha")}
           description="EE ou RAP preenche a ficha semanal com texto, imagens e ficheiros por medida"
           color="blue"
           actor="EE / RAP"
@@ -231,7 +231,7 @@ function WorkflowDiagram() {
         {/* Step 2: Submit */}
         <FlowStep
           icon={<Send className="w-5 h-5" />}
-          title="2. Submissão"
+          title={t("2. Submissão")}
           description="A ficha é submetida para revisão. Fica com estado 'Em Revisão'"
           color="indigo"
           actor="EE / RAP"
@@ -241,7 +241,7 @@ function WorkflowDiagram() {
         {/* Step 3: RAA reviews */}
         <FlowStep
           icon={<Eye className="w-5 h-5" />}
-          title="3. Revisão pela RAA"
+          title={t("3. Revisão pela RAA")}
           description="RAA analisa a ficha, verifica evidências e conformidade com as medidas"
           color="amber"
           actor="RAA"
@@ -292,7 +292,7 @@ function WorkflowDiagram() {
 
       {/* Legend */}
       <div className="mt-6 pt-4 border-t flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> Ação EE/RAP</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{t("Ação EE/RAP")}</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> {t("Ação EE/RAP")}</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Ação RAA")}</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {t("Aprovado")}</span>

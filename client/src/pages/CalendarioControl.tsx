@@ -93,12 +93,8 @@ export default function CalendarioControl() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Settings className="w-6 h-6" />
-              Control Room — Calendário
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Gerir todos os eventos de reporting: criar, editar datas, atribuir responsáveis, eliminar
-            </p>
+              <Settings className="w-6 h-6" />{t("Control Room — Calendário")}</h1>
+            <p className="text-muted-foreground text-sm">{t("Gerir todos os eventos de reporting: criar, editar datas, atribuir responsáveis, eliminar")}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowHidden(!showHidden)}>

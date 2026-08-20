@@ -57,7 +57,7 @@ function AuditLogTab() {
           <tr>
             <th className="text-left p-2">Data</th>
             <th className="text-left p-2">Utilizador</th>
-            <th className="text-left p-2">Ação</th>
+            <th className="text-left p-2">{t("Ação")}</th>
             <th className="text-left p-2">Entidade</th>
             <th className="text-left p-2">Detalhes</th>
           </tr>
@@ -115,35 +115,35 @@ export default function AdminPanel() {
                 <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
-                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
-                  <p className="text-xs text-muted-foreground">Submete as fichas de controlo semanais relativas às suas medidas.</p>
+                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
-                  <p className="text-xs text-muted-foreground">Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.</p>
+                  <p className="text-xs text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
-                  <p className="text-xs text-muted-foreground">Visão geral do projeto. Acesso de administração e supervisão.</p>
+                  <p className="text-xs text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Observador</p>
-                  <p className="text-xs text-muted-foreground">Acesso de leitura. Pode ver dashboard, histórico e revisões.</p>
+                  <p className="text-xs text-muted-foreground">{t("Acesso de leitura. Pode ver dashboard, histórico e revisões.")}</p>
                 </div>
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function AdminPanel() {
             <Card>
               <CardHeader>
                 <CardTitle>{t("Histórico de Ações")}</CardTitle>
-                <p className="text-sm text-muted-foreground">Registo de todas as alterações realizadas na plataforma (apenas leitura)</p>
+                <p className="text-sm text-muted-foreground">{t("Registo de todas as alterações realizadas na plataforma (apenas leitura)")}</p>
               </CardHeader>
               <CardContent>
                 <AuditLogTab />
@@ -459,7 +459,7 @@ function SubmissionsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Todas as Submissões</CardTitle>
+        <CardTitle className="text-base">{t("Todas as Submissões")}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -467,9 +467,9 @@ function SubmissionsTab() {
             <TableRow>
               <TableHead>Semana</TableHead>
               <TableHead>Empresa</TableHead>
-              <TableHead>Período</TableHead>
+              <TableHead>{t("Período")}</TableHead>
               <TableHead>Estado</TableHead>
-              <TableHead>Ações</TableHead>
+              <TableHead>{t("Ações")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -497,9 +497,7 @@ function SubmissionsTab() {
             })}
             {submissionsQuery.data?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  Nenhuma submissão registada
-                </TableCell>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">{t("Nenhuma submissão registada")}</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -884,7 +882,7 @@ function UsersTab() {
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 dark:bg-green-900/20 text-green-700">Todas</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">Construção</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">{t("Construção")}</Badge>
                       )}
                     </div>
                   </TableCell>
@@ -1026,7 +1024,7 @@ function HistoricalTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Carregar Ficha Histórica (PDF)</CardTitle>
+          <CardTitle className="text-base">{t("Carregar Ficha Histórica (PDF)")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1067,7 +1065,7 @@ function HistoricalTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Fichas Históricas</CardTitle>
+          <CardTitle className="text-base">{t("Fichas Históricas")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -1099,9 +1097,7 @@ function HistoricalTab() {
               })}
               {historicalQuery.data?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Nenhuma ficha histórica carregada
-                  </TableCell>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("Nenhuma ficha histórica carregada")}</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -1133,7 +1129,7 @@ function MelhoriasTab() {
                 </div>
                 <select className="text-xs border rounded px-2 py-1" value={fb.status || "pendente"} onChange={e => updateMutation.mutate({ id: fb.id, status: e.target.value })}>
                   <option value="pendente">Pendente</option>
-                  <option value="em_analise">Em Análise</option>
+                  <option value="em_analise">{t("Em Análise")}</option>
                   <option value="implementado">Implementado</option>
                   <option value="rejeitado">Rejeitado</option>
                 </select>
@@ -1264,7 +1260,7 @@ function EmailConfigTab() {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1"><Label className="text-xs">{t("Email de envio")}</Label><Input value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} placeholder="apoioamb@startcampus.pt" className="h-9" /></div>
-            <div className="space-y-1"><Label className="text-xs">{t("Nome do remetente")}</Label><Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Plataforma de Gestão Ambiental" className="h-9" /></div>
+            <div className="space-y-1"><Label className="text-xs">{t("Nome do remetente")}</Label><Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder={t("Plataforma de Gestão Ambiental")} className="h-9" /></div>
           </div>
         </CardContent>
       </Card>

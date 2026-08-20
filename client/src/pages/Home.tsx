@@ -32,16 +32,12 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <img src={LOGO_URL} alt="Start Campus" className="h-20 object-contain mb-6" />
-          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">
-            Plataforma de Gestão Ambiental - Start Campus
-          </h1>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">{t("Plataforma de Gestão Ambiental - Start Campus")}</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Plataforma de acompanhamento semanal de medidas de gestão ambiental em obras.
             Registe o cumprimento das 156 medidas, anexe evidências fotográficas e acompanhe a evolução.
           </p>
-          <Button onClick={() => setLocation("/login")} size="lg" className="mt-8 px-8">
-            Iniciar sessão
-          </Button>
+          <Button onClick={() => setLocation("/login")} size="lg" className="mt-8 px-8">{t("Iniciar sessão")}</Button>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

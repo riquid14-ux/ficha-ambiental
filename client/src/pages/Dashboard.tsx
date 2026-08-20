@@ -245,7 +245,7 @@ export default function Dashboard() {
                   const calEvents = calendarEventsQuery?.data;
                   if (!calEvents) return null;
                   const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {});
-                  if (Object.keys(owners).length === 0) return <p className="text-sm text-muted-foreground text-center py-4">Atribua responsáveis no Calendário → Gerir.</p>;
+                  if (Object.keys(owners).length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Atribua responsáveis no Calendário → Gerir.")}</p>;
                   return (
                     <div className="space-y-2">
                       {Object.entries(owners).map(([name, events]) => (
@@ -524,7 +524,7 @@ export default function Dashboard() {
                 })}
               </div>
               <div className="flex gap-4 text-[9px] text-muted-foreground pt-1">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span> Concluída</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span>{t("Concluída")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400"></span>  {t("Em curso")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-muted border"></span> Por iniciar</span>
               </div>
@@ -761,7 +761,7 @@ export default function Dashboard() {
             </Select>
             <Select value={selectedSection} onValueChange={setSelectedSection}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Secção" />
+                <SelectValue placeholder={t("Secção")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("Todas as secções")}</SelectItem>

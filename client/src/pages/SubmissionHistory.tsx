@@ -437,9 +437,7 @@ export default function SubmissionHistory(props: any) {
               <CardContent className="p-5 space-y-5">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">{t("Exportar Evolução por Medida")}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Selecione uma ou mais medidas e um período para gerar um PDF com a evolução semanal (estado, observações e fotos).
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("Selecione uma ou mais medidas e um período para gerar um PDF com a evolução semanal (estado, observações e fotos).")}</p>
                 </div>
 
                 {/* Period and Status filters */}
@@ -481,7 +479,7 @@ export default function SubmissionHistory(props: any) {
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">Selecionar Medidas ({selectedMeasureIds.length} selecionada{selectedMeasureIds.length !== 1 ? "s" : ""})</Label>
                   <Input
-                    placeholder="Pesquisar medida por número ou descrição..."
+                    placeholder={t("Pesquisar medida por número ou descrição...")}
                     value={measureSearch}
                     onChange={(e) => setMeasureSearch(e.target.value)}
                     className="text-sm"
@@ -500,9 +498,7 @@ export default function SubmissionHistory(props: any) {
                       size="sm"
                       className="text-xs"
                       onClick={() => setSelectedMeasureIds([])}
-                    >
-                      Limpar seleção
-                    </Button>
+                    >{t("Limpar seleção")}</Button>
                   </div>
                   <ScrollArea className="h-[280px] border rounded-md p-2">
                     <div className="space-y-1">
@@ -609,9 +605,7 @@ function DeletionHistoryView() {
   if (deletionLogsQuery.isLoading) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          A carregar histórico de eliminações...
-        </CardContent>
+        <CardContent className="py-8 text-center text-muted-foreground">{t("A carregar histórico de eliminações...")}</CardContent>
       </Card>
     );
   }
@@ -619,9 +613,7 @@ function DeletionHistoryView() {
   if (deletionLogsQuery.isError) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Não foi possível carregar o histórico de eliminações.
-        </CardContent>
+        <CardContent className="py-8 text-center text-muted-foreground">{t("Não foi possível carregar o histórico de eliminações.")}</CardContent>
       </Card>
     );
   }
@@ -629,9 +621,7 @@ function DeletionHistoryView() {
   if (filteredLogs.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          Nenhuma ficha foi eliminada até ao momento.
-        </CardContent>
+        <CardContent className="py-8 text-center text-muted-foreground">{t("Nenhuma ficha foi eliminada até ao momento.")}</CardContent>
       </Card>
     );
   }

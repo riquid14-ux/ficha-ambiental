@@ -134,9 +134,8 @@ export default function ImagesTab() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <ImageIcon className="w-4 h-4" /> Gestão de Imagens
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">Cole o URL e ajuste a posição vertical. Use imagens de <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a></p>
+          <ImageIcon className="w-4 h-4" />{t("Gestão de Imagens")}</CardTitle>
+        <p className="text-xs text-muted-foreground">{t("Cole o URL e ajuste a posição vertical. Use imagens de")}<a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a></p>
       </CardHeader>
       <CardContent className="space-y-6">
         {allLocations.map(({ key, label, description, page }) => {
@@ -239,7 +238,7 @@ export default function ImagesTab() {
 
         <div className="bg-muted/50 rounded-lg p-3">
           <p className="text-xs text-muted-foreground">
-            <strong>{t("Dica:")}</strong> Vá a <a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento vertical (ex: "30% do topo" mostra mais a parte superior da foto).
+            <strong>{t("Dica:")}</strong>{t("Vá a")}<a href="https://www.startcampus.pt/brand" target="_blank" className="underline text-primary">startcampus.pt/brand</a>, clique com o botão direito numa imagem, copie o endereço e cole aqui. Use a posição para ajustar o enquadramento vertical (ex: "30% do topo" mostra mais a parte superior da foto).
           </p>
         </div>
       </CardContent>

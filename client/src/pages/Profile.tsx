@@ -206,7 +206,7 @@ export default function Profile() {
             </div>
             <div className="space-y-2">
               <Label>{t("Nova palavra-passe")}</Label>
-              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("Nova palavra-passe (min. 6 caracteres)")} />
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t("Nova palavra-passe (min. 8 caracteres)")} />
             </div>
             <div className="space-y-2">
               <Label>{t("Confirmar nova palavra-passe")}</Label>

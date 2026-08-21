@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +47,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle, Home } from "lucide-react";
+import { Recycle, Home, Bell } from "lucide-react";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -260,11 +261,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <img src={LOGO_URL} alt="Start Campus" className="h-6 object-contain" />
                   <span className="font-semibold tracking-tight truncate text-sm">
                     Plataforma de Gestão Ambiental
                   </span>
+                  <NotificationBell />
                 </div>
               )}
             </div>
@@ -449,5 +451,72 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         </div>
       )}
     </>
+  );
+}
+
+function NotificationBell() {
+  const { t } = useLanguage();
+  const [, setLocation] = useLocation();
+  const notifQuery = trpc.notifications.pending.useQuery(undefined, {
+    refetchInterval: 60000, // refresh every 60s
+    staleTime: 30000,
+  });
+  const items = notifQuery.data?.items || [];
+  const total = notifQuery.data?.totalCount || 0;
+
+  const typeIcons: Record<string, string> = {
+    review: "📋", rejected: "🔴", draft: "📝", access: "🔑", users: "👤",
+  };
+  const typeColors: Record<string, string> = {
+    review: "text-blue-600", rejected: "text-red-600", draft: "text-amber-600",
+    access: "text-purple-600", users: "text-green-600",
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="relative h-7 w-7 flex items-center justify-center rounded-md hover:bg-accent transition-colors shrink-0 ml-auto" aria-label="Notificações">
+          <Bell className="h-4 w-4 text-muted-foreground" />
+          {total > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
+              {total > 99 ? "99+" : total}
+            </span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-0">
+        <div className="p-3 border-b">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            🔔 {t("Notificações")}
+            {total > 0 && <span className="text-xs text-muted-foreground">({total})</span>}
+          </h4>
+        </div>
+        <div className="max-h-64 overflow-y-auto">
+          {items.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              {t("Sem notificações pendentes")}
+            </div>
+          ) : (
+            items.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => setLocation(item.path)}
+                className="w-full text-left px-3 py-2.5 hover:bg-accent/50 transition-colors border-b last:border-b-0 flex items-center gap-3"
+              >
+                <span className="text-lg">{typeIcons[item.type] || "📌"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${typeColors[item.type] || ""}`}>
+                    {t(item.label)}
+                  </p>
+                </div>
+                <span className="text-xs font-bold bg-muted rounded-full h-6 w-6 flex items-center justify-center shrink-0">
+                  {item.count}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

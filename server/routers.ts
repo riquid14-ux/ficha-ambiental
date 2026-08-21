@@ -2206,6 +2206,71 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // In-app notification counts
+  notifications: router({
+    pending: protectedProcedure.query(async ({ ctx }) => {
+      const user = ctx.user;
+      const role = user.role || "user";
+      const items: { type: string; count: number; label: string; path: string }[] = [];
+
+      // Get all submissions
+      const allSubs = await db.getAllSubmissions();
+
+      if (role === "raa" || role === "admin" || role === "dono_obra") {
+        // Fichas waiting for review (submitted status)
+        const toReview = allSubs.filter((s: any) => s.status === "submitted" || s.status === "under_review");
+        // For RAA, filter by their assigned projects
+        let count = toReview.length;
+        if (role === "raa") {
+          const userProjects = await db.getUserProjects(user.id);
+          const projectIds = userProjects.map((p: any) => p.projectId);
+          count = toReview.filter((s: any) => projectIds.includes(s.projectId)).length;
+        }
+        if (count > 0) {
+          items.push({ type: "review", count, label: `${count} ficha${count > 1 ? "s" : ""} para revisão`, path: "/ficha" });
+        }
+      }
+
+      if (role === "ee" || role === "rap") {
+        // Rejected fichas that need correction
+        const rejected = allSubs.filter((s: any) =>
+          s.status === "rejected" &&
+          (s.createdBy === user.id || s.submittedBy === user.id)
+        );
+        if (rejected.length > 0) {
+          items.push({ type: "rejected", count: rejected.length, label: `${rejected.length} ficha${rejected.length > 1 ? "s" : ""} rejeitada${rejected.length > 1 ? "s" : ""}`, path: "/ficha" });
+        }
+        // Draft fichas
+        const drafts = allSubs.filter((s: any) =>
+          s.status === "draft" &&
+          s.createdBy === user.id
+        );
+        if (drafts.length > 0) {
+          items.push({ type: "draft", count: drafts.length, label: `${drafts.length} rascunho${drafts.length > 1 ? "s" : ""}`, path: "/ficha" });
+        }
+      }
+
+      if (role === "admin") {
+        // Pending access requests
+        const accessRequests = await db.getAccessRequests();
+        const pending = (accessRequests as any[]).filter((r: any) => r.status === "pending");
+        if (pending.length > 0) {
+          items.push({ type: "access", count: pending.length, label: `${pending.length} pedido${pending.length > 1 ? "s" : ""} de acesso`, path: "/admin" });
+        }
+
+        // Users pending approval
+        const allUsers = await db.getAllUsers();
+        const pendingUsers = allUsers.filter((u: any) => u.status === "pending");
+        if (pendingUsers.length > 0) {
+          items.push({ type: "users", count: pendingUsers.length, label: `${pendingUsers.length} utilizador${pendingUsers.length > 1 ? "es" : ""} pendente${pendingUsers.length > 1 ? "s" : ""}`, path: "/admin" });
+        }
+      }
+
+      const totalCount = items.reduce((sum, i) => sum + i.count, 0);
+      return { items, totalCount };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

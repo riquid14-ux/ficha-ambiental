@@ -369,3 +369,6 @@
 - [x] Email on approval: notify creator/submitter with project, company, week details
 - [x] Matriz uses active periods to filter companies (inactive weeks shown gray, no-work weeks shown with P)
 - [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase Cloud Messaging setup on their server)
+- [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase Cloud Messaging setup on their server)
+- [ ] In-app notification bell with badge showing pending actions per user role
+- [x] In-app notification bell with badge showing pending actions per user role

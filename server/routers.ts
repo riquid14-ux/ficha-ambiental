@@ -721,17 +721,13 @@ export const appRouter = router({
             const recipients = await db.getNotificationRecipients(sub.projectId, "submission");
             raaEmails = recipients.filter((r: any) => r.userEmail).map((r: any) => r.userEmail!);
           }
-          if (raaEmails.length === 0) {
-            // Fallback: notify all RAA/admin/DO users
-            const allUsersForNotif = await db.getAllUsers();
-            raaEmails = allUsersForNotif
-              .filter((u: any) => (u.role === "raa" || u.role === "admin" || u.role === "dono_obra") && u.email)
-              .map((u: any) => u.email!);
+          // Only send if there are configured recipients (no fallback = no spam)
+          if (raaEmails.length > 0) {
+            sendFichaSubmittedNotification(
+              input.id, sub.weekNumber, sub.weekYear,
+              companyForNotif?.shortName || "—", project?.code || "—", raaEmails
+            ).catch(() => {});
           }
-          sendFichaSubmittedNotification(
-            input.id, sub.weekNumber, sub.weekYear,
-            companyForNotif?.shortName || "—", project?.code || "—", raaEmails
-          ).catch(() => {});
         } catch {}
         return { success: true };
       }),

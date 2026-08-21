@@ -34,6 +34,45 @@ export default function Matriz(props: any) {
     isAllProjects ? undefined : { projectId: activeProject?.id }
   );
 
+  // Fetch company periods and weeks without work for active project
+  const periodsQuery = trpc.companyPeriods.getByProject.useQuery(
+    { projectId: activeProject?.id! },
+    { enabled: !!activeProject?.id && !isAllProjects }
+  );
+  const noWorkQuery = trpc.weeksWithoutWork.list.useQuery(
+    { projectId: activeProject?.id! },
+    { enabled: !!activeProject?.id && !isAllProjects }
+  );
+
+  // Helper: check if a company is active in a given week
+  function isCompanyActiveInWeek(companyId: number, weekKey: string): boolean | null {
+    if (isAllProjects || !periodsQuery.data) return null; // no filtering
+    const parts = weekKey.split("-W");
+    const year = parseInt(parts[0], 10);
+    const week = parseInt(parts[1], 10);
+    const period = (periodsQuery.data as any[]).find((p: any) => p.companyId === companyId);
+    if (!period || (!period.startWeek && !period.endWeek)) return null; // no period set
+    const buffer = period.bufferWeeks || 4;
+    if (period.startWeek && period.startYear) {
+      if (year < period.startYear || (year === period.startYear && week < period.startWeek)) return false;
+    }
+    if (period.endWeek && period.endYear) {
+      const endTotal = period.endYear * 53 + period.endWeek + buffer;
+      const currentTotal = year * 53 + week;
+      if (currentTotal > endTotal) return false;
+    }
+    return true;
+  }
+
+  // Helper: check if a week is marked as no-work
+  function isWeekNoWork(weekKey: string): boolean {
+    if (!noWorkQuery.data) return false;
+    const parts = weekKey.split("-W");
+    const year = parseInt(parts[0], 10);
+    const week = parseInt(parts[1], 10);
+    return (noWorkQuery.data as any[]).some((w: any) => w.weekNumber === week && w.weekYear === year);
+  }
+
   // Build the matrix: for each company, for each week, what's the status?
   const matrixData = useMemo(() => {
     if (!matrixQuery.data) return { rows: [], weeks: [] };
@@ -199,27 +238,37 @@ export default function Matriz(props: any) {
                             </div>
                           </td>
                           {row.cells.map(cell => {
-                            const display = cell.status ? getStatusDisplay(cell.status) : null;
+                            const inactive = isCompanyActiveInWeek(row.company.id, cell.weekKey) === false;
+                            const noWork = isWeekNoWork(cell.weekKey);
+                            const display = cell.status && !inactive ? getStatusDisplay(cell.status) : null;
                             return (
                               <td key={cell.weekKey} className="p-2 text-center">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div
                                       className={`w-8 h-8 rounded-md mx-auto flex items-center justify-center transition-all hover:scale-110 cursor-default ${
+                                        inactive ? "bg-gray-200 border border-gray-300" :
+                                        noWork ? "bg-gray-300 border border-gray-400" :
                                         display ? display.color : "bg-muted/50 border border-dashed border-border"
                                       }`}
                                     >
-                                      {display && (
+                                      {inactive ? (
+                                        <span className="text-[8px] text-gray-500">—</span>
+                                      ) : noWork ? (
+                                        <span className="text-[8px] text-gray-600">P</span>
+                                      ) : display ? (
                                         <span className={`text-[9px] font-bold ${display.textColor}`}>
                                           {display.label.charAt(0)}
                                         </span>
-                                      )}
+                                      ) : null}
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <p className="font-medium">{row.company.shortName} — {formatWeekFull(cell.weekKey)}</p>
                                     <p className="text-xs text-muted-foreground">
-                                      {display ? display.description : t("Sem ficha submetida")}
+                                      {inactive ? t("Empresa inactiva nesta semana") :
+                                       noWork ? t("Semana sem trabalhos") :
+                                       display ? display.description : t("Sem ficha submetida")}
                                     </p>
                                   </TooltipContent>
                                 </Tooltip>

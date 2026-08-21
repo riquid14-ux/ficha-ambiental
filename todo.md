@@ -361,3 +361,11 @@
 - [x] Email on submission: notify configured RAA/reviewers per project
 - [x] Email on rejection: notify creator/submitter with project, company, week details
 - [x] Email on approval: notify creator/submitter with project, company, week details
+- [x] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal — tab renamed to "Estado de Fichas" with 3 sub-secções
+- [x] Admin config: notification recipients per project (who receives email when ficha is submitted)
+- [x] Email templates: include project code, company name, week number in all notifications
+- [x] Email on submission: notify configured RAA/reviewers per project
+- [x] Email on rejection: notify creator/submitter with project, company, week details
+- [x] Email on approval: notify creator/submitter with project, company, week details
+- [x] Matriz uses active periods to filter companies (inactive weeks shown gray, no-work weeks shown with P)
+- [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase Cloud Messaging setup on their server)

@@ -154,7 +154,7 @@ export default function Matriz(props: any) {
               )}
             </p>
           </div>
-          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+          {!isAllProjects && <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
@@ -163,9 +163,23 @@ export default function Matriz(props: any) {
                 <SelectItem key={y} value={String(y)}>{y}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
         </div>
 
+        {isAllProjects ? (
+          <Card>
+            <CardContent className="p-8">
+              <div className="flex flex-col items-center justify-center text-center py-8">
+                <Grid3X3 className="w-16 h-16 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">{t("Selecione um projecto")}</h3>
+                <p className="text-muted-foreground max-w-md">
+                  {t("Para visualizar a matriz de acompanhamento, selecione um projecto específico no menu lateral. A matriz mostra o estado das fichas por empresa e semana de cada projecto individualmente.")}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+        <>
         {/* Legend */}
         <Card>
           <CardContent className="p-4">
@@ -419,6 +433,8 @@ export default function Matriz(props: any) {
               </div>
             </CardContent>
           </Card>
+        )}
+        </>
         )}
       </div>
   );

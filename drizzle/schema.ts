@@ -227,11 +227,32 @@ export const projectCompanies = mysqlTable("project_companies", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
   companyId: int("companyId").notNull(),
+  startWeek: int("startWeek"),
+  startYear: int("startYear"),
+  endWeek: int("endWeek"),
+  endYear: int("endYear"),
+  bufferWeeks: int("bufferWeeks").default(4),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type ProjectCompany = typeof projectCompanies.$inferSelect;
 export type InsertProjectCompany = typeof projectCompanies.$inferInsert;
+
+/**
+ * Weeks without work (semanas sem trabalhos — Natal, paragens, etc.)
+ * Admin marks specific weeks where no submissions are expected
+ */
+export const weeksWithoutWork = mysqlTable("weeks_without_work", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  weekNumber: int("weekNumber").notNull(),
+  weekYear: int("weekYear").notNull(),
+  reason: varchar("reason", { length: 255 }),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type WeekWithoutWork = typeof weeksWithoutWork.$inferSelect;
+export type InsertWeekWithoutWork = typeof weeksWithoutWork.$inferInsert;
 
 /**
  * Project-User association (quais utilizadores têm acesso a cada projeto)

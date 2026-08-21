@@ -14,7 +14,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon } from "lucide-react";
-import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2 } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Plus } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
 
@@ -225,6 +225,14 @@ function CompaniesTab() {
   const [newShortName, setNewShortName] = useState("");
   const [newType, setNewType] = useState<"ee" | "rap" | "dono_obra" | "raa" | "observador">("ee");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
+  const [selectedCompanyForPeriod, setSelectedCompanyForPeriod] = useState<any>(null);
+  const [periodProject, setPeriodProject] = useState<number>(0);
+  const [wwwDialogOpen, setWwwDialogOpen] = useState(false);
+  const [wwwProject, setWwwProject] = useState<number>(0);
+  const [wwwWeek, setWwwWeek] = useState("");
+  const [wwwYear, setWwwYear] = useState(String(new Date().getFullYear()));
+  const [wwwReason, setWwwReason] = useState("");
   const utils = trpc.useUtils();
 
   const companiesQuery = trpc.companies.list.useQuery();
@@ -247,6 +255,19 @@ function CompaniesTab() {
       utils.projects.allCompanyAssignments.invalidate();
       setEditingCompanyId(null);
     },
+  });
+  const companyPeriodsQuery = trpc.companyPeriods.getByProject.useQuery({ projectId: periodProject }, { enabled: periodProject > 0 && periodDialogOpen });
+  const updatePeriodMutation = trpc.companyPeriods.update.useMutation({
+    onSuccess: () => { toast.success(t("Período atualizado")); companyPeriodsQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const wwwListQuery = trpc.weeksWithoutWork.list.useQuery({ projectId: wwwProject }, { enabled: wwwProject > 0 && wwwDialogOpen });
+  const addWwwMutation = trpc.weeksWithoutWork.add.useMutation({
+    onSuccess: () => { toast.success(t("Semana sem trabalhos adicionada")); wwwListQuery.refetch(); setWwwWeek(""); setWwwReason(""); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const removeWwwMutation = trpc.weeksWithoutWork.remove.useMutation({
+    onSuccess: () => { toast.success(t("Semana removida")); wwwListQuery.refetch(); },
   });
 
   // Build a map of companyId -> projectIds
@@ -444,6 +465,112 @@ function CompaniesTab() {
             )}
           </TableBody>
         </Table>
+
+        {/* Period Management & Weeks Without Work Buttons */}
+        <div className="mt-4 flex gap-2">
+          <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><Calendar className="w-4 h-4 mr-1" /> {t("Períodos Activos")}</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader><DialogTitle>{t("Períodos Activos por Empresa/Projeto")}</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <Select value={String(periodProject)} onValueChange={v => setPeriodProject(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder={t("Selecione um projeto")} /></SelectTrigger>
+                  <SelectContent>
+                    {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {periodProject > 0 && companyPeriodsQuery.data && (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("Empresa")}</TableHead>
+                        <TableHead>{t("Tipo")}</TableHead>
+                        <TableHead>{t("Semana Início")}</TableHead>
+                        <TableHead>{t("Semana Fim")}</TableHead>
+                        <TableHead>{t("Buffer (semanas)")}</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(companyPeriodsQuery.data as any[]).map((pc: any) => (
+                        <TableRow key={pc.id}>
+                          <TableCell>{pc.shortName}</TableCell>
+                          <TableCell><Badge variant="outline">{pc.companyType?.toUpperCase()}</Badge></TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Input type="number" className="w-16 h-7 text-xs" placeholder="S" defaultValue={pc.startWeek || ""} onBlur={e => { const v = e.target.value ? Number(e.target.value) : null; updatePeriodMutation.mutate({ id: pc.id, startWeek: v, startYear: pc.startYear || new Date().getFullYear(), endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: pc.bufferWeeks || 4 }); }} />
+                              <Input type="number" className="w-20 h-7 text-xs" placeholder="Ano" defaultValue={pc.startYear || new Date().getFullYear()} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: Number(e.target.value), endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: pc.bufferWeeks || 4 }); }} />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Input type="number" className="w-16 h-7 text-xs" placeholder="S" defaultValue={pc.endWeek || ""} onBlur={e => { const v = e.target.value ? Number(e.target.value) : null; updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: v, endYear: pc.endYear || new Date().getFullYear(), bufferWeeks: pc.bufferWeeks || 4 }); }} />
+                              <Input type="number" className="w-20 h-7 text-xs" placeholder="Ano" defaultValue={pc.endYear || new Date().getFullYear()} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: pc.endWeek, endYear: Number(e.target.value), bufferWeeks: pc.bufferWeeks || 4 }); }} />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Input type="number" className="w-16 h-7 text-xs" defaultValue={pc.bufferWeeks || 4} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: Number(e.target.value) || 4 }); }} />
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={pc.startWeek ? "default" : "secondary"} className="text-[10px]">
+                              {pc.startWeek ? `S${pc.startWeek}/${pc.startYear} — ${pc.endWeek ? `S${pc.endWeek}/${pc.endYear}` : "Em curso"}` : "Sem período"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                <p className="text-xs text-muted-foreground">{t("O buffer permite que a empresa submeta/corrija fichas durante X semanas após o fim dos trabalhos. Default: 4 semanas.")}</p>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={wwwDialogOpen} onOpenChange={setWwwDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm"><XCircle className="w-4 h-4 mr-1" /> {t("Semanas sem Trabalhos")}</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>{t("Semanas sem Trabalhos")}</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <Select value={String(wwwProject)} onValueChange={v => setWwwProject(Number(v))}>
+                  <SelectTrigger><SelectValue placeholder={t("Selecione um projeto")} /></SelectTrigger>
+                  <SelectContent>
+                    {projectsQuery.data?.filter(p => p.code !== "main").map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {wwwProject > 0 && (
+                  <>
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="Semana" value={wwwWeek} onChange={e => setWwwWeek(e.target.value)} className="w-24" />
+                      <Input type="number" placeholder="Ano" value={wwwYear} onChange={e => setWwwYear(e.target.value)} className="w-24" />
+                      <Input placeholder={t("Motivo (ex: Natal)")} value={wwwReason} onChange={e => setWwwReason(e.target.value)} className="flex-1" />
+                      <Button size="sm" onClick={() => addWwwMutation.mutate({ projectId: wwwProject, weekNumber: Number(wwwWeek), weekYear: Number(wwwYear), reason: wwwReason || null })} disabled={!wwwWeek || !wwwYear}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {(wwwListQuery.data as any[] || []).map((w: any) => (
+                        <div key={w.id} className="flex items-center justify-between p-2 border rounded text-sm">
+                          <span>S{w.weekNumber}/{w.weekYear} — {w.reason || "Sem motivo"}</span>
+                          <Button variant="ghost" size="sm" className="h-6 text-destructive" onClick={() => removeWwwMutation.mutate({ id: w.id })}><Trash2 className="w-3 h-3" /></Button>
+                        </div>
+                      ))}
+                      {(!wwwListQuery.data || (wwwListQuery.data as any[]).length === 0) && <p className="text-xs text-muted-foreground text-center py-4">{t("Nenhuma semana sem trabalhos definida")}</p>}
+                    </div>
+                  </>
+                )}
+                <p className="text-xs text-muted-foreground">{t("Semanas marcadas como 'sem trabalhos' não contam como incumprimento na Matriz de Acompanhamento.")}</p>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardContent>
     </Card>
   );

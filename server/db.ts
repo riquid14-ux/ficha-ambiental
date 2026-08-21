@@ -1121,3 +1121,59 @@ export async function deleteWasteEgar(id: number) {
   if (!db) throw new Error("DB not available");
   await db.delete(wasteEgars).where(eq(wasteEgars.id, id));
 }
+
+// ─── Company Active Periods ─────────────────────────────────────────────────
+export async function updateCompanyPeriod(projectCompanyId: number, startWeek: number | null, startYear: number | null, endWeek: number | null, endYear: number | null, bufferWeeks: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.execute(
+    `UPDATE project_companies SET startWeek = ?, startYear = ?, endWeek = ?, endYear = ?, bufferWeeks = ? WHERE id = ?`,
+    [startWeek, startYear, endWeek, endYear, bufferWeeks, projectCompanyId]
+  );
+}
+
+export async function getProjectCompaniesWithPeriods(projectId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  const [rows] = await database.execute(
+    `SELECT pc.*, c.name as companyName, c.shortName, c.companyType FROM project_companies pc JOIN companies c ON pc.companyId = c.id WHERE pc.projectId = ?`,
+    [projectId]
+  );
+  return rows as any[];
+}
+
+// ─── Weeks Without Work ─────────────────────────────────────────────────────
+export async function getWeeksWithoutWork(projectId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  const [rows] = await database.execute(
+    `SELECT * FROM weeks_without_work WHERE projectId = ? ORDER BY weekYear DESC, weekNumber DESC`,
+    [projectId]
+  );
+  return rows as any[];
+}
+
+export async function addWeekWithoutWork(projectId: number, weekNumber: number, weekYear: number, reason: string | null, createdBy: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.execute(
+    `INSERT INTO weeks_without_work (projectId, weekNumber, weekYear, reason, createdBy) VALUES (?, ?, ?, ?, ?)`,
+    [projectId, weekNumber, weekYear, reason, createdBy]
+  );
+}
+
+export async function removeWeekWithoutWork(id: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.execute(`DELETE FROM weeks_without_work WHERE id = ?`, [id]);
+}
+
+// ─── Audit Log ──────────────────────────────────────────────────────────────
+export async function insertAuditLog(userId: number, userName: string | null, action: string, entity: string | null, entityId: number | null, oldValue: string | null, newValue: string | null) {
+  const database = await getDb();
+  if (!database) return;
+  await database.execute(
+    `INSERT INTO audit_log (userId, userName, action, entity, entityId, oldValue, newValue) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, userName, action, entity, entityId, oldValue, newValue]
+  );
+}

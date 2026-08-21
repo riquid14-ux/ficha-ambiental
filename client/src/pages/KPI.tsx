@@ -126,11 +126,33 @@ export default function KPI() {
   };
 
   const handleExportExcel = () => {
-    let csv = "Métrica,Unidade,Total\n";
-    for (const m of metrics) { csv += `"${m.name}",${m.unit},${(totals[m.id] || 0).toFixed(2)}\n`; }
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.csv`; a.click(); URL.revokeObjectURL(url);
+    import("exceljs").then(async (ExcelJS) => {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("KPIs");
+      ws.columns = [
+        { header: "Categoria", key: "cat", width: 20 },
+        { header: "Métrica", key: "name", width: 40 },
+        { header: "Unidade", key: "unit", width: 15 },
+        { header: "Total", key: "total", width: 15 },
+      ];
+      const headerRow = ws.getRow(1);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF16A34A" } };
+      for (const m of metrics) {
+        ws.addRow({ cat: t(CAT_LABELS[m.category] || m.category), name: m.name, unit: m.unit, total: Number((totals[m.id] || 0).toFixed(2)) });
+      }
+      ws.autoFilter = { from: "A1", to: "D1" };
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.xlsx`; a.click(); URL.revokeObjectURL(url);
+    }).catch(() => {
+      let csv = "Métrica,Unidade,Total\n";
+      for (const m of metrics) { csv += `"${m.name}",${m.unit},${(totals[m.id] || 0).toFixed(2)}\n`; }
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.csv`; a.click(); URL.revokeObjectURL(url);
+    });
   };
 
   if (isAllProjects) return <AppLayout><div className="p-6 text-center text-muted-foreground">{t("Selecione um projeto individual para ver os KPI's.")}</div></AppLayout>;

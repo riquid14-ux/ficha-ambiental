@@ -856,6 +856,8 @@ export const appRouter = router({
           await db.bulkUpsertMeasureReviews(input.id, ctx.user.id, input.measureReviews);
         }
         await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
+        // Audit log
+        db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email || null, `ficha_${input.status}`, "weekly_submissions", input.id, null, JSON.stringify({ weekNumber: sub.weekNumber, weekYear: sub.weekYear, notes: input.notes })).catch(() => {});
         // Send email notification to submitter (async, don't block)
         try {
           if (input.status === "approved" || input.status === "rejected") {
@@ -2107,13 +2109,70 @@ export const appRouter = router({
       if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const query = input.userId 
-        ? `SELECT * FROM audit_log WHERE userId = ${input.userId} ORDER BY createdAt DESC LIMIT ${input.limit}`
-        : `SELECT * FROM audit_log ORDER BY createdAt DESC LIMIT ${input.limit}`;
-      const [rows] = await database.execute(query);
+      let query = `SELECT * FROM audit_log WHERE 1=1`;
+      const params: any[] = [];
+      if (input.userId) { query += ` AND userId = ?`; params.push(input.userId); }
+      if (input.action) { query += ` AND action = ?`; params.push(input.action); }
+      query += ` ORDER BY createdAt DESC LIMIT ?`;
+      params.push(input.limit);
+      const [rows] = await database.execute(query, params);
       return (rows as unknown) as any[];
     }),
   },
+
+  // ─── Company Active Periods ──────────────────────────────────────────────
+  companyPeriods: router({
+    getByProject: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getProjectCompaniesWithPeriods(input.projectId);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        startWeek: z.number().nullable(),
+        startYear: z.number().nullable(),
+        endWeek: z.number().nullable(),
+        endYear: z.number().nullable(),
+        bufferWeeks: z.number().default(4),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.updateCompanyPeriod(input.id, input.startWeek, input.startYear, input.endWeek, input.endYear, input.bufferWeeks);
+        await db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email, "company_period_update", "project_companies", input.id, null, JSON.stringify({ startWeek: input.startWeek, startYear: input.startYear, endWeek: input.endWeek, endYear: input.endYear, bufferWeeks: input.bufferWeeks }));
+        return { success: true };
+      }),
+  }),
+
+  // ─── Weeks Without Work ──────────────────────────────────────────────────
+  weeksWithoutWork: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        return db.getWeeksWithoutWork(input.projectId);
+      }),
+    add: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        weekNumber: z.number(),
+        weekYear: z.number(),
+        reason: z.string().nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.addWeekWithoutWork(input.projectId, input.weekNumber, input.weekYear, input.reason, ctx.user.id);
+        await db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email, "week_without_work_add", "weeks_without_work", null, null, JSON.stringify({ projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, reason: input.reason }));
+        return { success: true };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        await db.removeWeekWithoutWork(input.id);
+        await db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email, "week_without_work_remove", "weeks_without_work", input.id, null, null);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

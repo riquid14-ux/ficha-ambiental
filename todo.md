@@ -338,4 +338,14 @@
 - [x] Add route and sidebar link, default landing for new users
 - [x] Move Workflow diagram into Welcome page (before the 4 guide points)
 - [x] Redesign Home/landing page to look premium/corporate
+
+## V2 Improvements (Agosto 2026)
+- [ ] Company active periods: start/end week per company/project with 4-week buffer after end
+- [ ] Weeks without work: admin can mark specific weeks as "sem trabalhos" (Natal, paragens)
+- [ ] Matriz only shows active companies for each week (no false red for finished companies)
+- [x] Comments per measure in ficha review (RAA can comment on individual measures) — already implemented
+- [ ] KPI Excel export button
+- [ ] Audit trail in Administration (log of all actions: who did what, when)
+- [ ] Monthly PDF report for admin/DO (summary of KPIs, compliance, fichas)
+- [ ] Browser push notifications for ficha submissions
 - [x] Home page needs Start Campus branding, professional images, feature sections

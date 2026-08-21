@@ -901,7 +901,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-        const { invokeLLM } = await import("./_core/llm");
+        const { callLLM } = await import("./llm-provider");
 
         // Upload PDF to storage first
         const buffer = Buffer.from(input.pdfBase64, "base64");
@@ -913,18 +913,14 @@ export const appRouter = router({
         const measureList = allMeasures.map((m: any) => `ID:${m.id} - ${m.code || ''} ${m.description}`).join('\n');
         
         // Use LLM to extract responses from the PDF
-        const response = await invokeLLM({
-          model: "gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: "You are an environmental compliance document parser. Extract measure responses from a Portuguese environmental control sheet (Ficha de Controlo Ambiental). For each measure found in the PDF, return the measure ID, status (I=Implementado, C=Conforme, NC=Não Conforme, NA=Não Aplicável), and any observations text. Return JSON only." },
-            { role: "user", content: `Here are the measures in our system:\n${measureList}\n\nI have uploaded a PDF environmental control sheet. The PDF content has been uploaded to: ${pdfStorageUrl}\nMatch each response to the correct measure ID. Return a JSON object with a "responses" array of objects with: measureId (number), status (string: I/C/NC/NA), observations (string or null).` }
-          ],
-          max_tokens: 16384,
-        } as any);
+        const llmResponse = await callLLM([
+          { role: "system", content: "You are an environmental compliance document parser. Extract measure responses from a Portuguese environmental control sheet (Ficha de Controlo Ambiental). For each measure found in the PDF, return the measure ID, status (I=Implementado, C=Conforme, NC=Não Conforme, NA=Não Aplicável), and any observations text. Return JSON only." },
+          { role: "user", content: `Here are the measures in our system:\n${measureList}\n\nI have uploaded a PDF environmental control sheet. The PDF content has been uploaded to: ${pdfStorageUrl}\nMatch each response to the correct measure ID. Return a JSON object with a "responses" array of objects with: measureId (number), status (string: I/C/NC/NA), observations (string or null).` }
+        ], 16384);
 
         let extractedResponses: any[] = [];
         try {
-          const content = String(response.choices?.[0]?.message?.content || "{}");
+          const content = llmResponse.content || "{}";
           // Try to extract JSON from the response (may be wrapped in markdown code blocks)
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);

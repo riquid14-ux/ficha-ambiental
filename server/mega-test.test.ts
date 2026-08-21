@@ -80,8 +80,7 @@ describe("PDF Import", () => {
     const fs = await import("fs");
     const router = fs.readFileSync(`${process.cwd()}/server/routers.ts`, "utf-8");
     expect(router).toContain("importPdf:");
-    expect(router).toContain("invokeLLM");
-    expect(router).toContain("gemini");
+    expect(router).toContain("callLLM");
   });
 });
 

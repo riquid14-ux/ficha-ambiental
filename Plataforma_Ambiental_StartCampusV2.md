@@ -235,20 +235,18 @@ Foi implementado um sistema de tradução com 1076 chaves PT/EN no `LanguageCont
 
 ## 6. Próximos Passos para IT
 
-| Passo | Descrição | Estimativa |
-|-------|-----------|------------|
-| 1 | Provisionar servidor (VM/container com Node.js 22 + Nginx) | 2h |
-| 2 | Criar base de dados MySQL 8 (Azure Database for MySQL ou equivalente) | 1h |
-| 3 | Clonar repositório: `git clone` + `pnpm install` + configurar `.env` | 1h |
-| 4 | Executar migrações da BD: `pnpm drizzle-kit generate` + aplicar SQL | 1h |
-| 5 | Configurar SharePoint (App Registration Azure AD, `Sites.ReadWrite.All`) | 4h |
-| 6 | Activar ACC (Custom Integration em `admin.b360.autodesk.com`) | 2h |
-| 7 | SSL/TLS (Let's Encrypt ou certificado corporativo) | 1h |
-| 8 | Configurar SMTP (Office 365) em Administração > Email | 30min |
-| 9 | Configurar domínio DNS (apontar para o novo servidor) | 1h |
-| 10 | Backups automáticos (cron + mysqldump diário) | 1h |
-
-**Tempo total estimado: 2 dias (IT sénior)**
+| Passo | Descrição |
+|-------|-----------|
+| 1 | Provisionar servidor (VM/container com Node.js 22 + Nginx) |
+| 2 | Criar base de dados MySQL 8 (Azure Database for MySQL ou equivalente) |
+| 3 | Clonar repositório: `git clone` + `pnpm install` + configurar variáveis de ambiente |
+| 4 | Executar migrações da BD: `pnpm drizzle-kit generate` + aplicar SQL |
+| 5 | Configurar SharePoint (App Registration Azure AD, `Sites.ReadWrite.All`) |
+| 6 | Activar ACC (Custom Integration em `admin.b360.autodesk.com`) |
+| 7 | SSL/TLS (Let's Encrypt ou certificado corporativo) |
+| 8 | Configurar SMTP (Office 365) em Administração > Email |
+| 9 | Configurar domínio DNS (apontar para o novo servidor) |
+| 10 | Backups automáticos (cron + mysqldump diário) |
 
 ---
 

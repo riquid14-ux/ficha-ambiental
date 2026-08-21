@@ -342,33 +342,20 @@
 ## V2 Improvements (Agosto 2026)
 - [x] Company active periods: start/end week per company/project with 4-week buffer after end
 - [x] Weeks without work: admin can mark specific weeks as "sem trabalhos" (Natal, paragens)
-- [ ] Matriz uses active periods to filter companies (no false red for finished companies)
+- [x] Matriz uses active periods to filter companies (no false red for finished companies)
 - [x] Comments per measure in ficha review (RAA can comment on individual measures) — already implemented
 - [x] KPI Excel export button (exceljs with formatted headers and auto-filter)
 - [x] Audit trail in Administration page (logging on review, delete, approve)
 - [x] Monthly report Word export for admin/DO (Dashboard button)
-- [ ] Browser push notifications for ficha submissions (requires Service Worker)
+- [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase)
 - [x] Home page needs Start Campus branding, professional images, feature sections
-- [ ] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal (alongside Rascunhos) for EE/RAP visibility
-- [x] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal — tab renamed to "Estado de Fichas" with 3 sub-secções
-- [ ] Admin config: notification recipients per project (who receives email when ficha is submitted)
-- [ ] Email templates: include project code, company name, week number in all notifications
-- [ ] Email on submission: notify configured RAA/reviewers per project
-- [ ] Email on rejection: notify creator/submitter with project, company, week details
-- [ ] Email on approval: notify creator/submitter with project, company, week details
-- [x] Admin config: notification recipients per project (who receives email when ficha is submitted)
-- [x] Email templates: include project code, company name, week number in all notifications
-- [x] Email on submission: notify configured RAA/reviewers per project
-- [x] Email on rejection: notify creator/submitter with project, company, week details
-- [x] Email on approval: notify creator/submitter with project, company, week details
 - [x] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal — tab renamed to "Estado de Fichas" with 3 sub-secções
 - [x] Admin config: notification recipients per project (who receives email when ficha is submitted)
 - [x] Email templates: include project code, company name, week number in all notifications
 - [x] Email on submission: notify configured RAA/reviewers per project
 - [x] Email on rejection: notify creator/submitter with project, company, week details
 - [x] Email on approval: notify creator/submitter with project, company, week details
-- [x] Matriz uses active periods to filter companies (inactive weeks shown gray, no-work weeks shown with P)
-- [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase Cloud Messaging setup on their server)
-- [x] Browser push notifications — deferred to IT (requires Service Worker + Firebase Cloud Messaging setup on their server)
-- [ ] In-app notification bell with badge showing pending actions per user role
 - [x] In-app notification bell with badge showing pending actions per user role
+- [x] Archive-to-storage architecture: approved fichas, KPIs, resíduos archived to external storage (S3/SharePoint)
+- [x] Archive provider abstraction layer (S3 now, SharePoint via STORAGE_PROVIDER env)
+- [x] Photo extraction from imported PDFs/Word documents

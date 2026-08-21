@@ -358,4 +358,22 @@
 - [x] In-app notification bell with badge showing pending actions per user role
 - [x] Archive-to-storage architecture: approved fichas, KPIs, resíduos archived to external storage (S3/SharePoint)
 - [x] Archive provider abstraction layer (S3 now, SharePoint via STORAGE_PROVIDER env)
+
+## Performance Optimizations (Agosto 2026)
+- [x] Backend: Add year filter to getAnalytics (Dashboard defaults to current year)
+- [x] Backend: Add year filter to getMatrixData (Matriz defaults to current year)
+- [x] Backend: Add limit(500) to getAllSubmissions for safety
+- [x] Backend: Add year filter to listAll submissions procedure (new getAllSubmissionsByYear)
+- [x] Backend: Add year filter to KPI allValues procedure (weekYear param)
+- [x] Frontend: Year selector on Dashboard page
+- [x] Frontend: Year selector on Matriz page
+- [x] Frontend: Year selector on Histórico/SubmissionHistory page
+- [x] Frontend: Year selector on KPI page (pass to backend)
+- [x] Fix all TypeScript errors (0 errors with tsc --noEmit)
+- [x] Fix notification recipients functions (getDb() pattern instead of raw db/schema)
+- [x] Fix isAdminOrDono call with wrong argument (ctx.user vs ctx.user.role)
+- [x] Add getAccessRequests stub for notification bell
+- [x] Comprehensive security drill after performance changes — 25/25 tests pass
+- [x] Comprehensive functionality drill after performance changes — 106/106 tests pass, 0 TS errors, build OK
+- [x] Comprehensive roles drill after performance changes — 21/21 tests pass, 52 role guards verified
 - [x] Photo extraction from imported PDFs/Word documents

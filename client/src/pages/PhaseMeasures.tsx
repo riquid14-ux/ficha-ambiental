@@ -33,7 +33,8 @@ const ALL_PHASES = [
   { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-muted0" },
 ];
 
-export default function PhaseMeasures({ embedded = false }: { embedded?: boolean }) {
+export default function PhaseMeasures(props: any) {
+  const embedded = props?.embedded ?? false;
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();

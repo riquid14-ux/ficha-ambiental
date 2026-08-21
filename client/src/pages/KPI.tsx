@@ -39,7 +39,7 @@ export default function KPI() {
   const projectId = activeProject?.id || 0;
   const metricsQuery = trpc.kpi.metrics.useQuery();
   const matrixQuery = trpc.kpi.matrix.useQuery({ projectId }, { enabled: projectId > 0 });
-  const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId }, { enabled: projectId > 0 });
+  const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId, weekYear: selectedYear }, { enabled: projectId > 0 });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery();
   const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });

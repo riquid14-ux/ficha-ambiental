@@ -56,9 +56,10 @@ export default function SubmissionHistory(props: any) {
   const [measureStartDate, setMeasureStartDate] = useState("");
   const [measureEndDate, setMeasureEndDate] = useState("");
   const [exportingMeasure, setExportingMeasure] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const submissionsQuery = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador"
-    ? trpc.submissions.listAll.useQuery({})
+    ? trpc.submissions.listAll.useQuery({ year: selectedYear })
     : trpc.submissions.mySubmissions.useQuery();
 
   // Filter submissions by active project
@@ -242,8 +243,18 @@ export default function SubmissionHistory(props: any) {
           <p className="text-muted-foreground text-sm mt-1">{t("Consulte e exporte fichas por período ou por medida")}</p>
         </div>
 
-        {/* View mode toggle: Submissions vs Deleted */}
-        <div className="flex gap-2">
+        {/* Year selector + View mode toggle */}
+        <div className="flex gap-2 items-center">
+          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+            <SelectTrigger className="w-[110px]">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             variant={viewMode === "submissions" ? "default" : "outline"}
             size="sm"

@@ -263,6 +263,17 @@ export async function getAllSubmissions() {
     .select()
     .from(weeklySubmissions)
     .where(sql`${weeklySubmissions.status} != 'deleted'`)
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber))
+    .limit(500);
+}
+
+export async function getAllSubmissionsByYear(year: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(weeklySubmissions)
+    .where(and(sql`${weeklySubmissions.status} != 'deleted'`, eq(weeklySubmissions.weekYear, year)))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 
@@ -860,12 +871,10 @@ export async function getCompaniesForProject(projectId: number) {
 
 // ─── Matrix Data ──────────────────────────────────────────────────────────────
 
-export async function getMatrixData(projectId?: number) {
+export async function getMatrixData(projectId?: number, year?: number) {
   const db = await getDb();
   if (!db) return { submissions: [], companies: [], weeks: [] };
 
-  // FLOW-03 FIX: Get ALL companies that have submissions (not just EE/RAP)
-  // This ensures DO-submitted fichas also appear in the matrix
   let relevantCompanies: typeof companies.$inferSelect[] = [];
   if (projectId) {
     relevantCompanies = await getCompaniesForProject(projectId);
@@ -873,20 +882,15 @@ export async function getMatrixData(projectId?: number) {
     const allCompanies = await db.select().from(companies).where(eq(companies.active, 1));
     relevantCompanies = allCompanies;
   }
-  // Include all companies that are EE, RAP, or have at least one submission
-  // (This ensures DO fichas are visible in the matrix too)
 
-  // Get all non-deleted submissions (optionally filtered by project)
+  const conditions: any[] = [sql`${weeklySubmissions.status} != 'deleted'`];
+  if (projectId) conditions.push(eq(weeklySubmissions.projectId, projectId));
+  if (year) conditions.push(eq(weeklySubmissions.weekYear, year));
+
   let subs;
-  if (projectId) {
-    subs = await db.select().from(weeklySubmissions)
-      .where(and(eq(weeklySubmissions.projectId, projectId), sql`${weeklySubmissions.status} != 'deleted'`))
-      .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
-  } else {
-    subs = await db.select().from(weeklySubmissions)
-      .where(sql`${weeklySubmissions.status} != 'deleted'`)
-      .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
-  }
+  subs = await db.select().from(weeklySubmissions)
+    .where(and(...conditions))
+    .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
 
   // Extract unique weeks
   const weekSet = new Set<string>();
@@ -1100,6 +1104,7 @@ export async function deletePhaseEvidence(id: number) {
 
 // ─── Waste e-GARs (MIRR) ─────────────────────────────────────────────────────
 import { wasteEgars, InsertWasteEgar } from "../drizzle/schema";
+import { notificationRecipients } from "../drizzle/schema";
 
 export async function getWasteEgars(projectId: number, year?: number) {
   const db = await getDb();
@@ -1127,17 +1132,15 @@ export async function updateCompanyPeriod(projectCompanyId: number, startWeek: n
   const database = await getDb();
   if (!database) return;
   await database.execute(
-    `UPDATE project_companies SET startWeek = ?, startYear = ?, endWeek = ?, endYear = ?, bufferWeeks = ? WHERE id = ?`,
-    [startWeek, startYear, endWeek, endYear, bufferWeeks, projectCompanyId]
+    sql`UPDATE project_companies SET startWeek = ${startWeek}, startYear = ${startYear}, endWeek = ${endWeek}, endYear = ${endYear}, bufferWeeks = ${bufferWeeks} WHERE id = ${projectCompanyId}`
   );
 }
 
 export async function getProjectCompaniesWithPeriods(projectId: number) {
   const database = await getDb();
   if (!database) return [];
-  const [rows] = await database.execute(
-    `SELECT pc.*, c.name as companyName, c.shortName, c.companyType FROM project_companies pc JOIN companies c ON pc.companyId = c.id WHERE pc.projectId = ?`,
-    [projectId]
+  const rows = await database.execute(
+    sql`SELECT pc.*, c.name as companyName, c.shortName, c.companyType FROM project_companies pc JOIN companies c ON pc.companyId = c.id WHERE pc.projectId = ${projectId}`
   );
   return rows as any[];
 }
@@ -1146,9 +1149,8 @@ export async function getProjectCompaniesWithPeriods(projectId: number) {
 export async function getWeeksWithoutWork(projectId: number) {
   const database = await getDb();
   if (!database) return [];
-  const [rows] = await database.execute(
-    `SELECT * FROM weeks_without_work WHERE projectId = ? ORDER BY weekYear DESC, weekNumber DESC`,
-    [projectId]
+  const rows = await database.execute(
+    sql`SELECT * FROM weeks_without_work WHERE projectId = ${projectId} ORDER BY weekYear DESC, weekNumber DESC`
   );
   return rows as any[];
 }
@@ -1157,15 +1159,14 @@ export async function addWeekWithoutWork(projectId: number, weekNumber: number, 
   const database = await getDb();
   if (!database) return;
   await database.execute(
-    `INSERT INTO weeks_without_work (projectId, weekNumber, weekYear, reason, createdBy) VALUES (?, ?, ?, ?, ?)`,
-    [projectId, weekNumber, weekYear, reason, createdBy]
+    sql`INSERT INTO weeks_without_work (projectId, weekNumber, weekYear, reason, createdBy) VALUES (${projectId}, ${weekNumber}, ${weekYear}, ${reason}, ${createdBy})`
   );
 }
 
 export async function removeWeekWithoutWork(id: number) {
   const database = await getDb();
   if (!database) return;
-  await database.execute(`DELETE FROM weeks_without_work WHERE id = ?`, [id]);
+  await database.execute(sql`DELETE FROM weeks_without_work WHERE id = ${id}`);
 }
 
 // ─── Audit Log ──────────────────────────────────────────────────────────────
@@ -1173,50 +1174,62 @@ export async function insertAuditLog(userId: number, userName: string | null, ac
   const database = await getDb();
   if (!database) return;
   await database.execute(
-    `INSERT INTO audit_log (userId, userName, action, entity, entityId, oldValue, newValue) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [userId, userName, action, entity, entityId, oldValue, newValue]
+    sql`INSERT INTO audit_log (userId, userName, action, entity, entityId, oldValue, newValue) VALUES (${userId}, ${userName}, ${action}, ${entity}, ${entityId}, ${oldValue}, ${newValue})`
   );
 }
 
 // Notification recipients
 export async function getNotificationRecipients(projectId: number, notificationType: string) {
-  return db.select({
-    id: schema.notificationRecipients.id,
-    projectId: schema.notificationRecipients.projectId,
-    userId: schema.notificationRecipients.userId,
-    notificationType: schema.notificationRecipients.notificationType,
-    active: schema.notificationRecipients.active,
-    userName: schema.users.name,
-    userEmail: schema.users.email,
+  const database = await getDb();
+  if (!database) return [];
+  return database.select({
+    id: notificationRecipients.id,
+    projectId: notificationRecipients.projectId,
+    userId: notificationRecipients.userId,
+    notificationType: notificationRecipients.notificationType,
+    active: notificationRecipients.active,
+    userName: users.name,
+    userEmail: users.email,
   })
-    .from(schema.notificationRecipients)
-    .leftJoin(schema.users, eq(schema.notificationRecipients.userId, schema.users.id))
+    .from(notificationRecipients)
+    .leftJoin(users, eq(notificationRecipients.userId, users.id))
     .where(and(
-      eq(schema.notificationRecipients.projectId, projectId),
-      or(eq(schema.notificationRecipients.notificationType, notificationType), eq(schema.notificationRecipients.notificationType, "all")),
-      eq(schema.notificationRecipients.active, true)
+      eq(notificationRecipients.projectId, projectId),
+      or(eq(notificationRecipients.notificationType, notificationType), eq(notificationRecipients.notificationType, "all")),
+      eq(notificationRecipients.active, true)
     ));
 }
 
 export async function listNotificationRecipientsByProject(projectId: number) {
-  return db.select({
-    id: schema.notificationRecipients.id,
-    projectId: schema.notificationRecipients.projectId,
-    userId: schema.notificationRecipients.userId,
-    notificationType: schema.notificationRecipients.notificationType,
-    active: schema.notificationRecipients.active,
-    userName: schema.users.name,
-    userEmail: schema.users.email,
+  const database = await getDb();
+  if (!database) return [];
+  return database.select({
+    id: notificationRecipients.id,
+    projectId: notificationRecipients.projectId,
+    userId: notificationRecipients.userId,
+    notificationType: notificationRecipients.notificationType,
+    active: notificationRecipients.active,
+    userName: users.name,
+    userEmail: users.email,
   })
-    .from(schema.notificationRecipients)
-    .leftJoin(schema.users, eq(schema.notificationRecipients.userId, schema.users.id))
-    .where(eq(schema.notificationRecipients.projectId, projectId));
+    .from(notificationRecipients)
+    .leftJoin(users, eq(notificationRecipients.userId, users.id))
+    .where(eq(notificationRecipients.projectId, projectId));
 }
 
 export async function addNotificationRecipient(projectId: number, userId: number, notificationType: string) {
-  return db.insert(schema.notificationRecipients).values({ projectId, userId, notificationType }).onDuplicateKeyUpdate({ set: { active: true } });
+  const database = await getDb();
+  if (!database) return;
+  return database.insert(notificationRecipients).values({ projectId, userId, notificationType } as any).onDuplicateKeyUpdate({ set: { active: true } });
 }
 
 export async function removeNotificationRecipient(id: number) {
-  return db.delete(schema.notificationRecipients).where(eq(schema.notificationRecipients.id, id));
+  const database = await getDb();
+  if (!database) return;
+  return database.delete(notificationRecipients).where(eq(notificationRecipients.id, id));
+}
+
+// ─── Access Requests (for notification bell) ─────────────────────────────────
+export async function getAccessRequests() {
+  return getInvitationsByStatus("pending");
 }

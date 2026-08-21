@@ -669,13 +669,16 @@ export const appRouter = router({
 
     // Admin/Dono/RAA: list all submissions
     listAll: protectedProcedure
-      .input(z.object({ companyId: z.number().optional() }).optional())
+      .input(z.object({ companyId: z.number().optional(), year: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador") {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         if (input?.companyId) {
           return db.getSubmissionsByCompany(input.companyId);
+        }
+        if (input?.year) {
+          return db.getAllSubmissionsByYear(input.year);
         }
         return db.getAllSubmissions();
       }),
@@ -789,7 +792,7 @@ export const appRouter = router({
                 company?.shortName || "?",
                 sub.weekNumber,
                 sub.weekYear,
-                ctx.user.name || ctx.user.email,
+                ctx.user.name || ctx.user.email || "Admin",
                 new Date().toLocaleString("pt-PT")
               );
             }
@@ -1432,10 +1435,10 @@ export const appRouter = router({
   // ─── Matrix (Acompanhamento) ──────────────────────────────────────────────
   matrix: router({
     getData: protectedProcedure
-      .input(z.object({ projectId: z.number().optional() }).optional())
+      .input(z.object({ projectId: z.number().optional(), year: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         // All authenticated users can view the matrix
-        return db.getMatrixData(input?.projectId);
+        return db.getMatrixData(input?.projectId, input?.year);
       }),
   }),
 
@@ -2196,7 +2199,7 @@ export const appRouter = router({
     createIncident: protectedProcedure
       .input(z.object({ projectId: z.number(), name: z.string(), date: z.string(), status: z.string(), severity: z.string(), link: z.string().optional() }))
       .mutation(async ({ input, ctx }) => {
-        if (!isAdminOrDono(ctx.user as any)) throw new TRPCError({ code: "FORBIDDEN" });
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await database.insert(schema.kpiIncidents).values({ ...input, createdBy: ctx.user.email });
@@ -2222,13 +2225,12 @@ export const appRouter = router({
       if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      let query = `SELECT * FROM audit_log WHERE 1=1`;
-      const params: any[] = [];
-      if (input.userId) { query += ` AND userId = ?`; params.push(input.userId); }
-      if (input.action) { query += ` AND action = ?`; params.push(input.action); }
-      query += ` ORDER BY createdAt DESC LIMIT ?`;
-      params.push(input.limit);
-      const [rows] = await database.execute(query, params);
+      const conditions = [sql`1=1`];
+      if (input.userId) conditions.push(sql`userId = ${input.userId}`);
+      if (input.action) conditions.push(sql`action = ${input.action}`);
+      const rows = await database.execute(
+        sql`SELECT * FROM audit_log WHERE ${sql.join(conditions, sql` AND `)} ORDER BY createdAt DESC LIMIT ${input.limit}`
+      );
       return (rows as unknown) as any[];
     }),
   },

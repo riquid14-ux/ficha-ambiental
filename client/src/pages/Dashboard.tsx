@@ -101,13 +101,14 @@ export default function Dashboard() {
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedWeek, setSelectedWeek] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const companiesQuery = trpc.companies.list.useQuery();
   const sectionsQuery = trpc.sections.list.useQuery();
 
   const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador";
   const submissionsQuery = canSeeAll
-    ? trpc.submissions.listAll.useQuery({})
+    ? trpc.submissions.listAll.useQuery({ year: selectedYear })
     : trpc.submissions.mySubmissions.useQuery();
 
   const weeks = useMemo(() => {
@@ -123,7 +124,7 @@ export default function Dashboard() {
   const analyticsQuery = trpc.analytics.overview.useQuery({
     companyId: selectedCompany !== "all" ? Number(selectedCompany) : undefined,
     sectionId: selectedSection !== "all" ? Number(selectedSection) : undefined,
-    weekYear: selectedWeek !== "all" ? Number(selectedWeek.split("-")[0]) : undefined,
+    weekYear: selectedWeek !== "all" ? Number(selectedWeek.split("-")[0]) : selectedYear,
     weekNumber: selectedWeek !== "all" ? Number(selectedWeek.split("-")[1]) : undefined,
     projectId: !isAllProjects && activeProject ? activeProject.id : undefined,
   });
@@ -777,6 +778,16 @@ export default function Dashboard() {
         </div>
         <div className="flex flex-wrap gap-3 justify-end">
           <div className="flex flex-wrap gap-3">
+            <Select value={String(selectedYear)} onValueChange={(v) => { setSelectedYear(Number(v)); setSelectedWeek("all"); }}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {canSeeAll && (
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger className="w-[180px]">

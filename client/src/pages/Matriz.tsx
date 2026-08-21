@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Grid3X3, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Map submission status to display info
 function getStatusDisplay(status: string) {
@@ -29,9 +30,10 @@ export default function Matriz(props: any) {
   const { t } = useLanguage();
   const embedded = props?.embedded;
   const { activeProject, isAllProjects } = useProject();
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const matrixQuery = trpc.matrix.getData.useQuery(
-    isAllProjects ? undefined : { projectId: activeProject?.id }
+    isAllProjects ? { year: selectedYear } : { projectId: activeProject?.id, year: selectedYear }
   );
 
   // Fetch company periods and weeks without work for active project
@@ -128,6 +130,16 @@ export default function Matriz(props: any) {
               )}
             </p>
           </div>
+          <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Legend */}

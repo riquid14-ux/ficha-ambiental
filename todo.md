@@ -340,12 +340,12 @@
 - [x] Redesign Home/landing page to look premium/corporate
 
 ## V2 Improvements (Agosto 2026)
-- [ ] Company active periods: start/end week per company/project with 4-week buffer after end
-- [ ] Weeks without work: admin can mark specific weeks as "sem trabalhos" (Natal, paragens)
-- [ ] Matriz only shows active companies for each week (no false red for finished companies)
+- [x] Company active periods: start/end week per company/project with 4-week buffer after end
+- [x] Weeks without work: admin can mark specific weeks as "sem trabalhos" (Natal, paragens)
+- [ ] Matriz uses active periods to filter companies (no false red for finished companies)
 - [x] Comments per measure in ficha review (RAA can comment on individual measures) — already implemented
-- [ ] KPI Excel export button
-- [ ] Audit trail in Administration (log of all actions: who did what, when)
-- [ ] Monthly PDF report for admin/DO (summary of KPIs, compliance, fichas)
-- [ ] Browser push notifications for ficha submissions
+- [x] KPI Excel export button (exceljs with formatted headers and auto-filter)
+- [x] Audit trail in Administration page (logging on review, delete, approve)
+- [x] Monthly report Word export for admin/DO (Dashboard button)
+- [ ] Browser push notifications for ficha submissions (requires Service Worker)
 - [x] Home page needs Start Campus branding, professional images, feature sections

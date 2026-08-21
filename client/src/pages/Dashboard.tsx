@@ -1,4 +1,6 @@
 import AppLayout from "@/components/AppLayout";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +14,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp, FileDown } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -36,6 +38,59 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects, projects } = useProject();
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
+
+  const handleMonthlyReport = async () => {
+    try {
+      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, HeadingLevel } = await import("docx");
+      const now = new Date();
+      const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      const monthName = monthNames[now.getMonth()];
+      const subs = (submissionsQuery.data || []) as any[];
+      const approved = subs.filter((s: any) => s.status === "approved").length;
+      const submitted = subs.filter((s: any) => s.status === "submitted" || s.status === "under_review").length;
+      const rejected = subs.filter((s: any) => s.status === "rejected").length;
+      const drafts = subs.filter((s: any) => s.status === "draft").length;
+      const total = subs.length;
+      const complianceRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+
+      const noBorder = { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } } as const;
+
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({ children: [new TextRun({ text: "RELATÓRIO MENSAL DE COMPLIANCE AMBIENTAL", bold: true, size: 32, color: "16A34A" })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: `${monthName} ${now.getFullYear()} — ${isAllProjects ? "Todos os Projetos" : activeProject?.name || ""}`, size: 24, color: "666666" })], alignment: AlignmentType.CENTER, spacing: { after: 400 } }),
+            new Paragraph({ children: [new TextRun({ text: "Plataforma de Gestão Ambiental — Start Campus", size: 20, color: "999999" })], alignment: AlignmentType.CENTER, spacing: { after: 600 } }),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "1. Resumo Executivo", bold: true })] }),
+            new Paragraph({ children: [new TextRun({ text: `Este relatório apresenta o estado de compliance ambiental para o período de ${monthName} ${now.getFullYear()}.` })], spacing: { after: 200 } }),
+            new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+              new TableRow({ children: [
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Indicador", bold: true })] })], borders: noBorder }),
+                new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Valor", bold: true })] })], borders: noBorder }),
+              ]}),
+              ...[["Total de Fichas", String(total)], ["Fichas Aprovadas", String(approved)], ["Fichas em Revisão", String(submitted)], ["Fichas Rejeitadas", String(rejected)], ["Rascunhos", String(drafts)], ["Taxa de Compliance", `${complianceRate}%`]].map(([label, value]) =>
+                new TableRow({ children: [
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: label })] })], borders: noBorder }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: value, bold: true })] })], borders: noBorder }),
+                ]})
+              ),
+            ]}),
+            new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "2. Observações", bold: true })], spacing: { before: 400 } }),
+            new Paragraph({ children: [new TextRun({ text: complianceRate >= 80 ? "O nível de compliance está dentro dos parâmetros aceitáveis." : complianceRate >= 50 ? "O nível de compliance necessita de atenção. Recomenda-se acompanhamento mais próximo das entidades executantes." : "O nível de compliance está abaixo do aceitável. Ação imediata necessária." })], spacing: { after: 200 } }),
+            new Paragraph({ children: [new TextRun({ text: `Relatório gerado automaticamente pela Plataforma de Gestão Ambiental — Start Campus em ${now.toLocaleDateString("pt-PT")} às ${now.toLocaleTimeString("pt-PT")}.`, size: 18, color: "999999" })], spacing: { before: 600 } }),
+          ],
+        }],
+      });
+      const buffer = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(buffer);
+      const a = document.createElement("a"); a.href = url; a.download = `Relatorio_Mensal_${monthName}_${now.getFullYear()}.docx`; a.click(); URL.revokeObjectURL(url);
+      toast.success(t("Relatório mensal gerado com sucesso"));
+    } catch (err) {
+      console.error(err);
+      toast.error(t("Erro ao gerar relatório"));
+    }
+  };
 
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -156,6 +211,9 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Dashboard")}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t("Visão geral do cumprimento ambiental")}</p>
           </div>
+          {(user?.role === "admin" || user?.role === "dono_obra") && (
+            <Button variant="outline" size="sm" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>
+          )}
         </div>
 
         {/* Brand hero image */}

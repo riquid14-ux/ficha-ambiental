@@ -893,6 +893,34 @@ export const appRouter = router({
               });
             }
           }
+
+          // ─── ARCHIVE: Send approved ficha to external storage ─────────
+          try {
+            const { archiveDocument } = await import("./archive-provider");
+            const project = await db.getProjectById(sub.projectId);
+            const company = sub.companyId ? await db.getCompanyById(sub.companyId) : null;
+            const evidence = await db.getImagesBySubmission(input.id);
+            const comments = await db.getCommentsBySubmission(input.id);
+
+            await archiveDocument("ficha", project?.code || "UNKNOWN", sub.weekYear || new Date().getFullYear(), {
+              submission: { ...sub, status: "approved", reviewedBy: ctx.user.id, reviewedAt: Date.now(), reviewNotes: input.notes },
+              responses,
+              evidenceUrls: evidence.map((e: any) => e.url),
+              reviewComments: comments,
+              companyName: company?.name || null,
+              projectName: project?.name || null,
+            }, {
+              weekNumber: sub.weekNumber,
+              weekYear: sub.weekYear,
+              companyId: sub.companyId,
+              companyName: company?.name || null,
+              submissionId: input.id,
+              status: "approved",
+            });
+          } catch (archiveErr) {
+            // Archive failure is non-fatal — data stays in DB as fallback
+            console.warn("Archive to external storage failed (non-fatal):", archiveErr);
+          }
         }
         return { success: true };
       }),
@@ -1997,6 +2025,14 @@ export const appRouter = router({
           destination: input.destination ?? "recycled",
           createdBy: ctx.user.id,
         });
+        // Archive waste eGAR to external storage
+        try {
+          const { archiveDocument } = await import("./archive-provider");
+          const project = await db.getProjectById(input.projectId);
+          await archiveDocument("residuo", project?.code || "UNKNOWN", input.year, {
+            ...input, id: result.id, createdBy: ctx.user.id,
+          }, { month: input.month, year: input.year, lerCode: input.lerCode });
+        } catch (e) { console.warn("Waste archive failed (non-fatal):", e); }
         return result;
       }),
     delete: protectedProcedure
@@ -2073,6 +2109,28 @@ export const appRouter = router({
         if (v.value && v.value.trim() !== "") {
           await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${v.metricId}, ${v.value})`);
         }
+      }
+      // Archive KPI submission to external storage
+      try {
+        const { archiveDocument } = await import("./archive-provider");
+        const project = await db.getProjectById(input.projectId);
+        const company = await db.getCompanyById(input.companyId);
+        await archiveDocument("kpi", project?.code || "UNKNOWN", input.weekYear, {
+          submissionId,
+          projectId: input.projectId,
+          companyId: input.companyId,
+          weekNumber: input.weekNumber,
+          weekYear: input.weekYear,
+          values: input.values,
+          userId: ctx.user.id,
+        }, {
+          weekNumber: input.weekNumber,
+          weekYear: input.weekYear,
+          companyId: input.companyId,
+          companyName: company?.name || null,
+        });
+      } catch (e) {
+        console.warn("KPI archive failed (non-fatal):", e);
       }
       return { success: true, submissionId };
     }),

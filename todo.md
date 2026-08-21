@@ -349,3 +349,5 @@
 - [x] Monthly report Word export for admin/DO (Dashboard button)
 - [ ] Browser push notifications for ficha submissions (requires Service Worker)
 - [x] Home page needs Start Campus branding, professional images, feature sections
+- [ ] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal (alongside Rascunhos) for EE/RAP visibility
+- [x] Add "Rejeitadas" and "Aprovadas" sections in Ficha Semanal — tab renamed to "Estado de Fichas" with 3 sub-secções

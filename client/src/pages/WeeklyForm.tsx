@@ -100,9 +100,26 @@ export default function WeeklyForm() {
   const draftsAndRejected = useMemo(() => {
     const data = mySubmissionsQuery.data || [];
     const filtered = data.filter(
-      (s: any) => s.status === "draft" || s.status === "rejected"
+      (s: any) => s.status === "draft"
     );
-    // Filter by active project
+    if (!isAllProjects && activeProject) {
+      return filtered.filter((s: any) => s.projectId === activeProject.id);
+    }
+    return filtered;
+  }, [mySubmissionsQuery.data, activeProject, isAllProjects]);
+
+  const rejectedFichas = useMemo(() => {
+    const data = mySubmissionsQuery.data || [];
+    const filtered = data.filter((s: any) => s.status === "rejected");
+    if (!isAllProjects && activeProject) {
+      return filtered.filter((s: any) => s.projectId === activeProject.id);
+    }
+    return filtered;
+  }, [mySubmissionsQuery.data, activeProject, isAllProjects]);
+
+  const approvedFichas = useMemo(() => {
+    const data = mySubmissionsQuery.data || [];
+    const filtered = data.filter((s: any) => s.status === "approved");
     if (!isAllProjects && activeProject) {
       return filtered.filter((s: any) => s.projectId === activeProject.id);
     }
@@ -499,10 +516,10 @@ export default function WeeklyForm() {
             </TabsTrigger>
             <TabsTrigger value="rascunhos" className="gap-1 text-xs">
               <FileText className="w-3.5 h-3.5" />
-              Rascunhos
-              {draftsAndRejected.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
-                  {draftsAndRejected.length}
+              {t("Estado de Fichas")}
+              {(draftsAndRejected.length + rejectedFichas.length + approvedFichas.length) > 0 && (
+                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+                  {draftsAndRejected.length + rejectedFichas.length + approvedFichas.length}
                 </Badge>
               )}
             </TabsTrigger>
@@ -833,81 +850,115 @@ export default function WeeklyForm() {
 
           {/* Tab: Rascunhos */}
         <TabsContent value="rascunhos" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="w-5 h-5" />
-                  Rascunhos e Rejeitadas
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">{t("Fichas em rascunho ou rejeitadas que necessitam de atenção.")}</p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {mySubmissionsQuery.isLoading && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">{t("A carregar...")}</span>
-                  </div>
-                )}
-                {mySubmissionsQuery.isError && (
-                  <div className="p-4 rounded-lg border border-red-200 bg-red-50/50 text-sm text-red-600">
-                    Erro ao carregar rascunhos. Tente novamente.
-                  </div>
-                )}
-                {!mySubmissionsQuery.isLoading && !mySubmissionsQuery.isError && draftsAndRejected.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <FileText className="w-10 h-10 text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">
-                      Sem rascunhos ou fichas rejeitadas neste projeto.
-                    </p>
-                    <p className="text-xs text-muted-foreground/70 mt-1">{t("Quando criar uma nova ficha ou receber uma rejeição, ela aparecerá aqui.")}</p>
-                  </div>
-                )}
-                {draftsAndRejected.map((sub: any) => (
-                  <div
-                    key={sub.id}
-                    className={`p-4 rounded-lg border transition-all hover:shadow-md ${
-                      sub.status === "rejected"
-                        ? "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20"
-                        : "border-border bg-card"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground">
-                          Semana {sub.weekNumber} / {sub.weekYear}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {sub.weekStartDate} — {sub.weekEndDate}
-                        </p>
+            <div className="space-y-6">
+              {mySubmissionsQuery.isLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">{t("A carregar...")}</span>
+                </div>
+              )}
+
+              {/* Sub-secção: Rejeitadas */}
+              {rejectedFichas.length > 0 && (
+                <Card className="border-red-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base text-red-700">
+                      <XCircle className="w-5 h-5" />
+                      {t("Rejeitadas")}
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">{rejectedFichas.length}</Badge>
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">{t("Fichas devolvidas pela RAA para correcção. Ação imediata necessária.")}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {rejectedFichas.map((sub: any) => (
+                      <div key={sub.id} className="p-3 rounded-lg border border-red-200 bg-red-50/50 transition-all hover:shadow-md">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm">{t("Semana")} {sub.weekNumber} / {sub.weekYear}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{sub.weekStartDate} — {sub.weekEndDate}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-red-600">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>{t("Corrigir")}</span>
+                          </div>
+                        </div>
+                        <Button variant="destructive" size="sm" className="w-full mt-2 gap-2" onClick={() => setLocation(`/ficha/${sub.id}`)}>
+                          <ArrowRight className="w-4 h-4" /> {t("Corrigir e Resubmeter")}
+                        </Button>
                       </div>
-                      <Badge
-                        variant={sub.status === "rejected" ? "destructive" : "outline"}
-                        className="text-xs shrink-0"
-                      >
-                        {sub.status === "rejected" ? t("Rejeitada") : t("Rascunho")}
-                      </Badge>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Sub-secção: Rascunhos */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="w-5 h-5" />
+                    {t("Rascunhos")}
+                    {draftsAndRejected.length > 0 && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{draftsAndRejected.length}</Badge>}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">{t("Fichas em rascunho que ainda não foram submetidas.")}</p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {draftsAndRejected.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <FileText className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs text-muted-foreground">{t("Sem rascunhos neste projeto.")}</p>
                     </div>
-                    {sub.status === "rejected" && (
-                      <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{t("Ação imediata necessária")}</span>
+                  )}
+                  {draftsAndRejected.map((sub: any) => (
+                    <div key={sub.id} className="p-3 rounded-lg border border-border bg-card transition-all hover:shadow-md">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{t("Semana")} {sub.weekNumber} / {sub.weekYear}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{sub.weekStartDate} — {sub.weekEndDate}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{t("Rascunho")}</Badge>
                       </div>
-                    )}
-                    <Button
-                      variant={sub.status === "rejected" ? "destructive" : "default"}
-                      size="sm"
-                      className="w-full mt-3 gap-2"
-                      onClick={() => {
-                        setLocation(`/ficha/${sub.id}`);
-                      }}
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                      Continuar
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                      <Button variant="default" size="sm" className="w-full mt-2 gap-2" onClick={() => setLocation(`/ficha/${sub.id}`)}>
+                        <ArrowRight className="w-4 h-4" /> {t("Continuar")}
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Sub-secção: Aprovadas */}
+              <Card className="border-emerald-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base text-emerald-700">
+                    <Check className="w-5 h-5" />
+                    {t("Aprovadas")}
+                    {approvedFichas.length > 0 && <Badge className="text-[10px] px-1.5 py-0 bg-emerald-600">{approvedFichas.length}</Badge>}
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">{t("Fichas aprovadas pela RAA. Estas fichas contam para o compliance.")}</p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {approvedFichas.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                      <Check className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs text-muted-foreground">{t("Sem fichas aprovadas neste projeto.")}</p>
+                    </div>
+                  )}
+                  {approvedFichas.map((sub: any) => (
+                    <div key={sub.id} className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 transition-all hover:shadow-md">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{t("Semana")} {sub.weekNumber} / {sub.weekYear}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{sub.weekStartDate} — {sub.weekEndDate}</p>
+                        </div>
+                        <Badge className="text-xs bg-emerald-600">{t("Aprovada")}</Badge>
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full mt-2 gap-2 text-emerald-700 border-emerald-300" onClick={() => setLocation(`/ficha/${sub.id}`)}>
+                        <ArrowRight className="w-4 h-4" /> {t("Ver Ficha")}
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Tab: Matriz */}

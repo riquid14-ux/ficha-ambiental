@@ -273,3 +273,46 @@ export async function sendFichaDeletedNotification(
     return false;
   }
 }
+
+export async function sendDeadlineReminderEmail(params: {
+  to: string;
+  recipientName: string;
+  eventName: string;
+  daysLeft: number;
+  deadlineDate: string;
+  projectId: number | null;
+  category: string | null;
+}): Promise<boolean> {
+  const config = await getEmailConfig();
+  if (!config.enabled) return false;
+
+  const urgencyColor = params.daysLeft <= 7 ? "#d32f2f" : params.daysLeft <= 15 ? "#f57c00" : "#1976d2";
+  const urgencyLabel = params.daysLeft <= 7 ? "URGENTE" : params.daysLeft <= 15 ? "ATENÇÃO" : "LEMBRETE";
+
+  const subject = `[${urgencyLabel}] Prazo em ${params.daysLeft} dias — ${params.eventName}`;
+  const body = `
+    <h3 style="color: ${urgencyColor};">${urgencyLabel}: Prazo a Aproximar-se</h3>
+    <p style="color: #333;">Olá <strong>${params.recipientName}</strong>,</p>
+    <p style="color: #333;">O seguinte entregável tem prazo em <strong style="color: ${urgencyColor};">${params.daysLeft} dias</strong>:</p>
+    <table style="border-collapse: collapse; margin: 16px 0; border: 1px solid #e0e0e0;">
+      <tr><td style="padding: 8px 14px; color: #666; background: #f5f5f5;">Entregável:</td><td style="padding: 8px 14px; font-weight: bold;">${params.eventName}</td></tr>
+      <tr><td style="padding: 8px 14px; color: #666; background: #f5f5f5;">Data limite:</td><td style="padding: 8px 14px; font-weight: bold; color: ${urgencyColor};">${params.deadlineDate}</td></tr>
+      ${params.category ? `<tr><td style="padding: 8px 14px; color: #666; background: #f5f5f5;">Categoria:</td><td style="padding: 8px 14px;">${params.category}</td></tr>` : ""}
+      <tr><td style="padding: 8px 14px; color: #666; background: #f5f5f5;">Dias restantes:</td><td style="padding: 8px 14px; font-weight: bold; color: ${urgencyColor};">${params.daysLeft} dias</td></tr>
+    </table>
+    <p style="color: #666; font-size: 13px;">Este é um lembrete automático da Plataforma de Gestão Ambiental. Aceda à plataforma para mais detalhes.</p>`;
+
+  try {
+    const transporter = createTransporter(config);
+    await transporter.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to: params.to,
+      subject,
+      html: wrapHtml(subject, body),
+    });
+    return true;
+  } catch (err) {
+    console.warn("[Email] Failed to send deadline reminder:", err);
+    return false;
+  }
+}

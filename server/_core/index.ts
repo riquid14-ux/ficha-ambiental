@@ -14,6 +14,7 @@ import { registerUploadRoutes } from "../upload";
 import { registerPdfRoutes } from "../pdf";
 import { registerApiDocs } from "../api-docs";
 import { weeklyReminderHandler } from "../scheduled-reminders";
+import { deadlineReminderHandler } from "../scheduled-reminders";
 import { registerAutodeskRoutes } from "../autodesk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -98,6 +99,7 @@ async function startServer() {
   registerAutodeskRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
+  app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);
   // Direct logout route (GET) - clears session and redirects to login
   app.get("/api/auth/logout", (req, res) => {
     res.clearCookie("app_session_id", { path: "/" });

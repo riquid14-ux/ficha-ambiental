@@ -2,6 +2,97 @@ import { Request, Response } from "express";
 import { sdk } from "./_core/sdk";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
+import { sendDeadlineReminderEmail } from "./email";
+
+/**
+ * Deadline reminder handler - called by Heartbeat cron daily at 08:00 UTC.
+ * Checks calendar events with upcoming deadlines and sends email notifications
+ * to the responsible person at 30 days, 15 days, and 7 days before the deadline.
+ */
+export async function deadlineReminderHandler(req: Request, res: Response) {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user || !(user as any).isCron) {
+      return res.status(403).json({ error: "cron-only" });
+    }
+
+    const now = new Date();
+    const today = now.getTime();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    // Get all active calendar events
+    const events = await db.getCalendarEvents(undefined, false);
+    const reminders: Array<{ event: string; daysLeft: number; recipient: string }> = [];
+
+    for (const event of events) {
+      const deadline = event.nextDate || event.firstDate;
+      if (!deadline) continue;
+
+      const daysLeft = Math.ceil((deadline - today) / DAY_MS);
+
+      // Send reminders at 30, 15, and 7 days before
+      if (daysLeft === 30 || daysLeft === 15 || daysLeft === 7) {
+        let recipientEmail: string | null = null;
+        let recipientName: string | null = null;
+
+        if (event.ownerId) {
+          const owner = await db.getUserById(event.ownerId);
+          if (owner) {
+            recipientEmail = owner.email;
+            recipientName = owner.name || owner.email;
+          }
+        }
+
+        if (recipientEmail) {
+          try {
+            await sendDeadlineReminderEmail({
+              to: recipientEmail,
+              recipientName: recipientName || recipientEmail,
+              eventName: event.name,
+              daysLeft,
+              deadlineDate: new Date(deadline).toLocaleDateString("pt-PT"),
+              projectId: event.projectId,
+              category: event.category,
+            });
+            reminders.push({ event: event.name, daysLeft, recipient: recipientEmail });
+          } catch (emailErr) {
+            console.error(`[Deadline Reminder] Failed to send for "${event.name}":`, emailErr);
+          }
+        }
+      }
+    }
+
+    // Notify owner with summary of urgent deadlines (7 days or less)
+    const urgentEvents = events.filter((e) => {
+      const dl = e.nextDate || e.firstDate;
+      if (!dl) return false;
+      const days = Math.ceil((dl - today) / DAY_MS);
+      return days > 0 && days <= 7;
+    });
+
+    if (urgentEvents.length > 0) {
+      await notifyOwner({
+        title: `⚠️ ${urgentEvents.length} prazo(s) a vencer em 7 dias ou menos`,
+        content: urgentEvents.map((e) => {
+          const dl = e.nextDate || e.firstDate;
+          const days = Math.ceil((dl! - today) / DAY_MS);
+          return `• ${e.name} — ${days} dia(s) (${new Date(dl!).toLocaleDateString("pt-PT")})`;
+        }).join("\n"),
+      });
+    }
+
+    return res.json({
+      ok: true,
+      date: now.toISOString(),
+      remindersSent: reminders.length,
+      reminders,
+      urgentDeadlines: urgentEvents.length,
+    });
+  } catch (error: any) {
+    console.error("[Deadline Reminder] Error:", error);
+    return res.status(500).json({ error: error.message || "Internal error" });
+  }
+}
 
 /**
  * Weekly reminder handler - called by Heartbeat cron every Monday at 09:00 UTC.

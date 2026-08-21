@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, serial } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, serial, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -539,5 +539,15 @@ export const auditLog = mysqlTable("audit_log", {
   entityId: int("entityId"),
   oldValue: text("oldValue"),
   newValue: text("newValue"),
+  createdAt: timestamp("createdAt").defaultNow(),
+});
+
+// Notification recipients per project — who gets email when fichas are submitted
+export const notificationRecipients = mysqlTable("notification_recipients", {
+  id: int("id").primaryKey().autoincrement(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  notificationType: varchar("notificationType", { length: 50 }).notNull().default("submission"), // submission, approval, rejection, all
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("createdAt").defaultNow(),
 });

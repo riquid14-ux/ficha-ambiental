@@ -176,6 +176,11 @@ export default function AdminPanel() {
                 ✉️ {t("Email")}
               </TabsTrigger>
             )}
+            {user?.role === "admin" && (
+              <TabsTrigger value="notificacoes" className="gap-2">
+                🔔 {t("Notificações")}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="companies" className="mt-4">
@@ -194,6 +199,11 @@ export default function AdminPanel() {
           {user?.role === "admin" && (
             <TabsContent value="email" className="mt-4">
               <EmailConfigTab />
+            </TabsContent>
+          )}
+          {user?.role === "admin" && (
+            <TabsContent value="notificacoes" className="mt-4">
+              <NotificationRecipientsTab />
             </TabsContent>
           )}
         
@@ -1421,5 +1431,163 @@ function EmailConfigTab() {
         {updateMutation.isPending ? t("A guardar...") : t("Guardar Configuração")}
       </Button>
     </div>
+  );
+}
+
+function NotificationRecipientsTab() {
+  const { t } = useLanguage();
+  const projectsQuery = trpc.projects.list.useQuery();
+  const usersQuery = trpc.users.list.useQuery();
+  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedUser, setSelectedUser] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>("all");
+
+  const recipientsQuery = trpc.notificationRecipients.list.useQuery(
+    { projectId: selectedProject! },
+    { enabled: !!selectedProject }
+  );
+
+  const addMutation = trpc.notificationRecipients.add.useMutation({
+    onSuccess: () => {
+      recipientsQuery.refetch();
+      setSelectedUser("");
+      toast.success(t("Destinatário adicionado com sucesso"));
+    },
+    onError: () => toast.error(t("Erro ao adicionar destinatário")),
+  });
+
+  const removeMutation = trpc.notificationRecipients.remove.useMutation({
+    onSuccess: () => {
+      recipientsQuery.refetch();
+      toast.success(t("Destinatário removido"));
+    },
+  });
+
+  const projects = projectsQuery.data || [];
+  const users = (usersQuery.data || []) as any[];
+  const recipients = (recipientsQuery.data || []) as any[];
+
+  const typeLabels: Record<string, string> = {
+    submission: t("Novas Submissões"),
+    approval: t("Aprovações"),
+    rejection: t("Rejeições"),
+    all: t("Todas as Notificações"),
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          🔔 {t("Destinatários de Notificações por Projeto")}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {t("Defina quem recebe emails quando fichas são submetidas, aprovadas ou rejeitadas em cada projeto.")}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Project selector */}
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="text-sm font-medium mb-1 block">{t("Projeto")}</label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+              value={selectedProject || ""}
+              onChange={(e) => setSelectedProject(Number(e.target.value) || null)}
+            >
+              <option value="">{t("Selecione um projeto...")}</option>
+              {projects.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {selectedProject && (
+          <>
+            {/* Add recipient */}
+            <div className="flex gap-3 items-end border-t pt-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium mb-1 block">{t("Utilizador")}</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={selectedUser}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                >
+                  <option value="">{t("Selecione um utilizador...")}</option>
+                  {users
+                    .filter((u) => u.role === "raa" || u.role === "admin" || u.role === "dono_obra" || u.role === "pm")
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>{u.name || u.email} ({u.role?.toUpperCase()})</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">{t("Tipo")}</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                >
+                  <option value="all">{t("Todas as Notificações")}</option>
+                  <option value="submission">{t("Novas Submissões")}</option>
+                  <option value="approval">{t("Aprovações")}</option>
+                  <option value="rejection">{t("Rejeições")}</option>
+                </select>
+              </div>
+              <Button
+                size="sm"
+                disabled={!selectedUser || addMutation.isPending}
+                onClick={() => {
+                  if (selectedUser) {
+                    addMutation.mutate({
+                      projectId: selectedProject,
+                      userId: Number(selectedUser),
+                      notificationType: selectedType as any,
+                    });
+                  }
+                }}
+              >
+                {t("Adicionar")}
+              </Button>
+            </div>
+
+            {/* Recipients list */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3">
+                {t("Destinatários configurados")} ({recipients.length})
+              </h4>
+              {recipients.length === 0 && (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {t("Sem destinatários configurados. Quando uma ficha for submetida, todos os utilizadores RAA/Admin/DO serão notificados por defeito.")}
+                </p>
+              )}
+              <div className="space-y-2">
+                {recipients.map((r: any) => (
+                  <div key={r.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div>
+                      <p className="text-sm font-medium">{r.userName || r.userEmail}</p>
+                      <p className="text-xs text-muted-foreground">{r.userEmail}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {typeLabels[r.notificationType] || r.notificationType}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => removeMutation.mutate({ id: r.id })}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

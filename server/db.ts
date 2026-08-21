@@ -1177,3 +1177,46 @@ export async function insertAuditLog(userId: number, userName: string | null, ac
     [userId, userName, action, entity, entityId, oldValue, newValue]
   );
 }
+
+// Notification recipients
+export async function getNotificationRecipients(projectId: number, notificationType: string) {
+  return db.select({
+    id: schema.notificationRecipients.id,
+    projectId: schema.notificationRecipients.projectId,
+    userId: schema.notificationRecipients.userId,
+    notificationType: schema.notificationRecipients.notificationType,
+    active: schema.notificationRecipients.active,
+    userName: schema.users.name,
+    userEmail: schema.users.email,
+  })
+    .from(schema.notificationRecipients)
+    .leftJoin(schema.users, eq(schema.notificationRecipients.userId, schema.users.id))
+    .where(and(
+      eq(schema.notificationRecipients.projectId, projectId),
+      or(eq(schema.notificationRecipients.notificationType, notificationType), eq(schema.notificationRecipients.notificationType, "all")),
+      eq(schema.notificationRecipients.active, true)
+    ));
+}
+
+export async function listNotificationRecipientsByProject(projectId: number) {
+  return db.select({
+    id: schema.notificationRecipients.id,
+    projectId: schema.notificationRecipients.projectId,
+    userId: schema.notificationRecipients.userId,
+    notificationType: schema.notificationRecipients.notificationType,
+    active: schema.notificationRecipients.active,
+    userName: schema.users.name,
+    userEmail: schema.users.email,
+  })
+    .from(schema.notificationRecipients)
+    .leftJoin(schema.users, eq(schema.notificationRecipients.userId, schema.users.id))
+    .where(eq(schema.notificationRecipients.projectId, projectId));
+}
+
+export async function addNotificationRecipient(projectId: number, userId: number, notificationType: string) {
+  return db.insert(schema.notificationRecipients).values({ projectId, userId, notificationType }).onDuplicateKeyUpdate({ set: { active: true } });
+}
+
+export async function removeNotificationRecipient(id: number) {
+  return db.delete(schema.notificationRecipients).where(eq(schema.notificationRecipients.id, id));
+}

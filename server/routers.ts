@@ -715,10 +715,19 @@ export const appRouter = router({
         try {
           const project = sub.projectId ? await db.getProjectById(sub.projectId) : null;
           const companyForNotif = sub.companyId ? await db.getCompanyById(sub.companyId) : null;
-          const allUsersForNotif = await db.getAllUsers();
-          const raaEmails = allUsersForNotif
-            .filter((u: any) => (u.role === "raa" || u.role === "admin" || u.role === "dono_obra") && u.email)
-            .map((u: any) => u.email!);
+          // Use configured notification recipients for this project, fallback to all RAA/admin/DO
+          let raaEmails: string[] = [];
+          if (sub.projectId) {
+            const recipients = await db.getNotificationRecipients(sub.projectId, "submission");
+            raaEmails = recipients.filter((r: any) => r.userEmail).map((r: any) => r.userEmail!);
+          }
+          if (raaEmails.length === 0) {
+            // Fallback: notify all RAA/admin/DO users
+            const allUsersForNotif = await db.getAllUsers();
+            raaEmails = allUsersForNotif
+              .filter((u: any) => (u.role === "raa" || u.role === "admin" || u.role === "dono_obra") && u.email)
+              .map((u: any) => u.email!);
+          }
           sendFichaSubmittedNotification(
             input.id, sub.weekNumber, sub.weekYear,
             companyForNotif?.shortName || "—", project?.code || "—", raaEmails
@@ -2170,6 +2179,34 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         await db.removeWeekWithoutWork(input.id);
         await db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email, "week_without_work_remove", "weeks_without_work", input.id, null, null);
+        return { success: true };
+      }),
+  }),
+
+  // Notification recipients per project
+  notificationRecipients: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        return db.listNotificationRecipientsByProject(input.projectId);
+      }),
+    add: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        userId: z.number(),
+        notificationType: z.enum(["submission", "approval", "rejection", "all"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        await db.addNotificationRecipient(input.projectId, input.userId, input.notificationType);
+        return { success: true };
+      }),
+    remove: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        await db.removeNotificationRecipient(input.id);
         return { success: true };
       }),
   }),

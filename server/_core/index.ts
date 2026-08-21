@@ -58,7 +58,6 @@ async function startServer() {
     message: { error: "Demasiadas tentativas. Tente novamente em 15 minutos." },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"]?.toString() || "unknown",
   });
   // Apply rate limiting to auth-related tRPC mutations
   app.use("/api/trpc/auth.login", authLimiter);

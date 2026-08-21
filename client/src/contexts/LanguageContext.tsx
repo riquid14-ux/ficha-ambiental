@@ -1137,18 +1137,19 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Lang>(() =>
-    (localStorage.getItem("app_lang") as Lang) || "pt"
-  );
+  // App is 100% Portuguese — English toggle was removed permanently
+  // Force PT and clear any stale English preference from localStorage
+  const [language, setLanguage] = useState<Lang>("pt");
 
   useEffect(() => {
-    localStorage.setItem("app_lang", language);
-  }, [language]);
+    // Clear any old English preference that might be stored
+    localStorage.removeItem("app_lang");
+  }, []);
 
   const t = (key: string): string => {
     const entry = translations[key];
     if (!entry) return key;
-    return entry[language] || key;
+    return entry.pt || key;
   };
 
   return (

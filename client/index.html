@@ -12,6 +12,7 @@
       // Force clear any residual dark mode from localStorage
       (function() {
         localStorage.removeItem('theme');
+        localStorage.removeItem('app_lang');
         document.documentElement.classList.remove('dark');
       })();
     </script>

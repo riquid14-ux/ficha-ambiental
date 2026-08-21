@@ -2217,16 +2217,13 @@ export const appRouter = router({
       // Get all submissions
       const allSubs = await db.getAllSubmissions();
 
-      if (role === "raa" || role === "admin" || role === "dono_obra") {
+      if (role === "raa") {
         // Fichas waiting for review (submitted status)
         const toReview = allSubs.filter((s: any) => s.status === "submitted" || s.status === "under_review");
-        // For RAA, filter by their assigned projects
-        let count = toReview.length;
-        if (role === "raa") {
-          const userProjects = await db.getUserProjects(user.id);
-          const projectIds = userProjects.map((p: any) => p.projectId);
-          count = toReview.filter((s: any) => projectIds.includes(s.projectId)).length;
-        }
+        // Filter by RAA's assigned projects
+        const userProjects = await db.getUserProjects(user.id);
+        const projectIds = userProjects.map((p: any) => p.projectId);
+        const count = toReview.filter((s: any) => projectIds.includes(s.projectId)).length;
         if (count > 0) {
           items.push({ type: "review", count, label: `${count} ficha${count > 1 ? "s" : ""} para revisão`, path: "/ficha" });
         }

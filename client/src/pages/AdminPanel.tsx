@@ -14,7 +14,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon } from "lucide-react";
-import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Plus } from "lucide-react";
+import { Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
 

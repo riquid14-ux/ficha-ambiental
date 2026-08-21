@@ -380,3 +380,7 @@
 - [x] OWASP Security Drill — 77/77 tests pass (Cenários A, B, C + Verificação)
 - [x] Red Team Elite Drill — 57/57 tests pass (Race conditions, JWT attacks, Cache poisoning, SSTI, Supply chain, Blind SSRF, Host header poisoning, Zero-Trust, CSP)
 - [x] Total: 240/240 tests pass across 9 test files
+- [x] File sanitizer module (PDF, Word, SVG) — blocks JS in PDFs, macros in Word, XSS in SVGs
+- [x] Upload audit logging — all file uploads logged to audit_log table
+- [x] Sanitization integrated into all 4 upload endpoints (phase-evidence, pdf-import, historical-pdf, evidence-upload)
+- [x] File sanitizer tests — PDF, SVG, integration tests

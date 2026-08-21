@@ -13,6 +13,7 @@ import bcrypt from "bcryptjs";
 import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
+import { sanitizeFile } from "./file-sanitizer";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -23,6 +24,29 @@ const ALLOWED_FILE_TYPES = new Set([
   "text/plain", "text/csv",
 ]);
 const MAX_FILE_SIZE_B64 = 15 * 1024 * 1024; // ~10MB file = ~13.3MB base64
+
+// Security: Log file upload for audit trail
+async function logFileUpload(userId: number, filename: string, mimeType: string, safe: boolean, threats: string[], context: string) {
+  try {
+    const database = await db.getDb();
+    if (!database) return;
+    await database.insert(schema.auditLog).values({
+      userId,
+      action: safe ? "file_upload" : "file_upload_blocked",
+      entity: "file",
+      newValue: JSON.stringify({
+        filename,
+        mimeType,
+        context,
+        safe,
+        threats: threats.length > 0 ? threats : undefined,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    console.error("[Audit] Failed to log file upload:", e);
+  }
+}
 
 // Helper: check if user has elevated permissions (admin or dono_obra)
 function isAdminOrDono(role: string) {
@@ -84,6 +108,12 @@ export const appRouter = router({
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
         if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
+        // Security: sanitize file content
+        const sanitizeResult = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitizeResult.safe, sanitizeResult.threats, "phase-evidence");
+        if (!sanitizeResult.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult.threats[0]}` });
+        }
         const ext = input.filename.split(".").pop() || "bin";
         const timestamp = Date.now();
         const fileKey = `phase-evidence/${input.projectId}/${input.measureId}/${timestamp}.${ext}`;
@@ -944,10 +974,16 @@ export const appRouter = router({
 
         // Upload PDF to storage first
         const buffer = Buffer.from(input.pdfBase64, "base64");
-        const fileKey = `pdf-imports/${input.projectId}/${Date.now()}_${input.pdfFilename}`;
         const mimeType = input.pdfFilename.toLowerCase().endsWith(".docx")
           ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           : "application/pdf";
+        // Security: sanitize imported document
+        const sanitizeResult = await sanitizeFile(buffer, mimeType, input.pdfFilename);
+        await logFileUpload(ctx.user.id, input.pdfFilename, mimeType, sanitizeResult.safe, sanitizeResult.threats, "pdf-import");
+        if (!sanitizeResult.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult.threats[0]}` });
+        }
+        const fileKey = `pdf-imports/${input.projectId}/${Date.now()}_${input.pdfFilename}`;
         const { url: pdfStorageUrl } = await storagePut(fileKey, buffer, mimeType);
 
         // Extract images from the document in parallel with LLM processing
@@ -1237,6 +1273,12 @@ export const appRouter = router({
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
         if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
+        // Security: sanitize historical document
+        const sanitizeResult = await sanitizeFile(buffer, input.mimeType, `historical_S${input.weekNumber}_${input.weekYear}.pdf`);
+        await logFileUpload(ctx.user.id, `historical_S${input.weekNumber}_${input.weekYear}`, input.mimeType, sanitizeResult.safe, sanitizeResult.threats, "historical-pdf");
+        if (!sanitizeResult.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult.threats[0]}` });
+        }
         const company = await db.getCompanyById(input.companyId);
         const companyName = company?.shortName || `EE${input.companyId}`;
         const fileKey = `historical/${input.companyId}/FichaS${String(input.weekNumber).padStart(2, "0")}_${input.weekYear}_${companyName}.pdf`;
@@ -1464,6 +1506,12 @@ export const appRouter = router({
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
         if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
         const buffer = Buffer.from(input.data, "base64");
+        // Security: sanitize evidence file
+        const sanitizeResult2 = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitizeResult2.safe, sanitizeResult2.threats, "evidence-upload");
+        if (!sanitizeResult2.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult2.threats[0]}` });
+        }
         const timestamp = new Date().toISOString().slice(0, 10);
         const ext = input.filename.split(".").pop() || "bin";
         const fileKey = `files/${input.submissionId}/Medida${input.measureId}_${timestamp}.${ext}`;

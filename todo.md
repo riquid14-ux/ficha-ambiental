@@ -377,3 +377,6 @@
 - [x] Comprehensive functionality drill after performance changes — 106/106 tests pass, 0 TS errors, build OK
 - [x] Comprehensive roles drill after performance changes — 21/21 tests pass, 52 role guards verified
 - [x] Photo extraction from imported PDFs/Word documents
+- [x] OWASP Security Drill — 77/77 tests pass (Cenários A, B, C + Verificação)
+- [x] Red Team Elite Drill — 57/57 tests pass (Race conditions, JWT attacks, Cache poisoning, SSTI, Supply chain, Blind SSRF, Host header poisoning, Zero-Trust, CSP)
+- [x] Total: 240/240 tests pass across 9 test files

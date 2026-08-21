@@ -909,11 +909,27 @@ export const appRouter = router({
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         const { callLLM } = await import("./llm-provider");
+        const { extractImagesFromPdf, extractImagesFromDocx } = await import("./image-extractor");
 
         // Upload PDF to storage first
         const buffer = Buffer.from(input.pdfBase64, "base64");
         const fileKey = `pdf-imports/${input.projectId}/${Date.now()}_${input.pdfFilename}`;
-        const { url: pdfStorageUrl } = await storagePut(fileKey, buffer, "application/pdf");
+        const mimeType = input.pdfFilename.toLowerCase().endsWith(".docx")
+          ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          : "application/pdf";
+        const { url: pdfStorageUrl } = await storagePut(fileKey, buffer, mimeType);
+
+        // Extract images from the document in parallel with LLM processing
+        let extractedImages: Awaited<ReturnType<typeof extractImagesFromPdf>> = [];
+        try {
+          if (input.pdfFilename.toLowerCase().endsWith(".docx")) {
+            extractedImages = await extractImagesFromDocx(buffer);
+          } else {
+            extractedImages = await extractImagesFromPdf(buffer);
+          }
+        } catch (e) {
+          console.warn("Image extraction failed (non-fatal):", e);
+        }
 
         // Get all measures for this project
         const allMeasures = await database.select().from(schema.measures);
@@ -956,22 +972,56 @@ export const appRouter = router({
         const submissionId = result.id;
         
         // Save each extracted response
+        const responseIds: { measureId: number; responseId: number }[] = [];
         for (const resp of extractedResponses) {
           if (resp.measureId && resp.status) {
-            await database!.insert(schema.measureResponses).values({
+            const [resResult] = await database!.insert(schema.measureResponses).values({
               submissionId,
               measureId: resp.measureId,
               status: resp.status,
               observations: resp.observations || null,
-            });
+            }).$returningId();
+            responseIds.push({ measureId: resp.measureId, responseId: resResult.id });
           }
         }
         
-        return { 
-          success: true, 
-          submissionId, 
+        // Upload extracted images as evidence photos
+        let photoCount = 0;
+        if (extractedImages.length > 0 && responseIds.length > 0) {
+          // Strategy: distribute images across measure responses
+          // If LLM returned page info per measure, use that; otherwise distribute evenly
+          for (let i = 0; i < extractedImages.length; i++) {
+            const img = extractedImages[i];
+            // Associate image with the closest measure response (by index distribution)
+            const responseIndex = Math.min(
+              Math.floor((i / extractedImages.length) * responseIds.length),
+              responseIds.length - 1
+            );
+            const targetResponse = responseIds[responseIndex];
+
+            try {
+              const imgFileKey = `evidence/${submissionId}/${Date.now()}_${img.filename}`;
+              const { url: imgUrl } = await storagePut(imgFileKey, img.buffer, img.mimeType);
+              await database!.insert(schema.evidenceImages).values({
+                responseId: targetResponse.responseId,
+                fileKey: imgFileKey,
+                url: imgUrl,
+                filename: img.filename,
+                mimeType: img.mimeType,
+              });
+              photoCount++;
+            } catch (e) {
+              console.warn(`Failed to upload image ${img.filename}:`, e);
+            }
+          }
+        }
+
+        return {
+          success: true,
+          submissionId,
           matchedMeasures: extractedResponses.length,
-          totalMeasures: allMeasures.length 
+          totalMeasures: allMeasures.length,
+          extractedPhotos: photoCount,
         };
       }),
   }),

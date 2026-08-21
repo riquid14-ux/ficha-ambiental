@@ -873,7 +873,7 @@ export async function getCompaniesForProject(projectId: number) {
 
 export async function getMatrixData(projectId?: number, year?: number) {
   const db = await getDb();
-  if (!db) return { submissions: [], companies: [], weeks: [] };
+  if (!db) return { submissions: [], companies: [], weeks: [], projects: {} as Record<number, { code: string; name: string }> };
 
   let relevantCompanies: typeof companies.$inferSelect[] = [];
   if (projectId) {
@@ -887,8 +887,7 @@ export async function getMatrixData(projectId?: number, year?: number) {
   if (projectId) conditions.push(eq(weeklySubmissions.projectId, projectId));
   if (year) conditions.push(eq(weeklySubmissions.weekYear, year));
 
-  let subs;
-  subs = await db.select().from(weeklySubmissions)
+  const subs = await db.select().from(weeklySubmissions)
     .where(and(...conditions))
     .orderBy(weeklySubmissions.weekYear, weeklySubmissions.weekNumber);
 
@@ -898,6 +897,21 @@ export async function getMatrixData(projectId?: number, year?: number) {
     weekSet.add(`${s.weekYear}-W${String(s.weekNumber).padStart(2, "0")}`);
   }
   const weeks = Array.from(weekSet).sort();
+
+  // When showing all projects, fetch project info and company-project mappings for grouping
+  let projectsMap: Record<number, { code: string; name: string }> = {};
+  let companyProjectIds: Map<number, number[]> = new Map();
+  if (!projectId) {
+    const allProjects = await db.select().from(projects).where(eq(projects.active, 1));
+    for (const p of allProjects) {
+      projectsMap[p.id] = { code: p.code, name: p.name };
+    }
+    const allPc = await db.select().from(projectCompanies);
+    for (const pc of allPc) {
+      if (!companyProjectIds.has(pc.companyId)) companyProjectIds.set(pc.companyId, []);
+      companyProjectIds.get(pc.companyId)!.push(pc.projectId);
+    }
+  }
 
   return {
     submissions: subs.map(s => ({
@@ -914,8 +928,10 @@ export async function getMatrixData(projectId?: number, year?: number) {
       name: c.name,
       shortName: c.shortName,
       companyType: c.companyType,
+      projectIds: companyProjectIds.get(c.id) || [],
     })),
     weeks,
+    projects: projectsMap,
   };
 }
 import { deletionLogs } from "../drizzle/schema";

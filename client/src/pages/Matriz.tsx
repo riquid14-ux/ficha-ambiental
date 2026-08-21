@@ -79,7 +79,7 @@ export default function Matriz(props: any) {
   const matrixData = useMemo(() => {
     if (!matrixQuery.data) return { rows: [], weeks: [] };
 
-    const { submissions, companies, weeks } = matrixQuery.data;
+    const { submissions, companies, weeks, projects: projectsMap } = matrixQuery.data as any;
 
     // Build a lookup: companyId -> weekKey -> best status
     const lookup = new Map<number, Map<string, string>>();
@@ -94,15 +94,39 @@ export default function Matriz(props: any) {
       }
     }
 
-    const rows = companies.map(company => ({
+    const rows = companies.map((company: any) => ({
       company,
-      cells: weeks.map(weekKey => ({
+      cells: weeks.map((weekKey: string) => ({
         weekKey,
         status: lookup.get(company.id)?.get(weekKey) || null,
       })),
     }));
 
-    return { rows, weeks };
+    // When viewing all projects, group rows by project
+    let groupedRows: { projectId: number; projectCode: string; projectName: string; rows: typeof rows }[] = [];
+    if (isAllProjects && projectsMap && Object.keys(projectsMap).length > 0) {
+      const projectOrder = Object.entries(projectsMap as Record<string, { code: string; name: string }>)
+        .sort(([, a], [, b]) => a.code.localeCompare(b.code));
+      for (const [pid, pInfo] of projectOrder) {
+        const projectRows = rows.filter((r: any) => r.company.projectIds?.includes(Number(pid)));
+        if (projectRows.length > 0) {
+          groupedRows.push({
+            projectId: Number(pid),
+            projectCode: pInfo.code,
+            projectName: pInfo.name,
+            rows: projectRows,
+          });
+        }
+      }
+      // Companies without project assignment
+      const assignedIds = new Set(groupedRows.flatMap(g => g.rows.map((r: any) => r.company.id)));
+      const unassigned = rows.filter((r: any) => !assignedIds.has(r.company.id));
+      if (unassigned.length > 0) {
+        groupedRows.push({ projectId: 0, projectCode: "Outros", projectName: "Sem Projecto Atribuído", rows: unassigned });
+      }
+    }
+
+    return { rows, weeks, groupedRows };
   }, [matrixQuery.data]);
 
   // Format week key for display (2026-W32 -> S32)
@@ -224,7 +248,7 @@ export default function Matriz(props: any) {
                         <th className="text-left p-3 font-semibold text-muted-foreground sticky left-0 bg-muted/30 z-10 min-w-[160px]">
                           Empresa
                         </th>
-                        {matrixData.weeks.map(weekKey => (
+                        {matrixData.weeks.map((weekKey: string) => (
                           <th key={weekKey} className="p-2 text-center font-medium text-muted-foreground min-w-[60px]">
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -239,8 +263,20 @@ export default function Matriz(props: any) {
                       </tr>
                     </thead>
                     <tbody>
-                      {matrixData.rows.map(row => (
-                        <tr key={row.company.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
+                      {isAllProjects && matrixData.groupedRows && matrixData.groupedRows.length > 0 ? (
+                        matrixData.groupedRows.map((group: any) => (
+                          <>
+                            <tr key={`group-${group.projectId}`} className="bg-primary/5 border-b-2 border-primary/20">
+                              <td colSpan={matrixData.weeks.length + 1} className="p-3 sticky left-0 bg-primary/5 z-10">
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-primary text-primary-foreground font-bold text-xs">{group.projectCode}</Badge>
+                                  <span className="font-semibold text-sm">{group.projectName}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">({group.rows.length} {group.rows.length === 1 ? "empresa" : "empresas"})</span>
+                                </div>
+                              </td>
+                            </tr>
+                            {group.rows.map((row: any) => (
+                        <tr key={`${group.projectId}-${row.company.id}`} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
                           <td className="p-3 font-medium sticky left-0 bg-background z-10">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 uppercase">
@@ -249,7 +285,7 @@ export default function Matriz(props: any) {
                               <span className="truncate">{row.company.shortName}</span>
                             </div>
                           </td>
-                          {row.cells.map(cell => {
+                          {row.cells.map((cell: any) => {
                             const inactive = isCompanyActiveInWeek(row.company.id, cell.weekKey) === false;
                             const noWork = isWeekNoWork(cell.weekKey);
                             const display = cell.status && !inactive ? getStatusDisplay(cell.status) : null;
@@ -288,7 +324,61 @@ export default function Matriz(props: any) {
                             );
                           })}
                         </tr>
-                      ))}
+                            ))}
+                          </>
+                        ))
+                      ) : (
+                        matrixData.rows.map((row: any) => (
+                        <tr key={row.company.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
+                          <td className="p-3 font-medium sticky left-0 bg-background z-10">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 uppercase">
+                                {({"dono_obra":"DO","ee":"EE","rap":"RAP","raa":"RAA"} as Record<string,string>)[row.company.companyType] || row.company.companyType}
+                              </Badge>
+                              <span className="truncate">{row.company.shortName}</span>
+                            </div>
+                          </td>
+                          {row.cells.map((cell: any) => {
+                            const inactive = isCompanyActiveInWeek(row.company.id, cell.weekKey) === false;
+                            const noWork = isWeekNoWork(cell.weekKey);
+                            const display = cell.status && !inactive ? getStatusDisplay(cell.status) : null;
+                            return (
+                              <td key={cell.weekKey} className="p-2 text-center">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      className={`w-8 h-8 rounded-md mx-auto flex items-center justify-center transition-all hover:scale-110 cursor-default ${
+                                        inactive ? "bg-gray-200 border border-gray-300" :
+                                        noWork ? "bg-gray-300 border border-gray-400" :
+                                        display ? display.color : "bg-muted/50 border border-dashed border-border"
+                                      }`}
+                                    >
+                                      {inactive ? (
+                                        <span className="text-[8px] text-gray-500">—</span>
+                                      ) : noWork ? (
+                                        <span className="text-[8px] text-gray-600">P</span>
+                                      ) : display ? (
+                                        <span className={`text-[9px] font-bold ${display.textColor}`}>
+                                          {display.label.charAt(0)}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="font-medium">{row.company.shortName} — {formatWeekFull(cell.weekKey)}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {inactive ? t("Empresa inactiva nesta semana") :
+                                       noWork ? t("Semana sem trabalhos") :
+                                       display ? display.description : t("Sem ficha submetida")}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </TooltipProvider>
@@ -304,25 +394,25 @@ export default function Matriz(props: any) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold text-emerald-600">
-                    {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "approved").length, 0)}
+                    {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "approved").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Entregues")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-blue-500">
-                    {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "submitted" || c.status === "under_review").length, 0)}
+                    {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "submitted" || c.status === "under_review").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Em Revisão")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-amber-500">
-                    {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "draft").length, 0)}
+                    {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "draft").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Rascunho")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-red-500">
-                    {matrixData.rows.reduce((acc, row) => acc + row.cells.filter(c => c.status === "rejected").length, 0)}
+                    {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "rejected").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Rejeitadas")}</p>
                 </div>

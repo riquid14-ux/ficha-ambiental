@@ -12,7 +12,7 @@ import { User, Save, Loader2 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
-  admin: "Admin",
+  admin: "Administrador",
   ee: "Entidade Executante",
   raa: "RAA",
   rap: "RAP",

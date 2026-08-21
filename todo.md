@@ -384,3 +384,7 @@
 - [x] Upload audit logging — all file uploads logged to audit_log table
 - [x] Sanitization integrated into all 4 upload endpoints (phase-evidence, pdf-import, historical-pdf, evidence-upload)
 - [x] File sanitizer tests — PDF, SVG, integration tests
+- [x] Bug fix: notificação fantasma de "pedido de acesso" — convites pendentes não são pedidos de acesso
+- [x] Bug fix: accountStatus filter (era u.status, corrigido para u.accountStatus)
+- [x] Bug fix: "Project Manager" → "Gestor de Projeto" em AdminPanel, Welcome
+- [x] Bug fix: "Admin" → "Administrador" em AdminPanel, Profile

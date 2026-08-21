@@ -19,7 +19,7 @@ import ImagesTab from "./AdminImagesTab";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
-  admin: "Admin",
+  admin: "Administrador",
   ee: "EE",
   raa: "RAA",
   rap: "RAP",
@@ -335,7 +335,7 @@ function CompaniesTab() {
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
                     <SelectItem value="dono_obra">Dono de Obra</SelectItem>
-                      <SelectItem value="pm">PM — Project Manager</SelectItem>
+                      <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
                   </SelectContent>
@@ -869,7 +869,7 @@ function UsersTab() {
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
                       <SelectItem value="dono_obra">Dono de Obra</SelectItem>
-                      <SelectItem value="pm">PM — Project Manager</SelectItem>
+                      <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
                       <SelectItem value="observador">Observador</SelectItem>
                       <SelectItem value="admin">Administrador</SelectItem>
                     </SelectContent>
@@ -920,7 +920,7 @@ function UsersTab() {
                         <SelectItem value="raa">RAA</SelectItem>
                         <SelectItem value="rap">RAP</SelectItem>
                         <SelectItem value="dono_obra">Dono de Obra</SelectItem>
-                      <SelectItem value="pm">PM — Project Manager</SelectItem>
+                      <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
                         <SelectItem value="observador">Observador</SelectItem>
                       </SelectContent>
                     </Select>

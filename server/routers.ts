@@ -2407,16 +2407,9 @@ export const appRouter = router({
       }
 
       if (role === "admin") {
-        // Pending access requests
-        const accessRequests = await db.getAccessRequests();
-        const pending = (accessRequests as any[]).filter((r: any) => r.status === "pending");
-        if (pending.length > 0) {
-          items.push({ type: "access", count: pending.length, label: `${pending.length} pedido${pending.length > 1 ? "s" : ""} de acesso`, path: "/admin" });
-        }
-
         // Users pending approval
         const allUsers = await db.getAllUsers();
-        const pendingUsers = allUsers.filter((u: any) => u.status === "pending");
+        const pendingUsers = allUsers.filter((u: any) => u.accountStatus === "pending");
         if (pendingUsers.length > 0) {
           items.push({ type: "users", count: pendingUsers.length, label: `${pendingUsers.length} utilizador${pendingUsers.length > 1 ? "es" : ""} pendente${pendingUsers.length > 1 ? "s" : ""}`, path: "/admin" });
         }

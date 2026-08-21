@@ -14,7 +14,7 @@ import {
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   dono_obra: "Dono de Obra",
-  pm: "Project Manager",
+  pm: "Gestor de Projeto",
   ee: "Entidade Executante (EE)",
   rap: "Responsável Ambiental do Projeto (RAP)",
   raa: "Responsável Ambiental da Atividade (RAA)",

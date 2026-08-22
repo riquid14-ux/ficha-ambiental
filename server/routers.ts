@@ -8,7 +8,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_
 import * as db from "./db";
 import { sql, eq } from "drizzle-orm";
 import * as schema from "../drizzle/schema";
-import { storagePut } from "./storage";
+import { storageGet, storagePut } from "./storage";
 import bcrypt from "bcryptjs";
 import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
@@ -61,6 +61,77 @@ function canSubmitForms(role: string) {
 // Helper: check if user can review forms (raa, admin, dono_obra)
 function canReview(role: string) {
   return role === "raa" || role === "admin" || role === "dono_obra";
+}
+
+type ImportDestination = "review" | "historical";
+
+const importedResponseSchema = z.object({
+  measureId: z.number().int().positive(),
+  status: z.enum(["I", "C", "NC", "NA"]),
+  observations: z.string().max(10000).nullable().optional(),
+});
+
+const importedImageSchema = z.object({
+  fileKey: z.string().min(1).max(500),
+  filename: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(100),
+  page: z.number().int().min(0).optional(),
+});
+
+function getImportedDocumentMimeType(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  throw new TRPCError({ code: "BAD_REQUEST", message: "Apenas ficheiros PDF ou Word (.docx) são permitidos." });
+}
+
+function getIsoWeekDateRange(weekNumber: number, year: number) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (weekNumber - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const format = (date: Date) => `${String(date.getUTCDate()).padStart(2, "0")}.${String(date.getUTCMonth() + 1).padStart(2, "0")}.${date.getUTCFullYear()}`;
+  return { start: format(monday), end: format(sunday) };
+}
+
+async function assertImportPermission(user: any, projectId: number, companyId: number, destination: ImportDestination) {
+  if (destination === "review" && !canSubmitForms(user.role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para submeter fichas para revisão." });
+  }
+  if (destination === "historical" && user.role !== "admin" && user.role !== "raa") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores e RAA podem registar fichas como histórico aprovado." });
+  }
+
+  const project = await db.getProjectById(projectId);
+  if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Projecto não encontrado." });
+
+  if (user.role !== "admin" && user.role !== "dono_obra") {
+    if (project.code === "SIN01") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Sem acesso a este projecto." });
+    }
+    const userProjects = await db.getUserProjects(user.id);
+    const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
+    const allowedProjectIds = new Set([
+      ...userProjects.map((item: any) => item.projectId),
+      ...companyProjects.map((item: any) => item.projectId),
+    ]);
+    if (!allowedProjectIds.has(projectId)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Sem acesso ao projecto seleccionado." });
+    }
+  }
+
+  if ((user.role === "ee" || user.role === "rap") && user.companyId !== companyId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Só pode importar fichas da sua empresa." });
+  }
+
+  const projectCompanies = await db.getProjectCompanies(projectId);
+  if (!projectCompanies.some((item: any) => item.companyId === companyId)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa seleccionada não está associada a este projecto." });
+  }
+
+  return project;
 }
 
 export const appRouter = router({
@@ -957,8 +1028,322 @@ export const appRouter = router({
         }
         return { success: true };
       }),
-    // ─── Import PDF Historical Ficha ────────────────────────────────────
-    importPdf: protectedProcedure
+    // ─── Import external PDF/Word with preview ───────────────────────────
+    analyzeImport: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        companyId: z.number().int().positive(),
+        weekNumber: z.number().int().min(1).max(53),
+        year: z.number().int().min(2020).max(2100),
+        destination: z.enum(["review", "historical"]),
+        fileBase64: z.string().min(1).max(MAX_FILE_SIZE_B64),
+        filename: z.string().min(1).max(255),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await assertImportPermission(ctx.user, input.projectId, input.companyId, input.destination);
+
+        const existing = await db.getSubmissionForWeek(input.companyId, input.weekNumber, input.year, input.projectId);
+        if (existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Já existe uma ficha para a Semana ${input.weekNumber}/${input.year} desta empresa neste projecto.`,
+          });
+        }
+
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
+
+        const mimeType = getImportedDocumentMimeType(input.filename);
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        if (buffer.length > 10 * 1024 * 1024) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máximo 10 MB)." });
+        }
+
+        const sanitizeResult = await sanitizeFile(buffer, mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, mimeType, sanitizeResult.safe, sanitizeResult.threats, "ficha-import-preview");
+        if (!sanitizeResult.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult.threats[0]}` });
+        }
+
+        const { callLLM } = await import("./llm-provider");
+        const { extractDocumentText, extractImagesFromPdf, extractImagesFromDocx } = await import("./image-extractor");
+        let documentText = "";
+        try {
+          documentText = await extractDocumentText(buffer, input.filename);
+        } catch (error) {
+          console.warn("Document text extraction failed:", error);
+        }
+        if (documentText.trim().length < 20) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Não foi possível extrair texto suficiente do documento. Confirme se o ficheiro contém texto pesquisável." });
+        }
+
+        let extractedImages: Awaited<ReturnType<typeof extractImagesFromPdf>> = [];
+        try {
+          extractedImages = input.filename.toLowerCase().endsWith(".docx")
+            ? await extractImagesFromDocx(buffer)
+            : await extractImagesFromPdf(buffer);
+        } catch (error) {
+          console.warn("Image extraction failed (non-fatal):", error);
+        }
+
+        const allMeasures = await database.select().from(schema.measures);
+        const measureList = allMeasures
+          .map((measure: any) => `ID:${measure.id} | ${measure.number || ""} | ${measure.description}`)
+          .join("\n");
+        const llmResponse = await callLLM([
+          {
+            role: "system",
+            content: "Analisa fichas portuguesas de controlo ambiental. Devolve exclusivamente JSON válido. Para cada medida identificada, indica measureId, status (I, C, NC ou NA) e observations. Não inventes respostas que não estejam no documento.",
+          },
+          {
+            role: "user",
+            content: `MEDIDAS DISPONÍVEIS:\n${measureList}\n\nTEXTO EXTRAÍDO DA FICHA:\n${documentText.slice(0, 90000)}\n\nDevolve {"responses":[{"measureId":1,"status":"C","observations":"texto ou null"}]}.`,
+          },
+        ], 16384);
+
+        let rawResponses: any[] = [];
+        try {
+          const content = llmResponse.content || "{}";
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+          rawResponses = Array.isArray(parsed.responses) ? parsed.responses : [];
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível interpretar a análise do documento. Tente novamente." });
+        }
+
+        const measureMap = new Map(allMeasures.map((measure: any) => [measure.id, measure]));
+        const uniqueResponses = new Map<number, any>();
+        for (const response of rawResponses) {
+          const measureId = Number(response.measureId);
+          const status = String(response.status || "").toUpperCase();
+          if (!measureMap.has(measureId) || !["I", "C", "NC", "NA"].includes(status)) continue;
+          const measure: any = measureMap.get(measureId);
+          uniqueResponses.set(measureId, {
+            measureId,
+            measureCode: measure?.number || `M${measureId}`,
+            measureDescription: measure?.description || "",
+            status,
+            observations: typeof response.observations === "string" ? response.observations.slice(0, 10000) : null,
+          });
+        }
+        const responses = Array.from(uniqueResponses.values());
+        if (responses.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Não foram encontradas respostas associáveis às medidas da plataforma." });
+        }
+
+        const previewPrefix = `pdf-imports/previews/${ctx.user.id}/${Date.now()}`;
+        const { key: fileKey, url: fileUrl } = await storagePut(`${previewPrefix}/${input.filename}`, buffer, mimeType);
+        const imagesToUpload = extractedImages.slice(0, 80);
+        const images: Array<{ fileKey: string; url: string; filename: string; mimeType: string; page: number }> = [];
+        for (let index = 0; index < imagesToUpload.length; index += 8) {
+          const batch = imagesToUpload.slice(index, index + 8);
+          const uploaded = await Promise.all(batch.map(async (image, batchIndex) => {
+            const key = `${previewPrefix}/evidence/${index + batchIndex}_${image.filename}`;
+            const stored = await storagePut(key, image.buffer, image.mimeType);
+            return { fileKey: stored.key, url: stored.url, filename: image.filename, mimeType: image.mimeType, page: image.page };
+          }));
+          images.push(...uploaded);
+        }
+
+        const counts = responses.reduce((acc: Record<string, number>, response: any) => {
+          acc[response.status] = (acc[response.status] || 0) + 1;
+          return acc;
+        }, { I: 0, C: 0, NC: 0, NA: 0 });
+
+        return {
+          fileKey,
+          fileUrl,
+          filename: input.filename,
+          mimeType,
+          responses,
+          images,
+          counts,
+          matchedMeasures: responses.length,
+          totalMeasures: allMeasures.length,
+          extractedPhotos: images.length,
+          provider: llmResponse.provider,
+          warnings: extractedImages.length > 80 ? ["Foram extraídas mais de 80 imagens; apenas as primeiras 80 serão associadas."] : [],
+        };
+      }),
+
+    commitImport: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        companyId: z.number().int().positive(),
+        weekNumber: z.number().int().min(1).max(53),
+        year: z.number().int().min(2020).max(2100),
+        destination: z.enum(["review", "historical"]),
+        fileKey: z.string().min(1).max(500),
+        filename: z.string().min(1).max(255),
+        mimeType: z.string().min(1).max(100),
+        responses: z.array(importedResponseSchema).min(1).max(500),
+        images: z.array(importedImageSchema).max(80),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await assertImportPermission(ctx.user, input.projectId, input.companyId, input.destination);
+        const expectedPrefix = `pdf-imports/previews/${ctx.user.id}/`;
+        if (!input.fileKey.startsWith(expectedPrefix) || input.images.some(image => !image.fileKey.startsWith(expectedPrefix))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Referência de ficheiro inválida." });
+        }
+        if (getImportedDocumentMimeType(input.filename) !== input.mimeType) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O tipo do ficheiro não corresponde ao nome indicado." });
+        }
+
+        const existing = await db.getSubmissionForWeek(input.companyId, input.weekNumber, input.year, input.projectId);
+        if (existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Já existe uma ficha para a Semana ${input.weekNumber}/${input.year} desta empresa neste projecto.`,
+          });
+        }
+
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
+        const allMeasures = await database.select({ id: schema.measures.id }).from(schema.measures);
+        const validMeasureIds = new Set(allMeasures.map(item => item.id));
+        const validResponses = input.responses.filter(response => validMeasureIds.has(response.measureId));
+        if (validResponses.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A pré-visualização não contém medidas válidas." });
+        }
+
+        const company = await db.getCompanyById(input.companyId);
+        if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Empresa não encontrada." });
+        const dates = getIsoWeekDateRange(input.weekNumber, input.year);
+        const storedFile = await storageGet(input.fileKey);
+        const resolvedImages = await Promise.all(input.images.map(async image => ({ ...image, url: (await storageGet(image.fileKey)).url })));
+
+        const submissionId = await database.transaction(async tx => {
+          const isHistorical = input.destination === "historical";
+          const now = Date.now();
+          const [submissionResult] = await tx.insert(schema.weeklySubmissions).values({
+            projectId: input.projectId,
+            companyId: input.companyId,
+            weekNumber: input.weekNumber,
+            weekYear: input.year,
+            weekStartDate: dates.start,
+            weekEndDate: dates.end,
+            status: isHistorical ? "approved" : "submitted",
+            createdBy: ctx.user.id,
+            submittedBy: ctx.user.id,
+            submittedAt: now,
+            reviewedBy: isHistorical ? ctx.user.id : null,
+            reviewedAt: isHistorical ? now : null,
+            reviewNotes: isHistorical ? "Ficha histórica aprovada importada de PDF/Word" : "Ficha externa importada e submetida para revisão",
+          }).$returningId();
+
+          const responseIds: number[] = [];
+          for (const response of validResponses) {
+            const [responseResult] = await tx.insert(schema.measureResponses).values({
+              submissionId: submissionResult.id,
+              measureId: response.measureId,
+              status: response.status,
+              observations: response.observations || null,
+            }).$returningId();
+            responseIds.push(responseResult.id);
+          }
+
+          if (responseIds.length > 0) {
+            for (let index = 0; index < resolvedImages.length; index++) {
+              const responseIndex = Math.min(Math.floor((index / Math.max(resolvedImages.length, 1)) * responseIds.length), responseIds.length - 1);
+              const image = resolvedImages[index];
+              await tx.insert(schema.evidenceImages).values({
+                responseId: responseIds[responseIndex],
+                fileKey: image.fileKey,
+                url: image.url,
+                filename: image.filename,
+                mimeType: image.mimeType,
+              });
+            }
+          }
+
+          await tx.insert(schema.historicalPdfs).values({
+            companyId: input.companyId,
+            projectId: input.projectId,
+            weekNumber: input.weekNumber,
+            weekYear: input.year,
+            fileKey: input.fileKey,
+            url: storedFile.url,
+            filename: input.filename,
+            uploadedBy: ctx.user.id,
+          });
+
+          await tx.insert(schema.auditLog).values({
+            userId: ctx.user.id,
+            userName: ctx.user.name || ctx.user.email || "Utilizador",
+            action: isHistorical ? "historical_ficha_imported" : "external_ficha_submitted",
+            entity: "weekly_submission",
+            entityId: submissionResult.id,
+            newValue: JSON.stringify({
+              projectId: input.projectId,
+              companyId: input.companyId,
+              weekNumber: input.weekNumber,
+              weekYear: input.year,
+              source: "pdf_word_import",
+              destination: input.destination,
+              matchedMeasures: validResponses.length,
+              extractedPhotos: resolvedImages.length,
+            }),
+          });
+
+          return submissionResult.id;
+        });
+
+        if (input.destination === "review") {
+          try {
+            const recipients = await db.getNotificationRecipients(input.projectId, "submission");
+            const emails = recipients.filter((recipient: any) => recipient.userEmail).map((recipient: any) => recipient.userEmail as string);
+            if (emails.length > 0) {
+              sendFichaSubmittedNotification(
+                submissionId,
+                input.weekNumber,
+                input.year,
+                company.shortName,
+                project.code,
+                emails,
+              ).catch(() => {});
+            }
+          } catch (error) {
+            console.warn("Imported ficha notification failed (non-fatal):", error);
+          }
+        } else {
+          try {
+            const { archiveDocument } = await import("./archive-provider");
+            await archiveDocument("ficha", project.code, input.year, {
+              submission: {
+                id: submissionId,
+                projectId: input.projectId,
+                companyId: input.companyId,
+                weekNumber: input.weekNumber,
+                weekYear: input.year,
+                status: "approved",
+                sourceFileUrl: storedFile.url,
+              },
+              responses: validResponses,
+              evidenceUrls: resolvedImages.map(image => image.url),
+            }, {
+              submissionId,
+              weekNumber: input.weekNumber,
+              companyId: input.companyId,
+              companyName: company.shortName,
+              status: "approved",
+              source: "historical_import",
+            });
+          } catch (error) {
+            console.warn("Historical import archive failed (non-fatal):", error);
+          }
+        }
+
+        return {
+          success: true,
+          submissionId,
+          status: input.destination === "historical" ? "approved" as const : "submitted" as const,
+          matchedMeasures: validResponses.length,
+          extractedPhotos: resolvedImages.length,
+        };
+      }),
+
+    // Legacy direct import kept for old clients; restricted to administrators.
+    importPdf: adminProcedure
       .input(z.object({
         projectId: z.number(),
         weekNumber: z.number(),
@@ -1406,7 +1791,10 @@ export const appRouter = router({
     // Company associations
     getCompanies: protectedProcedure
       .input(z.object({ projectId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "pm") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para listar empresas do projecto." });
+        }
         return db.getCompaniesForProject(input.projectId);
       }),
     addCompany: adminProcedure

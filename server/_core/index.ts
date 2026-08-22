@@ -38,6 +38,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  // A aplicação corre atrás de um único reverse proxy (Nginx/hosting gerido).
+  // Permite ao rate limiter usar com segurança o endereço real do cliente.
+  app.set("trust proxy", 1);
   const server = createServer(app);
 
   // ─── Security Headers ───────────────────────────────────────────────────

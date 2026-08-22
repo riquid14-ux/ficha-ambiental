@@ -2,12 +2,63 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { execFileSync } from "child_process";
 
 interface ExtractedImage {
   page: number;
   buffer: Buffer;
   mimeType: string;
   filename: string;
+}
+
+/**
+ * Extract readable text from a PDF or DOCX before sending it to the LLM.
+ * The model receives text only and never needs to fetch the uploaded file.
+ */
+export async function extractDocumentText(documentBuffer: Buffer, filename: string): Promise<string> {
+  const lowerName = filename.toLowerCase();
+
+  if (lowerName.endsWith(".docx")) {
+    const AdmZip = (await import("adm-zip")).default;
+    const zip = new AdmZip(documentBuffer);
+    const entry = zip.getEntry("word/document.xml");
+    if (!entry) throw new Error("Documento Word sem conteúdo legível.");
+
+    return entry
+      .getData()
+      .toString("utf8")
+      .replace(/<w:tab\s*\/?>/g, "\t")
+      .replace(/<w:br\s*\/?>/g, "\n")
+      .replace(/<\/w:p>/g, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n\s+/g, "\n")
+      .trim();
+  }
+
+  if (!lowerName.endsWith(".pdf")) {
+    throw new Error("Apenas ficheiros PDF ou DOCX são suportados.");
+  }
+
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "document-text-"));
+  const pdfPath = path.join(tmpDir, "input.pdf");
+  const textPath = path.join(tmpDir, "output.txt");
+
+  try {
+    fs.writeFileSync(pdfPath, documentBuffer);
+    execFileSync("pdftotext", ["-layout", pdfPath, textPath], {
+      timeout: 60000,
+      stdio: "ignore",
+    });
+    return fs.existsSync(textPath) ? fs.readFileSync(textPath, "utf8").trim() : "";
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 }
 
 /**

@@ -968,7 +968,7 @@ export default function WeeklyForm() {
 
           {/* Tab: Histórico */}
           <TabsContent value="historico" className="mt-4">
-            <HistoricoEmbedded />
+            <SubmissionHistoryFull embedded />
           </TabsContent>
 
           {/* Tab: Revisão */}
@@ -983,7 +983,7 @@ export default function WeeklyForm() {
 
           {/* Tab: Histórico PDF */}
           <TabsContent value="pdf-historico" className="mt-4">
-            <HistoricoPdfEmbedded />
+            <HistoricoEmbedded />
           </TabsContent>
 
         </Tabs>
@@ -1209,104 +1209,336 @@ function HistoricoPdfEmbedded() {
 
 function HistoricoEmbedded() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { activeProject } = useProject();
-  const [showImportDialog, setShowImportDialog] = useState(false);
+  const canChooseCompany = ["admin", "dono_obra", "raa"].includes(user?.role || "");
+  const canSubmitForReview = ["admin", "dono_obra", "ee", "rap"].includes(user?.role || "");
+  const canArchiveApproved = ["admin", "raa"].includes(user?.role || "");
+  const [destination, setDestination] = useState<"review" | "historical">("review");
+  const [selectedCompany, setSelectedCompany] = useState<string>("");
   const [importWeek, setImportWeek] = useState<number>(1);
   const [importYear, setImportYear] = useState<number>(new Date().getFullYear());
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const importPdfMutation = trpc.submissions.importPdf.useMutation();
+  const [preview, setPreview] = useState<any>(null);
+  const companiesQuery = trpc.projects.getCompanies.useQuery(
+    { projectId: activeProject?.id || 0 },
+    { enabled: !!activeProject && canChooseCompany }
+  );
+  const ownCompanyQuery = trpc.companies.getById.useQuery(
+    { id: user?.companyId || 0 },
+    { enabled: !!user?.companyId && !canChooseCompany }
+  );
+  const analyzeMutation = trpc.submissions.analyzeImport.useMutation();
+  const commitMutation = trpc.submissions.commitImport.useMutation();
   const utils = trpc.useUtils();
 
-  const handleImportPdf = async () => {
-    if (!importFile || !activeProject) return;
-    setIsImporting(true);
+  useEffect(() => {
+    if (user?.role === "raa") setDestination("historical");
+    if (!canArchiveApproved && destination === "historical") setDestination("review");
+  }, [user?.role, canArchiveApproved, destination]);
+
+  useEffect(() => {
+    if (!canChooseCompany && user?.companyId) {
+      setSelectedCompany(String(user.companyId));
+    }
+  }, [canChooseCompany, user?.companyId]);
+
+  useEffect(() => {
+    setPreview(null);
+  }, [destination, selectedCompany, importWeek, importYear, importFile, activeProject?.id]);
+
+  const availableCompanies = canChooseCompany
+    ? (companiesQuery.data || [])
+    : (ownCompanyQuery.data ? [ownCompanyQuery.data] : []);
+  const selectedCompanyData = availableCompanies.find((company: any) => company.id === Number(selectedCompany));
+
+  const resetImport = () => {
+    setImportFile(null);
+    setPreview(null);
+    if (canChooseCompany) setSelectedCompany("");
+  };
+
+  const handleAnalyze = async () => {
+    if (!importFile || !activeProject || !selectedCompany) {
+      toast.error(t("Seleccione o projecto, a empresa e o ficheiro."));
+      return;
+    }
+    if (importFile.size > 10 * 1024 * 1024) {
+      toast.error(t("O ficheiro excede o limite de 10 MB."));
+      return;
+    }
     try {
-      const result = await importPdfMutation.mutateAsync({
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]);
+        reader.onerror = () => reject(new Error("Não foi possível ler o ficheiro."));
+        reader.readAsDataURL(importFile);
+      });
+      const result = await analyzeMutation.mutateAsync({
         projectId: activeProject.id,
+        companyId: Number(selectedCompany),
         weekNumber: importWeek,
         year: importYear,
-        pdfBase64: await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(",")[1]);
-          reader.readAsDataURL(importFile);
-        }),
-        pdfFilename: importFile.name,
+        destination,
+        fileBase64,
+        filename: importFile.name,
       });
-      toast.success(
-        `PDF importado com sucesso! ${result.matchedMeasures} medidas correspondidas de ${result.totalMeasures} totais.`
-      );
-      setShowImportDialog(false);
-      setImportFile(null);
-      utils.submissions.invalidate();
-    } catch (err: any) {
-      toast.error(`Erro ao importar PDF: ${err.message}`);
-    } finally {
-      setIsImporting(false);
+      setPreview(result);
+      toast.success(t("Análise concluída. Confirme a pré-visualização antes de gravar."));
+    } catch (error: any) {
+      toast.error(error.message || t("Não foi possível analisar o ficheiro."));
     }
   };
 
+  const handleCommit = async () => {
+    if (!preview || !activeProject || !selectedCompany) return;
+    try {
+      const result = await commitMutation.mutateAsync({
+        projectId: activeProject.id,
+        companyId: Number(selectedCompany),
+        weekNumber: importWeek,
+        year: importYear,
+        destination,
+        fileKey: preview.fileKey,
+        filename: preview.filename,
+        mimeType: preview.mimeType,
+        responses: preview.responses.map((response: any) => ({
+          measureId: response.measureId,
+          status: response.status,
+          observations: response.observations || null,
+        })),
+        images: preview.images.map((image: any) => ({
+          fileKey: image.fileKey,
+          filename: image.filename,
+          mimeType: image.mimeType,
+          page: image.page,
+        })),
+      });
+      toast.success(
+        result.status === "approved"
+          ? t("Ficha histórica aprovada adicionada ao histórico.")
+          : t("Ficha importada e submetida à RAA para revisão.")
+      );
+      resetImport();
+      await Promise.all([
+        utils.submissions.invalidate(),
+        utils.historical.invalidate(),
+        utils.analytics.invalidate(),
+        utils.matrix.invalidate(),
+      ]);
+    } catch (error: any) {
+      toast.error(error.message || t("Não foi possível guardar a ficha importada."));
+    }
+  };
+
+  if (!activeProject) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+          <h3 className="font-semibold">{t("Seleccione um projecto")}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{t("A importação de fichas é sempre associada a um projecto específico.")}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div>
-      <div className="flex justify-end mb-4">
-        <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)} className="gap-2">
-          <Upload className="h-4 w-4" />
-          {t("Importar PDF Histórico")}
-        </Button>
-      </div>
-      <SubmissionHistoryFull embedded />
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("Importar Ficha de Controlo (PDF)")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
+    <div className="space-y-6">
+      <Card className="overflow-hidden border-emerald-200">
+        <CardHeader className="bg-gradient-to-r from-emerald-50 to-white">
+          <CardTitle className="flex items-center gap-2">
+            <FileUp className="w-5 h-5 text-emerald-700" />
+            {t("Importar Ficha Externa")}
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t("Receba fichas criadas no Word ou noutra aplicação sem perder o fluxo de revisão, o histórico ou a rastreabilidade.")}
+          </p>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div>
+            <Label className="text-sm font-semibold">{t("1. Escolha o destino da ficha")}</Label>
+            <RadioGroup value={destination} onValueChange={(value) => setDestination(value as "review" | "historical")} className="grid md:grid-cols-2 gap-3 mt-3">
+              {canSubmitForReview && (
+                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "review" ? "border-blue-500 bg-blue-50" : "hover:bg-muted/40"}`}>
+                  <div className="flex gap-3">
+                    <RadioGroupItem value="review" className="mt-1" />
+                    <div>
+                      <p className="font-semibold">{t("Submeter para revisão")}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("A ficha entra como Submetida. A RAA recebe a notificação e pode aprovar ou rejeitar medidas.")}</p>
+                    </div>
+                  </div>
+                </label>
+              )}
+              {canArchiveApproved && (
+                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "historical" ? "border-emerald-500 bg-emerald-50" : "hover:bg-muted/40"}`}>
+                  <div className="flex gap-3">
+                    <RadioGroupItem value="historical" className="mt-1" />
+                    <div>
+                      <p className="font-semibold">{t("Adicionar ao histórico aprovado")}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{t("Para fichas antigas já validadas. Fica aprovada, auditada e disponível no Histórico, Dashboard, Matriz e RDCD.")}</p>
+                    </div>
+                  </div>
+                </label>
+              )}
+            </RadioGroup>
+          </div>
+
+          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div>
+              <Label>{t("Projecto")}</Label>
+              <Input value={`${activeProject.code} — ${activeProject.name}`} disabled className="mt-1" />
+            </div>
+            <div>
+              <Label>{t("Empresa")}</Label>
+              {canChooseCompany ? (
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder={t("Seleccionar empresa")} /></SelectTrigger>
+                  <SelectContent>
+                    {availableCompanies.map((company: any) => (
+                      <SelectItem key={company.id} value={String(company.id)}>{company.shortName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={selectedCompanyData?.shortName || t("A carregar...")} disabled className="mt-1" />
+              )}
+            </div>
             <div>
               <Label>{t("Semana")}</Label>
-              <Select value={String(importWeek)} onValueChange={(v) => setImportWeek(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={String(importWeek)} onValueChange={(value) => setImportWeek(Number(value))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 53 }, (_, i) => (
-                    <SelectItem key={i + 1} value={String(i + 1)}>
-                      {t("Semana")} {i + 1}
-                    </SelectItem>
+                  {Array.from({ length: 53 }, (_, index) => (
+                    <SelectItem key={index + 1} value={String(index + 1)}>{t("Semana")} {index + 1}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label>{t("Ano")}</Label>
-              <Select value={String(importYear)} onValueChange={(v) => setImportYear(Number(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[2023, 2024, 2025, 2026].map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>{t("Ficheiro PDF")}</Label>
-              <Input type="file" accept=".pdf" onChange={(e) => setImportFile(e.target.files?.[0] || null)} className="mt-1" />
-              {importFile && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {importFile.name} ({(importFile.size / 1024).toFixed(0)} KB)
-                </p>
-              )}
+              <Input type="number" min={2020} max={2100} value={importYear} onChange={(event) => setImportYear(Number(event.target.value))} className="mt-1" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImportDialog(false)}>{t("Cancelar")}</Button>
-            <Button onClick={handleImportPdf} disabled={!importFile || isImporting} className="gap-2">
-              {isImporting ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> {t("A processar...")}</>
-              ) : (
-                <><Upload className="h-4 w-4" /> {t("Importar")}</>
-              )}
+
+          <div className="rounded-xl border border-dashed p-5 bg-muted/20">
+            <Label>{t("2. Seleccione o documento")}</Label>
+            <div className="relative mt-2 min-h-11 rounded-md border bg-background hover:bg-muted/40 transition-colors">
+              <input
+                id="external-ficha-file"
+                type="file"
+                accept=".pdf,.docx"
+                aria-label={t("Escolher ficheiro PDF ou Word")}
+                onChange={(event) => setImportFile(event.target.files?.[0] || null)}
+                className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+              />
+              <div className="min-h-11 px-4 py-2 flex items-center justify-between gap-3 pointer-events-none">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Upload className="w-4 h-4 text-emerald-700" />
+                  {importFile ? importFile.name : t("Escolher ficheiro PDF ou Word")}
+                </span>
+                <span className="text-xs text-muted-foreground">{t("Procurar")}</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-between gap-2 mt-2 text-xs text-muted-foreground">
+              <span>{t("Formatos aceites: PDF e Word (.docx). Máximo 10 MB.")}</span>
+              {importFile && <span className="font-medium text-foreground">{(importFile.size / 1024 / 1024).toFixed(2)} MB</span>}
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleAnalyze} disabled={!importFile || !selectedCompany || analyzeMutation.isPending} className="gap-2">
+              {analyzeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {analyzeMutation.isPending ? t("A analisar texto e fotografias...") : t("Analisar e pré-visualizar")}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+
+      {preview && (
+        <Card className="border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-3">
+              <span>{t("3. Confirme a pré-visualização")}</span>
+              <Badge variant="outline">{preview.matchedMeasures} / {preview.totalMeasures} {t("medidas")}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3">
+              <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{t("Empresa")}</p><p className="font-semibold">{selectedCompanyData?.shortName}</p></div>
+              <div className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{t("Período")}</p><p className="font-semibold">S{importWeek}/{importYear}</p></div>
+              {(["I", "C", "NC", "NA"] as const).map(status => (
+                <div key={status} className="rounded-lg bg-muted/40 p-3"><p className="text-xs text-muted-foreground">{status}</p><p className="font-semibold text-xl">{preview.counts?.[status] || 0}</p></div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-4 text-sm">
+              <span><strong>{preview.extractedPhotos}</strong> {t("fotografias extraídas")}</span>
+              <a href={preview.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">{t("Abrir documento original")}</a>
+            </div>
+
+            <div className="rounded-lg border overflow-hidden">
+              <div className="max-h-[360px] overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted">
+                    <tr><th className="text-left p-3">{t("Medida")}</th><th className="text-left p-3">{t("Estado")}</th><th className="text-left p-3">{t("Observações")}</th></tr>
+                  </thead>
+                  <tbody>
+                    {preview.responses.map((response: any) => (
+                      <tr key={response.measureId} className="border-t align-top">
+                        <td className="p-3"><p className="font-medium">{response.measureCode}</p><p className="text-xs text-muted-foreground line-clamp-2 max-w-xl">{response.measureDescription}</p></td>
+                        <td className="p-3 min-w-[110px]">
+                          <Select
+                            value={response.status}
+                            onValueChange={(status) => setPreview((current: any) => ({
+                              ...current,
+                              responses: current.responses.map((item: any) => item.measureId === response.measureId ? { ...item, status } : item),
+                              counts: current.responses.reduce((counts: Record<string, number>, item: any) => {
+                                const nextStatus = item.measureId === response.measureId ? status : item.status;
+                                counts[nextStatus] = (counts[nextStatus] || 0) + 1;
+                                return counts;
+                              }, { I: 0, C: 0, NC: 0, NA: 0 }),
+                            }))}
+                          >
+                            <SelectTrigger className={response.status === "NC" ? "border-red-300 text-red-700" : ""}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {(["I", "C", "NC", "NA"] as const).map(status => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3 min-w-[300px]">
+                          <Textarea
+                            value={response.observations || ""}
+                            onChange={(event) => setPreview((current: any) => ({
+                              ...current,
+                              responses: current.responses.map((item: any) => item.measureId === response.measureId ? { ...item, observations: event.target.value } : item),
+                            }))}
+                            placeholder={t("Confirmar ou corrigir observações")}
+                            className="min-h-[72px] text-sm"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-2 text-sm text-amber-900">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{t("A leitura automática é assistiva. Confirme o projecto, empresa, semana, estados e observações antes de gravar.")}</span>
+            </div>
+
+            <div className="flex flex-wrap justify-between gap-3">
+              <Button variant="outline" onClick={() => setPreview(null)}>{t("Voltar e alterar")}</Button>
+              <Button onClick={handleCommit} disabled={commitMutation.isPending} className="gap-2">
+                {commitMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {destination === "historical" ? t("Confirmar histórico aprovado") : t("Submeter à RAA para revisão")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

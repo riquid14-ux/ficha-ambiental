@@ -249,7 +249,7 @@ export default function Planos() {
       }));
       const header = new TableRow({
         tableHeader: true,
-        children: ["N.º", "Plano", "Estado", "Responsável interno", "Suporte externo", "Próxima entrega", "Último update"].map(text => new TableCell({
+        children: ["N.º", "Plano", "Estado", "Responsável interno", "Suporte", "Próxima entrega", "Último update"].map(text => new TableCell({
           shading: { type: ShadingType.CLEAR, color: "auto", fill: "006341" },
           children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "FFFFFF" })] })],
         })),
@@ -393,7 +393,7 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[600px]">
               <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Responsável interno" value={plan.ownerName || "Por definir"} />
-              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Suporte externo" value={[plan.supportName, plan.supportCompany].filter(Boolean).join(" — ") || "Por definir"} />
+              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Suporte" value={[plan.supportName, plan.supportCompany].filter(Boolean).join(" — ") || "Por definir"} />
               <InfoBlock icon={<CalendarDays className="h-4 w-4" />} label="Próxima entrega" value={formatDate(plan.nextReportingDate)} alert={Boolean(isOverdue)} />
               <InfoBlock icon={<Paperclip className="h-4 w-4" />} label="Anexos" value={String(plan.attachmentCount || 0)} />
             </div>
@@ -419,9 +419,9 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
             <div className="grid gap-5 lg:grid-cols-2">
               {isAdminOrDono && (
                 <div className="space-y-3 rounded-xl border p-4">
-                  <div><h4 className="font-semibold">Responsáveis e calendário</h4><p className="text-xs text-muted-foreground">O responsável interno tem conta; o suporte externo pode não estar registado.</p></div>
+                  <div><h4 className="font-semibold">Responsáveis e calendário</h4><p className="text-xs text-muted-foreground">O responsável interno tem conta; o suporte pode não estar registado.</p></div>
                   <Select value={ownerId} onValueChange={setOwnerId}><SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger><SelectContent><SelectItem value="none">Sem responsável</SelectItem>{candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}</SelectContent></Select>
-                  <div className="grid grid-cols-2 gap-3"><Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome do suporte externo" /><Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" /></div>
+                  <div className="grid grid-cols-2 gap-3"><Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome do suporte" /><Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" /></div>
                   <div className="grid grid-cols-2 gap-3"><Input type="email" value={supportEmail} onChange={event => setSupportEmail(event.target.value)} placeholder="Email do suporte" /><Input value={supportPhone} onChange={event => setSupportPhone(event.target.value)} placeholder="Telefone (opcional)" /></div>
                   <div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-medium">Última entrega</label><Input type="date" value={lastDate} onChange={event => setLastDate(event.target.value)} /></div><div><label className="text-xs font-medium">Próxima entrega</label><Input type="date" value={nextDate} onChange={event => setNextDate(event.target.value)} /></div></div>
                   <Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ planId: plan.id, ownerId: ownerId === "none" ? null : Number(ownerId), supportName: supportName.trim() || null, supportCompany: supportCompany.trim() || null, supportEmail: supportEmail.trim() || null, supportPhone: supportPhone.trim() || null, lastReportingDate: toTimestamp(lastDate), nextReportingDate: toTimestamp(nextDate) })}><Save className="mr-2 h-4 w-4" />Guardar responsáveis e datas</Button>

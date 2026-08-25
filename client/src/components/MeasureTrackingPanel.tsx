@@ -99,7 +99,7 @@ export default function MeasureTrackingPanel({
             <p className="mt-1 text-sm font-semibold">{tracking?.ownerName || "Por definir"}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Suporte externo</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Suporte</p>
             <p className="mt-1 text-sm font-semibold">{[tracking?.supportName, tracking?.supportCompany].filter(Boolean).join(" — ") || "Por definir"}</p>
           </div>
           <div>
@@ -137,7 +137,7 @@ export default function MeasureTrackingPanel({
                     {candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Suporte externo desta medida</h4></div>
+                <div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Suporte desta medida</h4></div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome" />
                   <Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" />

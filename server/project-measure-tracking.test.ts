@@ -118,7 +118,7 @@ describe("Acompanhamento por medida — interface e calendário", () => {
   });
 
   it("mostra responsável, suporte, último update, autor, data e histórico por medida", () => {
-    for (const label of ["Responsável pela medida", "Suporte externo", "Último status update desta medida", "Histórico da medida", "createdByName"]) {
+    for (const label of ["Responsável pela medida", "Suporte", "Último status update desta medida", "Histórico da medida", "createdByName"]) {
       expect(panelSource).toContain(label);
     }
     expect(phasesSource).toContain("tracking?.ownerName");
@@ -132,5 +132,12 @@ describe("Acompanhamento por medida — interface e calendário", () => {
     expect(reminderSource).not.toContain("phaseMeasureUpdates");
     expect(reminderSource).not.toContain("phase_measure_updates");
     expect(panelSource).toContain("não cria eventos de calendário nem alertas automáticos");
+  });
+
+  it("inicia as evidências operacionais de SIN01 em 2026", () => {
+    expect(phasesSource).toContain("const SIN01_EVIDENCE_START_YEAR = 2026");
+    expect(phasesSource).toContain("Math.max(SIN01_EVIDENCE_START_YEAR, new Date().getFullYear())");
+    expect(phasesSource).not.toContain("new Date().getFullYear() - 1");
+    expect(phasesSource).not.toContain("2023 + i");
   });
 });

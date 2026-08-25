@@ -20,6 +20,7 @@ import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+const SIN01_EVIDENCE_START_YEAR = 2026;
 
 // All project lifecycle phases (excluding construction which has its own weekly form)
 const ALL_PHASES = [
@@ -83,7 +84,7 @@ export default function PhaseMeasures(props: any) {
     ? ALL_PHASES.filter(p => p.key === "Exploração" || p.key === "Desativação (Pós-Exploração)")
     : ALL_PHASES).filter(p => !hiddenPhaseKeys.has(p.key) && !hiddenPhaseKeys.has(p.label));
 
-  const [evidenceYear, setEvidenceYear] = useState(new Date().getFullYear() - 1);
+  const [evidenceYear, setEvidenceYear] = useState(() => Math.max(SIN01_EVIDENCE_START_YEAR, new Date().getFullYear()));
   const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [statuses, setStatuses] = useState<Record<number, string>>({});
@@ -229,7 +230,7 @@ export default function PhaseMeasures(props: any) {
             <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Array.from({ length: 11 }, (_, i) => 2023 + i).map(y => (
+                {Array.from({ length: 11 }, (_, i) => SIN01_EVIDENCE_START_YEAR + i).map(y => (
                   <SelectItem key={y} value={String(y)}>{t("Evidências")} {y}</SelectItem>
                 ))}
               </SelectContent>

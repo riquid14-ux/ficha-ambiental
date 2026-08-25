@@ -112,7 +112,7 @@ describe("Acompanhamento das fases — experiência", () => {
   });
 
   it("mostra responsável, suporte, último update, autor e histórico", () => {
-    for (const label of ["Responsável interno", "Suporte externo", "Último status update", "Histórico", "createdByName"]) {
+    for (const label of ["Responsável interno", "Suporte", "Último status update", "Histórico", "createdByName"]) {
       expect(panelSource).toContain(label);
     }
   });

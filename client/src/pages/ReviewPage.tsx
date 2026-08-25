@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Send, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
@@ -162,6 +163,7 @@ export default function ReviewPage(props: any) {
       sectionMap.set(s.id, { section: s, measures: [] });
     }
     for (const m of measuresQuery.data) {
+      if (!isWeeklyControlMeasureNumber(m.number)) continue;
       const response = responseMap.get(m.id);
       const status = response?.status || null;
       // Only show measures that have actual responses (not empty/null)

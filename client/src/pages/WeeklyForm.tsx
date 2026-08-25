@@ -23,6 +23,7 @@ import SubmissionHistoryFull from "./SubmissionHistory";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
 function getWeekOptions() {
   const now = new Date();
   const year = now.getFullYear();
@@ -379,9 +380,10 @@ export default function WeeklyForm() {
   const measuresBySection = useMemo(() => {
     if (!measuresQuery.data || !sectionsQuery.data) return [];
     // Filter measures: only show those relevant to this user's role
+    const weeklyMeasures = measuresQuery.data.filter((m) => isWeeklyControlMeasureNumber(m.number));
     let relevantMeasures = measureFilterType
-      ? measuresQuery.data.filter((m) => m.responsible.toUpperCase().includes(measureFilterType))
-      : measuresQuery.data;
+      ? weeklyMeasures.filter((m) => m.responsible.toUpperCase().includes(measureFilterType))
+      : weeklyMeasures;
     // FICHA-03: When ficha is rejected, only show measures marked as 'nok' by reviewer
     if (isRejected && !showAllMeasuresOnRejected && reviewFeedbackMap.size > 0) {
       const nokIds = new Set(Array.from(reviewFeedbackMap.entries()).filter(([, v]) => v.verdict === "nok").map(([id]) => id));

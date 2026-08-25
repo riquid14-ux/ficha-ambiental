@@ -403,7 +403,8 @@ export default function SubmissionHistory(props: any) {
                               toast.success("A gerar PDF...");
                             }}
                           >
-                            <Download className="w-4 h-4 mr-1" /> PDF
+                            <Download className="w-4 h-4 mr-1" />
+                            {sub.status === "approved" ? "PDF aprovado" : "PDF para revisão"}
                           </Button>
                         )}
                         {user?.role === "admin" && (

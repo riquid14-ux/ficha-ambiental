@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
+import PhaseTrackingPanel from "@/components/PhaseTrackingPanel";
+import { findProjectPhaseRecord } from "@/lib/phase-tracking";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -314,6 +316,11 @@ export default function PhaseMeasures(props: any) {
                 )}
               </div>
             </div>
+
+            <PhaseTrackingPanel
+              phase={findProjectPhaseRecord(projectPhasesQuery.data || [], phase.key)}
+              projectId={projectId}
+            />
 
             {/* Admin Settings Panel */}
             {isAdmin && showSettings && (

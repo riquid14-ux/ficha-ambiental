@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -162,10 +161,9 @@ function PlanCalendar({ plans }: { plans: any[] }) {
             ) : (
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {selectedPlans.map(plan => (
-                  <div key={`${plan.trackingProjectId || plan.projectId}-${plan.id}`} className="rounded-lg border bg-white p-2.5">
+                  <div key={plan.id} className="rounded-lg border bg-white p-2.5">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{plan.planNumber}</Badge>
-                      {plan.trackingProjectCode && <Badge className="bg-[#006341]">{plan.trackingProjectCode}</Badge>}
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs font-medium">{plan.name}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{plan.ownerName || "Responsável por definir"}</p>
@@ -183,21 +181,19 @@ function PlanCalendar({ plans }: { plans: any[] }) {
 export default function Planos() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { projects, activeProject, isAllProjects } = useProject();
-  const projectId = !isAllProjects ? activeProject?.id : undefined;
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [newPlan, setNewPlan] = useState({ planNumber: "", name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "", projectId: "" });
+  const [newPlan, setNewPlan] = useState({ planNumber: "", name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "" });
 
-  const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery(projectId ? { projectId } : undefined);
+  const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery();
   const utils = trpc.useUtils();
   const createMutation = trpc.monitoringPlans.create.useMutation({
     onSuccess: async () => {
       await utils.monitoringPlans.list.invalidate();
       setShowCreate(false);
-      setNewPlan({ planNumber: "", name: "", category: "programa_monitorizacao", periodicity: "", notes: "", projectId: "" });
+      setNewPlan({ planNumber: "", name: "", category: "programa_monitorizacao", periodicity: "", notes: "" });
       toast.success("Plano criado com sucesso");
     },
     onError: error => toast.error(error.message),
@@ -214,25 +210,13 @@ export default function Planos() {
     const query = searchQuery.trim().toLocaleLowerCase("pt-PT");
     return sortedPlans.filter((plan: any) => {
       const matchesStatus = statusFilter === "all" || plan.status === statusFilter;
-      const searchable = [plan.planNumber, plan.name, plan.ownerName, plan.trackingProjectCode, plan.latestUpdate?.updateText]
+      const searchable = [plan.planNumber, plan.name, plan.ownerName, plan.supportName, plan.supportCompany, plan.latestUpdate?.updateText]
         .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase("pt-PT");
       return matchesStatus && (!query || searchable.includes(query));
     });
   }, [searchQuery, sortedPlans, statusFilter]);
-
-  const groupedPlans = useMemo(() => {
-    if (!isAllProjects) return [{ code: activeProject?.code || "Projecto", name: activeProject?.name || "", plans: filteredPlans }];
-    const groups = new Map<string, { code: string; name: string; plans: any[] }>();
-    for (const plan of filteredPlans as any[]) {
-      const code = plan.trackingProjectCode || `P${plan.trackingProjectId}`;
-      const project = projects.find(item => item.id === plan.trackingProjectId);
-      if (!groups.has(code)) groups.set(code, { code, name: project?.name || "", plans: [] });
-      groups.get(code)!.plans.push(plan);
-    }
-    return Array.from(groups.values()).sort((a, b) => a.code.localeCompare(b.code, "pt", { numeric: true }));
-  }, [activeProject, filteredPlans, isAllProjects, projects]);
 
   const stats = useMemo(() => {
     const now = Date.now();
@@ -249,16 +233,15 @@ export default function Planos() {
     if (plans.length === 0) return toast.error("Não existem planos para exportar.");
     try {
       const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, ShadingType } = await import("docx");
-      const projectLabel = isAllProjects ? "Todos os projectos acessíveis" : `${activeProject?.code || ""} — ${activeProject?.name || ""}`;
       const rows = sortedPlans.map((plan: any) => new TableRow({
         children: [
           new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: plan.planNumber || `P-${plan.id}`, bold: true })] })] }),
-          new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.trackingProjectCode || activeProject?.code || "—")] }),
-          new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.name)] }),
+          new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.name)] }),
           new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph(STATUS_LABELS[plan.status] || plan.status)] }),
-          new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.ownerName || "Por definir")] }),
+          new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.ownerName || "Por definir")] }),
+          new TableCell({ width: { size: 13, type: WidthType.PERCENTAGE }, children: [new Paragraph([plan.supportName, plan.supportCompany].filter(Boolean).join(" — ") || "Por definir")] }),
           new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, children: [new Paragraph(formatDate(plan.nextReportingDate))] }),
-          new TableCell({ width: { size: 26, type: WidthType.PERCENTAGE }, children: [
+          new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, children: [
             new Paragraph(plan.latestUpdate?.updateText || "Sem update registado"),
             ...(plan.latestUpdate ? [new Paragraph({ children: [new TextRun({ text: `${plan.latestUpdate.createdByName} · ${formatDateTime(plan.latestUpdate.createdAt)}`, italics: true, size: 18 })] })] : []),
           ] }),
@@ -266,14 +249,14 @@ export default function Planos() {
       }));
       const header = new TableRow({
         tableHeader: true,
-        children: ["N.º", "Projecto", "Plano", "Estado", "Responsável", "Próxima entrega", "Último update"].map(text => new TableCell({
+        children: ["N.º", "Plano", "Estado", "Responsável interno", "Suporte externo", "Próxima entrega", "Último update"].map(text => new TableCell({
           shading: { type: ShadingType.CLEAR, color: "auto", fill: "006341" },
           children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "FFFFFF" })] })],
         })),
       });
       const wordDocument = new Document({ sections: [{ children: [
         new Paragraph({ text: "Actualização dos Planos de Monitorização", heading: HeadingLevel.TITLE }),
-        new Paragraph({ children: [new TextRun({ text: "Projecto: ", bold: true }), new TextRun(projectLabel)] }),
+        new Paragraph({ children: [new TextRun({ text: "Âmbito: ", bold: true }), new TextRun("20 planos universais aplicáveis a todos os projectos") ] }),
         new Paragraph({ children: [new TextRun({ text: "Gerado em: ", bold: true }), new TextRun(new Date().toLocaleString("pt-PT"))] }),
         new Paragraph({ text: "" }),
         new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }),
@@ -282,7 +265,7 @@ export default function Planos() {
       const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
       anchor.href = url;
-      anchor.download = `Atualizacao_Planos_${activeProject?.code || "Todos"}_${new Date().toISOString().slice(0, 10)}.docx`;
+      anchor.download = `Atualizacao_Planos_Universais_${new Date().toISOString().slice(0, 10)}.docx`;
       anchor.click();
       URL.revokeObjectURL(url);
       toast.success("Documento Word exportado");
@@ -318,15 +301,13 @@ export default function Planos() {
                     </div>
                     <Select value={newPlan.category} onValueChange={(value: any) => setNewPlan(plan => ({ ...plan, category: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="programa_monitorizacao">Programa de Monitorização</SelectItem><SelectItem value="plano_projeto">Plano/Projecto</SelectItem></SelectContent></Select>
                     <Input value={newPlan.periodicity} onChange={event => setNewPlan(value => ({ ...value, periodicity: event.target.value }))} placeholder="Periodicidade (ex.: Semestral)" />
-                    <Select value={newPlan.projectId || (projectId ? String(projectId) : "")} onValueChange={value => setNewPlan(plan => ({ ...plan, projectId: value }))}><SelectTrigger><SelectValue placeholder="Projecto" /></SelectTrigger><SelectContent>{projects.map(project => <SelectItem key={project.id} value={String(project.id)}>{project.code} — {project.name}</SelectItem>)}</SelectContent></Select>
                     <Textarea value={newPlan.notes} onChange={event => setNewPlan(value => ({ ...value, notes: event.target.value }))} placeholder="Notas adicionais" />
-                    <Button className="w-full" disabled={!newPlan.name || (!newPlan.projectId && !projectId) || createMutation.isPending} onClick={() => createMutation.mutate({
+                    <Button className="w-full" disabled={!newPlan.name || createMutation.isPending} onClick={() => createMutation.mutate({
                       name: newPlan.name,
                       planNumber: newPlan.planNumber || undefined,
                       category: newPlan.category,
                       periodicity: newPlan.periodicity || undefined,
                       notes: newPlan.notes || undefined,
-                      projectId: Number(newPlan.projectId || projectId),
                     })}>{createMutation.isPending ? "A criar..." : "Criar plano"}</Button>
                   </div>
                 </DialogContent>
@@ -352,12 +333,7 @@ export default function Planos() {
           </CardContent></Card>
           {filteredPlans.length === 0 ? (
             <Card><CardContent className="p-10 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground" /><p className="mt-3 font-medium">Ainda não existem planos para este contexto.</p></CardContent></Card>
-          ) : groupedPlans.map(group => (
-            <section key={group.code} className="space-y-3">
-              {isAllProjects && <div className="sticky top-0 z-10 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur"><Badge className="bg-[#006341]">{group.code}</Badge><div><h3 className="font-semibold">{group.name || "Projecto"}</h3><p className="text-xs text-muted-foreground">{group.plans.length} planos acompanhados</p></div></div>}
-              {group.plans.map((plan: any) => <PlanCard key={`${plan.trackingProjectId || projectId}-${plan.id}`} plan={plan} fallbackProjectId={projectId} user={user} />)}
-            </section>
-          ))}
+          ) : filteredPlans.map((plan: any) => <PlanCard key={plan.id} plan={plan} user={user} />)}
         </div>
       </div>
     </AppLayout>
@@ -369,22 +345,25 @@ function StatCard({ label, value, icon, tone = "default" }: { label: string; val
   return <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-xl p-2.5 ${toneClass}`}>{icon}</div><div><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div></CardContent></Card>;
 }
 
-function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjectId?: number; user: any }) {
+function PlanCard({ plan, user }: { plan: any; user: any }) {
   const utils = trpc.useUtils();
-  const projectId = plan.trackingProjectId || fallbackProjectId || plan.projectId;
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [status, setStatus] = useState(plan.status || "nao_iniciado");
   const [updateText, setUpdateText] = useState("");
   const [ownerId, setOwnerId] = useState(plan.ownerId ? String(plan.ownerId) : "none");
+  const [supportName, setSupportName] = useState(plan.supportName || "");
+  const [supportCompany, setSupportCompany] = useState(plan.supportCompany || "");
+  const [supportEmail, setSupportEmail] = useState(plan.supportEmail || "");
+  const [supportPhone, setSupportPhone] = useState(plan.supportPhone || "");
   const [nextDate, setNextDate] = useState(dateInputValue(plan.nextReportingDate));
   const [lastDate, setLastDate] = useState(dateInputValue(plan.lastReportingDate));
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const canUpdate = isAdminOrDono || user?.role === "raa" || plan.ownerId === user?.id;
   const isOverdue = plan.nextReportingDate && plan.nextReportingDate < Date.now();
 
-  const { data: candidates = [] } = trpc.monitoringPlans.responsibleCandidates.useQuery({ projectId }, { enabled: Boolean(projectId && expanded && isAdminOrDono) });
-  const { data: history } = trpc.monitoringPlans.history.useQuery({ planId: plan.id, projectId }, { enabled: Boolean(projectId && showHistory) });
+  const { data: candidates = [] } = trpc.monitoringPlans.responsibleCandidates.useQuery(undefined, { enabled: Boolean(expanded && isAdminOrDono) });
+  const { data: history } = trpc.monitoringPlans.history.useQuery({ planId: plan.id }, { enabled: showHistory });
   const refresh = async () => {
     await Promise.all([utils.monitoringPlans.list.invalidate(), utils.calendarEvents.list.invalidate()]);
   };
@@ -397,7 +376,7 @@ function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjec
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) return toast.error("O ficheiro excede o limite de 10MB.");
     const fileBase64 = await fileToBase64(file);
-    uploadMutation.mutate({ planId: plan.id, projectId, filename: file.name, mimeType: file.type || "application/octet-stream", fileBase64 });
+    uploadMutation.mutate({ planId: plan.id, filename: file.name, mimeType: file.type || "application/octet-stream", fileBase64 });
   }
 
   return (
@@ -408,12 +387,13 @@ function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjec
             <div className="flex min-w-0 flex-1 gap-3">
               <Badge className="h-fit shrink-0 bg-[#006341]">{plan.planNumber || `P-${String(plan.id).padStart(2, "0")}`}</Badge>
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold leading-tight">{plan.name}</h3>{plan.trackingProjectCode && <Badge variant="outline">{plan.trackingProjectCode}</Badge>}<Badge variant="outline" className={STATUS_STYLES[plan.status]}>{STATUS_LABELS[plan.status] || plan.status}</Badge></div>
+                <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold leading-tight">{plan.name}</h3><Badge variant="outline" className={STATUS_STYLES[plan.status]}>{STATUS_LABELS[plan.status] || plan.status}</Badge></div>
                 <p className="mt-1 text-xs text-muted-foreground">{plan.category === "programa_monitorizacao" ? "Programa de Monitorização" : "Plano/Projecto"}{plan.periodicity ? ` · ${plan.periodicity}` : ""}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[470px]">
-              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Responsável" value={plan.ownerName || "Por definir"} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[600px]">
+              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Responsável interno" value={plan.ownerName || "Por definir"} />
+              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Suporte externo" value={[plan.supportName, plan.supportCompany].filter(Boolean).join(" — ") || "Por definir"} />
               <InfoBlock icon={<CalendarDays className="h-4 w-4" />} label="Próxima entrega" value={formatDate(plan.nextReportingDate)} alert={Boolean(isOverdue)} />
               <InfoBlock icon={<Paperclip className="h-4 w-4" />} label="Anexos" value={String(plan.attachmentCount || 0)} />
             </div>
@@ -439,10 +419,12 @@ function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjec
             <div className="grid gap-5 lg:grid-cols-2">
               {isAdminOrDono && (
                 <div className="space-y-3 rounded-xl border p-4">
-                  <div><h4 className="font-semibold">Responsável e calendário</h4><p className="text-xs text-muted-foreground">As alterações são sincronizadas com o calendário global.</p></div>
+                  <div><h4 className="font-semibold">Responsáveis e calendário</h4><p className="text-xs text-muted-foreground">O responsável interno tem conta; o suporte externo pode não estar registado.</p></div>
                   <Select value={ownerId} onValueChange={setOwnerId}><SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger><SelectContent><SelectItem value="none">Sem responsável</SelectItem>{candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}</SelectContent></Select>
+                  <div className="grid grid-cols-2 gap-3"><Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome do suporte externo" /><Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" /></div>
+                  <div className="grid grid-cols-2 gap-3"><Input type="email" value={supportEmail} onChange={event => setSupportEmail(event.target.value)} placeholder="Email do suporte" /><Input value={supportPhone} onChange={event => setSupportPhone(event.target.value)} placeholder="Telefone (opcional)" /></div>
                   <div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-medium">Última entrega</label><Input type="date" value={lastDate} onChange={event => setLastDate(event.target.value)} /></div><div><label className="text-xs font-medium">Próxima entrega</label><Input type="date" value={nextDate} onChange={event => setNextDate(event.target.value)} /></div></div>
-                  <Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ planId: plan.id, projectId, ownerId: ownerId === "none" ? null : Number(ownerId), lastReportingDate: toTimestamp(lastDate), nextReportingDate: toTimestamp(nextDate) })}><Save className="mr-2 h-4 w-4" />Guardar responsável e datas</Button>
+                  <Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ planId: plan.id, ownerId: ownerId === "none" ? null : Number(ownerId), supportName: supportName.trim() || null, supportCompany: supportCompany.trim() || null, supportEmail: supportEmail.trim() || null, supportPhone: supportPhone.trim() || null, lastReportingDate: toTimestamp(lastDate), nextReportingDate: toTimestamp(nextDate) })}><Save className="mr-2 h-4 w-4" />Guardar responsáveis e datas</Button>
                 </div>
               )}
 
@@ -451,7 +433,7 @@ function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjec
                   <div><h4 className="font-semibold">Novo status update</h4><p className="text-xs text-muted-foreground">O texto, autor e data ficam guardados no histórico.</p></div>
                   <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
                   <Textarea value={updateText} onChange={event => setUpdateText(event.target.value)} placeholder="Descreva o progresso, constrangimentos e próximos passos..." rows={5} />
-                  <Button className="w-full" disabled={updateText.trim().length < 3 || updateMutation.isPending} onClick={() => updateMutation.mutate({ planId: plan.id, projectId, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button>
+                  <Button className="w-full" disabled={updateText.trim().length < 3 || updateMutation.isPending} onClick={() => updateMutation.mutate({ planId: plan.id, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button>
                 </div>
               )}
             </div>
@@ -466,7 +448,7 @@ function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjec
               </div>
             )}
 
-            {plan.submissionStatus === "submitted" && canUpdate && <Button className="mt-4" variant="outline" onClick={() => confirmMutation.mutate({ planId: plan.id, projectId })} disabled={confirmMutation.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar entrega à entidade competente</Button>}
+            {plan.submissionStatus === "submitted" && canUpdate && <Button className="mt-4" variant="outline" onClick={() => confirmMutation.mutate({ planId: plan.id })} disabled={confirmMutation.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar entrega à entidade competente</Button>}
           </div>
         )}
       </CardContent>

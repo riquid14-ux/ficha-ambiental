@@ -169,6 +169,20 @@
       "when": 1787652294780,
       "tag": "0023_tired_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787654541182,
+      "tag": "0024_hesitant_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1787655411973,
+      "tag": "0025_youthful_captain_universe",
+      "breakpoints": true
     }
   ]
 }

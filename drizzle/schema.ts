@@ -311,6 +311,13 @@ export const monitoringPlans = mysqlTable("monitoring_plans", {
   category: mysqlEnum("category", ["programa_monitorizacao", "plano_projeto"]).default("programa_monitorizacao").notNull(),
   periodicity: varchar("periodicity", { length: 100 }),
   phase: varchar("phase", { length: 100 }).default("construcao").notNull(),
+  ownerId: int("ownerId"),
+  ownerName: varchar("ownerName", { length: 255 }),
+  supportName: varchar("supportName", { length: 255 }),
+  supportCompany: varchar("supportCompany", { length: 255 }),
+  supportEmail: varchar("supportEmail", { length: 320 }),
+  supportPhone: varchar("supportPhone", { length: 80 }),
+  trackingStatus: mysqlEnum("trackingStatus", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).default("nao_iniciado").notNull(),
   lastReportingDate: bigint("lastReportingDate", { mode: "number" }),
   nextReportingDate: bigint("nextReportingDate", { mode: "number" }),
   notes: text("notes"),
@@ -355,7 +362,8 @@ export type InsertMonitoringPlanAssignment = typeof monitoringPlanAssignments.$i
 // ─── Monitoring Plan Status Updates (histórico imutável por projecto) ──────────
 export const monitoringPlanUpdates = mysqlTable("monitoring_plan_updates", {
   id: int("id").autoincrement().primaryKey(),
-  assignmentId: int("assignmentId").notNull(),
+  assignmentId: int("assignmentId"),
+  planId: int("planId"),
   status: mysqlEnum("status", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).notNull(),
   updateText: text("updateText").notNull(),
   createdBy: int("createdBy").notNull(),
@@ -363,6 +371,7 @@ export const monitoringPlanUpdates = mysqlTable("monitoring_plan_updates", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => ({
   assignmentCreatedIdx: index("monitoring_plan_updates_assignment_created_idx").on(table.assignmentId, table.createdAt),
+  planCreatedIdx: index("monitoring_plan_updates_plan_created_idx").on(table.planId, table.createdAt),
 }));
 export type MonitoringPlanUpdate = typeof monitoringPlanUpdates.$inferSelect;
 export type InsertMonitoringPlanUpdate = typeof monitoringPlanUpdates.$inferInsert;
@@ -370,7 +379,8 @@ export type InsertMonitoringPlanUpdate = typeof monitoringPlanUpdates.$inferInse
 // ─── Monitoring Plan Attachments (ficheiros no storage externo) ────────────────
 export const monitoringPlanAttachments = mysqlTable("monitoring_plan_attachments", {
   id: int("id").autoincrement().primaryKey(),
-  assignmentId: int("assignmentId").notNull(),
+  assignmentId: int("assignmentId"),
+  planId: int("planId"),
   updateId: int("updateId"),
   type: mysqlEnum("type", ["photo", "file"]).default("file").notNull(),
   fileKey: varchar("fileKey", { length: 500 }).notNull(),
@@ -383,6 +393,7 @@ export const monitoringPlanAttachments = mysqlTable("monitoring_plan_attachments
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
 }, (table) => ({
   assignmentIdx: index("monitoring_plan_attachments_assignment_idx").on(table.assignmentId),
+  planIdx: index("monitoring_plan_attachments_plan_idx").on(table.planId),
   updateIdx: index("monitoring_plan_attachments_update_idx").on(table.updateId),
 }));
 export type MonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferSelect;
@@ -400,10 +411,35 @@ export const projectPhases = mysqlTable("project_phases", {
   endDate: varchar("endDate", { length: 10 }),
   hidden: int("hidden").default(0).notNull(),
   progress: int("progress").default(0).notNull(),
+  ownerId: int("ownerId"),
+  ownerName: varchar("ownerName", { length: 255 }),
+  supportName: varchar("supportName", { length: 255 }),
+  supportCompany: varchar("supportCompany", { length: 255 }),
+  supportEmail: varchar("supportEmail", { length: 320 }),
+  supportPhone: varchar("supportPhone", { length: 80 }),
+  trackingStatus: mysqlEnum("trackingStatus", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).default("nao_iniciado").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  projectPhaseUnique: uniqueIndex("project_phases_project_key_uq").on(table.projectId, table.phaseKey),
+  ownerIdx: index("project_phases_owner_idx").on(table.ownerId),
+}));
 export type ProjectPhase = typeof projectPhases.$inferSelect;
 export type InsertProjectPhase = typeof projectPhases.$inferInsert;
+
+export const projectPhaseUpdates = mysqlTable("project_phase_updates", {
+  id: int("id").autoincrement().primaryKey(),
+  phaseId: int("phaseId").notNull(),
+  status: mysqlEnum("status", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).notNull(),
+  updateText: text("updateText").notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  phaseIdx: index("project_phase_updates_phase_idx").on(table.phaseId),
+  createdAtIdx: index("project_phase_updates_created_idx").on(table.createdAt),
+}));
+export type ProjectPhaseUpdate = typeof projectPhaseUpdates.$inferSelect;
+export type InsertProjectPhaseUpdate = typeof projectPhaseUpdates.$inferInsert;
 
 /**
  * Phase Measure Statuses (estado de cada medida nas novas fases, gerido pelo DO)
@@ -459,6 +495,7 @@ export const calendarEvents = mysqlTable("calendar_events", {
   ownerName: varchar("ownerName", { length: 255 }),
   sourceType: varchar("sourceType", { length: 50 }),
   sourceId: int("sourceId"),
+  sourceKey: varchar("sourceKey", { length: 255 }),
   entityToDeliver: varchar("entityToDeliver", { length: 500 }),
   entityLink: varchar("entityLink", { length: 1000 }),
   active: int("active").default(1).notNull(),
@@ -467,6 +504,7 @@ export const calendarEvents = mysqlTable("calendar_events", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 }, (table) => ({
   sourceProjectUnique: uniqueIndex("calendar_events_source_project_uq").on(table.sourceType, table.sourceId, table.projectId),
+  sourceKeyUnique: uniqueIndex("calendar_events_source_key_uq").on(table.sourceKey),
   ownerIdx: index("calendar_events_owner_idx").on(table.ownerId),
   nextDateIdx: index("calendar_events_next_date_idx").on(table.nextDate),
 }));

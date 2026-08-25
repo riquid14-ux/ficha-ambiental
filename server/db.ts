@@ -30,7 +30,9 @@ import {
   InsertMonitoringPlanUpdate,
   InsertMonitoringPlanAttachment,
   projectPhases,
+  projectPhaseUpdates,
   InsertProjectPhase,
+  InsertProjectPhaseUpdate,
 } from "../drizzle/schema";
 import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -1090,11 +1092,11 @@ export async function addMonitoringPlanUpdate(data: Omit<InsertMonitoringPlanUpd
   return result[0].insertId;
 }
 
-export async function getMonitoringPlanUpdates(assignmentId: number) {
+export async function getMonitoringPlanUpdates(planId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(monitoringPlanUpdates)
-    .where(eq(monitoringPlanUpdates.assignmentId, assignmentId))
+    .where(eq(monitoringPlanUpdates.planId, planId))
     .orderBy(desc(monitoringPlanUpdates.createdAt));
 }
 
@@ -1105,92 +1107,79 @@ export async function addMonitoringPlanAttachment(data: Omit<InsertMonitoringPla
   return result[0].insertId;
 }
 
-export async function getMonitoringPlanAttachments(assignmentId: number) {
+export async function getMonitoringPlanAttachments(planId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(monitoringPlanAttachments)
-    .where(eq(monitoringPlanAttachments.assignmentId, assignmentId))
+    .where(eq(monitoringPlanAttachments.planId, planId))
     .orderBy(desc(monitoringPlanAttachments.uploadedAt));
 }
 
-export async function getMonitoringPlanOverview(projectId: number) {
+export async function getMonitoringPlanOverview() {
   const db = await getDb();
   if (!db) return [];
 
   const plans = await db.select().from(monitoringPlans)
-    .where(and(eq(monitoringPlans.active, 1), or(isNull(monitoringPlans.projectId), eq(monitoringPlans.projectId, projectId))));
-  const assignments = await db.select().from(monitoringPlanAssignments)
-    .where(and(eq(monitoringPlanAssignments.projectId, projectId), eq(monitoringPlanAssignments.active, 1)));
-  const assignmentIds = assignments.map(item => item.id);
-  const updates = assignmentIds.length > 0
+    .where(eq(monitoringPlans.active, 1));
+  const planIds = plans.map(item => item.id);
+  const updates = planIds.length > 0
     ? await db.select().from(monitoringPlanUpdates)
-      .where(sql`${monitoringPlanUpdates.assignmentId} IN (${sql.join(assignmentIds.map(id => sql`${id}`), sql`, `)})`)
+      .where(sql`${monitoringPlanUpdates.planId} IN (${sql.join(planIds.map(id => sql`${id}`), sql`, `)})`)
       .orderBy(desc(monitoringPlanUpdates.createdAt))
     : [];
-  const attachments = assignmentIds.length > 0
+  const attachments = planIds.length > 0
     ? await db.select().from(monitoringPlanAttachments)
-      .where(sql`${monitoringPlanAttachments.assignmentId} IN (${sql.join(assignmentIds.map(id => sql`${id}`), sql`, `)})`)
+      .where(sql`${monitoringPlanAttachments.planId} IN (${sql.join(planIds.map(id => sql`${id}`), sql`, `)})`)
       .orderBy(desc(monitoringPlanAttachments.uploadedAt))
     : [];
 
-  const assignmentByPlan = new Map(assignments.map(item => [item.planId, item]));
-  const latestUpdateByAssignment = new Map<number, typeof updates[number]>();
+  const latestUpdateByPlan = new Map<number, typeof updates[number]>();
   for (const update of updates) {
-    if (!latestUpdateByAssignment.has(update.assignmentId)) latestUpdateByAssignment.set(update.assignmentId, update);
+    if (update.planId && !latestUpdateByPlan.has(update.planId)) latestUpdateByPlan.set(update.planId, update);
   }
 
   return plans.map((plan) => {
-    const assignment = assignmentByPlan.get(plan.id);
-    const planAttachments = assignment ? attachments.filter(item => item.assignmentId === assignment.id) : [];
+    const planAttachments = attachments.filter(item => item.planId === plan.id);
     return {
       ...plan,
-      assignmentId: assignment?.id ?? null,
-      ownerId: assignment?.ownerId ?? null,
-      ownerName: assignment?.ownerName ?? null,
-      status: assignment?.status ?? "nao_iniciado",
-      lastReportingDate: assignment?.lastReportingDate ?? plan.lastReportingDate,
-      nextReportingDate: assignment?.nextReportingDate ?? plan.nextReportingDate,
-      submissionStatus: assignment?.submissionStatus ?? plan.submissionStatus,
-      confirmedDeliveryAt: assignment?.confirmedDeliveryAt ?? plan.confirmedDeliveryAt,
-      latestUpdate: assignment ? latestUpdateByAssignment.get(assignment.id) ?? null : null,
+      status: plan.trackingStatus,
+      latestUpdate: latestUpdateByPlan.get(plan.id) ?? null,
       attachments: planAttachments,
       attachmentCount: planAttachments.length,
     };
   }).sort((a, b) => (a.planNumber || "").localeCompare(b.planNumber || "", "pt", { numeric: true }));
 }
 
-export async function syncMonitoringPlanCalendarEvent(assignmentId: number) {
+export async function syncMonitoringPlanCalendarEvent(planId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const assignment = await getMonitoringPlanAssignmentById(assignmentId);
-  if (!assignment) throw new Error("Monitoring plan assignment not found");
-  const plan = await getMonitoringPlanById(assignment.planId);
+  const plan = await getMonitoringPlanById(planId);
   if (!plan) throw new Error("Monitoring plan not found");
+  const sourceKey = `monitoring_plan:${plan.id}`;
 
-  const existing = await db.select().from(calendarEvents).where(and(
-    eq(calendarEvents.sourceType, "monitoring_plan_assignment"),
-    eq(calendarEvents.sourceId, assignment.id),
-    eq(calendarEvents.projectId, assignment.projectId),
-  )).limit(1);
+  const existing = await db.select().from(calendarEvents)
+    .where(eq(calendarEvents.sourceKey, sourceKey))
+    .limit(1);
 
-  if (!assignment.nextReportingDate) {
+  if (!plan.nextReportingDate) {
     if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));
     return existing[0]?.id ?? null;
   }
 
   const eventData: Partial<InsertCalendarEvent> = {
-    projectId: assignment.projectId,
+    projectId: null,
     name: `${plan.planNumber || `P-${String(plan.id).padStart(2, "0")}`} — ${plan.name}`,
     description: "Prazo sincronizado automaticamente a partir do módulo Planos.",
     periodicity: plan.periodicity,
-    firstDate: assignment.nextReportingDate,
-    nextDate: assignment.nextReportingDate,
+    firstDate: plan.nextReportingDate,
+    nextDate: plan.nextReportingDate,
     category: "monitoring_plan",
-    status: assignment.submissionStatus === "delivered" ? "confirmed" : "pending",
-    ownerId: assignment.ownerId,
-    ownerName: assignment.ownerName,
-    sourceType: "monitoring_plan_assignment",
-    sourceId: assignment.id,
+    status: plan.submissionStatus === "delivered" ? "confirmed" : "pending",
+    ownerId: plan.ownerId,
+    ownerName: plan.ownerName,
+    sourceType: "monitoring_plan",
+    sourceId: plan.id,
+    sourceKey,
     active: 1,
   };
 
@@ -1274,15 +1263,55 @@ export async function releaseCalendarReminderClaim(eventId: number, deadlineDate
 export async function getProjectPhases(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(projectPhases)
+  const phases = await db.select().from(projectPhases)
     .where(and(eq(projectPhases.projectId, projectId), eq(projectPhases.active, 1)))
     .orderBy(projectPhases.orderIndex);
+  if (phases.length === 0) return [];
+  const phaseIds = phases.map(phase => phase.id);
+  const updates = await db.select().from(projectPhaseUpdates)
+    .where(sql`${projectPhaseUpdates.phaseId} IN (${sql.join(phaseIds.map(id => sql`${id}`), sql`, `)})`)
+    .orderBy(desc(projectPhaseUpdates.createdAt));
+  const latestByPhase = new Map<number, typeof updates[number]>();
+  for (const update of updates) {
+    if (!latestByPhase.has(update.phaseId)) latestByPhase.set(update.phaseId, update);
+  }
+  return phases.map(phase => ({ ...phase, latestUpdate: latestByPhase.get(phase.id) ?? null }));
 }
 
 export async function getAllProjectPhases() {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(projectPhases).where(eq(projectPhases.active, 1)).orderBy(projectPhases.orderIndex);
+}
+
+export async function getProjectPhaseById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projectPhases)
+    .where(and(eq(projectPhases.id, id), eq(projectPhases.active, 1)))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateProjectPhaseTracking(id: number, data: Partial<InsertProjectPhase>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(projectPhases).set(data).where(eq(projectPhases.id, id));
+}
+
+export async function addProjectPhaseUpdate(data: Omit<InsertProjectPhaseUpdate, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(projectPhaseUpdates).values(data);
+  return result[0].insertId;
+}
+
+export async function getProjectPhaseUpdates(phaseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projectPhaseUpdates)
+    .where(eq(projectPhaseUpdates.phaseId, phaseId))
+    .orderBy(desc(projectPhaseUpdates.createdAt));
 }
 
 // ─── Phase Measure Statuses ─────────────────────────────────────────────────
@@ -1319,12 +1348,15 @@ export async function getCalendarEvents(projectId?: number, includeHidden?: bool
   if (!db) return [];
   if (includeHidden) {
     if (projectId) {
-      return db.select().from(calendarEvents).where(eq(calendarEvents.projectId, projectId));
+      return db.select().from(calendarEvents).where(or(eq(calendarEvents.projectId, projectId), isNull(calendarEvents.projectId)));
     }
     return db.select().from(calendarEvents);
   }
   if (projectId) {
-    return db.select().from(calendarEvents).where(and(eq(calendarEvents.active, 1), eq(calendarEvents.projectId, projectId)));
+    return db.select().from(calendarEvents).where(and(
+      eq(calendarEvents.active, 1),
+      or(eq(calendarEvents.projectId, projectId), isNull(calendarEvents.projectId)),
+    ));
   }
   return db.select().from(calendarEvents).where(eq(calendarEvents.active, 1));
 }

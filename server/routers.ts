@@ -2106,42 +2106,19 @@ export const appRouter = router({
   monitoringPlans: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number().optional() }).optional())
-      .query(async ({ ctx, input }) => {
-        if (input?.projectId) {
-          await assertProjectAccess(ctx.user, input.projectId);
-          return db.getMonitoringPlanOverview(input.projectId);
-        }
-        const projectIds = await getAccessibleProjectIds(ctx.user);
-        const allProjects = await db.getAllProjects();
-        const results = await Promise.all(projectIds.map(async (projectId) => {
-          const project = allProjects.find(item => item.id === projectId);
-          const plans = await db.getMonitoringPlanOverview(projectId);
-          return plans.map(plan => ({ ...plan, trackingProjectId: projectId, trackingProjectCode: project?.code || `P${projectId}` }));
-        }));
-        return results.flat();
-      }),
+      .query(async () => db.getMonitoringPlanOverview()),
 
     responsibleCandidates: protectedProcedure
-      .input(z.object({ projectId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
-        const allUsers = await db.getAllUsers();
-        const candidates: Array<{ id: number; name: string; email: string; role: string }> = [];
-        for (const candidate of allUsers) {
-          if (candidate.accountStatus !== "active" || !candidate.email) continue;
-          try {
-            await assertProjectAccess(candidate, input.projectId);
-            candidates.push({
-              id: candidate.id,
-              name: getUserDisplayName(candidate),
-              email: candidate.email,
-              role: candidate.role,
-            });
-          } catch {
-            // O utilizador não pertence ao projecto; não deve ser exposto no selector.
-          }
+      .input(z.object({ projectId: z.number().optional() }).optional())
+      .query(async ({ ctx }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar responsáveis internos." });
         }
-        return candidates.sort((a, b) => a.name.localeCompare(b.name, "pt"));
+        const allUsers = await db.getAllUsers();
+        return allUsers
+          .filter(candidate => candidate.accountStatus === "active" && candidate.email)
+          .map(candidate => ({ id: candidate.id, name: getUserDisplayName(candidate), email: candidate.email!, role: candidate.role }))
+          .sort((a, b) => a.name.localeCompare(b.name, "pt"));
       }),
 
     create: protectedProcedure
@@ -2158,9 +2135,8 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem criar planos" });
         }
-        if (input.projectId) await assertProjectAccess(ctx.user, input.projectId);
         const id = await db.createMonitoringPlan({
-          projectId: input.projectId ?? null,
+          projectId: null,
           planNumber: input.planNumber ?? null,
           name: input.name,
           category: input.category,
@@ -2171,7 +2147,6 @@ export const appRouter = router({
           lastReportingDate: null,
           nextReportingDate: null,
         });
-        if (id && input.projectId) await db.ensureMonitoringPlanAssignment(id, input.projectId);
         return { id };
       }),
 
@@ -2195,8 +2170,11 @@ export const appRouter = router({
     configure: protectedProcedure
       .input(z.object({
         planId: z.number(),
-        projectId: z.number(),
         ownerId: z.number().nullable().optional(),
+        supportName: z.string().trim().max(255).nullable().optional(),
+        supportCompany: z.string().trim().max(255).nullable().optional(),
+        supportEmail: z.string().trim().email().max(320).nullable().optional(),
+        supportPhone: z.string().trim().max(80).nullable().optional(),
         nextReportingDate: z.number().nullable().optional(),
         lastReportingDate: z.number().nullable().optional(),
       }))
@@ -2204,11 +2182,8 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem configurar responsáveis e prazos." });
         }
-        await assertProjectAccess(ctx.user, input.projectId);
         const plan = await db.getMonitoringPlanById(input.planId);
         if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
-        const assignment = await db.ensureMonitoringPlanAssignment(input.planId, input.projectId);
-        if (!assignment) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
         let ownerName: string | null | undefined = undefined;
         if (input.ownerId !== undefined) {
@@ -2219,7 +2194,6 @@ export const appRouter = router({
             if (!owner || owner.accountStatus !== "active" || !owner.email) {
               throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável seleccionado não está activo ou não tem email." });
             }
-            await assertProjectAccess(owner, input.projectId);
             ownerName = getUserDisplayName(owner);
           }
         }
@@ -2231,80 +2205,79 @@ export const appRouter = router({
         }
         if (input.nextReportingDate !== undefined) changes.nextReportingDate = input.nextReportingDate;
         if (input.lastReportingDate !== undefined) changes.lastReportingDate = input.lastReportingDate;
-        await db.updateMonitoringPlanAssignment(assignment.id, changes);
-        await db.syncMonitoringPlanCalendarEvent(assignment.id);
+        if (input.supportName !== undefined) changes.supportName = input.supportName;
+        if (input.supportCompany !== undefined) changes.supportCompany = input.supportCompany;
+        if (input.supportEmail !== undefined) changes.supportEmail = input.supportEmail;
+        if (input.supportPhone !== undefined) changes.supportPhone = input.supportPhone;
+        await db.updateMonitoringPlan(plan.id, changes);
+        await db.syncMonitoringPlanCalendarEvent(plan.id);
 
         const database = await db.getDb();
         if (database) await database.insert(schema.auditLog).values({
           userId: ctx.user.id,
           userName: getUserDisplayName(ctx.user),
           action: "monitoring_plan_configured",
-          entity: "monitoring_plan_assignment",
-          entityId: assignment.id,
+          entity: "monitoring_plan",
+          entityId: plan.id,
           newValue: JSON.stringify(changes),
         });
-        return { success: true, assignmentId: assignment.id };
+        return { success: true, planId: plan.id };
       }),
 
     addUpdate: protectedProcedure
       .input(z.object({
         planId: z.number(),
-        projectId: z.number(),
         status: z.enum(["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]),
         updateText: z.string().trim().min(3).max(5000),
       }))
       .mutation(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
-        const assignment = await db.ensureMonitoringPlanAssignment(input.planId, input.projectId);
-        if (!assignment) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        if (!canUpdatePlanProgress(ctx.user, assignment)) {
+        const plan = await db.getMonitoringPlanById(input.planId);
+        if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+        if (!canUpdatePlanProgress(ctx.user, plan)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o responsável, a RAA, Admin ou Dono de Obra podem actualizar este plano." });
         }
         const updateId = await db.addMonitoringPlanUpdate({
-          assignmentId: assignment.id,
+          assignmentId: null,
+          planId: plan.id,
           status: input.status,
           updateText: input.updateText,
           createdBy: ctx.user.id,
           createdByName: getUserDisplayName(ctx.user),
         });
-        await db.updateMonitoringPlanAssignment(assignment.id, { status: input.status });
+        await db.updateMonitoringPlan(plan.id, { trackingStatus: input.status });
         const database = await db.getDb();
         if (database) await database.insert(schema.auditLog).values({
           userId: ctx.user.id,
           userName: getUserDisplayName(ctx.user),
           action: "monitoring_plan_status_update",
-          entity: "monitoring_plan_assignment",
-          entityId: assignment.id,
+          entity: "monitoring_plan",
+          entityId: plan.id,
           newValue: JSON.stringify({ updateId, status: input.status }),
         });
         return { success: true, updateId };
       }),
 
     history: protectedProcedure
-      .input(z.object({ planId: z.number(), projectId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
-        const assignment = await db.getMonitoringPlanAssignment(input.planId, input.projectId);
-        if (!assignment) return { updates: [], attachments: [] };
+      .input(z.object({ planId: z.number(), projectId: z.number().optional() }))
+      .query(async ({ input }) => {
         return {
-          updates: await db.getMonitoringPlanUpdates(assignment.id),
-          attachments: await db.getMonitoringPlanAttachments(assignment.id),
+          updates: await db.getMonitoringPlanUpdates(input.planId),
+          attachments: await db.getMonitoringPlanAttachments(input.planId),
         };
       }),
 
     uploadAttachment: protectedProcedure
       .input(z.object({
         planId: z.number(),
-        projectId: z.number(),
+        projectId: z.number().optional(),
         filename: z.string().trim().min(1).max(255),
         mimeType: z.string().trim().min(1).max(100),
         fileBase64: z.string().min(1).max(MAX_FILE_SIZE_B64),
       }))
       .mutation(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
-        const assignment = await db.ensureMonitoringPlanAssignment(input.planId, input.projectId);
-        if (!assignment) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        if (!canUpdatePlanProgress(ctx.user, assignment)) {
+        const plan = await db.getMonitoringPlanById(input.planId);
+        if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+        if (!canUpdatePlanProgress(ctx.user, plan)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para anexar ficheiros a este plano." });
         }
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) {
@@ -2320,10 +2293,11 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitized.threats[0]}` });
         }
         const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
-        const fileKey = `monitoring-plans/${input.projectId}/${assignment.id}/${Date.now()}-${safeFilename}`;
+        const fileKey = `monitoring-plans/${plan.id}/${Date.now()}-${safeFilename}`;
         const stored = await storagePut(fileKey, buffer, input.mimeType);
         const attachmentId = await db.addMonitoringPlanAttachment({
-          assignmentId: assignment.id,
+          assignmentId: null,
+          planId: plan.id,
           updateId: null,
           type: input.mimeType.startsWith("image/") ? "photo" : "file",
           fileKey: stored.key,
@@ -2338,16 +2312,13 @@ export const appRouter = router({
       }),
 
     confirmDelivery: protectedProcedure
-      .input(z.object({ planId: z.number(), projectId: z.number() }))
+      .input(z.object({ planId: z.number(), projectId: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
-        const assignment = await db.ensureMonitoringPlanAssignment(input.planId, input.projectId);
-        if (!assignment) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        if (!canUpdatePlanProgress(ctx.user, assignment)) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para confirmar esta entrega." });
-        }
         const plan = await db.getMonitoringPlanById(input.planId);
         if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!canUpdatePlanProgress(ctx.user, plan)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para confirmar esta entrega." });
+        }
 
         const now = Date.now();
         let nextDate: number | null = null;
@@ -2365,13 +2336,13 @@ export const appRouter = router({
           nextDate = now + 365 * 24 * 60 * 60 * 1000;
         }
 
-        await db.updateMonitoringPlanAssignment(assignment.id, {
+        await db.updateMonitoringPlan(plan.id, {
           submissionStatus: "delivered",
           confirmedDeliveryAt: now,
           lastReportingDate: now,
           nextReportingDate: nextDate,
         });
-        await db.syncMonitoringPlanCalendarEvent(assignment.id);
+        await db.syncMonitoringPlanCalendarEvent(plan.id);
         return { success: true, nextReportingDate: nextDate };
       }),
   }),
@@ -2381,12 +2352,125 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
         return await db.getProjectPhases(input.projectId);
       }),
 
     listAll: protectedProcedure
       .query(async ({ ctx }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar fases de todos os projectos." });
+        }
         return await db.getAllProjectPhases();
+      }),
+    responsibleCandidates: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar responsáveis internos." });
+        }
+        await assertProjectAccess(ctx.user, input.projectId);
+        const allUsers = await db.getAllUsers();
+        const candidates: Array<{ id: number; name: string; email: string; role: string }> = [];
+        for (const candidate of allUsers) {
+          if (candidate.accountStatus !== "active" || !candidate.email) continue;
+          try {
+            await assertProjectAccess(candidate, input.projectId);
+            candidates.push({ id: candidate.id, name: getUserDisplayName(candidate), email: candidate.email, role: candidate.role });
+          } catch {
+            // Não expor utilizadores sem acesso ao projecto.
+          }
+        }
+        return candidates.sort((a, b) => a.name.localeCompare(b.name, "pt"));
+      }),
+    configureTracking: protectedProcedure
+      .input(z.object({
+        phaseId: z.number(),
+        ownerId: z.number().nullable().optional(),
+        supportName: z.string().trim().max(255).nullable().optional(),
+        supportCompany: z.string().trim().max(255).nullable().optional(),
+        supportEmail: z.string().trim().email().max(320).nullable().optional(),
+        supportPhone: z.string().trim().max(80).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem configurar responsáveis das fases." });
+        }
+        const phase = await db.getProjectPhaseById(input.phaseId);
+        if (!phase) throw new TRPCError({ code: "NOT_FOUND", message: "Fase não encontrada." });
+        await assertProjectAccess(ctx.user, phase.projectId);
+
+        let ownerName: string | null | undefined;
+        if (input.ownerId !== undefined) {
+          if (input.ownerId === null) ownerName = null;
+          else {
+            const owner = await db.getUserById(input.ownerId);
+            if (!owner || owner.accountStatus !== "active" || !owner.email) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável seleccionado não está activo ou não tem email." });
+            }
+            await assertProjectAccess(owner, phase.projectId);
+            ownerName = getUserDisplayName(owner);
+          }
+        }
+
+        const changes: any = {};
+        if (input.ownerId !== undefined) { changes.ownerId = input.ownerId; changes.ownerName = ownerName; }
+        if (input.supportName !== undefined) changes.supportName = input.supportName;
+        if (input.supportCompany !== undefined) changes.supportCompany = input.supportCompany;
+        if (input.supportEmail !== undefined) changes.supportEmail = input.supportEmail;
+        if (input.supportPhone !== undefined) changes.supportPhone = input.supportPhone;
+        await db.updateProjectPhaseTracking(phase.id, changes);
+
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: "project_phase_configured",
+          entity: "project_phase",
+          entityId: phase.id,
+          newValue: JSON.stringify(changes),
+        });
+        return { success: true };
+      }),
+    addStatusUpdate: protectedProcedure
+      .input(z.object({
+        phaseId: z.number(),
+        status: z.enum(["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]),
+        updateText: z.string().trim().min(3).max(5000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const phase = await db.getProjectPhaseById(input.phaseId);
+        if (!phase) throw new TRPCError({ code: "NOT_FOUND", message: "Fase não encontrada." });
+        await assertProjectAccess(ctx.user, phase.projectId);
+        if (!canUpdatePlanProgress(ctx.user, phase)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o responsável, a RAA, Admin ou Dono de Obra podem actualizar esta fase." });
+        }
+        const updateId = await db.addProjectPhaseUpdate({
+          phaseId: phase.id,
+          status: input.status,
+          updateText: input.updateText,
+          createdBy: ctx.user.id,
+          createdByName: getUserDisplayName(ctx.user),
+        });
+        await db.updateProjectPhaseTracking(phase.id, { trackingStatus: input.status });
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: "project_phase_status_update",
+          entity: "project_phase",
+          entityId: phase.id,
+          newValue: JSON.stringify({ updateId, status: input.status }),
+        });
+        return { success: true, updateId };
+      }),
+    updateHistory: protectedProcedure
+      .input(z.object({ phaseId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const phase = await db.getProjectPhaseById(input.phaseId);
+        if (!phase) throw new TRPCError({ code: "NOT_FOUND", message: "Fase não encontrada." });
+        await assertProjectAccess(ctx.user, phase.projectId);
+        return db.getProjectPhaseUpdates(phase.id);
       }),
     updateSettings: protectedProcedure
       .input(z.object({ id: z.number(), startDate: z.string().optional(), endDate: z.string().optional(), hidden: z.number().optional(), progress: z.number().optional() }))

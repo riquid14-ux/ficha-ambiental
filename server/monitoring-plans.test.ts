@@ -5,7 +5,9 @@ import { daysUntilDeadline, isPlanReminderDay, PLAN_REMINDER_DAYS } from "./plan
 
 const root = join(process.cwd());
 const schemaSource = readFileSync(join(root, "drizzle/schema.ts"), "utf8");
-const migrationSource = readFileSync(join(root, "drizzle/0023_tired_wallflower.sql"), "utf8");
+const migrationSource = ["0023_tired_wallflower.sql", "0024_hesitant_ken_ellis.sql"]
+  .map(file => readFileSync(join(root, "drizzle", file), "utf8"))
+  .join("\n");
 const routerSource = readFileSync(join(root, "server/routers.ts"), "utf8");
 const dbSource = readFileSync(join(root, "server/db.ts"), "utf8");
 const remindersSource = readFileSync(join(root, "server/scheduled-reminders.ts"), "utf8");
@@ -39,12 +41,22 @@ describe("Planos — alertas 30/15/7 dias", () => {
     expect(remindersSource).toContain("releaseCalendarReminderClaim");
     expect(schemaSource).toContain("calendar_reminder_logs_unique");
   });
+
+  it("notifica responsável interno e suporte externo sem exigir conta ao suporte", () => {
+    expect(remindersSource).toContain('event.sourceType === "monitoring_plan"');
+    expect(remindersSource).toContain("plan?.supportEmail");
+    expect(remindersSource).toContain("userId: null");
+    expect(remindersSource).toContain("!recipients.some");
+    expect(remindersSource).toContain("plan.supportEmail!.toLowerCase()");
+  });
 });
 
 describe("Planos — modelo de dados e migração", () => {
-  it("cria assignments por plano e projecto sem duplicados", () => {
-    expect(schemaSource).toContain("monitoring_plan_assignments_plan_project_uq");
+  it("mantém o acompanhamento no único registo universal de cada plano", () => {
+    expect(dbSource).toContain("export async function getMonitoringPlanOverview()");
+    expect(dbSource).not.toContain("results.flat()");
     expect(schemaSource).toContain("ownerId");
+    expect(schemaSource).toContain("supportEmail");
     expect(schemaSource).toContain("nextReportingDate");
   });
 
@@ -68,6 +80,16 @@ describe("Planos — modelo de dados e migração", () => {
     expect(migrationSource).toContain("ALTER TABLE `monitoring_plans` ADD `planNumber`");
   });
 
+  it("preserva histórico, anexos, responsáveis e prazos ao consolidar os planos", () => {
+    expect(migrationSource).toContain("SET updates.`planId` = assignment.`planId`");
+    expect(migrationSource).toContain("SET attachments.`planId` = assignment.`planId`");
+    expect(migrationSource).toContain("plan.`ownerId` = COALESCE(plan.`ownerId`, assignment.`ownerId`)");
+    expect(migrationSource).toContain("plan.`nextReportingDate` = COALESCE(plan.`nextReportingDate`, assignment.`nextReportingDate`)");
+    expect(migrationSource).toContain("WHERE `sourceType` = 'monitoring_plan_assignment'");
+    expect(migrationSource).toContain("CONCAT('monitoring_plan:', plan.`id`)");
+    expect(migrationSource).not.toMatch(/DELETE\s+FROM\s+`monitoring_plan_(updates|attachments|assignments)`/i);
+  });
+
   it("numera os planos existentes e os novos", () => {
     expect(migrationSource).toContain("CONCAT('P-', LPAD(`id`, 2, '0'))");
     expect(dbSource).toContain("String(id).padStart(2, \"0\")");
@@ -86,9 +108,10 @@ describe("Planos — permissões, calendário e segurança", () => {
     expect(routerSource).toContain("Apenas Admin ou Dono de Obra podem configurar responsáveis e prazos");
   });
 
-  it("sincroniza um único evento de calendário por assignment e projecto", () => {
-    expect(schemaSource).toContain("calendar_events_source_project_uq");
-    expect(dbSource).toContain('sourceType: "monitoring_plan_assignment"');
+  it("sincroniza um único evento global por plano", () => {
+    expect(schemaSource).toContain("calendar_events_source_key_uq");
+    expect(dbSource).toContain('sourceType: "monitoring_plan"');
+    expect(dbSource).toContain("sourceKey = `monitoring_plan:${plan.id}`");
     expect(dbSource).toContain("syncMonitoringPlanCalendarEvent");
     expect(routerSource).toContain("Este prazo é gerido no módulo Planos");
   });
@@ -111,10 +134,11 @@ describe("Planos — experiência e exportação", () => {
     expect(uiSource).toContain("Sincronizado automaticamente com o calendário global");
   });
 
-  it("permite pesquisar, filtrar por estado e agrupar por projecto", () => {
+  it("permite pesquisar e filtrar exactamente os planos universais", () => {
     expect(uiSource).toContain("Pesquisar por número, plano, responsável ou update");
     expect(uiSource).toContain("Todos os estados");
-    expect(uiSource).toContain("groupedPlans.map");
+    expect(uiSource).toContain("filteredPlans.map");
+    expect(uiSource).not.toContain("trackingProjectCode");
   });
 
   it("mostra último update, autor e data", () => {
@@ -125,7 +149,7 @@ describe("Planos — experiência e exportação", () => {
 
   it("exporta Word com número, responsável, entrega e último update", () => {
     expect(uiSource).toContain("Actualização dos Planos de Monitorização");
-    expect(uiSource).toContain('"N.º", "Projecto", "Plano", "Estado", "Responsável", "Próxima entrega", "Último update"');
+    expect(uiSource).toContain('"N.º", "Plano", "Estado", "Responsável interno", "Suporte externo", "Próxima entrega", "Último update"');
     expect(uiSource).toContain("Packer.toBlob(wordDocument)");
   });
 });

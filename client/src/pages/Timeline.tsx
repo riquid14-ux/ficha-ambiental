@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import PhaseTrackingPanel from "@/components/PhaseTrackingPanel";
+import { findProjectPhaseRecord } from "@/lib/phase-tracking";
 
 type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
@@ -436,6 +438,13 @@ export default function Timeline() {
                     </span>
                     <span className="ml-auto font-medium">{phase.total} medidas</span>
                   </div>
+                  {projectId && (
+                    <PhaseTrackingPanel
+                      phase={findProjectPhaseRecord(projectPhasesData, phase.key)}
+                      projectId={projectId}
+                      compact
+                    />
+                  )}
                 </div>
               </div>
             </CardContent>

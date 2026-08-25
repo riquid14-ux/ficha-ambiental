@@ -31,39 +31,44 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
 
       // Send reminders at 30, 15, and 7 days before
       if (isPlanReminderDay(daysLeft)) {
-        let recipientEmail: string | null = null;
-        let recipientName: string | null = null;
+        const recipients: Array<{ email: string; name: string; userId: number | null }> = [];
 
         if (event.ownerId) {
           const owner = await db.getUserById(event.ownerId);
-          if (owner?.accountStatus === "active") {
-            recipientEmail = owner.email;
-            recipientName = owner.fullName || owner.name || owner.email;
+          if (owner?.accountStatus === "active" && owner.email) {
+            recipients.push({ email: owner.email, name: owner.fullName || owner.name || owner.email, userId: owner.id });
           }
         }
 
-        if (recipientEmail) {
+        if (event.sourceType === "monitoring_plan" && event.sourceId) {
+          const plan = await db.getMonitoringPlanById(event.sourceId);
+          if (plan?.supportEmail && !recipients.some(item => item.email.toLowerCase() === plan.supportEmail!.toLowerCase())) {
+            recipients.push({ email: plan.supportEmail, name: plan.supportName || plan.supportCompany || plan.supportEmail, userId: null });
+          }
+        }
+
+        for (const recipient of recipients) {
           const claimed = await db.claimCalendarReminder({
             eventId: event.id,
             deadlineDate: deadline,
             reminderDays: daysLeft,
-            recipientUserId: event.ownerId,
-            recipientEmail,
+            recipientUserId: recipient.userId,
+            recipientEmail: recipient.email,
           });
           if (!claimed) continue;
           try {
             await sendDeadlineReminderEmail({
-              to: recipientEmail,
-              recipientName: recipientName || recipientEmail,
+              to: recipient.email,
+              recipientName: recipient.name,
               eventName: event.name,
               daysLeft,
               deadlineDate: new Date(deadline).toLocaleDateString("pt-PT"),
               projectId: event.projectId,
               category: event.category,
             });
-            reminders.push({ event: event.name, daysLeft, recipient: recipientEmail });
+            reminders.push({ event: event.name, daysLeft, recipient: recipient.email });
           } catch (emailErr) {
-            await db.releaseCalendarReminderClaim(event.id, deadline, daysLeft, recipientEmail);
+            await db.releaseCalendarReminderClaim(event.id, deadline, daysLeft, recipient.email);
             console.error(`[Deadline Reminder] Failed to send for "${event.name}":`, emailErr);
           }
         }

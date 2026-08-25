@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
@@ -10,8 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -52,11 +50,6 @@ export default function PhaseMeasures(props: any) {
   const statusesQuery = trpc.phaseMeasures.getStatuses.useQuery({ projectId });
   const evidenceQuery = trpc.phaseEvidence.list.useQuery({ projectId });
 
-  const updateStatusMutation = trpc.phaseMeasures.updateStatus.useMutation({
-    onSuccess: () => { statusesQuery.refetch(); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const addCommentMutation = trpc.phaseEvidence.addComment.useMutation({
     onSuccess: () => { evidenceQuery.refetch(); toast.success(t("Comentário adicionado")); },
     onError: (e: any) => toast.error(e.message),
@@ -87,7 +80,6 @@ export default function PhaseMeasures(props: any) {
   const [evidenceYear, setEvidenceYear] = useState(() => Math.max(SIN01_EVIDENCE_START_YEAR, new Date().getFullYear()));
   const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
-  const [statuses, setStatuses] = useState<Record<number, string>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [editingMeasure, setEditingMeasure] = useState<{ id: number; number: string; description: string; responsible: string } | null>(null);
 
@@ -102,43 +94,7 @@ export default function PhaseMeasures(props: any) {
 
   const isAdmin = user?.role === "admin";
 
-  const [notes, setNotes] = useState<Record<number, string>>({});
   const [expandedMeasures, setExpandedMeasures] = useState<Set<number>>(new Set());
-
-  // Sync persisted statuses to local state
-  useEffect(() => {
-    if (statusesQuery.data) {
-      const s: Record<number, string> = {};
-      const n: Record<number, string> = {};
-      for (const item of statusesQuery.data) {
-        s[item.measureId] = item.status;
-        if (item.notes) n[item.measureId] = item.notes;
-      }
-      setStatuses(s);
-      setNotes(n);
-    }
-  }, [statusesQuery.data]);
-
-  function handleStatusChange(measureId: number, status: string) {
-    setStatuses(prev => ({ ...prev, [measureId]: status }));
-    updateStatusMutation.mutate({
-      measureId,
-      projectId,
-      status: status as "pendente" | "em_curso" | "concluido",
-      notes: notes[measureId] || null,
-    });
-  }
-
-  function handleNotesBlur(measureId: number) {
-    if (statuses[measureId]) {
-      updateStatusMutation.mutate({
-        measureId,
-        projectId,
-        status: statuses[measureId] as "pendente" | "em_curso" | "concluido",
-        notes: notes[measureId] || null,
-      });
-    }
-  }
 
   function toggleMeasure(measureId: number) {
     setExpandedMeasures(prev => {
@@ -192,15 +148,15 @@ export default function PhaseMeasures(props: any) {
       const total = data.reduce((acc: number, d: any) => acc + d.measures.length, 0);
       let concluido = 0, em_curso = 0, pendente = 0;
       data.forEach((d: any) => d.measures.forEach((m: any) => {
-        const s = statuses[m.id];
+        const s = trackingByMeasure[m.id]?.trackingStatus || "nao_iniciado";
         if (s === "concluido") concluido++;
-        else if (s === "em_curso") em_curso++;
+        else if (s !== "nao_iniciado") em_curso++;
         else pendente++;
       }));
       overview[phase.key] = { total, concluido, em_curso, pendente };
     }
     return overview;
-  }, [phaseData, statuses]);
+  }, [phaseData, trackingByMeasure]);
 
   if (!sectionsQuery.data || !measuresQuery.data) {
     const loadingContent = (
@@ -378,16 +334,11 @@ export default function PhaseMeasures(props: any) {
                   <MeasureCard
                     key={measure.id}
                     measure={measure}
-                    status={statuses[measure.id]}
-                    notes={notes[measure.id] || ""}
                     tracking={trackingByMeasure[measure.id] || null}
                     projectId={projectId}
                     evidence={evidenceByMeasure[measure.id] || []}
                     isExpanded={expandedMeasures.has(measure.id)}
                     onToggle={() => toggleMeasure(measure.id)}
-                    onStatusChange={(s) => handleStatusChange(measure.id, s)}
-                    onNotesChange={(v) => setNotes(prev => ({ ...prev, [measure.id]: v }))}
-                    onNotesBlur={() => handleNotesBlur(measure.id)}
                     onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content, referenceYear: isOperationOnly ? evidenceYear : undefined })}
                     onUploadFile={(file, isPhoto) => {
                       const reader = new FileReader();
@@ -421,22 +372,16 @@ export default function PhaseMeasures(props: any) {
   return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }
 function MeasureCard({
-  measure, status, notes, tracking, projectId, evidence, isExpanded, onToggle,
-  onStatusChange, onNotesChange, onNotesBlur,
+  measure, tracking, projectId, evidence, isExpanded, onToggle,
   onAddComment, onUploadFile, onDeleteEvidence,
   isEditable, phaseColor, isOperationOnly, evidenceYear,
 }: {
   measure: any;
-  status?: string;
-  notes: string;
   tracking: any;
   projectId: number;
   evidence: any[];
   isExpanded: boolean;
   onToggle: () => void;
-  onStatusChange: (s: string) => void;
-  onNotesChange: (v: string) => void;
-  onNotesBlur: () => void;
   onAddComment: (content: string) => void;
   onUploadFile: (file: File, isPhoto: boolean) => void;
   onDeleteEvidence: (id: number) => void;
@@ -455,7 +400,14 @@ function MeasureCard({
   const files = evidence.filter(e => e.type === "file");
   const totalAttachments = evidence.length;
 
-  const statusColor = status === "concluido" ? "border-l-green-500" : status === "em_curso" ? "border-l-amber-500" : "border-l-gray-300";
+  const trackingStatus = tracking?.trackingStatus || "nao_iniciado";
+  const statusColor = trackingStatus === "concluido"
+    ? "border-l-green-500"
+    : trackingStatus === "bloqueado"
+      ? "border-l-red-500"
+      : trackingStatus !== "nao_iniciado"
+        ? "border-l-amber-500"
+        : "border-l-gray-300";
 
   return (
     <div className={`border rounded-lg overflow-hidden border-l-4 ${statusColor} transition-all`}>
@@ -479,63 +431,13 @@ function MeasureCard({
               <Paperclip className="w-3 h-3" />{totalAttachments}
             </span>
           )}
-          <StatusBadge status={status} />
+          <StatusBadge status={trackingStatus} />
         </div>
       </button>
 
       {/* Expanded content */}
       {isExpanded && (
         <div className="border-t px-4 py-3 space-y-4 bg-muted/10">
-          {/* Status and notes */}
-          {isEditable && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <RadioGroup
-                value={status || ""}
-                onValueChange={onStatusChange}
-                className="flex gap-3"
-              >
-                {isOperationOnly ? (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
-                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">Reportado {evidenceYear}</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">Pendente {evidenceYear}</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-muted-foreground cursor-pointer">{t("Não Aplicável")}</Label>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="concluido" id={`s-${measure.id}-c`} />
-                      <Label htmlFor={`s-${measure.id}-c`} className="text-xs text-green-700 cursor-pointer">{t("Concluído")}</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="em_curso" id={`s-${measure.id}-e`} />
-                      <Label htmlFor={`s-${measure.id}-e`} className="text-xs text-amber-700 cursor-pointer">{t("Em Curso")}</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <RadioGroupItem value="pendente" id={`s-${measure.id}-p`} />
-                      <Label htmlFor={`s-${measure.id}-p`} className="text-xs text-muted-foreground cursor-pointer">{t("Pendente")}</Label>
-                    </div>
-                  </>
-                )}
-              </RadioGroup>
-              <Input
-                placeholder={t("Notas rápidas") + "..."}
-                className="h-8 text-xs flex-1"
-                value={notes}
-                onChange={e => onNotesChange(e.target.value)}
-                onBlur={onNotesBlur}
-              />
-            </div>
-          )}
-
           <MeasureTrackingPanel measure={measure} tracking={tracking} projectId={projectId} />
 
           {/* Evidence sections */}
@@ -672,14 +574,16 @@ function MeasureCard({
 
 function StatusBadge({ status }: { status?: string }) {
   const { t } = useLanguage();
-  if (!status) return <Badge variant="outline" className="text-xs text-gray-400 px-1.5 py-0">—</Badge>;
+  if (!status || status === "nao_iniciado") return <Badge variant="outline" className="text-xs text-gray-500 px-1.5 py-0">Não iniciado</Badge>;
   switch (status) {
     case "concluido":
-      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />OK</Badge>;
+      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />Reportado</Badge>;
     case "em_curso":
       return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
-    case "pendente":
-      return <Badge className="text-xs bg-muted text-muted-foreground hover:bg-muted px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Pendente")}</Badge>;
+    case "em_validacao":
+      return <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em validação</Badge>;
+    case "bloqueado":
+      return <Badge className="text-xs bg-red-100 text-red-800 hover:bg-red-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Bloqueado</Badge>;
     default:
       return null;
   }

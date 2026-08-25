@@ -2498,7 +2498,7 @@ export const appRouter = router({
           const statuses = await db.getPhaseMeasureStatuses(proj.id);
           const projPhases = allProjectPhases.filter((pp: any) => pp.projectId === proj.id);
           const statusMap = new Map<number, string>();
-          statuses.forEach((s: any) => statusMap.set(s.measureId, s.status));
+          statuses.forEach((s: any) => statusMap.set(s.measureId, s.trackingStatus));
 
           const phases: any[] = [];
           const PHASE_KEYS = ["Prévias Licenciamento", "Em Sede de Licenciamento", "Pré-Construção", "Preparação Prévia", "Execução da Obra", "Fase Final", "Fase Final Construção", "Exploração", "Desativação (Pós-Exploração)"];

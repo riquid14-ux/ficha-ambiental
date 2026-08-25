@@ -7,6 +7,7 @@ import type { TrpcContext } from "./_core/context";
 const root = resolve(import.meta.dirname, "..");
 const schemaSource = readFileSync(resolve(root, "drizzle/schema.ts"), "utf8");
 const migrationSource = readFileSync(resolve(root, "drizzle/0026_confused_speed.sql"), "utf8");
+const reconciliationSource = readFileSync(resolve(root, "drizzle/0027_reconcile_measure_tracking.sql"), "utf8");
 const dbSource = readFileSync(resolve(root, "server/db.ts"), "utf8");
 const routerSource = readFileSync(resolve(root, "server/routers.ts"), "utf8");
 const reminderSource = readFileSync(resolve(root, "server/scheduled-reminders.ts"), "utf8");
@@ -23,10 +24,12 @@ describe("Acompanhamento por medida — persistência e preservação", () => {
     expect(migrationSource).toContain("UNIQUE(`projectId`,`measureId`)");
   });
 
-  it("mantém o progresso existente separado do estado rico de acompanhamento", () => {
+  it("mantém compatibilidade com o progresso existente e sincroniza-o pelo status update", () => {
     expect(schemaSource).toContain('status: mysqlEnum("status", ["pendente", "em_curso", "concluido"])');
     expect(schemaSource).toContain('trackingStatus: mysqlEnum("trackingStatus", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"])');
-    expect(dbSource).toContain("upsertPhaseMeasureStatus");
+    expect(dbSource).toContain('const progressStatus = data.status === "concluido"');
+    expect(dbSource).toContain("trackingStatus: data.status, status: progressStatus");
+    expect(routerSource).toContain("statusMap.set(s.measureId, s.trackingStatus)");
     expect(dbSource).toContain("configurePhaseMeasureTracking");
   });
 
@@ -37,6 +40,15 @@ describe("Acompanhamento por medida — persistência e preservação", () => {
       expect(schemaSource).toContain(`${field}:`);
     }
     expect(schemaSource).toContain('mysqlTable("phase_evidence"');
+  });
+
+  it("reconcilia o progresso histórico sem alterar medidas com updates auditáveis", () => {
+    expect(reconciliationSource).toContain("UPDATE `phase_measure_statuses`");
+    expect(reconciliationSource).toContain("`s`.`status` = 'concluido' THEN 'concluido'");
+    expect(reconciliationSource).toContain("`s`.`status` = 'em_curso' THEN 'em_curso'");
+    expect(reconciliationSource).toContain("NOT EXISTS");
+    expect(reconciliationSource).toContain("FROM `phase_measure_updates`");
+    expect(reconciliationSource).not.toMatch(/\b(DROP|TRUNCATE|RENAME|DELETE)\b/i);
   });
 
   it("guarda updates append-only com estado, texto, autor e data", () => {
@@ -123,6 +135,15 @@ describe("Acompanhamento por medida — interface e calendário", () => {
     }
     expect(phasesSource).toContain("tracking?.ownerName");
     expect(phasesSource).toContain("tracking?.supportName");
+  });
+
+  it("consolida Reportado no status update e elimina o editor superior duplicado", () => {
+    expect(panelSource).toContain('concluido: "Reportado"');
+    expect(panelSource).toContain("Novo status update desta medida");
+    expect(phasesSource).toContain('trackingByMeasure[m.id]?.trackingStatus || "nao_iniciado"');
+    expect(phasesSource).not.toContain("Notas rápidas");
+    expect(phasesSource).not.toContain("<RadioGroup");
+    expect(phasesSource).not.toContain("onStatusChange");
   });
 
   it("não cria calendário nem alertas automáticos para medidas", () => {

@@ -15,7 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   nao_iniciado: "Não iniciado",
   em_curso: "Em curso",
   em_validacao: "Em validação",
-  concluido: "Concluído",
+  concluido: "Reportado",
   bloqueado: "Bloqueado",
 };
 

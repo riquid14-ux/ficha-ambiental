@@ -1404,15 +1404,20 @@ export async function addPhaseMeasureUpdate(data: Omit<InsertPhaseMeasureUpdate,
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   const existing = await getPhaseMeasureStatus(data.projectId, data.measureId);
+  const progressStatus = data.status === "concluido"
+    ? "concluido"
+    : data.status === "nao_iniciado"
+      ? "pendente"
+      : "em_curso";
   if (existing) {
     await db.update(phaseMeasureStatuses)
-      .set({ trackingStatus: data.status, updatedBy: data.createdBy })
+      .set({ trackingStatus: data.status, status: progressStatus, updatedBy: data.createdBy })
       .where(eq(phaseMeasureStatuses.id, existing.id));
   } else {
     await db.insert(phaseMeasureStatuses).values({
       projectId: data.projectId,
       measureId: data.measureId,
-      status: "pendente",
+      status: progressStatus,
       notes: null,
       trackingStatus: data.status,
       updatedBy: data.createdBy,

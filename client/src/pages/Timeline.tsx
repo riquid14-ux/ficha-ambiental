@@ -12,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import PhaseTrackingPanel from "@/components/PhaseTrackingPanel";
-import { findProjectPhaseRecord } from "@/lib/phase-tracking";
 
 type PhaseDef = typeof PHASE_DEFS[number];
 type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
@@ -438,13 +436,10 @@ export default function Timeline() {
                     </span>
                     <span className="ml-auto font-medium">{phase.total} medidas</span>
                   </div>
-                  {projectId && (
-                    <PhaseTrackingPanel
-                      phase={findProjectPhaseRecord(projectPhasesData, phase.key)}
-                      projectId={projectId}
-                      compact
-                    />
-                  )}
+                  <div className="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-emerald-900">Responsável, suporte externo e status updates são definidos individualmente em cada medida.</p>
+                    <Button size="sm" variant="outline" onClick={() => setActiveSubTab("fases")}>Ver medidas e responsáveis</Button>
+                  </div>
                 </div>
               </div>
             </CardContent>

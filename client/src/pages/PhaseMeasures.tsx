@@ -16,8 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
-import PhaseTrackingPanel from "@/components/PhaseTrackingPanel";
-import { findProjectPhaseRecord } from "@/lib/phase-tracking";
+import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -178,6 +177,12 @@ export default function PhaseMeasures(props: any) {
     return map;
   }, [evidenceQuery.data]);
 
+  const trackingByMeasure = useMemo(() => {
+    const map: Record<number, any> = {};
+    for (const item of statusesQuery.data || []) map[item.measureId] = item;
+    return map;
+  }, [statusesQuery.data]);
+
   // Calculate compliance overview
   const complianceOverview = useMemo(() => {
     const overview: Record<string, { total: number; concluido: number; em_curso: number; pendente: number }> = {};
@@ -317,11 +322,6 @@ export default function PhaseMeasures(props: any) {
               </div>
             </div>
 
-            <PhaseTrackingPanel
-              phase={findProjectPhaseRecord(projectPhasesQuery.data || [], phase.key)}
-              projectId={projectId}
-            />
-
             {/* Admin Settings Panel */}
             {isAdmin && showSettings && (
               <Card className="border-amber-200 bg-amber-50/30">
@@ -379,6 +379,8 @@ export default function PhaseMeasures(props: any) {
                     measure={measure}
                     status={statuses[measure.id]}
                     notes={notes[measure.id] || ""}
+                    tracking={trackingByMeasure[measure.id] || null}
+                    projectId={projectId}
                     evidence={evidenceByMeasure[measure.id] || []}
                     isExpanded={expandedMeasures.has(measure.id)}
                     onToggle={() => toggleMeasure(measure.id)}
@@ -404,6 +406,8 @@ export default function PhaseMeasures(props: any) {
                     onDeleteEvidence={(id) => deleteEvidenceMutation.mutate({ id })}
                     isEditable={!!isAdminOrDono}
                     phaseColor={phase.color}
+                    isOperationOnly={!!isOperationOnly}
+                    evidenceYear={evidenceYear}
                   />
                 ))}
               </div>
@@ -416,7 +420,7 @@ export default function PhaseMeasures(props: any) {
   return embedded ? mainContent : <AppLayout>{mainContent}</AppLayout>;
 }
 function MeasureCard({
-  measure, status, notes, evidence, isExpanded, onToggle,
+  measure, status, notes, tracking, projectId, evidence, isExpanded, onToggle,
   onStatusChange, onNotesChange, onNotesBlur,
   onAddComment, onUploadFile, onDeleteEvidence,
   isEditable, phaseColor, isOperationOnly, evidenceYear,
@@ -424,6 +428,8 @@ function MeasureCard({
   measure: any;
   status?: string;
   notes: string;
+  tracking: any;
+  projectId: number;
   evidence: any[];
   isExpanded: boolean;
   onToggle: () => void;
@@ -459,7 +465,13 @@ function MeasureCard({
       >
         {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
         <Badge variant="outline" className="text-xs shrink-0 font-mono">{measure.number}</Badge>
-        <span className="text-sm flex-1 min-w-0">{measure.description}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm">{measure.description}</p>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span><strong>Responsável:</strong> {tracking?.ownerName || "Por definir"}</span>
+            <span><strong>Suporte:</strong> {[tracking?.supportName, tracking?.supportCompany].filter(Boolean).join(" — ") || "Por definir"}</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           {totalAttachments > 0 && (
             <span className="text-xs text-muted-foreground flex items-center gap-0.5">
@@ -522,6 +534,8 @@ function MeasureCard({
               />
             </div>
           )}
+
+          <MeasureTrackingPanel measure={measure} tracking={tracking} projectId={projectId} />
 
           {/* Evidence sections */}
           {isOperationOnly && evidenceYear && (

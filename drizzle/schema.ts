@@ -450,15 +450,43 @@ export const phaseMeasureStatuses = mysqlTable("phase_measure_statuses", {
   projectId: int("projectId").notNull(),
   status: mysqlEnum("status", ["pendente", "em_curso", "concluido"]).default("pendente").notNull(),
   notes: text("notes"),
+  ownerId: int("ownerId"),
+  ownerName: varchar("ownerName", { length: 255 }),
+  supportName: varchar("supportName", { length: 255 }),
+  supportCompany: varchar("supportCompany", { length: 255 }),
+  supportEmail: varchar("supportEmail", { length: 320 }),
+  supportPhone: varchar("supportPhone", { length: 80 }),
+  trackingStatus: mysqlEnum("trackingStatus", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).default("nao_iniciado").notNull(),
   firstDeliveryDate: bigint("firstDeliveryDate", { mode: "number" }),
   lastDeliveryDate: bigint("lastDeliveryDate", { mode: "number" }),
   nextDeliveryDate: bigint("nextDeliveryDate", { mode: "number" }),
   updatedBy: int("updatedBy"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => ({
+  projectMeasureUnique: uniqueIndex("phase_measure_statuses_project_measure_uq").on(table.projectId, table.measureId),
+  ownerIdx: index("phase_measure_statuses_owner_idx").on(table.ownerId),
+}));
 
 export type PhaseMeasureStatus = typeof phaseMeasureStatuses.$inferSelect;
 export type InsertPhaseMeasureStatus = typeof phaseMeasureStatuses.$inferInsert;
+
+// ─── Phase Measure Updates (histórico imutável por medida e projecto) ─────────
+export const phaseMeasureUpdates = mysqlTable("phase_measure_updates", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  measureId: int("measureId").notNull(),
+  status: mysqlEnum("status", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).notNull(),
+  updateText: text("updateText").notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  projectMeasureCreatedIdx: index("phase_measure_updates_project_measure_created_idx").on(table.projectId, table.measureId, table.createdAt),
+  createdAtIdx: index("phase_measure_updates_created_idx").on(table.createdAt),
+}));
+
+export type PhaseMeasureUpdate = typeof phaseMeasureUpdates.$inferSelect;
+export type InsertPhaseMeasureUpdate = typeof phaseMeasureUpdates.$inferInsert;
 
 // ─── Phase Evidence (comentários, fotos e ficheiros por medida de fase) ────────
 export const phaseEvidence = mysqlTable("phase_evidence", {

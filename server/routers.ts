@@ -57,7 +57,6 @@ async function assertProjectAccess(user: any, projectId: number) {
   const project = await db.getProjectById(projectId);
   if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Projecto não encontrado." });
   if (isAdminOrDono(user.role) || user.role === "pm") return project;
-  if (project.code === "SIN01") throw new TRPCError({ code: "FORBIDDEN", message: "Sem acesso a este projecto." });
 
   const userProjects = await db.getUserProjects(user.id);
   const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
@@ -2521,8 +2520,128 @@ export const appRouter = router({
 
     getStatuses: protectedProcedure
       .input(z.object({ projectId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
         return await db.getPhaseMeasureStatuses(input.projectId);
+      }),
+
+    responsibleCandidates: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar responsáveis internos das medidas." });
+        }
+        await assertProjectAccess(ctx.user, input.projectId);
+        const allUsers = await db.getAllUsers();
+        const candidates: Array<{ id: number; name: string; email: string; role: string }> = [];
+        for (const candidate of allUsers) {
+          if (candidate.accountStatus !== "active" || !candidate.email) continue;
+          try {
+            await assertProjectAccess(candidate, input.projectId);
+            candidates.push({ id: candidate.id, name: getUserDisplayName(candidate), email: candidate.email, role: candidate.role });
+          } catch {
+            // Não expor utilizadores sem acesso ao projecto da medida.
+          }
+        }
+        return candidates.sort((a, b) => a.name.localeCompare(b.name, "pt"));
+      }),
+
+    configureTracking: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        measureId: z.number(),
+        ownerId: z.number().nullable().optional(),
+        supportName: z.string().trim().max(255).nullable().optional(),
+        supportCompany: z.string().trim().max(255).nullable().optional(),
+        supportEmail: z.string().trim().email().max(320).nullable().optional(),
+        supportPhone: z.string().trim().max(80).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem configurar responsáveis das medidas." });
+        }
+        await assertProjectAccess(ctx.user, input.projectId);
+        const measure = await db.getMeasureById(input.measureId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
+
+        let ownerName: string | null | undefined;
+        if (input.ownerId !== undefined) {
+          if (input.ownerId === null) ownerName = null;
+          else {
+            const owner = await db.getUserById(input.ownerId);
+            if (!owner || owner.accountStatus !== "active" || !owner.email) {
+              throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável seleccionado não está activo ou não tem email." });
+            }
+            await assertProjectAccess(owner, input.projectId);
+            ownerName = getUserDisplayName(owner);
+          }
+        }
+
+        await db.configurePhaseMeasureTracking({
+          projectId: input.projectId,
+          measureId: input.measureId,
+          ownerId: input.ownerId,
+          ownerName,
+          supportName: input.supportName,
+          supportCompany: input.supportCompany,
+          supportEmail: input.supportEmail,
+          supportPhone: input.supportPhone,
+          updatedBy: ctx.user.id,
+        });
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: "phase_measure_tracking_configured",
+          entity: "phase_measure_status",
+          entityId: input.measureId,
+          newValue: JSON.stringify({ projectId: input.projectId, ownerId: input.ownerId, ownerName, supportName: input.supportName, supportCompany: input.supportCompany, supportEmail: input.supportEmail, supportPhone: input.supportPhone }),
+        });
+        return { success: true };
+      }),
+
+    addStatusUpdate: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        measureId: z.number(),
+        status: z.enum(["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]),
+        updateText: z.string().trim().min(3).max(5000),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
+        const measure = await db.getMeasureById(input.measureId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
+        const tracking = await db.getPhaseMeasureStatus(input.projectId, input.measureId);
+        if (!(isAdminOrDono(ctx.user.role) || ctx.user.role === "raa" || tracking?.ownerId === ctx.user.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o responsável, a RAA, Admin ou Dono de Obra podem actualizar esta medida." });
+        }
+        const updateId = await db.addPhaseMeasureUpdate({
+          projectId: input.projectId,
+          measureId: input.measureId,
+          status: input.status,
+          updateText: input.updateText,
+          createdBy: ctx.user.id,
+          createdByName: getUserDisplayName(ctx.user),
+        });
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: "phase_measure_status_update",
+          entity: "phase_measure_status",
+          entityId: input.measureId,
+          newValue: JSON.stringify({ projectId: input.projectId, status: input.status, updateId }),
+        });
+        return { success: true, updateId };
+      }),
+
+    updateHistory: protectedProcedure
+      .input(z.object({ projectId: z.number(), measureId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
+        const measure = await db.getMeasureById(input.measureId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
+        return await db.getPhaseMeasureUpdates(input.projectId, input.measureId);
       }),
 
     updateStatus: protectedProcedure
@@ -2533,6 +2652,7 @@ export const appRouter = router({
         notes: z.string().nullable().default(null),
       }))
       .mutation(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
         }
@@ -2553,6 +2673,7 @@ export const appRouter = router({
         firstDeliveryDate: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
@@ -2576,6 +2697,7 @@ export const appRouter = router({
         projectId: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }

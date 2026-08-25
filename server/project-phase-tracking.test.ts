@@ -105,10 +105,10 @@ describe("Acompanhamento das fases — permissões", () => {
 
 describe("Acompanhamento das fases — experiência", () => {
   it("usa o mesmo componente em SIN01 Fases e na Timeline dos restantes projectos", () => {
-    expect(phasesSource).toContain("<PhaseTrackingPanel");
-    expect(timelineSource).toContain("<PhaseTrackingPanel");
-    expect(phasesSource).toContain("findProjectPhaseRecord");
-    expect(timelineSource).toContain("findProjectPhaseRecord");
+    expect(phasesSource).not.toContain("<PhaseTrackingPanel");
+    expect(timelineSource).not.toContain("<PhaseTrackingPanel");
+    expect(phasesSource).toContain("<MeasureTrackingPanel");
+    expect(timelineSource).toContain("<PhaseMeasures embedded");
   });
 
   it("mostra responsável, suporte, último update, autor e histórico", () => {

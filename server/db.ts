@@ -31,8 +31,10 @@ import {
   InsertMonitoringPlanAttachment,
   projectPhases,
   projectPhaseUpdates,
+  phaseMeasureUpdates,
   InsertProjectPhase,
   InsertProjectPhaseUpdate,
+  InsertPhaseMeasureUpdate,
 } from "../drizzle/schema";
 import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -210,6 +212,13 @@ export async function getAllMeasures() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(measures).orderBy(measures.orderIndex);
+}
+
+export async function getMeasureById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(measures).where(eq(measures.id, id)).limit(1);
+  return result[0];
 }
 
 export async function getMeasuresBySection(sectionId: number) {
@@ -1318,7 +1327,25 @@ export async function getProjectPhaseUpdates(phaseId: number) {
 export async function getPhaseMeasureStatuses(projectId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(phaseMeasureStatuses).where(eq(phaseMeasureStatuses.projectId, projectId));
+  const statuses = await db.select().from(phaseMeasureStatuses).where(eq(phaseMeasureStatuses.projectId, projectId));
+  if (statuses.length === 0) return [];
+  const updates = await db.select().from(phaseMeasureUpdates)
+    .where(eq(phaseMeasureUpdates.projectId, projectId))
+    .orderBy(desc(phaseMeasureUpdates.createdAt));
+  const latestByMeasure = new Map<number, typeof updates[number]>();
+  for (const update of updates) {
+    if (!latestByMeasure.has(update.measureId)) latestByMeasure.set(update.measureId, update);
+  }
+  return statuses.map(status => ({ ...status, latestUpdate: latestByMeasure.get(status.measureId) ?? null }));
+}
+
+export async function getPhaseMeasureStatus(projectId: number, measureId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(phaseMeasureStatuses)
+    .where(and(eq(phaseMeasureStatuses.projectId, projectId), eq(phaseMeasureStatuses.measureId, measureId)))
+    .limit(1);
+  return result[0];
 }
 
 export async function upsertPhaseMeasureStatus(data: { measureId: number; projectId: number; status: string; notes: string | null; updatedBy: number; firstDeliveryDate?: number; lastDeliveryDate?: number; nextDeliveryDate?: number }) {
@@ -1338,6 +1365,69 @@ export async function upsertPhaseMeasureStatus(data: { measureId: number; projec
   } else {
     await db.insert(phaseMeasureStatuses).values(data as any);
   }
+}
+export async function configurePhaseMeasureTracking(data: {
+  measureId: number;
+  projectId: number;
+  ownerId?: number | null;
+  ownerName?: string | null;
+  supportName?: string | null;
+  supportCompany?: string | null;
+  supportEmail?: string | null;
+  supportPhone?: string | null;
+  updatedBy: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await getPhaseMeasureStatus(data.projectId, data.measureId);
+  const changes: any = { updatedBy: data.updatedBy };
+  for (const field of ["ownerId", "ownerName", "supportName", "supportCompany", "supportEmail", "supportPhone"] as const) {
+    if (data[field] !== undefined) changes[field] = data[field];
+  }
+  if (existing) {
+    await db.update(phaseMeasureStatuses).set(changes)
+      .where(eq(phaseMeasureStatuses.id, existing.id));
+    return existing.id;
+  }
+  const result = await db.insert(phaseMeasureStatuses).values({
+    measureId: data.measureId,
+    projectId: data.projectId,
+    status: "pendente",
+    notes: null,
+    trackingStatus: "nao_iniciado",
+    ...changes,
+  } as any);
+  return result[0].insertId;
+}
+
+export async function addPhaseMeasureUpdate(data: Omit<InsertPhaseMeasureUpdate, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const existing = await getPhaseMeasureStatus(data.projectId, data.measureId);
+  if (existing) {
+    await db.update(phaseMeasureStatuses)
+      .set({ trackingStatus: data.status, updatedBy: data.createdBy })
+      .where(eq(phaseMeasureStatuses.id, existing.id));
+  } else {
+    await db.insert(phaseMeasureStatuses).values({
+      projectId: data.projectId,
+      measureId: data.measureId,
+      status: "pendente",
+      notes: null,
+      trackingStatus: data.status,
+      updatedBy: data.createdBy,
+    });
+  }
+  const result = await db.insert(phaseMeasureUpdates).values(data);
+  return result[0].insertId;
+}
+
+export async function getPhaseMeasureUpdates(projectId: number, measureId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(phaseMeasureUpdates)
+    .where(and(eq(phaseMeasureUpdates.projectId, projectId), eq(phaseMeasureUpdates.measureId, measureId)))
+    .orderBy(desc(phaseMeasureUpdates.createdAt));
 }
 import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schema";
 import { phaseEvidence, InsertPhaseEvidence } from "../drizzle/schema";

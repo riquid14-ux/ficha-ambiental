@@ -1,0 +1,86 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm build
+      - name: Criar artefacto imutável
+        run: |
+          tar -czf "release-${GITHUB_SHA}.tar.gz" \
+            dist package.json pnpm-lock.yaml ecosystem.config.cjs ops drizzle
+          sha256sum "release-${GITHUB_SHA}.tar.gz" > "release-${GITHUB_SHA}.tar.gz.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            release-${{ github.sha }}.tar.gz
+            release-${{ github.sha }}.tar.gz.sha256
+          retention-days: 7
+
+  deploy:
+    name: deploy-production
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+      - name: Preparar SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Enviar artefacto
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          scp "release-${GITHUB_SHA}.tar.gz" "release-${GITHUB_SHA}.tar.gz.sha256" \
+            "${USER}@${HOST}:/opt/plataforma-ambiental/incoming/"
+      - name: Validar checksum, criar backup, publicar e verificar
+        env:
+          HOST: ${{ secrets.PRODUCTION_HOST }}
+          USER: ${{ secrets.PRODUCTION_USER }}
+          HEALTH_URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+        run: |
+          ssh "${USER}@${HOST}" \
+            "cd /opt/plataforma-ambiental/incoming && \
+             sha256sum -c release-${GITHUB_SHA}.tar.gz.sha256 && \
+             DEPLOY_HEALTH_URL='${HEALTH_URL}' \
+             /opt/plataforma-ambiental/current/ops/deploy-release.sh \
+             /opt/plataforma-ambiental/incoming/release-${GITHUB_SHA}.tar.gz '${GITHUB_SHA}'"
+      - name: Verificação externa final
+        env:
+          HEALTH_URL: ${{ vars.PRODUCTION_HEALTH_URL }}
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 5 "$HEALTH_URL"

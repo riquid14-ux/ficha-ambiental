@@ -1,0 +1,22 @@
+[Unit]
+Description=Vigia de crash-loop da Plataforma de Gestão Ambiental
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=plataforma
+Group=plataforma
+WorkingDirectory=/opt/plataforma-ambiental/current
+EnvironmentFile=/etc/plataforma-ambiental/watchdog.env
+ExecStart=/usr/bin/node /opt/plataforma-ambiental/current/ops/pm2-crash-watchdog.mjs
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/plataforma-watchdog /var/backups/plataforma-ambiental /home/plataforma/.pm2 /opt/plataforma-ambiental
+
+[Install]
+WantedBy=multi-user.target

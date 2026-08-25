@@ -16,6 +16,7 @@ import { registerApiDocs } from "../api-docs";
 import { weeklyReminderHandler } from "../scheduled-reminders";
 import { deadlineReminderHandler } from "../scheduled-reminders";
 import { registerAutodeskRoutes } from "../autodesk";
+import { registerHealthRoutes } from "../health";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -99,6 +100,7 @@ async function startServer() {
   registerPdfRoutes(app);
   registerApiDocs(app);
   registerAutodeskRoutes(app);
+  registerHealthRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);

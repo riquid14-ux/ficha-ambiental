@@ -25,6 +25,7 @@ interface CalendarEvent {
   projectName?: string;
   ownerName?: string;
   rawId?: number; // actual calendarEvent id for status updates
+  sourceType?: string | null;
 }
 
 function MonthGrid({ year, month, events, selectedDay, onSelectDay }: {
@@ -136,12 +137,8 @@ export default function Calendario() {
   // Use activeProject from context for correct per-project filtering
   const projectId = !isAllProjects && activeProject ? activeProject.id : undefined;
 
-  const { data: plans, isLoading } = trpc.monitoringPlans.list.useQuery(
-    projectId ? { projectId } : undefined
-  );
-
   // Fetch calendar events
-  const { data: calEvents, refetch: refetchCalEvents } = trpc.calendarEvents.list.useQuery(
+  const { data: calEvents, refetch: refetchCalEvents, isLoading } = trpc.calendarEvents.list.useQuery(
     projectId ? { projectId } : undefined
   );
 
@@ -174,24 +171,6 @@ export default function Calendario() {
 
   const events = useMemo(() => {
     const evts: CalendarEvent[] = [];
-    // From monitoring plans
-    if (plans) {
-      for (const plan of plans) {
-        if (plan.nextReportingDate && plan.nextReportingDate > 0) {
-          const date = new Date(plan.nextReportingDate);
-          const isOverdue = plan.nextReportingDate < now;
-          const proj = projects.find(p => p.id === plan.projectId);
-          evts.push({
-            id: plan.id * 10000,
-            name: plan.name,
-            date,
-            type: isOverdue ? "overdue" : "pending",
-            periodicity: plan.periodicity || undefined,
-            projectName: proj?.code || undefined,
-          });
-        }
-      }
-    }
     // From calendar events
     if (calEvents) {
       for (const evt of calEvents) {
@@ -208,6 +187,7 @@ export default function Calendario() {
             projectName: proj?.code || undefined,
             ownerName: evt.ownerName || undefined,
             rawId: evt.id,
+            sourceType: evt.sourceType,
           });
         }
       }
@@ -229,7 +209,7 @@ export default function Calendario() {
       }
     }
     return [...evts, ...internalDeadlines];
-  }, [plans, calEvents, projects, now]);
+  }, [calEvents, projects, now]);
 
   // Two months: current and next
   const year1 = currentDate.getFullYear();
@@ -451,7 +431,10 @@ export default function Calendario() {
                         <Badge className={`text-xs ${evt.type === "overdue" ? "bg-red-600 text-white" : evt.type === "reported" ? "bg-sky-400 text-white" : evt.type === "confirmed" ? "bg-emerald-600 text-white" : evt.type === "internal_deadline" ? "bg-indigo-400 text-white" : "bg-slate-400 text-white"}`}>
                           {evt.type === "overdue" ? "Em Incumprimento" : evt.type === "reported" ? "Submetido" : evt.type === "confirmed" ? "Validado" : evt.type === "internal_deadline" ? "Prazo Interno" : "Prazo Regulatório"}
                         </Badge>
-                        {isAdminOrDono && evt.rawId && evt.type !== "confirmed" && (
+                        {evt.sourceType === "monitoring_plan_assignment" && (
+                          <Badge variant="outline" className="border-emerald-200 text-emerald-700">Gerido em Planos</Badge>
+                        )}
+                        {isAdminOrDono && evt.rawId && evt.type !== "confirmed" && evt.sourceType !== "monitoring_plan_assignment" && (
                           <div className="flex gap-1">
                             {evt.type === "pending" || evt.type === "overdue" ? (
                               <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => updateStatusMutation.mutate({ id: evt.rawId!, status: "reported" })}>

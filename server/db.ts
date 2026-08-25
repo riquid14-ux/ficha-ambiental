@@ -19,7 +19,19 @@ import { measureReviews, InsertMeasureReview } from "../drizzle/schema";
 import { invitations, InsertInvitation } from "../drizzle/schema";
 import { projects, projectCompanies, projectUsers, InsertProject, InsertProjectCompany, InsertProjectUser } from "../drizzle/schema";
 import { evidenceFiles, InsertEvidenceFile } from "../drizzle/schema";
-import { monitoringPlans, InsertMonitoringPlan, projectPhases, InsertProjectPhase } from "../drizzle/schema";
+import {
+  monitoringPlans,
+  monitoringPlanAssignments,
+  monitoringPlanUpdates,
+  monitoringPlanAttachments,
+  calendarReminderLogs,
+  InsertMonitoringPlan,
+  InsertMonitoringPlanAssignment,
+  InsertMonitoringPlanUpdate,
+  InsertMonitoringPlanAttachment,
+  projectPhases,
+  InsertProjectPhase,
+} from "../drizzle/schema";
 import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -999,7 +1011,13 @@ export async function createMonitoringPlan(data: Omit<InsertMonitoringPlan, "id"
   const db = await getDb();
   if (!db) return;
   const result = await db.insert(monitoringPlans).values(data);
-  return result[0].insertId;
+  const id = result[0].insertId;
+  if (!data.planNumber) {
+    await db.update(monitoringPlans)
+      .set({ planNumber: `P-${String(id).padStart(2, "0")}` })
+      .where(eq(monitoringPlans.id, id));
+  }
+  return id;
 }
 
 export async function updateMonitoringPlan(id: number, data: Partial<InsertMonitoringPlan>) {
@@ -1012,6 +1030,244 @@ export async function deleteMonitoringPlan(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(monitoringPlans).set({ active: 0 }).where(eq(monitoringPlans.id, id));
+}
+
+export async function getMonitoringPlanById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(monitoringPlans).where(eq(monitoringPlans.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getMonitoringPlanAssignmentById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(monitoringPlanAssignments)
+    .where(and(eq(monitoringPlanAssignments.id, id), eq(monitoringPlanAssignments.active, 1)))
+    .limit(1);
+  return result[0];
+}
+
+export async function getMonitoringPlanAssignment(planId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(monitoringPlanAssignments)
+    .where(and(
+      eq(monitoringPlanAssignments.planId, planId),
+      eq(monitoringPlanAssignments.projectId, projectId),
+      eq(monitoringPlanAssignments.active, 1),
+    ))
+    .limit(1);
+  return result[0];
+}
+
+export async function ensureMonitoringPlanAssignment(planId: number, projectId: number) {
+  const existing = await getMonitoringPlanAssignment(planId, projectId);
+  if (existing) return existing;
+
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(monitoringPlanAssignments).values({
+    planId,
+    projectId,
+    status: "nao_iniciado",
+    submissionStatus: "pending",
+    active: 1,
+  });
+  return getMonitoringPlanAssignmentById(result[0].insertId);
+}
+
+export async function updateMonitoringPlanAssignment(id: number, data: Partial<InsertMonitoringPlanAssignment>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(monitoringPlanAssignments).set(data).where(eq(monitoringPlanAssignments.id, id));
+}
+
+export async function addMonitoringPlanUpdate(data: Omit<InsertMonitoringPlanUpdate, "id" | "createdAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(monitoringPlanUpdates).values(data);
+  return result[0].insertId;
+}
+
+export async function getMonitoringPlanUpdates(assignmentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(monitoringPlanUpdates)
+    .where(eq(monitoringPlanUpdates.assignmentId, assignmentId))
+    .orderBy(desc(monitoringPlanUpdates.createdAt));
+}
+
+export async function addMonitoringPlanAttachment(data: Omit<InsertMonitoringPlanAttachment, "id" | "uploadedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(monitoringPlanAttachments).values(data);
+  return result[0].insertId;
+}
+
+export async function getMonitoringPlanAttachments(assignmentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(monitoringPlanAttachments)
+    .where(eq(monitoringPlanAttachments.assignmentId, assignmentId))
+    .orderBy(desc(monitoringPlanAttachments.uploadedAt));
+}
+
+export async function getMonitoringPlanOverview(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const plans = await db.select().from(monitoringPlans)
+    .where(and(eq(monitoringPlans.active, 1), or(isNull(monitoringPlans.projectId), eq(monitoringPlans.projectId, projectId))));
+  const assignments = await db.select().from(monitoringPlanAssignments)
+    .where(and(eq(monitoringPlanAssignments.projectId, projectId), eq(monitoringPlanAssignments.active, 1)));
+  const assignmentIds = assignments.map(item => item.id);
+  const updates = assignmentIds.length > 0
+    ? await db.select().from(monitoringPlanUpdates)
+      .where(sql`${monitoringPlanUpdates.assignmentId} IN (${sql.join(assignmentIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(desc(monitoringPlanUpdates.createdAt))
+    : [];
+  const attachments = assignmentIds.length > 0
+    ? await db.select().from(monitoringPlanAttachments)
+      .where(sql`${monitoringPlanAttachments.assignmentId} IN (${sql.join(assignmentIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(desc(monitoringPlanAttachments.uploadedAt))
+    : [];
+
+  const assignmentByPlan = new Map(assignments.map(item => [item.planId, item]));
+  const latestUpdateByAssignment = new Map<number, typeof updates[number]>();
+  for (const update of updates) {
+    if (!latestUpdateByAssignment.has(update.assignmentId)) latestUpdateByAssignment.set(update.assignmentId, update);
+  }
+
+  return plans.map((plan) => {
+    const assignment = assignmentByPlan.get(plan.id);
+    const planAttachments = assignment ? attachments.filter(item => item.assignmentId === assignment.id) : [];
+    return {
+      ...plan,
+      assignmentId: assignment?.id ?? null,
+      ownerId: assignment?.ownerId ?? null,
+      ownerName: assignment?.ownerName ?? null,
+      status: assignment?.status ?? "nao_iniciado",
+      lastReportingDate: assignment?.lastReportingDate ?? plan.lastReportingDate,
+      nextReportingDate: assignment?.nextReportingDate ?? plan.nextReportingDate,
+      submissionStatus: assignment?.submissionStatus ?? plan.submissionStatus,
+      confirmedDeliveryAt: assignment?.confirmedDeliveryAt ?? plan.confirmedDeliveryAt,
+      latestUpdate: assignment ? latestUpdateByAssignment.get(assignment.id) ?? null : null,
+      attachments: planAttachments,
+      attachmentCount: planAttachments.length,
+    };
+  }).sort((a, b) => (a.planNumber || "").localeCompare(b.planNumber || "", "pt", { numeric: true }));
+}
+
+export async function syncMonitoringPlanCalendarEvent(assignmentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const assignment = await getMonitoringPlanAssignmentById(assignmentId);
+  if (!assignment) throw new Error("Monitoring plan assignment not found");
+  const plan = await getMonitoringPlanById(assignment.planId);
+  if (!plan) throw new Error("Monitoring plan not found");
+
+  const existing = await db.select().from(calendarEvents).where(and(
+    eq(calendarEvents.sourceType, "monitoring_plan_assignment"),
+    eq(calendarEvents.sourceId, assignment.id),
+    eq(calendarEvents.projectId, assignment.projectId),
+  )).limit(1);
+
+  if (!assignment.nextReportingDate) {
+    if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0]?.id ?? null;
+  }
+
+  const eventData: Partial<InsertCalendarEvent> = {
+    projectId: assignment.projectId,
+    name: `${plan.planNumber || `P-${String(plan.id).padStart(2, "0")}`} — ${plan.name}`,
+    description: "Prazo sincronizado automaticamente a partir do módulo Planos.",
+    periodicity: plan.periodicity,
+    firstDate: assignment.nextReportingDate,
+    nextDate: assignment.nextReportingDate,
+    category: "monitoring_plan",
+    status: assignment.submissionStatus === "delivered" ? "confirmed" : "pending",
+    ownerId: assignment.ownerId,
+    ownerName: assignment.ownerName,
+    sourceType: "monitoring_plan_assignment",
+    sourceId: assignment.id,
+    active: 1,
+  };
+
+  if (existing[0]) {
+    await db.update(calendarEvents).set(eventData).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0].id;
+  }
+
+  const result = await db.insert(calendarEvents).values(eventData as InsertCalendarEvent);
+  return result[0].insertId;
+}
+
+export async function hasCalendarReminderBeenSent(eventId: number, deadlineDate: number, reminderDays: number, recipientEmail: string) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ id: calendarReminderLogs.id }).from(calendarReminderLogs)
+    .where(and(
+      eq(calendarReminderLogs.eventId, eventId),
+      eq(calendarReminderLogs.deadlineDate, deadlineDate),
+      eq(calendarReminderLogs.reminderDays, reminderDays),
+      eq(calendarReminderLogs.recipientEmail, recipientEmail),
+    ))
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function recordCalendarReminder(data: {
+  eventId: number;
+  deadlineDate: number;
+  reminderDays: number;
+  recipientUserId?: number | null;
+  recipientEmail: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(calendarReminderLogs).values({
+    eventId: data.eventId,
+    deadlineDate: data.deadlineDate,
+    reminderDays: data.reminderDays,
+    recipientUserId: data.recipientUserId ?? null,
+    recipientEmail: data.recipientEmail,
+  });
+}
+
+export async function claimCalendarReminder(data: {
+  eventId: number;
+  deadlineDate: number;
+  reminderDays: number;
+  recipientUserId?: number | null;
+  recipientEmail: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  try {
+    await db.insert(calendarReminderLogs).values({
+      eventId: data.eventId,
+      deadlineDate: data.deadlineDate,
+      reminderDays: data.reminderDays,
+      recipientUserId: data.recipientUserId ?? null,
+      recipientEmail: data.recipientEmail,
+    });
+    return true;
+  } catch (error: any) {
+    if (error?.code === "ER_DUP_ENTRY" || error?.cause?.code === "ER_DUP_ENTRY") return false;
+    throw error;
+  }
+}
+
+export async function releaseCalendarReminderClaim(eventId: number, deadlineDate: number, reminderDays: number, recipientEmail: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(calendarReminderLogs).where(and(
+    eq(calendarReminderLogs.eventId, eventId),
+    eq(calendarReminderLogs.deadlineDate, deadlineDate),
+    eq(calendarReminderLogs.reminderDays, reminderDays),
+    eq(calendarReminderLogs.recipientEmail, recipientEmail),
+  ));
 }
 
 // ─── Project Phases ──────────────────────────────────────────────────────────
@@ -1071,6 +1327,13 @@ export async function getCalendarEvents(projectId?: number, includeHidden?: bool
     return db.select().from(calendarEvents).where(and(eq(calendarEvents.active, 1), eq(calendarEvents.projectId, projectId)));
   }
   return db.select().from(calendarEvents).where(eq(calendarEvents.active, 1));
+}
+
+export async function getCalendarEventById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(calendarEvents).where(eq(calendarEvents.id, id)).limit(1);
+  return result[0];
 }
 
 export async function createCalendarEvent(data: Omit<InsertCalendarEvent, "id">) {

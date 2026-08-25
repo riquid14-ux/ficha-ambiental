@@ -3,6 +3,7 @@ import { sdk } from "./_core/sdk";
 import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
 import { sendDeadlineReminderEmail } from "./email";
+import { daysUntilDeadline, isPlanReminderDay } from "./plan-reminders";
 
 /**
  * Deadline reminder handler - called by Heartbeat cron daily at 08:00 UTC.
@@ -17,8 +18,6 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
     }
 
     const now = new Date();
-    const today = now.getTime();
-    const DAY_MS = 24 * 60 * 60 * 1000;
 
     // Get all active calendar events
     const events = await db.getCalendarEvents(undefined, false);
@@ -28,22 +27,30 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
       const deadline = event.nextDate || event.firstDate;
       if (!deadline) continue;
 
-      const daysLeft = Math.ceil((deadline - today) / DAY_MS);
+      const daysLeft = daysUntilDeadline(deadline, now);
 
       // Send reminders at 30, 15, and 7 days before
-      if (daysLeft === 30 || daysLeft === 15 || daysLeft === 7) {
+      if (isPlanReminderDay(daysLeft)) {
         let recipientEmail: string | null = null;
         let recipientName: string | null = null;
 
         if (event.ownerId) {
           const owner = await db.getUserById(event.ownerId);
-          if (owner) {
+          if (owner?.accountStatus === "active") {
             recipientEmail = owner.email;
-            recipientName = owner.name || owner.email;
+            recipientName = owner.fullName || owner.name || owner.email;
           }
         }
 
         if (recipientEmail) {
+          const claimed = await db.claimCalendarReminder({
+            eventId: event.id,
+            deadlineDate: deadline,
+            reminderDays: daysLeft,
+            recipientUserId: event.ownerId,
+            recipientEmail,
+          });
+          if (!claimed) continue;
           try {
             await sendDeadlineReminderEmail({
               to: recipientEmail,
@@ -56,6 +63,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
             });
             reminders.push({ event: event.name, daysLeft, recipient: recipientEmail });
           } catch (emailErr) {
+            await db.releaseCalendarReminderClaim(event.id, deadline, daysLeft, recipientEmail);
             console.error(`[Deadline Reminder] Failed to send for "${event.name}":`, emailErr);
           }
         }
@@ -66,7 +74,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
     const urgentEvents = events.filter((e) => {
       const dl = e.nextDate || e.firstDate;
       if (!dl) return false;
-      const days = Math.ceil((dl - today) / DAY_MS);
+      const days = daysUntilDeadline(dl, now);
       return days > 0 && days <= 7;
     });
 
@@ -75,7 +83,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
         title: `⚠️ ${urgentEvents.length} prazo(s) a vencer em 7 dias ou menos`,
         content: urgentEvents.map((e) => {
           const dl = e.nextDate || e.firstDate;
-          const days = Math.ceil((dl! - today) / DAY_MS);
+          const days = daysUntilDeadline(dl!, now);
           return `• ${e.name} — ${days} dia(s) (${new Date(dl!).toLocaleDateString("pt-PT")})`;
         }).join("\n"),
       });
@@ -145,7 +153,6 @@ export async function weeklyReminderHandler(req: Request, res: Response) {
     console.error("[Scheduled Reminder] Error:", error);
     return res.status(500).json({
       error: error.message || "Internal error",
-      stack: error.stack,
       timestamp: new Date().toISOString(),
     });
   }

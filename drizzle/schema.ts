@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, serial, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, serial, boolean, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -306,6 +306,7 @@ export type InsertEvidenceFile = typeof evidenceFiles.$inferInsert;
 export const monitoringPlans = mysqlTable("monitoring_plans", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId"),
+  planNumber: varchar("planNumber", { length: 50 }),
   name: varchar("name", { length: 500 }).notNull(),
   category: mysqlEnum("category", ["programa_monitorizacao", "plano_projeto"]).default("programa_monitorizacao").notNull(),
   periodicity: varchar("periodicity", { length: 100 }),
@@ -321,9 +322,71 @@ export const monitoringPlans = mysqlTable("monitoring_plans", {
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
-});
+}, (table) => ({
+  planNumberUnique: uniqueIndex("monitoring_plans_plan_number_uq").on(table.planNumber),
+}));
 export type MonitoringPlan = typeof monitoringPlans.$inferSelect;
 export type InsertMonitoringPlan = typeof monitoringPlans.$inferInsert;
+
+// ─── Monitoring Plan Assignments (estado de cada plano em cada projecto) ───────
+export const monitoringPlanAssignments = mysqlTable("monitoring_plan_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  planId: int("planId").notNull(),
+  projectId: int("projectId").notNull(),
+  ownerId: int("ownerId"),
+  ownerName: varchar("ownerName", { length: 255 }),
+  status: mysqlEnum("status", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).default("nao_iniciado").notNull(),
+  lastReportingDate: bigint("lastReportingDate", { mode: "number" }),
+  nextReportingDate: bigint("nextReportingDate", { mode: "number" }),
+  submissionStatus: mysqlEnum("submissionStatus", ["pending", "submitted", "delivered"]).default("pending").notNull(),
+  confirmedDeliveryAt: bigint("confirmedDeliveryAt", { mode: "number" }),
+  active: int("active").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  planProjectUnique: uniqueIndex("monitoring_plan_assignments_plan_project_uq").on(table.planId, table.projectId),
+  projectIdx: index("monitoring_plan_assignments_project_idx").on(table.projectId),
+  ownerIdx: index("monitoring_plan_assignments_owner_idx").on(table.ownerId),
+  dueDateIdx: index("monitoring_plan_assignments_due_idx").on(table.nextReportingDate),
+}));
+export type MonitoringPlanAssignment = typeof monitoringPlanAssignments.$inferSelect;
+export type InsertMonitoringPlanAssignment = typeof monitoringPlanAssignments.$inferInsert;
+
+// ─── Monitoring Plan Status Updates (histórico imutável por projecto) ──────────
+export const monitoringPlanUpdates = mysqlTable("monitoring_plan_updates", {
+  id: int("id").autoincrement().primaryKey(),
+  assignmentId: int("assignmentId").notNull(),
+  status: mysqlEnum("status", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).notNull(),
+  updateText: text("updateText").notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  assignmentCreatedIdx: index("monitoring_plan_updates_assignment_created_idx").on(table.assignmentId, table.createdAt),
+}));
+export type MonitoringPlanUpdate = typeof monitoringPlanUpdates.$inferSelect;
+export type InsertMonitoringPlanUpdate = typeof monitoringPlanUpdates.$inferInsert;
+
+// ─── Monitoring Plan Attachments (ficheiros no storage externo) ────────────────
+export const monitoringPlanAttachments = mysqlTable("monitoring_plan_attachments", {
+  id: int("id").autoincrement().primaryKey(),
+  assignmentId: int("assignmentId").notNull(),
+  updateId: int("updateId"),
+  type: mysqlEnum("type", ["photo", "file"]).default("file").notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  url: text("url").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  uploadedBy: int("uploadedBy").notNull(),
+  uploadedByName: varchar("uploadedByName", { length: 255 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
+}, (table) => ({
+  assignmentIdx: index("monitoring_plan_attachments_assignment_idx").on(table.assignmentId),
+  updateIdx: index("monitoring_plan_attachments_update_idx").on(table.updateId),
+}));
+export type MonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferSelect;
+export type InsertMonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferInsert;
 
 // ─── Project Phases (Fases do Projeto - controlo por fase) ────────────────────
 export const projectPhases = mysqlTable("project_phases", {
@@ -394,15 +457,37 @@ export const calendarEvents = mysqlTable("calendar_events", {
   status: mysqlEnum("status", ["pending", "reported", "confirmed"]).default("pending").notNull(),
   ownerId: int("ownerId"),
   ownerName: varchar("ownerName", { length: 255 }),
+  sourceType: varchar("sourceType", { length: 50 }),
+  sourceId: int("sourceId"),
   entityToDeliver: varchar("entityToDeliver", { length: 500 }),
   entityLink: varchar("entityLink", { length: 1000 }),
   active: int("active").default(1).notNull(),
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
-});
+}, (table) => ({
+  sourceProjectUnique: uniqueIndex("calendar_events_source_project_uq").on(table.sourceType, table.sourceId, table.projectId),
+  ownerIdx: index("calendar_events_owner_idx").on(table.ownerId),
+  nextDateIdx: index("calendar_events_next_date_idx").on(table.nextDate),
+}));
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+
+// ─── Calendar Reminder Log (garante alertas 30/15/7 idempotentes) ───────────────
+export const calendarReminderLogs = mysqlTable("calendar_reminder_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  deadlineDate: bigint("deadlineDate", { mode: "number" }).notNull(),
+  reminderDays: int("reminderDays").notNull(),
+  recipientUserId: int("recipientUserId"),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+}, (table) => ({
+  reminderUnique: uniqueIndex("calendar_reminder_logs_unique").on(table.eventId, table.deadlineDate, table.reminderDays, table.recipientEmail),
+  eventIdx: index("calendar_reminder_logs_event_idx").on(table.eventId),
+}));
+export type CalendarReminderLog = typeof calendarReminderLogs.$inferSelect;
+export type InsertCalendarReminderLog = typeof calendarReminderLogs.$inferInsert;
 
 // ─── App Settings (key-value for configurable items like brand images) ────────
 export const appSettings = mysqlTable("app_settings", {

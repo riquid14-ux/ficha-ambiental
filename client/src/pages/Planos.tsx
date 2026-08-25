@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,407 +12,478 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileText, Calendar, Clock, Plus, Pencil, Upload, AlertTriangle, CheckCircle2, ArrowRight, CheckCheck, FileUp } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Download,
+  Eye,
+  File,
+  FileText,
+  Image,
+  Paperclip,
+  Pencil,
+  Plus,
+  Save,
+  Search,
+  Upload,
+  UserRound,
+} from "lucide-react";
+
+const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const DAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+const STATUS_LABELS: Record<string, string> = {
+  nao_iniciado: "Não iniciado",
+  em_curso: "Em curso",
+  em_validacao: "Em validação",
+  concluido: "Concluído",
+  bloqueado: "Bloqueado",
+};
+
+const STATUS_STYLES: Record<string, string> = {
+  nao_iniciado: "bg-slate-100 text-slate-700 border-slate-200",
+  em_curso: "bg-blue-50 text-blue-700 border-blue-200",
+  em_validacao: "bg-amber-50 text-amber-700 border-amber-200",
+  concluido: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  bloqueado: "bg-red-50 text-red-700 border-red-200",
+};
+
+function formatDate(value?: number | null) {
+  if (!value) return "Sem data";
+  return new Date(value).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatDateTime(value?: string | Date | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
+}
+
+function dateInputValue(value?: number | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function toTimestamp(value: string) {
+  return value ? new Date(`${value}T12:00:00`).getTime() : null;
+}
+
+async function fileToBase64(file: globalThis.File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function PlanCalendar({ plans }: { plans: any[] }) {
+  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const year = month.getFullYear();
+  const monthIndex = month.getMonth();
+  const firstDay = new Date(year, monthIndex, 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const calendarStart = new Date(year, monthIndex, 1 - mondayOffset);
+  const cells = Array.from({ length: 42 }, (_, index) => new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + index));
+  const todayKey = new Date().toDateString();
+
+  const plansByDay = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const plan of plans) {
+      if (!plan.nextReportingDate) continue;
+      const key = new Date(plan.nextReportingDate).toDateString();
+      map.set(key, [...(map.get(key) || []), plan]);
+    }
+    return map;
+  }, [plans]);
+
+  const selectedPlans = selectedDate ? plansByDay.get(selectedDate.toDateString()) || [] : [];
+
+  return (
+    <Card className="overflow-hidden border-emerald-100 shadow-sm">
+      <div className="bg-gradient-to-r from-[#006341] to-[#008f67] px-5 py-4 text-white">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Calendário exclusivo dos planos</p>
+            <h2 className="mt-1 text-xl font-bold">Próximas entregas</h2>
+            <p className="mt-1 text-sm text-emerald-50">Sincronizado automaticamente com o calendário global e com os alertas 30/15/7 dias.</p>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl bg-white/10 p-1 backdrop-blur">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/15 hover:text-white" onClick={() => setMonth(new Date(year, monthIndex - 1, 1))} aria-label="Mês anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-36 text-center text-sm font-semibold">{MONTHS_PT[monthIndex]} {year}</span>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/15 hover:text-white" onClick={() => setMonth(new Date(year, monthIndex + 1, 1))} aria-label="Mês seguinte">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      <CardContent className="p-4 sm:p-5">
+        <div className="grid grid-cols-7 gap-1">
+          {DAYS_PT.map(day => <div key={day} className="pb-1 text-center text-[11px] font-semibold text-muted-foreground">{day}</div>)}
+          {cells.map((date) => {
+            const key = date.toDateString();
+            const dayPlans = plansByDay.get(key) || [];
+            const inMonth = date.getMonth() === monthIndex;
+            const selected = selectedDate?.toDateString() === key;
+            const overdue = dayPlans.some(plan => plan.nextReportingDate < Date.now());
+            return (
+              <button
+                type="button"
+                key={date.toISOString()}
+                onClick={() => setSelectedDate(date)}
+                className={`relative min-h-16 rounded-lg border p-1.5 text-left transition ${selected ? "border-emerald-600 bg-emerald-50 ring-2 ring-emerald-100" : "border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/40"} ${inMonth ? "bg-white" : "bg-slate-50 text-slate-300"}`}
+              >
+                <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${key === todayKey ? "bg-[#006341] text-white" : ""}`}>{date.getDate()}</span>
+                {dayPlans.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    <div className={`h-1.5 w-1.5 rounded-full ${overdue ? "bg-red-500" : "bg-emerald-500"}`} />
+                    <p className="truncate text-[9px] font-medium text-slate-700">{dayPlans[0].planNumber}</p>
+                    {dayPlans.length > 1 && <p className="text-[9px] text-muted-foreground">+{dayPlans.length - 1}</p>}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {selectedDate && (
+          <div className="mt-4 rounded-xl border bg-slate-50 p-3">
+            <p className="text-sm font-semibold">{selectedDate.toLocaleDateString("pt-PT", { weekday: "long", day: "2-digit", month: "long" })}</p>
+            {selectedPlans.length === 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">Sem entregas de planos nesta data.</p>
+            ) : (
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {selectedPlans.map(plan => (
+                  <div key={`${plan.trackingProjectId || plan.projectId}-${plan.id}`} className="rounded-lg border bg-white p-2.5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{plan.planNumber}</Badge>
+                      {plan.trackingProjectCode && <Badge className="bg-[#006341]">{plan.trackingProjectCode}</Badge>}
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs font-medium">{plan.name}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{plan.ownerName || "Responsável por definir"}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Planos() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { projects } = useProject();
+  const { projects, activeProject, isAllProjects } = useProject();
+  const projectId = !isAllProjects ? activeProject?.id : undefined;
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
-
-  const { data: plans, isLoading, refetch } = trpc.monitoringPlans.list.useQuery(undefined);
-
-  const createMutation = trpc.monitoringPlans.create.useMutation({
-    onSuccess: () => { refetch(); toast.success("Plano criado com sucesso"); setShowCreate(false); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const updateMutation = trpc.monitoringPlans.update.useMutation({
-    onSuccess: () => { refetch(); toast.success("Plano atualizado"); setEditingPlan(null); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const submitDocMutation = trpc.monitoringPlans.submitDocument.useMutation({
-    onSuccess: () => { refetch(); toast.success("Documento submetido na plataforma"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const confirmDeliveryMutation = trpc.monitoringPlans.confirmDelivery.useMutation({
-    onSuccess: (data: any) => {
-      refetch();
-      const nextDate = data.nextReportingDate ? new Date(data.nextReportingDate).toLocaleDateString("pt-PT") : "";
-      toast.success(t("Entrega confirmada") + `: ${nextDate}`);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const [showCreate, setShowCreate] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<number | null>(null);
-  const [newPlan, setNewPlan] = useState({ name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "", projectId: "" });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [newPlan, setNewPlan] = useState({ planNumber: "", name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "", projectId: "" });
 
-  const now = Date.now();
+  const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery(projectId ? { projectId } : undefined);
+  const utils = trpc.useUtils();
+  const createMutation = trpc.monitoringPlans.create.useMutation({
+    onSuccess: async () => {
+      await utils.monitoringPlans.list.invalidate();
+      setShowCreate(false);
+      setNewPlan({ planNumber: "", name: "", category: "programa_monitorizacao", periodicity: "", notes: "", projectId: "" });
+      toast.success("Plano criado com sucesso");
+    },
+    onError: error => toast.error(error.message),
+  });
 
-  // Sort plans: overdue first, then by next delivery date (soonest first), then no date
-  const sortedPlans = useMemo(() => {
-    if (!plans) return [];
-    return [...plans].sort((a, b) => {
-      const aNext = a.nextReportingDate || Infinity;
-      const bNext = b.nextReportingDate || Infinity;
-      const aOverdue = (aNext < now && aNext > 0) ? 1 : 0;
-      const bOverdue = (bNext < now && bNext > 0) ? 1 : 0;
-      if (aOverdue !== bOverdue) return bOverdue - aOverdue;
-      return aNext - bNext;
+  const sortedPlans = useMemo(() => [...plans].sort((a: any, b: any) => {
+    const aDate = a.nextReportingDate || Number.MAX_SAFE_INTEGER;
+    const bDate = b.nextReportingDate || Number.MAX_SAFE_INTEGER;
+    if (aDate !== bDate) return aDate - bDate;
+    return String(a.planNumber || "").localeCompare(String(b.planNumber || ""), "pt", { numeric: true });
+  }), [plans]);
+
+  const filteredPlans = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase("pt-PT");
+    return sortedPlans.filter((plan: any) => {
+      const matchesStatus = statusFilter === "all" || plan.status === statusFilter;
+      const searchable = [plan.planNumber, plan.name, plan.ownerName, plan.trackingProjectCode, plan.latestUpdate?.updateText]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("pt-PT");
+      return matchesStatus && (!query || searchable.includes(query));
     });
-  }, [plans, now]);
+  }, [searchQuery, sortedPlans, statusFilter]);
 
-  // Categorize sorted plans
-  const programas = sortedPlans.filter(p => p.category === "programa_monitorizacao");
-  const planosList = sortedPlans.filter(p => p.category === "plano_projeto");
+  const groupedPlans = useMemo(() => {
+    if (!isAllProjects) return [{ code: activeProject?.code || "Projecto", name: activeProject?.name || "", plans: filteredPlans }];
+    const groups = new Map<string, { code: string; name: string; plans: any[] }>();
+    for (const plan of filteredPlans as any[]) {
+      const code = plan.trackingProjectCode || `P${plan.trackingProjectId}`;
+      const project = projects.find(item => item.id === plan.trackingProjectId);
+      if (!groups.has(code)) groups.set(code, { code, name: project?.name || "", plans: [] });
+      groups.get(code)!.plans.push(plan);
+    }
+    return Array.from(groups.values()).sort((a, b) => a.code.localeCompare(b.code, "pt", { numeric: true }));
+  }, [activeProject, filteredPlans, isAllProjects, projects]);
 
-  // Stats
   const stats = useMemo(() => {
-    if (!plans) return { total: 0, thisMonth: 0, upcoming: 0, noDate: 0 };
-    const thisMonthEnd = new Date();
-    thisMonthEnd.setMonth(thisMonthEnd.getMonth() + 1, 0);
-    thisMonthEnd.setHours(23, 59, 59, 999);
-    const thisMonthTs = thisMonthEnd.getTime();
-    const total = plans.length;
-    const thisMonth = plans.filter(p => p.nextReportingDate && p.nextReportingDate > 0 && p.nextReportingDate <= thisMonthTs && p.nextReportingDate >= now).length;
-    const upcoming = plans.filter(p => p.nextReportingDate && p.nextReportingDate > thisMonthTs).length;
-    const noDate = plans.filter(p => !p.nextReportingDate || p.nextReportingDate === 0).length;
-    return { total, thisMonth, upcoming, noDate };
-  }, [plans, now]);
+    const now = Date.now();
+    const monthAhead = now + 30 * 86400000;
+    return {
+      total: plans.length,
+      overdue: plans.filter((plan: any) => plan.nextReportingDate && plan.nextReportingDate < now).length,
+      next30: plans.filter((plan: any) => plan.nextReportingDate && plan.nextReportingDate >= now && plan.nextReportingDate <= monthAhead).length,
+      updated: plans.filter((plan: any) => plan.latestUpdate).length,
+    };
+  }, [plans]);
 
-  // Closest upcoming
-  const nextReport = plans?.filter(p => p.nextReportingDate && p.nextReportingDate > now)
-    .sort((a, b) => (a.nextReportingDate || 0) - (b.nextReportingDate || 0))[0];
-
-  function formatDate(ts: number | null) {
-    if (!ts) return "—";
-    return new Date(ts).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
-  }
-
-  function daysUntil(ts: number | null) {
-    if (!ts) return null;
-    return Math.ceil((ts - now) / 86400000);
-  }
-
-  function timeLabel(ts: number | null) {
-    const days = daysUntil(ts);
-    if (days === null) return "";
-    if (days < 0) return `${Math.abs(days)} dias em atraso`;
-    if (days === 0) return "Hoje";
-    if (days === 1) return "Amanhã";
-    if (days < 30) return `${days} dias`;
-    if (days < 60) return "~1 mês";
-    return `~${Math.round(days / 30)} meses`;
+  async function exportUpdates() {
+    if (plans.length === 0) return toast.error("Não existem planos para exportar.");
+    try {
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, ShadingType } = await import("docx");
+      const projectLabel = isAllProjects ? "Todos os projectos acessíveis" : `${activeProject?.code || ""} — ${activeProject?.name || ""}`;
+      const rows = sortedPlans.map((plan: any) => new TableRow({
+        children: [
+          new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: plan.planNumber || `P-${plan.id}`, bold: true })] })] }),
+          new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.trackingProjectCode || activeProject?.code || "—")] }),
+          new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.name)] }),
+          new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, children: [new Paragraph(STATUS_LABELS[plan.status] || plan.status)] }),
+          new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, children: [new Paragraph(plan.ownerName || "Por definir")] }),
+          new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, children: [new Paragraph(formatDate(plan.nextReportingDate))] }),
+          new TableCell({ width: { size: 26, type: WidthType.PERCENTAGE }, children: [
+            new Paragraph(plan.latestUpdate?.updateText || "Sem update registado"),
+            ...(plan.latestUpdate ? [new Paragraph({ children: [new TextRun({ text: `${plan.latestUpdate.createdByName} · ${formatDateTime(plan.latestUpdate.createdAt)}`, italics: true, size: 18 })] })] : []),
+          ] }),
+        ],
+      }));
+      const header = new TableRow({
+        tableHeader: true,
+        children: ["N.º", "Projecto", "Plano", "Estado", "Responsável", "Próxima entrega", "Último update"].map(text => new TableCell({
+          shading: { type: ShadingType.CLEAR, color: "auto", fill: "006341" },
+          children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "FFFFFF" })] })],
+        })),
+      });
+      const wordDocument = new Document({ sections: [{ children: [
+        new Paragraph({ text: "Actualização dos Planos de Monitorização", heading: HeadingLevel.TITLE }),
+        new Paragraph({ children: [new TextRun({ text: "Projecto: ", bold: true }), new TextRun(projectLabel)] }),
+        new Paragraph({ children: [new TextRun({ text: "Gerado em: ", bold: true }), new TextRun(new Date().toLocaleString("pt-PT"))] }),
+        new Paragraph({ text: "" }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...rows] }),
+      ] }] });
+      const blob = await Packer.toBlob(wordDocument);
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `Atualizacao_Planos_${activeProject?.code || "Todos"}_${new Date().toISOString().slice(0, 10)}.docx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success("Documento Word exportado");
+    } catch (error: any) {
+      toast.error(error?.message || "Não foi possível gerar o documento Word.");
+    }
   }
 
   if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="p-6 space-y-4">
-          <div className="h-8 w-64 bg-muted animate-pulse rounded" />
-          <div className="grid grid-cols-3 gap-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)}
-          </div>
-          <div className="h-40 bg-muted animate-pulse rounded" />
-        </div>
-      </AppLayout>
-    );
+    return <AppLayout><div className="mx-auto max-w-7xl space-y-4 p-6"><div className="h-10 w-80 animate-pulse rounded bg-muted" /><div className="h-96 animate-pulse rounded-xl bg-muted" /></div></AppLayout>;
   }
 
   return (
     <AppLayout>
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("Planos de Monitorização")}</h1>
-          <p className="text-muted-foreground text-sm">{t("Programas e planos do DCAPE — Fase de Construção")}</p>
-        </div>
-        {isAdminOrDono && (
-          <Dialog open={showCreate} onOpenChange={setShowCreate}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-1.5" />{t("Novo Plano")}</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t("Criar Novo Plano")}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder={t("Nome do plano")} value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
-                <Select value={newPlan.category} onValueChange={(v: any) => setNewPlan(p => ({ ...p, category: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="programa_monitorizacao">{t("Programa de Monitorização")}</SelectItem>
-                    <SelectItem value="plano_projeto">{t("Plano/Projeto")}</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input placeholder="Periodicidade (ex: Semestral, Trimestral)" value={newPlan.periodicity} onChange={e => setNewPlan(p => ({ ...p, periodicity: e.target.value }))} />
-                <Select value={newPlan.projectId} onValueChange={(v) => setNewPlan(p => ({ ...p, projectId: v }))}>
-                  <SelectTrigger><SelectValue placeholder={t("Projeto (opcional)")} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">{t("Todos os projetos")}</SelectItem>
-                    {projects.map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.code} — {p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Textarea placeholder={t("Notas adicionais")} value={newPlan.notes} onChange={e => setNewPlan(p => ({ ...p, notes: e.target.value }))} />
-                <Button onClick={() => createMutation.mutate({ name: newPlan.name, category: newPlan.category, periodicity: newPlan.periodicity || undefined, notes: newPlan.notes || undefined, projectId: newPlan.projectId && newPlan.projectId !== "none" ? parseInt(newPlan.projectId) : undefined })} disabled={!newPlan.name || createMutation.isPending}>
-                  {createMutation.isPending ? "A criar..." : "Criar Plano"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-lg border bg-background text-center">
-          <p className="text-2xl font-bold">{stats.total}</p>
-          <p className="text-xs text-muted-foreground">{t("Total")}</p>
-        </div>
-        <div className="p-3 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200 text-center">
-          <p className="text-2xl font-bold text-amber-600">{stats.thisMonth}</p>
-          <p className="text-xs text-amber-600">{t("Entrega este mês")}</p>
-        </div>
-        <div className="p-3 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-center">
-          <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
-          <p className="text-xs text-blue-600">{t("Próximos meses")}</p>
-        </div>
-        <div className="p-3 rounded-lg border bg-muted border-border text-center">
-          <p className="text-2xl font-bold text-muted-foreground">{stats.noDate}</p>
-          <p className="text-xs text-muted-foreground">{t("Sem data definida")}</p>
-        </div>
-      </div>
-
-      {/* Next report highlight */}
-      {nextReport && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Calendar className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">{t("Próximo reporting")}</p>
-              <p className="font-semibold text-sm truncate">{nextReport.name}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold">{timeLabel(nextReport.nextReportingDate)}</p>
-              <p className="text-xs text-muted-foreground">{formatDate(nextReport.nextReportingDate)}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Plans list - grouped */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <FileText className="w-4 h-4" /> Programas de Monitorização ({programas.length}) — ordenados por próxima entrega
-        </h2>
-        {programas.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">{t("Nenhum programa registado.")}</p>
-        ) : (
-          <div className="grid gap-2">
-            {programas.map(plan => (
-              <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} submitDocMutation={submitDocMutation} confirmDeliveryMutation={confirmDeliveryMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
-            ))}
+      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#006341]">Controlo e reporting</p>
+            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{t("Planos de Monitorização")}</h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Calendário, responsáveis, evidências e último estado de cada plano numa única visão.</p>
           </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mt-6">
-          <Calendar className="w-4 h-4" /> Planos e Projetos ({planosList.length}) — ordenados por próxima entrega
-        </h2>
-        {planosList.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">{t("Nenhum plano registado.")}</p>
-        ) : (
-          <div className="grid gap-2">
-            {planosList.map(plan => (
-            <PlanRow key={plan.id} plan={plan} isAdminOrDono={isAdminOrDono} editingPlan={editingPlan} setEditingPlan={setEditingPlan} updateMutation={updateMutation} submitDocMutation={submitDocMutation} confirmDeliveryMutation={confirmDeliveryMutation} formatDate={formatDate} timeLabel={timeLabel} now={now} />
-            ))}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={exportUpdates}><Download className="mr-2 h-4 w-4" />Exportar updates</Button>
+            {isAdminOrDono && (
+              <Dialog open={showCreate} onOpenChange={setShowCreate}>
+                <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo plano</Button></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Criar novo plano</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div><label className="text-xs font-medium">Número</label><Input value={newPlan.planNumber} onChange={event => setNewPlan(value => ({ ...value, planNumber: event.target.value }))} placeholder="P-21" /></div>
+                      <div className="col-span-2"><label className="text-xs font-medium">Nome</label><Input value={newPlan.name} onChange={event => setNewPlan(value => ({ ...value, name: event.target.value }))} placeholder="Nome do plano" /></div>
+                    </div>
+                    <Select value={newPlan.category} onValueChange={(value: any) => setNewPlan(plan => ({ ...plan, category: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="programa_monitorizacao">Programa de Monitorização</SelectItem><SelectItem value="plano_projeto">Plano/Projecto</SelectItem></SelectContent></Select>
+                    <Input value={newPlan.periodicity} onChange={event => setNewPlan(value => ({ ...value, periodicity: event.target.value }))} placeholder="Periodicidade (ex.: Semestral)" />
+                    <Select value={newPlan.projectId || (projectId ? String(projectId) : "")} onValueChange={value => setNewPlan(plan => ({ ...plan, projectId: value }))}><SelectTrigger><SelectValue placeholder="Projecto" /></SelectTrigger><SelectContent>{projects.map(project => <SelectItem key={project.id} value={String(project.id)}>{project.code} — {project.name}</SelectItem>)}</SelectContent></Select>
+                    <Textarea value={newPlan.notes} onChange={event => setNewPlan(value => ({ ...value, notes: event.target.value }))} placeholder="Notas adicionais" />
+                    <Button className="w-full" disabled={!newPlan.name || (!newPlan.projectId && !projectId) || createMutation.isPending} onClick={() => createMutation.mutate({
+                      name: newPlan.name,
+                      planNumber: newPlan.planNumber || undefined,
+                      category: newPlan.category,
+                      periodicity: newPlan.periodicity || undefined,
+                      notes: newPlan.notes || undefined,
+                      projectId: Number(newPlan.projectId || projectId),
+                    })}>{createMutation.isPending ? "A criar..." : "Criar plano"}</Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
-        )}
+        </div>
+
+        <PlanCalendar plans={plans as any[]} />
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Planos acompanhados" value={stats.total} icon={<FileText className="h-5 w-5" />} />
+          <StatCard label="Em atraso" value={stats.overdue} icon={<AlertTriangle className="h-5 w-5" />} tone="red" />
+          <StatCard label="Próximos 30 dias" value={stats.next30} icon={<CalendarDays className="h-5 w-5" />} tone="amber" />
+          <StatCard label="Com update" value={stats.updated} icon={<CheckCircle2 className="h-5 w-5" />} tone="green" />
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><h2 className="text-lg font-bold">Acompanhamento dos planos</h2><p className="text-sm text-muted-foreground">Ordenado pela próxima entrega. Cada update mantém autor e data.</p></div><Badge variant="outline">{filteredPlans.length} de {sortedPlans.length} registos</Badge></div>
+          <Card className="border-slate-200 bg-slate-50/60"><CardContent className="grid gap-3 p-3 sm:grid-cols-[1fr_220px]">
+            <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="bg-white pl-9" placeholder="Pesquisar por número, plano, responsável ou update..." /></div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os estados</SelectItem>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
+          </CardContent></Card>
+          {filteredPlans.length === 0 ? (
+            <Card><CardContent className="p-10 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground" /><p className="mt-3 font-medium">Ainda não existem planos para este contexto.</p></CardContent></Card>
+          ) : groupedPlans.map(group => (
+            <section key={group.code} className="space-y-3">
+              {isAllProjects && <div className="sticky top-0 z-10 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur"><Badge className="bg-[#006341]">{group.code}</Badge><div><h3 className="font-semibold">{group.name || "Projecto"}</h3><p className="text-xs text-muted-foreground">{group.plans.length} planos acompanhados</p></div></div>}
+              {group.plans.map((plan: any) => <PlanCard key={`${plan.trackingProjectId || projectId}-${plan.id}`} plan={plan} fallbackProjectId={projectId} user={user} />)}
+            </section>
+          ))}
+        </div>
       </div>
-    </div>
-  </AppLayout>);
+    </AppLayout>
+  );
 }
 
-function PlanRow({ plan, isAdminOrDono, editingPlan, setEditingPlan, updateMutation, submitDocMutation, confirmDeliveryMutation, formatDate, timeLabel, now }: any) {
-  const { t } = useLanguage();
-  const [lastDate, setLastDate] = useState("");
-  const [nextDate, setNextDate] = useState("");
-  const [showConfirm, setShowConfirm] = useState(false);
-  const isEditing = editingPlan === plan.id;
-  const hasDate = plan.nextReportingDate && plan.nextReportingDate > 0;
-  const isOverdue = hasDate && plan.nextReportingDate < now;
-  const isUpcoming = hasDate && plan.nextReportingDate > now && plan.nextReportingDate - now < 90 * 86400000;
-  const statusColor = isOverdue ? "border-l-red-500" : !hasDate ? "border-l-amber-400" : isUpcoming ? "border-l-amber-500" : "border-l-green-500";
+function StatCard({ label, value, icon, tone = "default" }: { label: string; value: number; icon: React.ReactNode; tone?: "default" | "red" | "amber" | "green" }) {
+  const toneClass = tone === "red" ? "text-red-600 bg-red-50" : tone === "amber" ? "text-amber-600 bg-amber-50" : tone === "green" ? "text-emerald-600 bg-emerald-50" : "text-[#006341] bg-emerald-50";
+  return <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-xl p-2.5 ${toneClass}`}>{icon}</div><div><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div></CardContent></Card>;
+}
+
+function PlanCard({ plan, fallbackProjectId, user }: { plan: any; fallbackProjectId?: number; user: any }) {
+  const utils = trpc.useUtils();
+  const projectId = plan.trackingProjectId || fallbackProjectId || plan.projectId;
+  const [expanded, setExpanded] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [status, setStatus] = useState(plan.status || "nao_iniciado");
+  const [updateText, setUpdateText] = useState("");
+  const [ownerId, setOwnerId] = useState(plan.ownerId ? String(plan.ownerId) : "none");
+  const [nextDate, setNextDate] = useState(dateInputValue(plan.nextReportingDate));
+  const [lastDate, setLastDate] = useState(dateInputValue(plan.lastReportingDate));
+  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
+  const canUpdate = isAdminOrDono || user?.role === "raa" || plan.ownerId === user?.id;
+  const isOverdue = plan.nextReportingDate && plan.nextReportingDate < Date.now();
+
+  const { data: candidates = [] } = trpc.monitoringPlans.responsibleCandidates.useQuery({ projectId }, { enabled: Boolean(projectId && expanded && isAdminOrDono) });
+  const { data: history } = trpc.monitoringPlans.history.useQuery({ planId: plan.id, projectId }, { enabled: Boolean(projectId && showHistory) });
+  const refresh = async () => {
+    await Promise.all([utils.monitoringPlans.list.invalidate(), utils.calendarEvents.list.invalidate()]);
+  };
+  const configureMutation = trpc.monitoringPlans.configure.useMutation({ onSuccess: async () => { await refresh(); toast.success("Responsável e prazos actualizados"); }, onError: error => toast.error(error.message) });
+  const updateMutation = trpc.monitoringPlans.addUpdate.useMutation({ onSuccess: async () => { await refresh(); setUpdateText(""); toast.success("Status update registado"); }, onError: error => toast.error(error.message) });
+  const uploadMutation = trpc.monitoringPlans.uploadAttachment.useMutation({ onSuccess: async () => { await refresh(); toast.success("Anexo guardado com segurança"); }, onError: error => toast.error(error.message) });
+  const confirmMutation = trpc.monitoringPlans.confirmDelivery.useMutation({ onSuccess: async () => { await refresh(); toast.success("Entrega confirmada e próximo prazo actualizado"); }, onError: error => toast.error(error.message) });
+
+  async function uploadFile(file?: globalThis.File) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return toast.error("O ficheiro excede o limite de 10MB.");
+    const fileBase64 = await fileToBase64(file);
+    uploadMutation.mutate({ planId: plan.id, projectId, filename: file.name, mimeType: file.type || "application/octet-stream", fileBase64 });
+  }
 
   return (
-    <div className={`border rounded-lg p-3 border-l-4 ${statusColor} bg-background`}>
-      <div className="flex items-center gap-3">
-        {/* Status icon */}
-        <div className="shrink-0">
-          {isOverdue ? (
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          ) : !hasDate ? (
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          ) : isUpcoming ? (
-            <Clock className="w-4 h-4 text-amber-500" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-          )}
+    <Card className={`overflow-hidden border-l-4 ${isOverdue ? "border-l-red-500" : plan.status === "concluido" ? "border-l-emerald-500" : "border-l-[#006341]"}`}>
+      <CardContent className="p-0">
+        <div className="p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+            <div className="flex min-w-0 flex-1 gap-3">
+              <Badge className="h-fit shrink-0 bg-[#006341]">{plan.planNumber || `P-${String(plan.id).padStart(2, "0")}`}</Badge>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold leading-tight">{plan.name}</h3>{plan.trackingProjectCode && <Badge variant="outline">{plan.trackingProjectCode}</Badge>}<Badge variant="outline" className={STATUS_STYLES[plan.status]}>{STATUS_LABELS[plan.status] || plan.status}</Badge></div>
+                <p className="mt-1 text-xs text-muted-foreground">{plan.category === "programa_monitorizacao" ? "Programa de Monitorização" : "Plano/Projecto"}{plan.periodicity ? ` · ${plan.periodicity}` : ""}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:min-w-[470px]">
+              <InfoBlock icon={<UserRound className="h-4 w-4" />} label="Responsável" value={plan.ownerName || "Por definir"} />
+              <InfoBlock icon={<CalendarDays className="h-4 w-4" />} label="Próxima entrega" value={formatDate(plan.nextReportingDate)} alert={Boolean(isOverdue)} />
+              <InfoBlock icon={<Paperclip className="h-4 w-4" />} label="Anexos" value={String(plan.attachmentCount || 0)} />
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-xl border bg-slate-50 p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Último status update</p>
+                <p className="mt-1 text-sm leading-relaxed">{plan.latestUpdate?.updateText || "Ainda não foi registada uma actualização para este plano."}</p>
+                {plan.latestUpdate && <p className="mt-1 text-xs text-muted-foreground">{plan.latestUpdate.createdByName} · {formatDateTime(plan.latestUpdate.createdAt)}</p>}
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowHistory(true)}><Eye className="mr-1.5 h-3.5 w-3.5" />Histórico</Button>
+                {(canUpdate || isAdminOrDono) && <Button size="sm" onClick={() => setExpanded(value => !value)}>{expanded ? <ChevronDown className="mr-1.5 h-3.5 w-3.5 rotate-180" /> : <Pencil className="mr-1.5 h-3.5 w-3.5" />}{expanded ? "Fechar" : "Actualizar"}</Button>}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Name and periodicity */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{plan.name}</p>
-          {plan.notes && <p className="text-xs text-muted-foreground truncate">{plan.notes}</p>}
-        </div>
+        {expanded && (
+          <div className="border-t bg-white p-4">
+            <div className="grid gap-5 lg:grid-cols-2">
+              {isAdminOrDono && (
+                <div className="space-y-3 rounded-xl border p-4">
+                  <div><h4 className="font-semibold">Responsável e calendário</h4><p className="text-xs text-muted-foreground">As alterações são sincronizadas com o calendário global.</p></div>
+                  <Select value={ownerId} onValueChange={setOwnerId}><SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger><SelectContent><SelectItem value="none">Sem responsável</SelectItem>{candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}</SelectContent></Select>
+                  <div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-medium">Última entrega</label><Input type="date" value={lastDate} onChange={event => setLastDate(event.target.value)} /></div><div><label className="text-xs font-medium">Próxima entrega</label><Input type="date" value={nextDate} onChange={event => setNextDate(event.target.value)} /></div></div>
+                  <Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ planId: plan.id, projectId, ownerId: ownerId === "none" ? null : Number(ownerId), lastReportingDate: toTimestamp(lastDate), nextReportingDate: toTimestamp(nextDate) })}><Save className="mr-2 h-4 w-4" />Guardar responsável e datas</Button>
+                </div>
+              )}
 
-        {/* Periodicity badge */}
-        {plan.periodicity && (
-          <Badge variant="outline" className="text-xs shrink-0 hidden sm:inline-flex">{plan.periodicity}</Badge>
-        )}
+              {canUpdate && (
+                <div className="space-y-3 rounded-xl border p-4">
+                  <div><h4 className="font-semibold">Novo status update</h4><p className="text-xs text-muted-foreground">O texto, autor e data ficam guardados no histórico.</p></div>
+                  <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
+                  <Textarea value={updateText} onChange={event => setUpdateText(event.target.value)} placeholder="Descreva o progresso, constrangimentos e próximos passos..." rows={5} />
+                  <Button className="w-full" disabled={updateText.trim().length < 3 || updateMutation.isPending} onClick={() => updateMutation.mutate({ planId: plan.id, projectId, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button>
+                </div>
+              )}
+            </div>
 
-        {/* Dates */}
-        <div className="text-right shrink-0 hidden md:block">
-          <p className="text-xs text-muted-foreground">Último: {formatDate(plan.lastReportingDate)}</p>
-          <p className="text-xs font-medium">
-            Próximo: {formatDate(plan.nextReportingDate)}
-            {plan.nextReportingDate && (
-              <span className={`ml-1 ${isOverdue ? "text-red-600" : isUpcoming ? "text-amber-600" : "text-green-600"}`}>
-                ({timeLabel(plan.nextReportingDate)})
-              </span>
+            {canUpdate && (
+              <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="text-sm font-semibold">Fotografias e anexos</p><p className="text-xs text-muted-foreground">PDF, Word, Excel ou imagens até 10MB. Todos os ficheiros são analisados antes de serem guardados.</p></div>
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium text-[#006341] shadow-sm ring-1 ring-emerald-200 hover:bg-emerald-50">
+                  <Upload className="mr-2 h-4 w-4" />{uploadMutation.isPending ? "A enviar..." : "Adicionar ficheiro"}
+                  <input type="file" className="sr-only" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt" disabled={uploadMutation.isPending} onChange={event => uploadFile(event.target.files?.[0])} />
+                </label>
+              </div>
             )}
-          </p>
-        </div>
 
-        {/* Actions */}
-        {isAdminOrDono && (
-          <div className="flex gap-1 shrink-0">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingPlan(isEditing ? null : plan.id)}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
+            {plan.submissionStatus === "submitted" && canUpdate && <Button className="mt-4" variant="outline" onClick={() => confirmMutation.mutate({ planId: plan.id, projectId })} disabled={confirmMutation.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar entrega à entidade competente</Button>}
           </div>
         )}
-      </div>
+      </CardContent>
 
-      {/* Submission status banner */}
-      {plan.submissionStatus === "submitted" && (
-        <div className="mt-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileUp className="w-4 h-4 text-amber-600" />
-            <div>
-              <p className="text-xs font-medium text-amber-800">{t("Submetido na plataforma")}</p>
-              <p className="text-[10px] text-amber-600">{t("Falta confirmar envio à entidade competente")}</p>
-            </div>
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader><DialogTitle>{plan.planNumber} — Histórico e evidências</DialogTitle></DialogHeader>
+          <div className="space-y-5">
+            <div><h4 className="mb-2 text-sm font-semibold">Actualizações</h4>{history?.updates?.length ? <div className="space-y-2">{history.updates.map((update: any) => <div key={update.id} className="rounded-xl border p-3"><div className="flex items-center justify-between gap-2"><Badge variant="outline" className={STATUS_STYLES[update.status]}>{STATUS_LABELS[update.status]}</Badge><span className="text-xs text-muted-foreground">{formatDateTime(update.createdAt)}</span></div><p className="mt-2 text-sm">{update.updateText}</p><p className="mt-1 text-xs text-muted-foreground">Por {update.createdByName}</p></div>)}</div> : <p className="text-sm text-muted-foreground">Sem actualizações registadas.</p>}</div>
+            <div><h4 className="mb-2 text-sm font-semibold">Fotografias e anexos</h4>{history?.attachments?.length ? <div className="grid gap-2 sm:grid-cols-2">{history.attachments.map((attachment: any) => <button key={attachment.id} type="button" onClick={() => window.open(attachment.url, "_blank", "noopener,noreferrer")} className="flex items-center gap-3 rounded-xl border p-3 text-left hover:border-emerald-300 hover:bg-emerald-50/40">{attachment.type === "photo" ? <Image className="h-5 w-5 text-emerald-600" /> : <File className="h-5 w-5 text-slate-600" />}<div className="min-w-0"><p className="truncate text-sm font-medium">{attachment.filename}</p><p className="text-xs text-muted-foreground">{attachment.uploadedByName} · {formatDateTime(attachment.uploadedAt)}</p></div></button>)}</div> : <p className="text-sm text-muted-foreground">Sem anexos.</p>}</div>
           </div>
-          {isAdminOrDono && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-100"
-              onClick={() => setShowConfirm(true)}
-            >
-              <CheckCheck className="w-3 h-3 mr-1" /> Confirmar Entrega
-            </Button>
-          )}
-        </div>
-      )}
-      {plan.submissionStatus === "delivered" && (
-        <div className="mt-2 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-green-600" />
-          <div>
-            <p className="text-xs font-medium text-green-800">{t("Entregue à entidade competente")}</p>
-            <p className="text-[10px] text-green-600">
-              Confirmado em {plan.confirmedDeliveryAt ? new Date(plan.confirmedDeliveryAt).toLocaleDateString("pt-PT") : "—"}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm delivery dialog */}
-      {showConfirm && (
-        <div className="mt-2 p-3 rounded-lg bg-background border-2 border-primary shadow-lg space-y-2">
-          <p className="text-sm font-medium">{t("Confirma que o plano foi entregue à entidade competente?")}</p>
-          <p className="text-xs text-muted-foreground">Ao confirmar, a próxima data de entrega será atualizada automaticamente com base na periodicidade ({plan.periodicity || "anual"}).</p>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => {
-              confirmDeliveryMutation.mutate({ id: plan.id });
-              setShowConfirm(false);
-            }} disabled={confirmDeliveryMutation.isPending}>
-              {confirmDeliveryMutation.isPending ? "A confirmar..." : "Sim, foi entregue"}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowConfirm(false)}>{t("Cancelar")}</Button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile dates */}
-      <div className="flex gap-4 mt-2 text-xs text-muted-foreground md:hidden">
-        <span>Último: {formatDate(plan.lastReportingDate)}</span>
-        <span>{t("Próximo")}: {formatDate(plan.nextReportingDate)}</span>
-      </div>
-
-      {/* Edit form */}
-      {isEditing && (
-        <div className="mt-3 pt-3 border-t space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs text-muted-foreground">{t("Último Reporting")}</label>
-              <Input type="date" value={lastDate} onChange={e => setLastDate(e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">{t("Próximo Reporting")}</label>
-              <Input type="date" value={nextDate} onChange={e => setNextDate(e.target.value)} className="h-8 text-sm" />
-            </div>
-          </div>
-          <Button size="sm" onClick={() => {
-            const data: any = { id: plan.id };
-            if (lastDate) data.lastReportingDate = new Date(lastDate).getTime();
-            if (nextDate) data.nextReportingDate = new Date(nextDate).getTime();
-            updateMutation.mutate(data);
-          }} disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? "A guardar..." : "Guardar Datas"}
-          </Button>
-          {/* Submit document button */}
-          {plan.submissionStatus === "pending" && (
-            <div className="mt-2 pt-2 border-t">
-              <p className="text-xs text-muted-foreground mb-1">{t("Submeter documento do plano:")}</p>
-              <input
-                type="file"
-                className="text-xs"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  // Read file as base64 and upload via tRPC
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const base64 = (reader.result as string).split(",")[1];
-                    // Use the generic plan upload mutation
-                    fetch("/api/trpc/monitoringPlans.submitDocument", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ json: { id: plan.id, fileUrl: `plan-doc-${plan.id}-${file.name}`, fileKey: `plans/${plan.id}/${Date.now()}-${file.name}` } }),
-                    }).then(() => {
-                      submitDocMutation.mutate({ id: plan.id, fileUrl: file.name, fileKey: `plans/${plan.id}/${file.name}` });
-                    }).catch(() => {
-                      // Fallback: just mark as submitted without actual file storage
-                      submitDocMutation.mutate({ id: plan.id, fileUrl: file.name, fileKey: `plans/${plan.id}/${file.name}` });
-                    });
-                  };
-                  reader.readAsDataURL(file);
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
+}
+
+function InfoBlock({ icon, label, value, alert = false }: { icon: React.ReactNode; label: string; value: string; alert?: boolean }) {
+  return <div className={`rounded-xl border px-3 py-2 ${alert ? "border-red-200 bg-red-50" : "bg-slate-50"}`}><div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide ${alert ? "text-red-600" : "text-muted-foreground"}`}>{icon}{label}</div><p className={`mt-1 truncate text-xs font-semibold ${alert ? "text-red-700" : ""}`}>{value}</p></div>;
 }

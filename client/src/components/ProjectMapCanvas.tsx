@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
-import { Camera, Check, Eye, EyeOff, Layers3, LockKeyhole, Minus, Plus, RotateCcw, Satellite, ShieldCheck } from "lucide-react";
+import { Camera, Check, Eye, EyeOff, Frame, Images, Layers3, LockKeyhole, Minus, Plus, RotateCcw, Satellite, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   assessProjectionConfidence,
@@ -40,7 +40,7 @@ type Survey = {
   resultType?: "photo_layers" | "orthomosaic";
 };
 
-export function ProjectMapCanvas({ photos, setting, survey }: { photos: MapPhoto[]; setting?: MapSetting | null; survey?: Survey | null }) {
+export function ProjectMapCanvas({ photos, setting, survey, comparisonSurvey }: { photos: MapPhoto[]; setting?: MapSetting | null; survey?: Survey | null; comparisonSurvey?: Survey | null }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
   const [scale, setScale] = useState(1);
@@ -48,12 +48,15 @@ export function ProjectMapCanvas({ photos, setting, survey }: { photos: MapPhoto
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showLayers, setShowLayers] = useState(false);
   const [showBase, setShowBase] = useState(true);
+  const [showBounds, setShowBounds] = useState(true);
+  const [showOrthomosaic, setShowOrthomosaic] = useState(true);
   const [showFootprints, setShowFootprints] = useState(true);
   const [opacity, setOpacity] = useState(72);
 
   const mapped = useMemo(() => {
     const baseBounds = parseGeoBounds(setting?.boundsJson);
     const orthomosaicBounds = parseGeoBounds(survey?.orthomosaicBoundsJson);
+    const comparisonBounds = parseGeoBounds(comparisonSurvey?.orthomosaicBoundsJson);
     const geolocated = photos.flatMap(photo => {
       const latitude = finiteNumber(photo.latitude);
       const longitude = finiteNumber(photo.longitude);
@@ -64,12 +67,13 @@ export function ProjectMapCanvas({ photos, setting, survey }: { photos: MapPhoto
     });
     const photoBounds = boundsFromPoints(geolocated.map(item => ({ latitude: item.latitude, longitude: item.longitude })), 200);
     const bounds: GeoBounds = photoBounds ?? orthomosaicBounds ?? baseBounds ?? { west: -8.88, south: 37.92, east: -8.86, north: 37.94 };
-    return { baseBounds, orthomosaicBounds, geolocated, bounds, size: viewportSizeMetres(bounds) };
-  }, [photos, setting, survey]);
+    return { baseBounds, orthomosaicBounds, comparisonBounds, geolocated, bounds, size: viewportSizeMetres(bounds) };
+  }, [photos, setting, survey, comparisonSurvey]);
 
   const selected = mapped.geolocated.find(item => item.photo.id === selectedId) ?? mapped.geolocated[0];
   const baseFrame = mapped.baseBounds ? boundsToPercent(mapped.baseBounds, mapped.bounds) : null;
   const orthomosaicFrame = mapped.orthomosaicBounds ? boundsToPercent(mapped.orthomosaicBounds, mapped.bounds) : null;
+  const comparisonFrame = mapped.comparisonBounds ? boundsToPercent(mapped.comparisonBounds, mapped.bounds) : null;
   const reset = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
   const zoom = (factor: number) => setScale(current => Math.max(1, Math.min(8, current * factor)));
   const onWheel = (event: WheelEvent<HTMLDivElement>) => { event.preventDefault(); zoom(event.deltaY < 0 ? 1.16 : 0.86); };
@@ -101,9 +105,13 @@ export function ProjectMapCanvas({ photos, setting, survey }: { photos: MapPhoto
           {showBase && setting?.baseMapUrl && baseFrame && (
             <img src={setting.baseMapUrl} alt="Mapa base privado do projecto" draggable={false} className="pointer-events-none absolute max-w-none object-fill" style={{ left: `${baseFrame.left}%`, top: `${baseFrame.top}%`, width: `${baseFrame.width}%`, height: `${baseFrame.height}%` }} />
           )}
-          {survey?.resultType === "orthomosaic" && survey.orthomosaicUrl && orthomosaicFrame && (
+          {showOrthomosaic && comparisonSurvey?.resultType === "orthomosaic" && comparisonSurvey.orthomosaicUrl && comparisonFrame && (
+            <img src={comparisonSurvey.orthomosaicUrl} alt="Ortomosaico anterior para comparação" draggable={false} className="pointer-events-none absolute max-w-none object-fill" style={{ left: `${comparisonFrame.left}%`, top: `${comparisonFrame.top}%`, width: `${comparisonFrame.width}%`, height: `${comparisonFrame.height}%` }} />
+          )}
+          {showOrthomosaic && survey?.resultType === "orthomosaic" && survey.orthomosaicUrl && orthomosaicFrame && (
             <img src={survey.orthomosaicUrl} alt="Ortomosaico do levantamento" draggable={false} className="pointer-events-none absolute max-w-none object-fill" style={{ left: `${orthomosaicFrame.left}%`, top: `${orthomosaicFrame.top}%`, width: `${orthomosaicFrame.width}%`, height: `${orthomosaicFrame.height}%`, opacity: opacity / 100 }} />
           )}
+          {showBounds && baseFrame && <div className="pointer-events-none absolute z-10 border-2 border-dashed border-lime-300/90 shadow-[0_0_0_1px_rgba(16,32,25,.45)]" style={{ left: `${baseFrame.left}%`, top: `${baseFrame.top}%`, width: `${baseFrame.width}%`, height: `${baseFrame.height}%` }} />}
           {showFootprints && mapped.geolocated.map((item, index) => {
             const position = geoToPercent({ latitude: item.latitude, longitude: item.longitude }, mapped.bounds);
             const footprint = metreSizeToPercent(item.size.widthM, item.size.heightM, item.latitude, mapped.bounds);
@@ -139,6 +147,8 @@ export function ProjectMapCanvas({ photos, setting, survey }: { photos: MapPhoto
           <div className="absolute bottom-16 left-4 z-50 w-64 rounded-2xl border border-white/10 bg-[#102019]/95 p-4 text-white shadow-2xl backdrop-blur" onPointerDown={event => event.stopPropagation()}>
             <div className="flex items-center justify-between"><p className="text-sm font-semibold">Vista do mapa</p><button className="text-xs text-white/50" onClick={() => setShowLayers(false)}>Fechar</button></div>
             <button className="mt-3 flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-white/5" onClick={() => setShowBase(value => !value)}>{showBase ? <Eye className="size-4 text-lime-300" /> : <EyeOff className="size-4 text-white/30" />}<Satellite className="size-4" /><span className="text-xs">Mapa base privado</span></button>
+            <button className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-white/5" onClick={() => setShowBounds(value => !value)}>{showBounds ? <Eye className="size-4 text-lime-300" /> : <EyeOff className="size-4 text-white/30" />}<Frame className="size-4" /><span className="text-xs">Limites do projecto</span></button>
+            <button className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-white/5" onClick={() => setShowOrthomosaic(value => !value)}>{showOrthomosaic ? <Eye className="size-4 text-lime-300" /> : <EyeOff className="size-4 text-white/30" />}<Images className="size-4" /><span className="text-xs">Ortomosaico / comparação</span></button>
             <button className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-white/5" onClick={() => setShowFootprints(value => !value)}>{showFootprints ? <Eye className="size-4 text-lime-300" /> : <EyeOff className="size-4 text-white/30" />}<Camera className="size-4" /><span className="text-xs">Fotografias / footprints</span></button>
             <label className="mt-3 block text-[11px] text-white/65">Intensidade das camadas <span className="float-right">{opacity}%</span><input type="range" min="25" max="100" value={opacity} onChange={event => setOpacity(Number(event.target.value))} className="mt-2 w-full accent-lime-300" /></label>
           </div>

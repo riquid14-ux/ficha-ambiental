@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cpu, ExternalLink, FileCheck2, FileImage, Layers3, LockKeyhole, MapPinned, Plus, ShieldCheck, TriangleAlert, Upload, XCircle } from "lucide-react";
+import { Camera, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cpu, ExternalLink, FileCheck2, FileImage, GitCompareArrows, Layers3, LockKeyhole, MapPinned, Plus, ShieldCheck, TriangleAlert, Upload, XCircle } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { ProjectMapCanvas } from "@/components/ProjectMapCanvas";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ export default function ProjectMap() {
   const [surveyDate, setSurveyDate] = useState(new Date().toISOString().slice(0, 10));
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
+  const [compareWithPrevious, setCompareWithPrevious] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [baseMapForm, setBaseMapForm] = useState({ west: "", south: "", east: "", north: "" });
 
@@ -170,6 +171,10 @@ export default function ProjectMap() {
   if (isAllProjects || !activeProject) return <AppLayout><div className="p-8 text-center text-muted-foreground">Seleccione um projecto individual para abrir o Mapa.</div></AppLayout>;
 
   const surveys = listQuery.data?.surveys ?? [];
+  const chronologicalSurveys = [...surveys].sort((a, b) => Number(a.capturedAt ?? 0) - Number(b.capturedAt ?? 0));
+  const selectedTimelineIndex = chronologicalSurveys.findIndex(item => item.id === selectedSurveyId);
+  const previousSurveyId = selectedTimelineIndex > 0 ? chronologicalSurveys[selectedTimelineIndex - 1]?.id : null;
+  const comparisonQuery = trpc.projectMap.survey.useQuery({ id: previousSurveyId ?? 0 }, { enabled: canView && compareWithPrevious && !!previousSurveyId });
   const selectedData = surveyQuery.data;
   const photos = selectedData?.photos ?? [];
   const locatedPhotos = photos.filter(photo => Number.isFinite(Number(photo.latitude)) && Number.isFinite(Number(photo.longitude)));
@@ -200,9 +205,9 @@ export default function ProjectMap() {
 
         {surveys.length > 0 && <Card>
           <CardContent className="p-4">
-            <div className="mb-3 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Clock3 className="size-4 text-emerald-700" /><div><p className="text-sm font-semibold">Evolução da obra</p><p className="text-[11px] text-muted-foreground">Seleccione uma data para manter o mesmo enquadramento e comparar os levantamentos.</p></div></div><Badge variant="outline">{surveys.length} datas</Badge></div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2"><Clock3 className="size-4 text-emerald-700" /><div><p className="text-sm font-semibold">Evolução da obra</p><p className="text-[11px] text-muted-foreground">Seleccione uma data para manter o mesmo enquadramento e comparar os levantamentos.</p></div></div><div className="flex items-center gap-2">{previousSurveyId && <Button size="sm" variant={compareWithPrevious ? "default" : "outline"} onClick={() => setCompareWithPrevious(value => !value)}><GitCompareArrows className="mr-1.5 size-3.5" />{compareWithPrevious ? "Comparação activa" : "Comparar com anterior"}</Button>}<Badge variant="outline">{surveys.length} datas</Badge></div></div>
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {[...surveys].sort((a, b) => Number(a.capturedAt ?? 0) - Number(b.capturedAt ?? 0)).map(survey => <button key={survey.id} type="button" onClick={() => setSelectedSurveyId(survey.id)} className={`min-w-36 rounded-xl border px-3 py-2 text-left transition-colors ${selectedSurveyId === survey.id ? "border-emerald-500 bg-emerald-50" : "bg-background hover:bg-muted/50"}`}><p className="text-xs font-medium">{survey.capturedAt ? new Date(survey.capturedAt).toLocaleDateString("pt-PT") : "Sem data"}</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{survey.name}</p><p className="mt-1 text-[10px] font-medium text-emerald-800">{survey.job ? JOB_LABELS[survey.job.status] : "Fotografias individuais"}</p></button>)}
+              {chronologicalSurveys.map(survey => <button key={survey.id} type="button" onClick={() => { setSelectedSurveyId(survey.id); setCompareWithPrevious(false); }} className={`min-w-36 rounded-xl border px-3 py-2 text-left transition-colors ${selectedSurveyId === survey.id ? "border-emerald-500 bg-emerald-50" : "bg-background hover:bg-muted/50"}`}><p className="text-xs font-medium">{survey.capturedAt ? new Date(survey.capturedAt).toLocaleDateString("pt-PT") : "Sem data"}</p><p className="mt-1 truncate text-[10px] text-muted-foreground">{survey.name}</p><p className="mt-1 text-[10px] font-medium text-emerald-800">{survey.job ? JOB_LABELS[survey.job.status] : "Fotografias individuais"}</p></button>)}
             </div>
           </CardContent>
         </Card>}
@@ -266,7 +271,7 @@ export default function ProjectMap() {
               </div>
             </div>}
           </aside>
-          <ProjectMapCanvas photos={photos} setting={selectedData?.setting ?? listQuery.data?.setting} survey={selectedData?.survey} />
+          <ProjectMapCanvas photos={photos} setting={selectedData?.setting ?? listQuery.data?.setting} survey={selectedData?.survey} comparisonSurvey={compareWithPrevious ? comparisonQuery.data?.survey : null} />
         </div>
       </div>
 

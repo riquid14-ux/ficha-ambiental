@@ -11,6 +11,7 @@ const migrationSource = readFileSync(resolve(root, "drizzle/0029_adorable_chat.s
 const readyMigrationSource = readFileSync(resolve(root, "drizzle/0030_crazy_morph.sql"), "utf8");
 const routerSource = readFileSync(resolve(root, "server/routers.ts"), "utf8");
 const pageSource = readFileSync(resolve(root, "client/src/pages/ProjectMap.tsx"), "utf8");
+const canvasSource = readFileSync(resolve(root, "client/src/components/ProjectMapCanvas.tsx"), "utf8");
 const workerSource = readFileSync(resolve(root, "server/photogrammetry.ts"), "utf8");
 
 function photo(id: number, options: { gps?: boolean; pitch?: number; yaw?: number } = {}): MapPhoto {
@@ -96,5 +97,12 @@ describe("Fotogrametria DJI — validação e isolamento", () => {
     expect(pageSource).toContain("Evolução da obra");
     expect(pageSource).toContain("manter o mesmo enquadramento");
     expect(pageSource).toContain("capturedAt");
+    expect(pageSource).toContain("Comparar com anterior");
+    expect(pageSource).toContain("comparisonSurvey");
+    expect(canvasSource).toContain("Limites do projecto");
+    expect(canvasSource).toContain("Ortomosaico / comparação");
+    expect(canvasSource).toContain("comparisonSurvey?.resultType");
+    expect(canvasSource).toContain("comparisonSurvey.orthomosaicUrl");
+    expect(canvasSource).not.toMatch(/google\.maps|openstreetmap|tile\.openstreetmap/i);
   });
 });

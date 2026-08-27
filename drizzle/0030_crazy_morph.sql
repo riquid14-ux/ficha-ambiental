@@ -1,0 +1,1 @@
+ALTER TABLE `photogrammetry_jobs` MODIFY COLUMN `status` enum('validating','ready','queued','processing','completed','rejected','failed','cancelled') NOT NULL DEFAULT 'validating';

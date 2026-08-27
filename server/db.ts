@@ -43,6 +43,7 @@ import {
   projectMapSettings,
   mapSurveys,
   mapPhotos,
+  photogrammetryJobs,
   InsertPartnerAccessProfile,
   InsertWasteSubproject,
 } from "../drizzle/schema";
@@ -1724,6 +1725,61 @@ export async function deleteMapPhoto(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(mapPhotos).where(eq(mapPhotos.id, id));
+}
+
+export async function getPhotogrammetryJobBySurvey(surveyId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(photogrammetryJobs)
+    .where(eq(photogrammetryJobs.surveyId, surveyId)).limit(1);
+  return result[0];
+}
+
+export async function getPhotogrammetryJobById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(photogrammetryJobs)
+    .where(eq(photogrammetryJobs.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getPhotogrammetryJobs(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(photogrammetryJobs)
+    .where(eq(photogrammetryJobs.projectId, projectId))
+    .orderBy(desc(photogrammetryJobs.createdAt));
+}
+
+export async function createPhotogrammetryJob(data: typeof photogrammetryJobs.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(photogrammetryJobs).values(data).onDuplicateKeyUpdate({
+    set: {
+      status: data.status ?? "validating",
+      progress: data.progress ?? 0,
+      imageCount: data.imageCount ?? 0,
+      geolocatedCount: data.geolocatedCount ?? 0,
+      nadirCount: data.nadirCount ?? 0,
+      obliqueCount: data.obliqueCount ?? 0,
+      missingMetadataCount: data.missingMetadataCount ?? 0,
+      validationJson: data.validationJson ?? null,
+      metricsJson: data.metricsJson ?? null,
+      optionsJson: data.optionsJson ?? null,
+      errorMessage: data.errorMessage ?? null,
+      requestedBy: data.requestedBy,
+      workerTaskUuid: null,
+      startedAt: null,
+      finishedAt: null,
+    },
+  });
+  return getPhotogrammetryJobBySurvey(data.surveyId);
+}
+
+export async function updatePhotogrammetryJob(id: number, data: Partial<typeof photogrammetryJobs.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(photogrammetryJobs).set(data).where(eq(photogrammetryJobs.id, id));
 }
 
 // ─── Company Active Periods ─────────────────────────────────────────────────

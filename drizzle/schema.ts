@@ -787,9 +787,48 @@ export const mapPhotos = mysqlTable("map_photos", {
   projectIdx: index("map_photos_project_idx").on(table.projectId),
 }));
 
+export const photogrammetryJobs = mysqlTable("photogrammetry_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  projectId: int("projectId").notNull(),
+  status: mysqlEnum("status", ["validating", "ready", "queued", "processing", "completed", "rejected", "failed", "cancelled"]).default("validating").notNull(),
+  workerTaskUuid: varchar("workerTaskUuid", { length: 100 }),
+  progress: int("progress").default(0).notNull(),
+  imageCount: int("imageCount").default(0).notNull(),
+  geolocatedCount: int("geolocatedCount").default(0).notNull(),
+  nadirCount: int("nadirCount").default(0).notNull(),
+  obliqueCount: int("obliqueCount").default(0).notNull(),
+  missingMetadataCount: int("missingMetadataCount").default(0).notNull(),
+  validationJson: text("validationJson"),
+  metricsJson: text("metricsJson"),
+  optionsJson: text("optionsJson"),
+  orthophotoFileKey: varchar("orthophotoFileKey", { length: 500 }),
+  orthophotoUrl: text("orthophotoUrl"),
+  tilesBaseKey: varchar("tilesBaseKey", { length: 500 }),
+  tilesUrlTemplate: text("tilesUrlTemplate"),
+  dsmFileKey: varchar("dsmFileKey", { length: 500 }),
+  dsmUrl: text("dsmUrl"),
+  reportFileKey: varchar("reportFileKey", { length: 500 }),
+  reportUrl: text("reportUrl"),
+  outputBoundsJson: text("outputBoundsJson"),
+  outputCrs: varchar("outputCrs", { length: 100 }),
+  gsdCm: varchar("gsdCm", { length: 50 }),
+  reprojectionErrorPx: varchar("reprojectionErrorPx", { length: 50 }),
+  errorMessage: text("errorMessage"),
+  requestedBy: int("requestedBy").notNull(),
+  startedAt: timestamp("startedAt"),
+  finishedAt: timestamp("finishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  surveyUnique: uniqueIndex("photogrammetry_jobs_survey_unique").on(table.surveyId),
+  projectStatusIdx: index("photogrammetry_jobs_project_status_idx").on(table.projectId, table.status),
+}));
+
 export type ProjectMapSetting = typeof projectMapSettings.$inferSelect;
 export type MapSurvey = typeof mapSurveys.$inferSelect;
 export type MapPhoto = typeof mapPhotos.$inferSelect;
+export type PhotogrammetryJob = typeof photogrammetryJobs.$inferSelect;
 
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {

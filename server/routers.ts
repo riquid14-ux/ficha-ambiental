@@ -15,6 +15,7 @@ import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 import { sanitizeFile } from "./file-sanitizer";
+import { getPhotogrammetryWorkerStatus, validatePhotogrammetryBatch } from "./photogrammetry";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -3140,11 +3141,14 @@ export const appRouter = router({
           db.getProjectMapSetting(input.projectId),
           db.getMapSurveys(input.projectId),
         ]);
-        const items = await Promise.all(surveys.map(async survey => ({
-          ...survey,
-          photoCount: (await db.getMapPhotos(survey.id)).length,
-        })));
-        return { setting: effectiveProjectMapSetting(input.projectId, setting), surveys: items };
+        const items = await Promise.all(surveys.map(async survey => {
+          const [photos, job] = await Promise.all([
+            db.getMapPhotos(survey.id),
+            db.getPhotogrammetryJobBySurvey(survey.id),
+          ]);
+          return { ...survey, photoCount: photos.length, job: job ?? null };
+        }));
+        return { setting: effectiveProjectMapSetting(input.projectId, setting), surveys: items, worker: getPhotogrammetryWorkerStatus() };
       }),
     survey: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
@@ -3153,12 +3157,17 @@ export const appRouter = router({
         const survey = await db.getMapSurveyById(input.id);
         if (!survey) throw new TRPCError({ code: "NOT_FOUND" });
         await assertProjectAccess(ctx.user, survey.projectId);
-        const [photos, setting] = await Promise.all([
+        const [photos, setting, job] = await Promise.all([
           db.getMapPhotos(survey.id),
           db.getProjectMapSetting(survey.projectId),
+          db.getPhotogrammetryJobBySurvey(survey.id),
         ]);
-        return { survey, photos, setting: effectiveProjectMapSetting(survey.projectId, setting) };
+        return { survey, photos, job: job ?? null, setting: effectiveProjectMapSetting(survey.projectId, setting), worker: getPhotogrammetryWorkerStatus() };
       }),
+    workerStatus: protectedProcedure.query(({ ctx }) => {
+      assertMapReadRole(ctx.user.role);
+      return getPhotogrammetryWorkerStatus();
+    }),
     createSurvey: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), capturedAt: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
@@ -3273,6 +3282,72 @@ export const appRouter = router({
         await db.updateMapSurvey(survey.id, { status: "ready" });
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_photo_uploaded", "map_photos", result.id, null, JSON.stringify({ projectId: input.projectId, surveyId: survey.id, filename: input.filename, geolocated: !!latitude && !!longitude }));
         return { ...result, geolocated: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) };
+      }),
+    validateSurvey: protectedProcedure
+      .input(z.object({ surveyId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        const survey = await db.getMapSurveyById(input.surveyId);
+        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
+        await assertProjectAccess(ctx.user, survey.projectId);
+        const photos = await db.getMapPhotos(survey.id);
+        const validation = validatePhotogrammetryBatch(photos);
+        const job = await db.createPhotogrammetryJob({
+          surveyId: survey.id,
+          projectId: survey.projectId,
+          status: validation.accepted ? "ready" : "rejected",
+          progress: 0,
+          imageCount: validation.imageCount,
+          geolocatedCount: validation.geolocatedCount,
+          nadirCount: validation.nadirCount,
+          obliqueCount: validation.obliqueCount,
+          missingMetadataCount: validation.missingMetadataCount,
+          validationJson: JSON.stringify(validation),
+          optionsJson: JSON.stringify({
+            engine: "NodeODM",
+            outputs: ["orthophoto", "dsm", "tiles", "quality_report"],
+            orthophotoResolutionCm: 5,
+            boundaryMode: "project_bounds",
+            useExif: true,
+          }),
+          requestedBy: ctx.user.id,
+          errorMessage: validation.accepted ? null : validation.issues.filter(issue => issue.level === "error").map(issue => issue.message).join(" "),
+        });
+        await db.updateMapSurvey(survey.id, { status: validation.accepted ? "ready" : "failed" });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "photogrammetry_batch_validated", "photogrammetry_jobs", job?.id ?? null, null, JSON.stringify({ surveyId: survey.id, accepted: validation.accepted, imageCount: validation.imageCount }));
+        return { job, validation, worker: getPhotogrammetryWorkerStatus() };
+      }),
+    startProcessing: protectedProcedure
+      .input(z.object({ surveyId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        const survey = await db.getMapSurveyById(input.surveyId);
+        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
+        await assertProjectAccess(ctx.user, survey.projectId);
+        const job = await db.getPhotogrammetryJobBySurvey(survey.id);
+        if (!job || job.status !== "ready") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Valide primeiro o lote DJI e corrija os erros detectados." });
+        }
+        const worker = getPhotogrammetryWorkerStatus();
+        if (!worker.configured || !worker.healthy) {
+          return { started: false, job, worker };
+        }
+        return { started: false, job, worker };
+      }),
+    cancelProcessing: protectedProcedure
+      .input(z.object({ surveyId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        const survey = await db.getMapSurveyById(input.surveyId);
+        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
+        await assertProjectAccess(ctx.user, survey.projectId);
+        const job = await db.getPhotogrammetryJobBySurvey(survey.id);
+        if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job fotogramétrico não encontrado." });
+        if (job.status === "completed") throw new TRPCError({ code: "BAD_REQUEST", message: "Um processamento concluído não pode ser cancelado." });
+        await db.updatePhotogrammetryJob(job.id, { status: "cancelled", finishedAt: new Date() });
+        await db.updateMapSurvey(survey.id, { status: "ready" });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "photogrammetry_job_cancelled", "photogrammetry_jobs", job.id, JSON.stringify({ status: job.status }), JSON.stringify({ status: "cancelled" }));
+        return { success: true };
       }),
     deletePhoto: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))

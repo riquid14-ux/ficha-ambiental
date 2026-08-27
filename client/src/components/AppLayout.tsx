@@ -47,7 +47,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle, Home, Bell } from "lucide-react";
+import { Recycle, Home, Bell, MapPinned } from "lucide-react";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -57,6 +57,7 @@ const projectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
@@ -68,6 +69,7 @@ const operationProjectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: FileBarChart, label: "Certificações", path: "/certificacoes" },
@@ -167,6 +169,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const isMobile = useIsMobile();
 
   const userRole = user?.role || "user";
+  const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
   const canAdmin = userRole === "admin";
   const canAdminOrDO = userRole === "admin" || userRole === "dono_obra";
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
@@ -183,16 +186,23 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       if (["admin", "dono_obra", "pm"].includes(userRole)) return allProjectsMenuItems;
       return []; // EE, RAP, RAA cannot see all-projects view
     }
+    if (userRole === "ee_partner") {
+      const allowedPaths = [
+        partnerAccess?.allowWaste ? "/residuos" : null,
+        partnerAccess?.allowKpi ? "/kpi" : null,
+      ].filter((path): path is string => !!path);
+      return projectMenuItems.filter(item => allowedPaths.includes(item.path));
+    }
     if (isOperationOnly) return operationProjectMenuItems;
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
-      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
-      raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
-      rap: ["/welcome", "/workflow", "/ficha", "/kpi"],
-      observador: ["/welcome", "/dashboard", "/ficha"],
+      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      ee: ["/welcome", "/workflow", "/mapa", "/ficha", "/residuos", "/kpi"],
+      raa: ["/welcome", "/workflow", "/mapa", "/ficha", "/residuos", "/kpi"],
+      rap: ["/welcome", "/workflow", "/mapa", "/ficha", "/kpi"],
+      observador: ["/welcome", "/dashboard", "/mapa", "/ficha"],
       user: ["/welcome", "/ficha"],
     };
     const allowed = allowedPaths[userRole] || allowedPaths.user;
@@ -209,15 +219,20 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // NAV-01 FIX: Route guard — when project mode changes, if current route is not
   // in the new menu, redirect to Dashboard to avoid orphan pages
   useEffect(() => {
-    if (location === "/" || location === "/login" || location === "/perfil" || location === "/welcome" || location === "/admin") return;
+    if (location === "/" || location === "/login" || location === "/perfil" || location === "/admin") return;
     // Don't redirect if menu items haven't loaded yet or are empty
     if (allItems.length === 0) return;
+    if (location === "/welcome" && userRole === "ee_partner") {
+      setLocation(allItems[0].path);
+      return;
+    }
+    if (location === "/welcome") return;
     const validPaths = allItems.map(item => item.path);
     const isCurrentRouteValid = validPaths.some(p => location.startsWith(p));
     if (!isCurrentRouteValid) {
-      setLocation("/welcome");
+      setLocation(userRole === "ee_partner" ? allItems[0].path : "/welcome");
     }
-  }, [isAllProjects, activeProject?.id, isOperationOnly]);
+  }, [isAllProjects, activeProject?.id, isOperationOnly, location, userRole, partnerAccess?.allowKpi, partnerAccess?.allowWaste]);
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -265,7 +280,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   <span className="font-semibold tracking-tight truncate text-sm">
                     Plataforma de Gestão Ambiental
                   </span>
-                  <NotificationBell />
+                  {userRole !== "ee_partner" && <NotificationBell />}
                 </div>
               )}
             </div>
@@ -340,15 +355,25 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setLocation("/perfil")} className="cursor-pointer">
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  <span>{t("Perfil")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer">
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  <span>{t("Deixar Feedback")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                {userRole !== "ee_partner" && <>
+                  <DropdownMenuItem onClick={() => setLocation("/perfil")} className="cursor-pointer">
+                    <UserCircle className="mr-2 h-4 w-4" />
+                    <span>{t("Perfil")}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>{t("Deixar Feedback")}</span>
+                  </DropdownMenuItem>
+                </>}
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void logout().finally(() => {
+                      window.location.href = "/login";
+                    });
+                  }}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>{t("Terminar Sessão")}</span>
                 </DropdownMenuItem>

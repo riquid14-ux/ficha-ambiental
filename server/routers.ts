@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, partnerAllowedProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { sql, eq } from "drizzle-orm";
 import * as schema from "../drizzle/schema";
@@ -80,6 +80,42 @@ async function getAccessibleProjectIds(user: any) {
     ...userProjects.map((item: any) => item.projectId),
     ...companyProjects.map((item: any) => item.projectId),
   ]));
+}
+
+type PartnerModule = "kpi" | "waste";
+
+async function getActivePartnerProfile(user: any, module?: PartnerModule) {
+  if (user.role !== "ee_partner") return null;
+  const profile = await db.getPartnerAccessProfile(user.id);
+  if (!profile?.active) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "O acesso deste parceiro não está activo." });
+  }
+  if (module === "kpi" && !profile.allowKpi) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem acesso ao módulo KPI." });
+  }
+  if (module === "waste" && !profile.allowWaste) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem acesso ao módulo Resíduos." });
+  }
+  return profile;
+}
+
+async function assertPartnerProjectModuleAccess(user: any, projectId: number, module: PartnerModule) {
+  if (user.role !== "ee_partner") {
+    await assertProjectAccess(user, projectId);
+    return null;
+  }
+  const profile = await getActivePartnerProfile(user, module);
+  const allowedProjectIds = await db.getPartnerAllowedProjectIds(user.id, profile!.parentCompanyId);
+  if (!allowedProjectIds.includes(projectId)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Este projecto não pertence ao âmbito autorizado da EE principal." });
+  }
+  return profile;
+}
+
+function assertMapWriteRole(role: string) {
+  if (!["admin", "dono_obra", "pm", "raa", "ee"].includes(role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para alterar levantamentos do Mapa." });
+  }
 }
 
 function canUpdatePlanProgress(user: any, assignment: any) {
@@ -414,7 +450,7 @@ export const appRouter = router({
       }),
 
     // ─── Change password ────────────────────────────────────────────────────
-    changePassword: protectedProcedure
+    changePassword: partnerAllowedProcedure
       .input(z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) }))
       .mutation(async ({ input, ctx }) => {
         const user = await db.getUserById(ctx.user.id);
@@ -433,7 +469,7 @@ export const appRouter = router({
       }),
 
     // ─── Setup 2FA ──────────────────────────────────────────────────────────
-    setup2FA: protectedProcedure.mutation(async ({ ctx }) => {
+    setup2FA: partnerAllowedProcedure.mutation(async ({ ctx }) => {
       const secret = new Secret({ size: 20 });
       const totp = new TOTP({ issuer: "Controlo Ambiental", label: ctx.user.email || ctx.user.name || "user", secret, algorithm: "SHA1", digits: 6, period: 30 });
       const uri = totp.toString();
@@ -447,7 +483,7 @@ export const appRouter = router({
     }),
 
     // ─── Confirm 2FA setup ──────────────────────────────────────────────────
-    confirm2FA: protectedProcedure
+    confirm2FA: partnerAllowedProcedure
       .input(z.object({ code: z.string().length(6) }))
       .mutation(async ({ input, ctx }) => {
         const user = await db.getUserById(ctx.user.id);
@@ -465,7 +501,7 @@ export const appRouter = router({
       }),
 
     // ─── Disable 2FA ────────────────────────────────────────────────────────
-    disable2FA: protectedProcedure.mutation(async ({ ctx }) => {
+    disable2FA: partnerAllowedProcedure.mutation(async ({ ctx }) => {
       const database = await db.getDb();
       if (database) {
         await database.execute(sql`UPDATE users SET totpEnabled = 0, totpSecret = NULL WHERE id = ${ctx.user.id}`);
@@ -542,12 +578,12 @@ export const appRouter = router({
         return db.getCompanyById(input.id);
       }),
     create: adminProcedure
-      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "rap", "dono_obra", "raa", "observador"]).default("ee") }))
+      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee") }))
       .mutation(async ({ input }) => {
         return db.createCompany({ name: input.name, shortName: input.shortName, companyType: input.companyType });
       }),
     update: adminProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "rap", "dono_obra", "raa", "observador"]).optional() }))
+      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).optional() }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         await db.updateCompany(id, data);
@@ -587,19 +623,20 @@ export const appRouter = router({
           if (company) {
             const roleMap: Record<string, string> = {
               ee: "ee",
+              ee_partner: "ee_partner",
               rap: "rap",
               dono_obra: "dono_obra",
               raa: "raa",
               observador: "observador",
             };
-            const newRole = (roleMap[company.companyType] || "user") as "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra" | "observador";
+            const newRole = (roleMap[company.companyType] || "user") as "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador";
             await db.updateUserRole(input.userId, newRole);
           }
         }
         return { success: true };
       }),
     updateRole: adminProcedure
-      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]) }))
+      .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]) }))
       .mutation(async ({ input, ctx }) => {
         // Only admin can promote to admin or dono_obra
         if ((input.role === "admin" || input.role === "dono_obra") && ctx.user.role !== "admin") {
@@ -620,6 +657,97 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── EE Partner configuration ─────────────────────────────────────────────
+  partners: router({
+    myAccess: partnerAllowedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "ee_partner") return null;
+      const profile = await getActivePartnerProfile(ctx.user);
+      const [parentCompany, partnerCompany] = await Promise.all([
+        db.getCompanyById(profile!.parentCompanyId),
+        ctx.user.companyId ? db.getCompanyById(ctx.user.companyId) : Promise.resolve(undefined),
+      ]);
+      return {
+        parentCompanyId: profile!.parentCompanyId,
+        parentCompanyName: parentCompany?.shortName ?? parentCompany?.name ?? null,
+        companyId: ctx.user.companyId,
+        companyName: partnerCompany?.shortName ?? partnerCompany?.name ?? null,
+        allowKpi: !!profile!.allowKpi,
+        allowWaste: !!profile!.allowWaste,
+        active: !!profile!.active,
+      };
+    }),
+    list: adminProcedure.query(async () => {
+      const [allUsers, allCompanies, profiles, assignments, allProjects] = await Promise.all([
+        db.getAllUsers(),
+        db.getAllCompanies(),
+        db.getPartnerAccessProfiles(),
+        db.getAllUserProjectAssignments(),
+        db.getAllProjects(),
+      ]);
+      return allUsers.filter(user => user.role === "ee_partner").map(user => {
+        const profile = profiles.find(item => item.userId === user.id);
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          companyId: user.companyId,
+          companyName: allCompanies.find(company => company.id === user.companyId)?.shortName ?? null,
+          parentCompanyId: profile?.parentCompanyId ?? null,
+          parentCompanyName: allCompanies.find(company => company.id === profile?.parentCompanyId)?.shortName ?? null,
+          allowKpi: !!profile?.allowKpi,
+          allowWaste: !!profile?.allowWaste,
+          active: profile?.active ?? false,
+          projectIds: assignments.filter(item => item.userId === user.id).map(item => item.projectId),
+          projects: assignments.filter(item => item.userId === user.id).map(item => allProjects.find(project => project.id === item.projectId)).filter(Boolean),
+        };
+      });
+    }),
+    configure: adminProcedure
+      .input(z.object({
+        userId: z.number().int().positive(),
+        parentCompanyId: z.number().int().positive(),
+        allowKpi: z.boolean(),
+        allowWaste: z.boolean(),
+        active: z.boolean().default(true),
+        projectIds: z.array(z.number().int().positive()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const targetUser = await db.getUserById(input.userId);
+        if (!targetUser || targetUser.role !== "ee_partner") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um utilizador com o papel EE — Parceiro." });
+        }
+        if (!targetUser.companyId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O parceiro deve estar associado à sua empresa subcontratada." });
+        }
+        const [partnerCompany, parentCompany, parentAssignments] = await Promise.all([
+          db.getCompanyById(targetUser.companyId),
+          db.getCompanyById(input.parentCompanyId),
+          db.getProjectsForCompany(input.parentCompanyId),
+        ]);
+        if (partnerCompany?.companyType !== "ee_partner") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa do utilizador deve ser do tipo EE — Parceiro." });
+        }
+        if (parentCompany?.companyType !== "ee") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa principal deve ser uma EE." });
+        }
+        const parentProjectIds = new Set(parentAssignments.map(item => item.projectId));
+        if (input.projectIds.some(projectId => !parentProjectIds.has(projectId))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Um parceiro não pode receber projectos fora do âmbito da EE principal." });
+        }
+        await db.upsertPartnerAccessProfile({
+          userId: input.userId,
+          parentCompanyId: input.parentCompanyId,
+          allowKpi: input.allowKpi,
+          allowWaste: input.allowWaste,
+          active: input.active,
+          configuredBy: ctx.user.id,
+        });
+        await db.setUserProjects(input.userId, input.projectIds);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "partner_access_configured", "users", input.userId, null, JSON.stringify(input));
+        return { success: true };
+      }),
+  }),
+
   // ─── Invitations ────────────────────────────────────────────────────────────
   invitations: router({
     list: adminProcedure.query(async () => {
@@ -634,7 +762,7 @@ export const appRouter = router({
       .input(z.object({
         email: z.string().email(),
         companyId: z.number(),
-        role: z.enum(["user", "admin", "ee", "raa", "rap", "dono_obra", "observador"]),
+        role: z.enum(["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]),
       }))
       .mutation(async ({ ctx, input }) => {
         // Check if there's already a pending invitation for this email
@@ -653,7 +781,7 @@ export const appRouter = router({
         try {
           const company = await db.getCompanyById(input.companyId);
           const roleLabels: Record<string, string> = {
-            user: "Utilizador", admin: "Administrador", ee: "Entidade Executante",
+            user: "Utilizador", admin: "Administrador", ee: "Entidade Executante", ee_partner: "EE — Parceiro",
             raa: "RAA", rap: "RAP", dono_obra: "Dono de Obra", observador: "Observador",
           };
           sendInvitationEmail(
@@ -1774,12 +1902,17 @@ export const appRouter = router({
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   projects: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: partnerAllowedProcedure.query(async ({ ctx }) => {
       const allProjects = await db.getAllProjects();
       const role = ctx.user.role;
       // Admin/dono_obra/PM see all projects
       if (role === "admin" || role === "dono_obra" || role === "pm") {
         return allProjects;
+      }
+      if (role === "ee_partner") {
+        const profile = await getActivePartnerProfile(ctx.user);
+        const allowedIds = new Set(await db.getPartnerAllowedProjectIds(ctx.user.id, profile!.parentCompanyId));
+        return allProjects.filter(project => allowedIds.has(project.id) && project.code !== "SIN01");
       }
       // EE/RAP/RAA/observador: only see assigned projects, NEVER SIN01
       const userProjectAssocs = await db.getUserProjects(ctx.user.id);
@@ -2857,14 +2990,52 @@ export const appRouter = router({
   }),
 
   wasteEgars: router({
-    list: protectedProcedure
-      .input(z.object({ projectId: z.number(), year: z.number().optional() }))
-      .query(async ({ input }) => {
-        return await db.getWasteEgars(input.projectId, input.year);
+    subprojects: partnerAllowedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "waste");
+        return db.getWasteSubprojects(input.projectId);
       }),
-    create: protectedProcedure
+    createSubproject: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), code: z.string().trim().max(80).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin, Dono de Obra ou a EE podem criar subprojectos." });
+        }
+        await assertProjectAccess(ctx.user, input.projectId);
+        if (ctx.user.role === "ee") {
+          const companyProjects = ctx.user.companyId ? await db.getProjectsForCompany(ctx.user.companyId) : [];
+          if (!companyProjects.some(item => item.projectId === input.projectId)) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "A sua EE não está associada a este projecto." });
+          }
+        }
+        return db.createWasteSubproject({ projectId: input.projectId, name: input.name, code: input.code || null, active: true, createdBy: ctx.user.id });
+      }),
+    archiveSubproject: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        await db.archiveWasteSubproject(input.id);
+        return { success: true };
+      }),
+    list: partnerAllowedProcedure
+      .input(z.object({ projectId: z.number(), year: z.number().optional(), subProjectId: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        const profile = await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "waste");
+        if (ctx.user.role === "ee_partner") {
+          if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Parceiro sem empresa associada." });
+          return db.getWasteEgars(input.projectId, input.year, { subProjectId: input.subProjectId, companyId: ctx.user.companyId });
+        }
+        if (ctx.user.role === "ee" && ctx.user.companyId) {
+          return db.getWasteEgars(input.projectId, input.year, { subProjectId: input.subProjectId, networkCompanyId: ctx.user.companyId });
+        }
+        return db.getWasteEgars(input.projectId, input.year, { subProjectId: input.subProjectId });
+      }),
+    create: partnerAllowedProcedure
       .input(z.object({
         projectId: z.number(),
+        subProjectId: z.number().int().positive().optional(),
+        companyId: z.number().int().positive().optional(),
         date: z.number(),
         egarId: z.string().optional(),
         egarLink: z.string().optional(),
@@ -2872,19 +3043,40 @@ export const appRouter = router({
         lerCode: z.string().min(1),
         designation: z.string().min(1),
         quantity: z.string().min(1),
+        correctedQuantity: z.string().optional(),
         destination: z.enum(["recycled", "incinerated", "landfill"]).optional(),
         month: z.number(),
         year: z.number(),
       }))
       .mutation(async ({ ctx, input }) => {
-        if (!isAdminOrDono(ctx.user.role)) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para registar Resíduos." });
+        }
+        const profile = await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "waste");
+        if (input.subProjectId) {
+          const subProject = await db.getWasteSubprojectById(input.subProjectId);
+          if (!subProject || subProject.projectId !== input.projectId || !subProject.active) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Subprojecto inválido para o projecto seleccionado." });
+          }
+        }
+        let contributorCompanyId = input.companyId ?? ctx.user.companyId ?? null;
+        let parentCompanyId: number | null = contributorCompanyId;
+        if (ctx.user.role === "ee_partner") {
+          contributorCompanyId = ctx.user.companyId;
+          parentCompanyId = profile!.parentCompanyId;
+        } else if (ctx.user.role === "ee") {
+          contributorCompanyId = ctx.user.companyId;
+          parentCompanyId = ctx.user.companyId;
         }
         const result = await db.createWasteEgar({
           ...input,
+          subProjectId: input.subProjectId ?? null,
+          companyId: contributorCompanyId,
+          parentCompanyId,
           egarId: input.egarId ?? null,
           egarLink: input.egarLink ?? null,
           operator: input.operator ?? null,
+          correctedQuantity: input.correctedQuantity || null,
           destination: input.destination ?? "recycled",
           createdBy: ctx.user.id,
         });
@@ -2898,13 +3090,187 @@ export const appRouter = router({
         } catch (e) { console.warn("Waste archive failed (non-fatal):", e); }
         return result;
       }),
-    delete: protectedProcedure
+    delete: partnerAllowedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        if (!isAdminOrDono(ctx.user.role)) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+        const record = await db.getWasteEgarById(input.id);
+        if (!record) throw new TRPCError({ code: "NOT_FOUND" });
+        await assertPartnerProjectModuleAccess(ctx.user, record.projectId, "waste");
+        const ownsRecord = record.createdBy === ctx.user.id || (!!ctx.user.companyId && record.companyId === ctx.user.companyId);
+        if (!isAdminOrDono(ctx.user.role) && !ownsRecord) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Só pode eliminar registos da sua entidade." });
         }
         await db.deleteWasteEgar(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ─── Private project map ──────────────────────────────────────────────────
+  projectMap: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
+        const [setting, surveys] = await Promise.all([
+          db.getProjectMapSetting(input.projectId),
+          db.getMapSurveys(input.projectId),
+        ]);
+        const items = await Promise.all(surveys.map(async survey => ({
+          ...survey,
+          photoCount: (await db.getMapPhotos(survey.id)).length,
+        })));
+        return { setting: setting ?? null, surveys: items };
+      }),
+    survey: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const survey = await db.getMapSurveyById(input.id);
+        if (!survey) throw new TRPCError({ code: "NOT_FOUND" });
+        await assertProjectAccess(ctx.user, survey.projectId);
+        const [photos, setting] = await Promise.all([
+          db.getMapPhotos(survey.id),
+          db.getProjectMapSetting(survey.projectId),
+        ]);
+        return { survey, photos, setting: setting ?? null };
+      }),
+    createSurvey: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), capturedAt: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        await assertProjectAccess(ctx.user, input.projectId);
+        const result = await db.createMapSurvey({
+          projectId: input.projectId,
+          name: input.name,
+          capturedAt: input.capturedAt ?? Date.now(),
+          status: "draft",
+          resultType: "photo_layers",
+          createdBy: ctx.user.id,
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_survey_created", "map_surveys", result.id, null, JSON.stringify({ projectId: input.projectId, name: input.name }));
+        return result;
+      }),
+    uploadBaseMap: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        filename: z.string().min(1).max(255),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z.string().min(1),
+        bounds: z.object({ west: z.number().gte(-180).lte(180), south: z.number().gte(-90).lte(90), east: z.number().gte(-180).lte(180), north: z.number().gte(-90).lte(90) }),
+        sourceName: z.string().trim().min(1).max(255),
+        sourceUrl: z.string().url().optional(),
+        attribution: z.string().trim().min(1).max(500),
+        license: z.string().trim().min(1).max(255),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        await assertProjectAccess(ctx.user, input.projectId);
+        if (input.bounds.west >= input.bounds.east || input.bounds.south >= input.bounds.north) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Os limites geográficos do mapa base são inválidos." });
+        }
+        const buffer = Buffer.from(input.base64, "base64");
+        if (buffer.length > 50 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "O mapa base não pode exceder 50 MB." });
+        const sanitized = await sanitizeFile(buffer, input.mimeType, input.filename);
+        if (!sanitized.safe) throw new TRPCError({ code: "BAD_REQUEST", message: sanitized.threats.join("; ") });
+        const project = await db.getProjectById(input.projectId);
+        const extension = input.mimeType === "image/png" ? "png" : input.mimeType === "image/webp" ? "webp" : "jpg";
+        const stored = await storagePut(`project-maps/${project?.code ?? input.projectId}/basemap-${Date.now()}.${extension}`, buffer, input.mimeType);
+        const setting = await db.upsertProjectMapSetting({
+          projectId: input.projectId,
+          baseMapFileKey: stored.key,
+          baseMapUrl: stored.url,
+          boundsJson: JSON.stringify(input.bounds),
+          sourceName: input.sourceName,
+          sourceUrl: input.sourceUrl ?? null,
+          attribution: input.attribution,
+          license: input.license,
+          updatedBy: ctx.user.id,
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_basemap_updated", "projects", input.projectId, null, JSON.stringify({ filename: input.filename, sourceName: input.sourceName }));
+        return setting;
+      }),
+    uploadPhoto: protectedProcedure
+      .input(z.object({
+        surveyId: z.number().int().positive(),
+        projectId: z.number().int().positive(),
+        filename: z.string().min(1).max(255),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z.string().min(1),
+        latitude: z.number().gte(-90).lte(90).optional(),
+        longitude: z.number().gte(-180).lte(180).optional(),
+        relativeAltitudeM: z.number().positive().max(5000).optional(),
+        gimbalYawDegree: z.number().min(-360).max(360).optional(),
+        gimbalPitchDegree: z.number().min(-180).max(180).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        const survey = await db.getMapSurveyById(input.surveyId);
+        if (!survey || survey.projectId !== input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Levantamento inválido para o projecto." });
+        await assertProjectAccess(ctx.user, input.projectId);
+        const buffer = Buffer.from(input.base64, "base64");
+        if (buffer.length > 25 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada fotografia não pode exceder 25 MB." });
+        const sanitized = await sanitizeFile(buffer, input.mimeType, input.filename);
+        if (!sanitized.safe) throw new TRPCError({ code: "BAD_REQUEST", message: sanitized.threats.join("; ") });
+        let exif: Record<string, any> = {};
+        try {
+          const parser = await import("exifr");
+          exif = (await parser.parse(buffer, { gps: true, tiff: true, exif: true, xmp: true })) ?? {};
+        } catch {
+          exif = {};
+        }
+        const latitude = input.latitude ?? exif.latitude ?? exif.Latitude;
+        const longitude = input.longitude ?? exif.longitude ?? exif.Longitude;
+        const relativeAltitudeM = input.relativeAltitudeM
+          ?? exif.RelativeAltitude
+          ?? exif.relativeAltitude
+          ?? exif.GPSAltitude
+          ?? exif.altitude;
+        const imageWidth = Number(exif.ExifImageWidth ?? exif.ImageWidth ?? 0) || null;
+        const imageHeight = Number(exif.ExifImageHeight ?? exif.ImageHeight ?? 0) || null;
+        const metadata = {
+          relativeAltitudeM: relativeAltitudeM == null ? undefined : Number(relativeAltitudeM),
+          imageWidth: imageWidth ?? undefined,
+          imageHeight: imageHeight ?? undefined,
+          gimbalYawDegree: input.gimbalYawDegree
+            ?? exif.GimbalYawDegree
+            ?? exif.GPSImgDirection,
+          gimbalPitchDegree: input.gimbalPitchDegree ?? exif.GimbalPitchDegree,
+          gimbalRollDegree: exif.GimbalRollDegree,
+          flightYawDegree: exif.FlightYawDegree,
+          focalLength35mm: exif.FocalLengthIn35mmFormat,
+        };
+        const project = await db.getProjectById(input.projectId);
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const stored = await storagePut(`project-maps/${project?.code ?? input.projectId}/survey-${survey.id}/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
+        const capturedAt = exif.DateTimeOriginal instanceof Date ? exif.DateTimeOriginal.getTime() : survey.capturedAt ?? Date.now();
+        const result = await db.createMapPhoto({
+          surveyId: survey.id,
+          projectId: input.projectId,
+          fileKey: stored.key,
+          fileUrl: stored.url,
+          filename: input.filename,
+          mimeType: input.mimeType,
+          latitude: Number.isFinite(Number(latitude)) ? String(Number(latitude)) : null,
+          longitude: Number.isFinite(Number(longitude)) ? String(Number(longitude)) : null,
+          relativeAltitudeM: Number.isFinite(Number(relativeAltitudeM)) ? String(Number(relativeAltitudeM)) : null,
+          imageWidth,
+          imageHeight,
+          metadataJson: JSON.stringify(metadata),
+          capturedAt,
+          createdBy: ctx.user.id,
+        });
+        await db.updateMapSurvey(survey.id, { status: "ready" });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_photo_uploaded", "map_photos", result.id, null, JSON.stringify({ projectId: input.projectId, surveyId: survey.id, filename: input.filename, geolocated: !!latitude && !!longitude }));
+        return { ...result, geolocated: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) };
+      }),
+    deletePhoto: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertMapWriteRole(ctx.user.role);
+        const photo = await db.getMapPhotoById(input.id);
+        if (!photo) throw new TRPCError({ code: "NOT_FOUND" });
+        await assertProjectAccess(ctx.user, photo.projectId);
+        await db.deleteMapPhoto(photo.id);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_photo_deleted", "map_photos", photo.id, JSON.stringify({ filename: photo.filename }), null);
         return { success: true };
       }),
   }),
@@ -2928,60 +3294,94 @@ export const appRouter = router({
 
   // ─── KPI's de Sustentabilidade ──────────────────────────────────────────
   kpi: router({
-    metrics: protectedProcedure.query(async () => {
+    metrics: partnerAllowedProcedure.query(async ({ ctx }) => {
+      await getActivePartnerProfile(ctx.user, "kpi");
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await database.execute(sql`SELECT * FROM kpi_metrics WHERE active = 1 ORDER BY sortOrder ASC`);
       return (rows as any)[0] || [];
     }),
-    matrix: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ input }) => {
+    matrix: partnerAllowedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const rows = await database.execute(sql`SELECT ks.id, ks.companyId, ks.weekNumber, ks.weekYear, ks.status, ks.createdAt, c.name as companyName, c.shortName FROM kpi_submissions ks JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId} ORDER BY ks.weekYear DESC, ks.weekNumber DESC`);
+      let scope = sql``;
+      if (ctx.user.role === "ee_partner") scope = sql` AND ks.companyId = ${ctx.user.companyId}`;
+      else if (ctx.user.role === "ee" && ctx.user.companyId) scope = sql` AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})`;
+      const rows = await database.execute(sql`SELECT ks.id, ks.companyId, ks.parentCompanyId, ks.sourceType, ks.userId, ks.weekNumber, ks.weekYear, ks.status, ks.createdAt, c.name as companyName, c.shortName, u.name as contributorName FROM kpi_submissions ks JOIN companies c ON c.id = ks.companyId LEFT JOIN users u ON u.id = ks.userId WHERE ks.projectId = ${input.projectId}${scope} ORDER BY ks.weekYear DESC, ks.weekNumber DESC, c.shortName ASC`);
       return (rows as any)[0] || [];
     }),
-    values: protectedProcedure.input(z.object({ submissionId: z.number() })).query(async ({ input }) => {
+    values: partnerAllowedProcedure.input(z.object({ submissionId: z.number() })).query(async ({ ctx, input }) => {
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const headers = await database.execute(sql`SELECT projectId, companyId, parentCompanyId FROM kpi_submissions WHERE id = ${input.submissionId} LIMIT 1`);
+      const header = (headers as any)[0]?.[0];
+      if (!header) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertPartnerProjectModuleAccess(ctx.user, Number(header.projectId), "kpi");
+      if (ctx.user.role === "ee_partner" && Number(header.companyId) !== Number(ctx.user.companyId)) throw new TRPCError({ code: "FORBIDDEN" });
+      if (ctx.user.role === "ee" && Number(header.companyId) !== Number(ctx.user.companyId) && Number(header.parentCompanyId) !== Number(ctx.user.companyId)) throw new TRPCError({ code: "FORBIDDEN" });
       const rows = await database.execute(sql`SELECT * FROM kpi_values WHERE submissionId = ${input.submissionId}`);
       return (rows as any)[0] || [];
     }),
-    allValues: protectedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional() })).query(async ({ input }) => {
+    allValues: partnerAllowedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional() })).query(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId}`;
+      let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, ks.parentCompanyId, ks.sourceType, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId}`;
+      if (ctx.user.role === "ee_partner") q = sql`${q} AND ks.companyId = ${ctx.user.companyId}`;
+      else if (ctx.user.role === "ee" && ctx.user.companyId) q = sql`${q} AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})`;
       if (input.weekYear) q = sql`${q} AND ks.weekYear = ${input.weekYear}`;
       if (input.weekNumber) q = sql`${q} AND ks.weekNumber = ${input.weekNumber}`;
       const rows = await database.execute(q);
       return (rows as any)[0] || [];
     }),
-    submit: protectedProcedure.input(z.object({ projectId: z.number(), companyId: z.number(), weekNumber: z.number(), weekYear: z.number(), values: z.array(z.object({ metricId: z.number(), value: z.string() })) })).mutation(async ({ ctx, input }) => {
+    submit: partnerAllowedProcedure.input(z.object({ projectId: z.number(), companyId: z.number(), weekNumber: z.number(), weekYear: z.number(), values: z.array(z.object({ metricId: z.number(), value: z.string() })) })).mutation(async ({ ctx, input }) => {
+      if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a EE, os parceiros autorizados ou a administração podem submeter KPI." });
+      }
+      const profile = await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      let contributorCompanyId = input.companyId;
+      let parentCompanyId: number | null = input.companyId;
+      let sourceType: "ee" | "ee_partner" = "ee";
+      let status = "submitted";
+      if (ctx.user.role === "ee_partner") {
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Parceiro sem empresa associada." });
+        contributorCompanyId = ctx.user.companyId;
+        parentCompanyId = profile!.parentCompanyId;
+        sourceType = "ee_partner";
+        status = "partial";
+      } else if (ctx.user.role === "ee") {
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "EE sem empresa associada." });
+        contributorCompanyId = ctx.user.companyId;
+        parentCompanyId = ctx.user.companyId;
+      }
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const existing = await database.execute(sql`SELECT id FROM kpi_submissions WHERE projectId = ${input.projectId} AND companyId = ${input.companyId} AND weekNumber = ${input.weekNumber} AND weekYear = ${input.weekYear}`);
+      const existing = await database.execute(sql`SELECT id FROM kpi_submissions WHERE projectId = ${input.projectId} AND companyId = ${contributorCompanyId} AND weekNumber = ${input.weekNumber} AND weekYear = ${input.weekYear}`);
       let submissionId: number;
       if ((existing as any)[0]?.length > 0) {
         submissionId = (existing as any)[0][0].id;
         await database.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
-        await database.execute(sql`UPDATE kpi_submissions SET userId = ${ctx.user.id}, updatedAt = NOW() WHERE id = ${submissionId}`);
+        await database.execute(sql`UPDATE kpi_submissions SET userId = ${ctx.user.id}, parentCompanyId = ${parentCompanyId}, sourceType = ${sourceType}, status = ${status}, updatedAt = NOW() WHERE id = ${submissionId}`);
       } else {
-        const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, userId, weekNumber, weekYear) VALUES (${input.projectId}, ${input.companyId}, ${ctx.user.id}, ${input.weekNumber}, ${input.weekYear})`);
+        const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status) VALUES (${input.projectId}, ${contributorCompanyId}, ${parentCompanyId}, ${sourceType}, ${ctx.user.id}, ${input.weekNumber}, ${input.weekYear}, ${status})`);
         submissionId = (result as any)[0].insertId;
       }
-      for (const v of input.values) {
-        if (v.value && v.value.trim() !== "") {
-          await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${v.metricId}, ${v.value})`);
+      for (const value of input.values) {
+        if (value.value && value.value.trim() !== "") {
+          await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${value.metricId}, ${value.value})`);
         }
       }
-      // Archive KPI submission to external storage
       try {
         const { archiveDocument } = await import("./archive-provider");
         const project = await db.getProjectById(input.projectId);
-        const company = await db.getCompanyById(input.companyId);
+        const company = await db.getCompanyById(contributorCompanyId);
         await archiveDocument("kpi", project?.code || "UNKNOWN", input.weekYear, {
           submissionId,
           projectId: input.projectId,
-          companyId: input.companyId,
+          companyId: contributorCompanyId,
+          parentCompanyId,
+          sourceType,
           weekNumber: input.weekNumber,
           weekYear: input.weekYear,
           values: input.values,
@@ -2989,13 +3389,13 @@ export const appRouter = router({
         }, {
           weekNumber: input.weekNumber,
           weekYear: input.weekYear,
-          companyId: input.companyId,
+          companyId: contributorCompanyId,
           companyName: company?.name || null,
         });
-      } catch (e) {
-        console.warn("KPI archive failed (non-fatal):", e);
+      } catch (error) {
+        console.warn("KPI archive failed (non-fatal):", error);
       }
-      return { success: true, submissionId };
+      return { success: true, submissionId, status, sourceType };
     }),
     upsertMetric: protectedProcedure.input(z.object({ id: z.number().optional(), name: z.string(), nameEn: z.string().optional(), unit: z.string(), target: z.string().optional(), category: z.string(), inputType: z.string().default("manual"), formulaType: z.string().optional(), formulaSourceMetricId: z.number().optional(), pci: z.string().optional(), emissionFactor: z.string().optional(), density: z.string().optional(), sortOrder: z.number().optional() })).mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -3017,7 +3417,8 @@ export const appRouter = router({
       return { success: true };
     }),
     // KPI Targets (Metas)
-    targets: protectedProcedure.input(z.object({ projectId: z.number(), year: z.number().optional() })).query(async ({ input }) => {
+    targets: partnerAllowedProcedure.input(z.object({ projectId: z.number(), year: z.number().optional() })).query(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       let q = sql`SELECT * FROM kpi_targets WHERE projectId = ${input.projectId}`;
@@ -3045,9 +3446,11 @@ export const appRouter = router({
       return { success: true };
     }),
     // KPI Incidents
-    listIncidents: protectedProcedure
+    listIncidents: partnerAllowedProcedure
       .input(z.object({ projectId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "ee_partner" && !input.projectId) throw new TRPCError({ code: "FORBIDDEN" });
+        if (input.projectId) await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         let query = database.select().from(schema.kpiIncidents);
@@ -3067,7 +3470,8 @@ export const appRouter = router({
       }),
     deleteIncident: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await database.delete(schema.kpiIncidents).where(eq(schema.kpiIncidents.id, input.id));

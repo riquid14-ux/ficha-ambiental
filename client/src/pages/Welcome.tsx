@@ -87,7 +87,9 @@ export default function Welcome() {
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
 
-  const settingsQuery = trpc.appSettings.getAll.useQuery();
+  const settingsQuery = trpc.appSettings.getAll.useQuery(undefined, {
+    enabled: userRole !== "ee_partner",
+  });
   const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE";
   const embedUrl = (videoUrl.includes("watch?v=")
     ? videoUrl.replace("watch?v=", "embed/")

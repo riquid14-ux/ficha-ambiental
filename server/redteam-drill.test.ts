@@ -377,7 +377,7 @@ describe("Métricas Criptográficas e Resiliência Técnica", () => {
     });
 
     it("password change invalidates session token data", () => {
-      expect(routersCode).toMatch(/changePassword.*protectedProcedure/);
+      expect(routersCode).toMatch(/changePassword.*(?:protectedProcedure|partnerAllowedProcedure)/);
     });
   });
 

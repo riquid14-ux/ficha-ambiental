@@ -37,12 +37,14 @@ export default function KPI() {
   const [editingTarget, setEditingTarget] = useState<any>(null);
 
   const projectId = activeProject?.id || 0;
+  const isPartner = user?.role === "ee_partner";
   const metricsQuery = trpc.kpi.metrics.useQuery();
   const matrixQuery = trpc.kpi.matrix.useQuery({ projectId }, { enabled: projectId > 0 });
   const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId, weekYear: selectedYear }, { enabled: projectId > 0 });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
-  const companiesQuery = trpc.companies.list.useQuery();
-  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success("KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
+  const companiesQuery = trpc.companies.list.useQuery(undefined, { enabled: !isPartner });
+  const partnerAccessQuery = trpc.partners.myAccess.useQuery(undefined, { enabled: isPartner });
+  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success(isPartner ? "Contributo KPI parcial submetido à EE principal." : "KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success(t("Métrica guardada.")); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success(t("Métrica removida.")); } });
   const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
@@ -111,10 +113,12 @@ export default function KPI() {
 
   const matrixCompanies = useMemo(() => {
     const comps = new Map<number, string>();
-    for (const s of matrixData) { if (!comps.has(s.companyId)) comps.set(s.companyId, s.shortName || s.companyName); }
-    for (const c of companies) { if ((c.companyType === "ee" || c.companyType === "rap") && !comps.has(c.id)) comps.set(c.id, c.shortName); }
+    for (const s of matrixData) {
+      if (!comps.has(s.companyId)) comps.set(s.companyId, `${s.shortName || s.companyName}${s.sourceType === "ee_partner" ? " · Parceiro" : ""}`);
+    }
+    if (!isPartner) for (const c of companies) { if ((c.companyType === "ee" || c.companyType === "ee_partner" || c.companyType === "rap") && !comps.has(c.id)) comps.set(c.id, c.shortName); }
     return Array.from(comps.entries());
-  }, [matrixData, companies]);
+  }, [matrixData, companies, isPartner]);
 
   const findMetric = (cat: string, name: string) => metrics.find((m: any) => m.category === cat && m.name.toLowerCase().includes(name.toLowerCase()));
 
@@ -175,6 +179,17 @@ export default function KPI() {
           </div>
         </div>
 
+        {isPartner && (
+          <Card className="border-emerald-200 bg-emerald-50/60">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-emerald-900">Contributo parcial de KPI</p>
+              <p className="mt-1 text-xs text-emerald-800/80">
+                Está a submeter em nome de {partnerAccessQuery.data?.companyName || "empresa parceira"}. A EE {partnerAccessQuery.data?.parentCompanyName || "principal"} verá estes valores na matriz consolidada.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Card className="border-l-4 border-l-red-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Incidentes Ambientais")}</p><p className="text-xl font-bold text-red-600">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p></CardContent></Card>
@@ -226,7 +241,7 @@ export default function KPI() {
           {/* Matrix */}
           <TabsContent value="overview">
             <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t("Matriz de Submissão")}</CardTitle></CardHeader><CardContent>
-              {matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">{ t("Sem submissões.") }</p> : (
+              {matrixQuery.isLoading ? <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"><Activity className="size-4 animate-spin" />A carregar submissões consolidadas...</div> : matrixQuery.isError ? <p className="py-4 text-center text-sm text-destructive">Não foi possível carregar a matriz de submissões.</p> : matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">{ t("Sem submissões.") }</p> : (
                 <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">{t("Empresa")}</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
                   <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
                 ))}</tbody></table></div>
@@ -289,7 +304,7 @@ export default function KPI() {
                   {formStep < categories.length - 1 ? (
                     <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
                   ) : (
-                    <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending ? "A submeter..." : "Submeter KPIs"}</Button>
+                    <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending ? "A submeter..." : isPartner ? "Submeter contributo parcial" : "Submeter KPIs"}</Button>
                   )}
                 </div>
               </CardContent>

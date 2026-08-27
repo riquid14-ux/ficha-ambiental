@@ -37,6 +37,15 @@ import {
   InsertPhaseMeasureUpdate,
 } from "../drizzle/schema";
 import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
+import {
+  partnerAccessProfiles,
+  wasteSubprojects,
+  projectMapSettings,
+  mapSurveys,
+  mapPhotos,
+  InsertPartnerAccessProfile,
+  InsertWasteSubproject,
+} from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -154,7 +163,7 @@ export async function updateUserCompany(userId: number, companyId: number | null
   await db.update(users).set({ companyId }).where(eq(users.id, userId));
 }
 
-export async function updateUserRole(userId: number, role: "user" | "admin" | "ee" | "raa" | "rap" | "dono_obra" | "observador") {
+export async function updateUserRole(userId: number, role: "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador" | "pm") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));
@@ -840,6 +849,49 @@ export async function setUserProjects(userId: number, projectIds: number[]) {
   }
 }
 
+// ─── EE Partner access profiles ──────────────────────────────────────────────
+
+export async function getPartnerAccessProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(partnerAccessProfiles)
+    .where(eq(partnerAccessProfiles.userId, userId))
+    .limit(1);
+  return result[0];
+}
+
+export async function getPartnerAccessProfiles() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(partnerAccessProfiles).orderBy(partnerAccessProfiles.userId);
+}
+
+export async function upsertPartnerAccessProfile(data: Omit<InsertPartnerAccessProfile, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(partnerAccessProfiles).values(data).onDuplicateKeyUpdate({
+    set: {
+      parentCompanyId: data.parentCompanyId,
+      allowKpi: data.allowKpi,
+      allowWaste: data.allowWaste,
+      active: data.active,
+      configuredBy: data.configuredBy,
+    },
+  });
+  return getPartnerAccessProfile(data.userId);
+}
+
+export async function getPartnerAllowedProjectIds(userId: number, parentCompanyId: number) {
+  const [userAssignments, parentAssignments] = await Promise.all([
+    getUserProjects(userId),
+    getProjectsForCompany(parentCompanyId),
+  ]);
+  const parentProjectIds = new Set(parentAssignments.map(item => item.projectId));
+  return userAssignments
+    .map(item => item.projectId)
+    .filter(projectId => parentProjectIds.has(projectId));
+}
+
 // ─── Deletion Logs ────────────────────────────────────────────────────────────
 export async function createDeletionLog(data: {
   submissionId: number;
@@ -1512,12 +1564,80 @@ export async function deletePhaseEvidence(id: number) {
 import { wasteEgars, InsertWasteEgar } from "../drizzle/schema";
 import { notificationRecipients } from "../drizzle/schema";
 
-export async function getWasteEgars(projectId: number, year?: number) {
+export async function getWasteSubprojects(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(wasteSubprojects)
+    .where(and(eq(wasteSubprojects.projectId, projectId), eq(wasteSubprojects.active, true)))
+    .orderBy(wasteSubprojects.name);
+}
+
+export async function getWasteSubprojectById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(wasteSubprojects).where(eq(wasteSubprojects.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createWasteSubproject(data: Omit<InsertWasteSubproject, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(wasteSubprojects).values(data).$returningId();
+  return result;
+}
+
+export async function archiveWasteSubproject(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(wasteSubprojects).set({ active: false }).where(eq(wasteSubprojects.id, id));
+}
+
+export async function getWasteEgars(projectId: number, year?: number, filters?: { subProjectId?: number; companyId?: number; parentCompanyId?: number; networkCompanyId?: number }) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(wasteEgars.projectId, projectId)];
   if (year) conditions.push(eq(wasteEgars.year, year));
-  return db.select().from(wasteEgars).where(and(...conditions)).orderBy(desc(wasteEgars.date));
+  if (filters?.subProjectId) conditions.push(eq(wasteEgars.subProjectId, filters.subProjectId));
+  if (filters?.companyId) conditions.push(eq(wasteEgars.companyId, filters.companyId));
+  if (filters?.parentCompanyId) conditions.push(eq(wasteEgars.parentCompanyId, filters.parentCompanyId));
+  if (filters?.networkCompanyId) conditions.push(or(
+    eq(wasteEgars.companyId, filters.networkCompanyId),
+    eq(wasteEgars.parentCompanyId, filters.networkCompanyId),
+  )!);
+  return db.select({
+    id: wasteEgars.id,
+    projectId: wasteEgars.projectId,
+    subProjectId: wasteEgars.subProjectId,
+    companyId: wasteEgars.companyId,
+    parentCompanyId: wasteEgars.parentCompanyId,
+    date: wasteEgars.date,
+    egarId: wasteEgars.egarId,
+    egarLink: wasteEgars.egarLink,
+    operator: wasteEgars.operator,
+    lerCode: wasteEgars.lerCode,
+    designation: wasteEgars.designation,
+    quantity: wasteEgars.quantity,
+    correctedQuantity: wasteEgars.correctedQuantity,
+    destination: wasteEgars.destination,
+    month: wasteEgars.month,
+    year: wasteEgars.year,
+    createdBy: wasteEgars.createdBy,
+    createdAt: wasteEgars.createdAt,
+    updatedAt: wasteEgars.updatedAt,
+    subProjectName: wasteSubprojects.name,
+    companyName: companies.shortName,
+  }).from(wasteEgars)
+    .leftJoin(wasteSubprojects, eq(wasteSubprojects.id, wasteEgars.subProjectId))
+    .leftJoin(companies, eq(companies.id, wasteEgars.companyId))
+    .where(and(...conditions))
+    .orderBy(desc(wasteEgars.date));
+}
+
+export async function getWasteEgarById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(wasteEgars).where(eq(wasteEgars.id, id)).limit(1);
+  return result[0];
 }
 
 export async function createWasteEgar(data: Omit<InsertWasteEgar, "id" | "createdAt" | "updatedAt">) {
@@ -1531,6 +1651,79 @@ export async function deleteWasteEgar(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.delete(wasteEgars).where(eq(wasteEgars.id, id));
+}
+
+// ─── Private project map ─────────────────────────────────────────────────────
+
+export async function getProjectMapSetting(projectId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projectMapSettings)
+    .where(eq(projectMapSettings.projectId, projectId)).limit(1);
+  return result[0];
+}
+
+export async function upsertProjectMapSetting(data: typeof projectMapSettings.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(projectMapSettings).values(data).onDuplicateKeyUpdate({ set: data });
+  return getProjectMapSetting(data.projectId);
+}
+
+export async function getMapSurveys(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(mapSurveys)
+    .where(eq(mapSurveys.projectId, projectId))
+    .orderBy(desc(mapSurveys.capturedAt), desc(mapSurveys.createdAt));
+}
+
+export async function getMapSurveyById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(mapSurveys).where(eq(mapSurveys.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createMapSurvey(data: typeof mapSurveys.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(mapSurveys).values(data).$returningId();
+  return result;
+}
+
+export async function updateMapSurvey(id: number, data: Partial<typeof mapSurveys.$inferInsert>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(mapSurveys).set(data).where(eq(mapSurveys.id, id));
+}
+
+export async function getMapPhotos(surveyId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(mapPhotos)
+    .where(eq(mapPhotos.surveyId, surveyId))
+    .orderBy(mapPhotos.capturedAt, mapPhotos.id);
+}
+
+export async function createMapPhoto(data: typeof mapPhotos.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const [result] = await db.insert(mapPhotos).values(data).$returningId();
+  return result;
+}
+
+export async function getMapPhotoById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(mapPhotos).where(eq(mapPhotos.id, id)).limit(1);
+  return result[0];
+}
+
+export async function deleteMapPhoto(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(mapPhotos).where(eq(mapPhotos.id, id));
 }
 
 // ─── Company Active Periods ─────────────────────────────────────────────────

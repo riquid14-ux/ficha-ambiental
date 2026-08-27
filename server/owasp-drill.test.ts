@@ -615,10 +615,14 @@ describe("Fluxo de Verificação do Drill", () => {
     });
 
     it("password change invalidates existing sessions", () => {
+      const marker = routersCode.includes("changePassword: partnerAllowedProcedure")
+        ? "changePassword: partnerAllowedProcedure"
+        : "changePassword: protectedProcedure";
       const changePasswordSection = routersCode.slice(
-        routersCode.indexOf("changePassword: protectedProcedure"),
-        routersCode.indexOf("changePassword: protectedProcedure") + 800
+        routersCode.indexOf(marker),
+        routersCode.indexOf(marker) + 800
       );
+      expect(routersCode).toContain(marker);
       expect(changePasswordSection).toMatch(/password|hash/);
     });
 

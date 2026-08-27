@@ -9,7 +9,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador", "pm"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]).default("user").notNull(),
   companyId: int("companyId"),
   fullName: varchar("fullName", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 255 }),
@@ -35,7 +35,7 @@ export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   shortName: varchar("shortName", { length: 50 }).notNull(),
-  companyType: mysqlEnum("companyType", ["ee", "rap", "dono_obra", "raa", "observador"]).default("ee").notNull(),
+  companyType: mysqlEnum("companyType", ["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee").notNull(),
   logoUrl: text("logoUrl"),
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -44,6 +44,28 @@ export const companies = mysqlTable("companies", {
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
+
+/**
+ * EE partner access is configured per user. The parent EE defines the hard
+ * project boundary; project_users may only grant a subset of that boundary.
+ */
+export const partnerAccessProfiles = mysqlTable("partner_access_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  parentCompanyId: int("parentCompanyId").notNull(),
+  allowKpi: boolean("allowKpi").default(false).notNull(),
+  allowWaste: boolean("allowWaste").default(false).notNull(),
+  active: boolean("active").default(true).notNull(),
+  configuredBy: int("configuredBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userUnique: uniqueIndex("partner_access_profiles_user_unique").on(table.userId),
+  parentCompanyIdx: index("partner_access_profiles_parent_company_idx").on(table.parentCompanyId),
+}));
+
+export type PartnerAccessProfile = typeof partnerAccessProfiles.$inferSelect;
+export type InsertPartnerAccessProfile = typeof partnerAccessProfiles.$inferInsert;
 
 /**
  * Sections (14 secções do documento)
@@ -193,7 +215,7 @@ export const invitations = mysqlTable("invitations", {
   id: int("id").autoincrement().primaryKey(),
   email: varchar("email", { length: 320 }).notNull(),
   companyId: int("companyId").notNull(),
-  role: mysqlEnum("role", ["user", "admin", "ee", "raa", "rap", "dono_obra", "observador", "pm"]).default("ee").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]).default("ee").notNull(),
   invitedBy: int("invitedBy").notNull(),
   status: mysqlEnum("status", ["pending", "accepted", "expired"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -565,9 +587,28 @@ export const appSettings = mysqlTable("app_settings", {
 export type InsertAppSetting = typeof appSettings.$inferInsert;
 
 // ─── Waste e-GARs (MIRR - Mapa Integrado de Registo de Resíduos) ────────────
+export const wasteSubprojects = mysqlTable("waste_subprojects", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 80 }),
+  active: boolean("active").default(true).notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectNameUnique: uniqueIndex("waste_subprojects_project_name_unique").on(table.projectId, table.name),
+  projectIdx: index("waste_subprojects_project_idx").on(table.projectId),
+}));
+export type WasteSubproject = typeof wasteSubprojects.$inferSelect;
+export type InsertWasteSubproject = typeof wasteSubprojects.$inferInsert;
+
 export const wasteEgars = mysqlTable("waste_egars", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
+  subProjectId: int("subProjectId"),
+  companyId: int("companyId"),
+  parentCompanyId: int("parentCompanyId"),
   date: bigint("date", { mode: "number" }).notNull(),
   egarId: varchar("egarId", { length: 100 }),
   egarLink: varchar("egarLink", { length: 500 }),
@@ -582,7 +623,11 @@ export const wasteEgars = mysqlTable("waste_egars", {
   createdBy: int("createdBy"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
-});
+}, (table) => ({
+  projectYearIdx: index("waste_egars_project_year_idx").on(table.projectId, table.year),
+  subProjectIdx: index("waste_egars_subproject_idx").on(table.subProjectId),
+  companyIdx: index("waste_egars_company_idx").on(table.companyId),
+}));
 export type WasteEgar = typeof wasteEgars.$inferSelect;
 export type InsertWasteEgar = typeof wasteEgars.$inferInsert;
 
@@ -628,13 +673,18 @@ export const kpiSubmissions = mysqlTable("kpi_submissions", {
   id: serial("id").primaryKey(),
   projectId: int("projectId").notNull(),
   companyId: int("companyId").notNull(),
+  parentCompanyId: int("parentCompanyId"),
+  sourceType: mysqlEnum("sourceType", ["ee", "ee_partner"]).default("ee").notNull(),
   userId: int("userId"),
   weekNumber: int("weekNumber").notNull(),
   weekYear: int("weekYear").notNull(),
   status: varchar("status", { length: 20 }).default("submitted"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
-});
+}, (table) => ({
+  contributionUnique: uniqueIndex("kpi_submissions_contribution_unique").on(table.projectId, table.companyId, table.weekNumber, table.weekYear),
+  parentCompanyIdx: index("kpi_submissions_parent_company_idx").on(table.parentCompanyId),
+}));
 export type KpiSubmission = typeof kpiSubmissions.$inferSelect;
 export type InsertKpiSubmission = typeof kpiSubmissions.$inferInsert;
 
@@ -679,6 +729,67 @@ export const kpiIncidents = mysqlTable("kpi_incidents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type KpiIncident = typeof kpiIncidents.$inferSelect;
+
+// ─── Private project map and aerial-photo layers ────────────────────────────
+export const projectMapSettings = mysqlTable("project_map_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  baseMapFileKey: varchar("baseMapFileKey", { length: 500 }),
+  baseMapUrl: text("baseMapUrl"),
+  boundsJson: text("boundsJson"),
+  sourceName: varchar("sourceName", { length: 255 }),
+  sourceUrl: text("sourceUrl"),
+  attribution: varchar("attribution", { length: 500 }),
+  license: varchar("license", { length: 255 }),
+  updatedBy: int("updatedBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectUnique: uniqueIndex("project_map_settings_project_unique").on(table.projectId),
+}));
+
+export const mapSurveys = mysqlTable("map_surveys", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  capturedAt: bigint("capturedAt", { mode: "number" }),
+  status: mysqlEnum("status", ["draft", "ready", "processing", "published", "failed"]).default("draft").notNull(),
+  resultType: mysqlEnum("resultType", ["photo_layers", "orthomosaic"]).default("photo_layers").notNull(),
+  orthomosaicFileKey: varchar("orthomosaicFileKey", { length: 500 }),
+  orthomosaicUrl: text("orthomosaicUrl"),
+  orthomosaicBoundsJson: text("orthomosaicBoundsJson"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectCapturedIdx: index("map_surveys_project_captured_idx").on(table.projectId, table.capturedAt),
+}));
+
+export const mapPhotos = mysqlTable("map_photos", {
+  id: int("id").autoincrement().primaryKey(),
+  surveyId: int("surveyId").notNull(),
+  projectId: int("projectId").notNull(),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  latitude: varchar("latitude", { length: 50 }),
+  longitude: varchar("longitude", { length: 50 }),
+  relativeAltitudeM: varchar("relativeAltitudeM", { length: 50 }),
+  imageWidth: int("imageWidth"),
+  imageHeight: int("imageHeight"),
+  metadataJson: text("metadataJson"),
+  capturedAt: bigint("capturedAt", { mode: "number" }),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  surveyIdx: index("map_photos_survey_idx").on(table.surveyId),
+  projectIdx: index("map_photos_project_idx").on(table.projectId),
+}));
+
+export type ProjectMapSetting = typeof projectMapSettings.$inferSelect;
+export type MapSurvey = typeof mapSurveys.$inferSelect;
+export type MapPhoto = typeof mapPhotos.$inferSelect;
 
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {

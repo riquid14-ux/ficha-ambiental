@@ -65,10 +65,6 @@ export default function MIRR() {
   const pageTitle = isMIRRPage ? "MIRR" : t("Gestão de Resíduos");
   const pageSubtitle = isMIRRPage ? "Mapa Integrado de Registo de Resíduos — Operação" : "Gestão e rastreio de resíduos de construção";
   const [subProject, setSubProject] = useState("all");
-  const [subProjects, setSubProjects] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`mirr-subprojects-${activeProject?.id}`);
-    return saved ? JSON.parse(saved) : [];
-  });
   const [newSubProject, setNewSubProject] = useState("");
   const projectId = activeProject?.id;
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -86,8 +82,14 @@ export default function MIRR() {
     destination: "recycled", month: new Date().getMonth() + 1, year: new Date().getFullYear()
   });
 
+  const isPartner = user?.role === "ee_partner";
+  const partnerAccessQuery = trpc.partners.myAccess.useQuery(undefined, { enabled: isPartner });
+  const { data: subProjects, refetch: refetchSubprojects } = trpc.wasteEgars.subprojects.useQuery(
+    { projectId: projectId || 0 },
+    { enabled: !!projectId }
+  );
   const { data: egars, refetch } = trpc.wasteEgars.list.useQuery(
-    { projectId: projectId || 0, year: selectedYear },
+    { projectId: projectId || 0, year: selectedYear, subProjectId: subProject === "all" ? undefined : Number(subProject) },
     { enabled: !!projectId }
   );
 
@@ -98,9 +100,19 @@ export default function MIRR() {
   const deleteMutation = trpc.wasteEgars.delete.useMutation({
     onSuccess: () => { refetch(); toast.success("e-GAR eliminada"); },
   });
+  const createSubprojectMutation = trpc.wasteEgars.createSubproject.useMutation({
+    onSuccess: async () => {
+      await refetchSubprojects();
+      setNewSubProject("");
+      toast.success("Subprojecto criado");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const isAdmin = user?.role === "admin";
+  const canContribute = isAdminOrDono || user?.role === "ee" || isPartner;
+  const canManageSubprojects = isAdminOrDono || user?.role === "ee";
 
   const monthlySummary = useMemo(() => {
     if (!egars) return [];
@@ -138,10 +150,10 @@ export default function MIRR() {
       ws1.addRow([code, ler?.name || items[0]?.designation || "", ler?.hazardous ? "Sim" : "Não", totalQ.toFixed(3), "", dest?.label || "", dest?.operation || "", items[0]?.operator || "", "", "", ""]);
     });
     const ws2 = wb.addWorksheet("e-GARs");
-    ws2.addRow(["Data", "e-GAR ID", "Código LER", "Designação", "Quantidade (t)", "Qtd Corrigida (t)", "Destino", "Op. Transporte", "Cód. APA Transp.", "Op. Receção", "Cód. APA Rec.", "Mês"]);
+    ws2.addRow(["Data", "Subprojecto", "Entidade contributora", "e-GAR ID", "Código LER", "Designação", "Quantidade (t)", "Qtd Corrigida (t)", "Destino", "Op. Transporte", "Cód. APA Transp.", "Op. Receção", "Cód. APA Rec.", "Mês"]);
     egars.forEach((e: any) => {
       const dest = destinations.find(d => d.key === e.destination);
-      ws2.addRow([e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "", e.egarId || "", e.lerCode, e.designation || "", e.quantity || "", e.correctedQuantity || "", dest?.label || e.destination, e.operator || "", "", "", "", MONTHS_PT[(e.month || 1) - 1]]);
+      ws2.addRow([e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "", e.subProjectName || "", e.companyName || "", e.egarId || "", e.lerCode, e.designation || "", e.quantity || "", e.correctedQuantity || "", dest?.label || e.destination, e.operator || "", "", "", "", MONTHS_PT[(e.month || 1) - 1]]);
     });
     const ws3 = wb.addWorksheet("Resumo Mensal");
     ws3.addRow(["Mês", "Total (t)", "Reciclado (t)", "Incinerado (t)", "Aterro (t)", "Taxa Desvio (%)"]);
@@ -165,9 +177,11 @@ export default function MIRR() {
 
   function handleCreate() {
     if (!projectId || !newEgar.lerCode || !newEgar.quantity) { toast.error(t("Preencha Código LER e Quantidade")); return; }
+    if (!isMIRRPage && subProject === "all") { toast.error("Seleccione o subprojecto desta e-GAR."); return; }
     const ler = lerCodes.find(l => l.code === newEgar.lerCode);
     createMutation.mutate({
       projectId,
+      subProjectId: subProject === "all" ? undefined : Number(subProject),
       date: newEgar.date ? new Date(newEgar.date).getTime() : Date.now(),
       egarId: newEgar.egarId || undefined,
       egarLink: newEgar.egarLink || undefined,
@@ -175,6 +189,7 @@ export default function MIRR() {
       lerCode: newEgar.lerCode,
       designation: newEgar.designation || ler?.name || newEgar.lerCode,
       quantity: newEgar.quantity,
+      correctedQuantity: newEgar.correctedQuantity || undefined,
       destination: newEgar.destination as "recycled" | "incinerated" | "landfill",
       month: newEgar.month,
       year: newEgar.year,
@@ -191,19 +206,19 @@ export default function MIRR() {
             <p className="text-sm text-muted-foreground">{pageSubtitle} — {activeProject?.name || "Projeto"}</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {!isMIRRPage && subProjects.length > 0 && (
+            {!isMIRRPage && (subProjects?.length ?? 0) > 0 && (
               <Select value={subProject} onValueChange={setSubProject}>
                 <SelectTrigger className="w-[160px]"><SelectValue placeholder="Sub-projeto" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("Todos")}</SelectItem>
-                  {subProjects.map(sp => <SelectItem key={sp} value={sp}>{sp}</SelectItem>)}
+                  {subProjects?.map(item => <SelectItem key={item.id} value={String(item.id)}>{item.code ? `${item.code} — ` : ""}{item.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
-            {!isMIRRPage && isAdminOrDono && (
+            {!isMIRRPage && canManageSubprojects && (
               <div className="flex gap-1">
                 <Input className="h-9 w-[140px] text-xs" placeholder={t("Novo sub-projeto...")} value={newSubProject} onChange={e => setNewSubProject(e.target.value)} />
-                <Button size="sm" variant="outline" onClick={() => { if (newSubProject.trim()) { const updated = [...subProjects, newSubProject.trim()]; setSubProjects(updated); localStorage.setItem(`mirr-subprojects-${activeProject?.id}`, JSON.stringify(updated)); setNewSubProject(""); toast.success(`Sub-projeto "${newSubProject.trim()}" criado`); } }}><Plus className="w-3 h-3" /></Button>
+                <Button size="sm" variant="outline" disabled={!projectId || createSubprojectMutation.isPending} onClick={() => { if (projectId && newSubProject.trim()) createSubprojectMutation.mutate({ projectId, name: newSubProject.trim() }); }}><Plus className="w-3 h-3" /></Button>
               </div>
             )}
             <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
@@ -212,14 +227,25 @@ export default function MIRR() {
                 {Array.from({ length: 13 }, (_, i) => 2023 + i).map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
               </SelectContent>
             </Select>
-            {isAdminOrDono && <>
+            {canContribute && <>
               <Button onClick={() => setShowAddForm(!showAddForm)} size="sm"><Plus className="w-4 h-4 mr-1" /> {t("Nova e-GAR")}</Button>
-              <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info(t("Importação de e-GAR via ficheiro em desenvolvimento.")); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> {t("Importar e-GAR")}</Button>
+              {isAdminOrDono && <Button variant="outline" size="sm" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = ".pdf,.xlsx,.csv"; input.onchange = (e: any) => { const file = e.target.files?.[0]; if (file) toast.info(t("Importação de e-GAR via ficheiro em desenvolvimento.")); }; input.click(); }}><Upload className="w-4 h-4 mr-1" /> {t("Importar e-GAR")}</Button>}
               {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
             </>}
             <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> {t("Exportar Excel MIRR")}</Button>
           </div>
         </div>
+
+        {isPartner && (
+          <Card className="border-emerald-200 bg-emerald-50/60">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-emerald-900">Contributo de Resíduos do parceiro</p>
+              <p className="mt-1 text-xs text-emerald-800/80">
+                Regista apenas as e-GAR da {partnerAccessQuery.data?.companyName || "sua empresa"}. A EE {partnerAccessQuery.data?.parentCompanyName || "principal"} vê estes registos na consolidação por subprojecto.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Settings Panel */}
         {showSettings && (
@@ -383,6 +409,8 @@ export default function MIRR() {
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-left">
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("Data")}</th>
+                    {!isMIRRPage && <th className="py-2 px-2 font-medium text-muted-foreground">Subprojecto</th>}
+                    <th className="py-2 px-2 font-medium text-muted-foreground">Entidade</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">N.º e-GAR</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("LER")}</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("Designação")}</th>
@@ -397,13 +425,15 @@ export default function MIRR() {
                       return (
                         <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
                           <td className="py-2 px-2">{e.date ? new Date(Number(e.date)).toLocaleDateString("pt-PT") : "—"}</td>
+                          {!isMIRRPage && <td className="py-2 px-2"><Badge variant="outline">{e.subProjectName || "Sem subprojecto"}</Badge></td>}
+                          <td className="py-2 px-2 text-xs">{e.companyName || "—"}</td>
                           <td className="py-2 px-2">{e.egarLink ? <a href={e.egarLink} target="_blank" className="text-primary underline">{e.egarId || "Ver"}</a> : (e.egarId || "—")}</td>
                           <td className="py-2 px-2 font-mono text-xs">{e.lerCode}</td>
                           <td className="py-2 px-2 text-xs">{e.designation || "—"}</td>
                           <td className="py-2 px-2 font-medium">{e.correctedQuantity ? <><span className="text-green-700">{e.correctedQuantity}</span> <span className="text-[10px] text-muted-foreground line-through">{e.quantity}</span></> : e.quantity}</td>
                           <td className="py-2 px-2 text-xs">{e.operator || "—"}</td>
                           <td className="py-2 px-2"><Badge variant={e.destination === "recycled" ? "default" : e.destination === "landfill" ? "destructive" : "secondary"} className="text-[10px]">{dest?.label || e.destination}</Badge></td>
-                          {isAdminOrDono && <td className="py-2 px-2"><button onClick={() => deleteMutation.mutate({ id: e.id })} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button></td>}
+                          {canContribute && <td className="py-2 px-2"><button onClick={() => deleteMutation.mutate({ id: e.id })} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button></td>}
                         </tr>
                       );
                     })}

@@ -13,7 +13,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon, Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar } from "lucide-react";
+import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon, Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Settings2 } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
 
@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
   admin: "Administrador",
   ee: "EE",
+  ee_partner: "EE — Parceiro",
   raa: "RAA",
   rap: "RAP",
   dono_obra: "Dono de Obra",
@@ -115,6 +116,13 @@ export default function AdminPanel() {
                 <div>
                   <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
                   <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-background rounded border">
+                <Users className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">EE — Parceiro</p>
+                  <p className="text-xs text-muted-foreground">Subcontratado de uma EE. Acede apenas a KPI e/ou Resíduos nos projectos autorizados.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
@@ -232,7 +240,7 @@ function CompaniesTab() {
   const { t } = useLanguage();
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
-  const [newType, setNewType] = useState<"ee" | "rap" | "dono_obra" | "raa" | "observador">("ee");
+  const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador">("ee");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [selectedCompanyForPeriod, setSelectedCompanyForPeriod] = useState<any>(null);
@@ -327,12 +335,13 @@ function CompaniesTab() {
               </div>
               <div>
                 <Label>Tipo</Label>
-                <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "rap" | "dono_obra" | "raa" | "observador")}>
+                <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador")}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
+                    <SelectItem value="ee_partner">EE — Parceiro / Subcontratado</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
                     <SelectItem value="dono_obra">Dono de Obra</SelectItem>
                       <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
@@ -371,8 +380,8 @@ function CompaniesTab() {
                 <TableCell>{c.name}</TableCell>
                 <TableCell><Badge variant="outline">{c.companyType === "rap" ? "RAP - " : ""}{c.shortName}</Badge></TableCell>
                 <TableCell>
-                  <Badge variant={c.companyType === "ee" ? "default" : c.companyType === "rap" ? "secondary" : "outline"}>
-                    {c.companyType === "ee" ? "EE" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
+                  <Badge variant={c.companyType === "ee" ? "default" : c.companyType === "ee_partner" ? "secondary" : c.companyType === "rap" ? "secondary" : "outline"}>
+                    {c.companyType === "ee" ? "EE" : c.companyType === "ee_partner" ? "EE — Parceiro" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -652,6 +661,8 @@ function UsersTab() {
   const invitationsQuery = trpc.invitations.list.useQuery();
   const projectsQuery = trpc.projects.list.useQuery();
   const userAssignmentsQuery = trpc.projects.allUserAssignments.useQuery();
+  const companyAssignmentsQuery = trpc.projects.allCompanyAssignments.useQuery();
+  const partnersQuery = trpc.partners.list.useQuery();
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCompanyId, setInviteCompanyId] = useState<string>("");
@@ -668,6 +679,15 @@ function UsersTab() {
   const [filterProject, setFilterProject] = useState<string>("all");
   const [filterCompany, setFilterCompany] = useState<string>("all");
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [partnerConfig, setPartnerConfig] = useState<{
+    userId: number;
+    name: string;
+    parentCompanyId: string;
+    allowKpi: boolean;
+    allowWaste: boolean;
+    active: boolean;
+    projectIds: number[];
+  } | null>(null);
 
   // Filtered and paginated users
   const filteredUsers = useMemo(() => {
@@ -706,6 +726,18 @@ function UsersTab() {
       toast.success("Papel atualizado");
       utils.users.list.invalidate();
     },
+  });
+
+  const configurePartnerMutation = trpc.partners.configure.useMutation({
+    onSuccess: async () => {
+      toast.success("Acesso do EE — Parceiro actualizado");
+      setPartnerConfig(null);
+      await Promise.all([
+        utils.partners.list.invalidate(),
+        utils.projects.allUserAssignments.invalidate(),
+      ]);
+    },
+    onError: error => toast.error(error.message),
   });
 
   const createInviteMutation = trpc.invitations.create.useMutation({
@@ -762,8 +794,141 @@ function UsersTab() {
     });
   };
 
+  const eeCompanies = companiesQuery.data?.filter(company => company.companyType === "ee") ?? [];
+  const parentProjectIds = new Set(
+    (companyAssignmentsQuery.data ?? [])
+      .filter(item => String(item.companyId) === partnerConfig?.parentCompanyId)
+      .map(item => item.projectId),
+  );
+  const partnerSelectableProjects = (projectsQuery.data ?? []).filter(project => parentProjectIds.has(project.id));
+
   return (
     <div className="space-y-6">
+      <Card className="border-emerald-200 bg-emerald-50/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="size-4 text-emerald-700" />
+            EE — Parceiros
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Cada parceiro pertence a uma EE principal e só pode usar KPI e/ou Resíduos nos projectos seleccionados dentro do âmbito dessa EE.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(partnersQuery.data ?? []).map((partner: any) => (
+            <div key={partner.id} className="flex flex-col gap-3 rounded-lg border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium">{partner.name || partner.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  {partner.companyName || "Sem empresa parceira"} → EE principal: {partner.parentCompanyName || "Por configurar"}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {partner.allowKpi && <Badge variant="secondary">KPI</Badge>}
+                  {partner.allowWaste && <Badge variant="secondary">Resíduos</Badge>}
+                  {(partner.projects ?? []).map((project: any) => <Badge key={project.id} variant="outline">{project.code}</Badge>)}
+                  {!partner.active && <Badge variant="destructive">Inactivo</Badge>}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPartnerConfig({
+                  userId: partner.id,
+                  name: partner.name || partner.email || "EE — Parceiro",
+                  parentCompanyId: partner.parentCompanyId ? String(partner.parentCompanyId) : "",
+                  allowKpi: !!partner.allowKpi,
+                  allowWaste: !!partner.allowWaste,
+                  active: !!partner.active,
+                  projectIds: partner.projectIds ?? [],
+                })}
+              >
+                <Settings2 className="mr-2 size-4" /> Configurar
+              </Button>
+            </div>
+          ))}
+          {!partnersQuery.isLoading && (partnersQuery.data?.length ?? 0) === 0 && (
+            <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+              Crie uma empresa do tipo EE — Parceiro e atribua esse papel a um utilizador para configurar o acesso.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!partnerConfig} onOpenChange={open => !open && setPartnerConfig(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Configurar EE — Parceiro</DialogTitle>
+          </DialogHeader>
+          {partnerConfig && (
+            <div className="space-y-5">
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="font-medium">{partnerConfig.name}</p>
+                <p className="text-xs text-muted-foreground">Os projectos disponíveis são sempre limitados aos projectos da EE principal.</p>
+              </div>
+              <div className="space-y-2">
+                <Label>EE principal</Label>
+                <Select value={partnerConfig.parentCompanyId} onValueChange={value => setPartnerConfig(current => current ? { ...current, parentCompanyId: value, projectIds: [] } : current)}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar a EE responsável" /></SelectTrigger>
+                  <SelectContent>
+                    {eeCompanies.map(company => <SelectItem key={company.id} value={String(company.id)}>{company.shortName} — {company.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3">
+                  <input type="checkbox" checked={partnerConfig.allowKpi} onChange={event => setPartnerConfig(current => current ? { ...current, allowKpi: event.target.checked } : current)} />
+                  <div><p className="text-sm font-medium">KPI</p><p className="text-xs text-muted-foreground">Submissões parciais semanais</p></div>
+                </label>
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3">
+                  <input type="checkbox" checked={partnerConfig.allowWaste} onChange={event => setPartnerConfig(current => current ? { ...current, allowWaste: event.target.checked } : current)} />
+                  <div><p className="text-sm font-medium">Resíduos</p><p className="text-xs text-muted-foreground">e-GAR por subprojecto</p></div>
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label>Projectos autorizados</Label>
+                <div className="grid max-h-52 gap-2 overflow-y-auto rounded-lg border p-3 sm:grid-cols-2">
+                  {partnerSelectableProjects.map(project => (
+                    <label key={project.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={partnerConfig.projectIds.includes(project.id)}
+                        onChange={event => setPartnerConfig(current => current ? {
+                          ...current,
+                          projectIds: event.target.checked ? [...current.projectIds, project.id] : current.projectIds.filter(id => id !== project.id),
+                        } : current)}
+                      />
+                      {project.code} — {project.name}
+                    </label>
+                  ))}
+                  {partnerConfig.parentCompanyId && partnerSelectableProjects.length === 0 && <p className="text-xs text-muted-foreground">A EE principal ainda não tem projectos atribuídos.</p>}
+                </div>
+              </div>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" checked={partnerConfig.active} onChange={event => setPartnerConfig(current => current ? { ...current, active: event.target.checked } : current)} />
+                Acesso activo
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPartnerConfig(null)}>Cancelar</Button>
+                <Button
+                  disabled={configurePartnerMutation.isPending || !partnerConfig.parentCompanyId || (partnerConfig.active && (!partnerConfig.allowKpi && !partnerConfig.allowWaste))}
+                  onClick={() => configurePartnerMutation.mutate({
+                    userId: partnerConfig.userId,
+                    parentCompanyId: Number(partnerConfig.parentCompanyId),
+                    allowKpi: partnerConfig.allowKpi,
+                    allowWaste: partnerConfig.allowWaste,
+                    active: partnerConfig.active,
+                    projectIds: partnerConfig.projectIds,
+                  })}
+                >
+                  {configurePartnerMutation.isPending ? "A guardar..." : "Guardar acesso"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Search and Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="flex-1 min-w-[200px]">
@@ -784,6 +949,7 @@ function UsersTab() {
           <option value="dono_obra">Dono de Obra</option>
           <option value="pm">PM</option>
           <option value="ee">EE</option>
+          <option value="ee_partner">EE — Parceiro</option>
           <option value="rap">RAP</option>
           <option value="raa">RAA</option>
           <option value="observador">Observador</option>
@@ -866,6 +1032,7 @@ function UsersTab() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ee">EE — Entidade Executante</SelectItem>
+                      <SelectItem value="ee_partner">EE — Parceiro / Subcontratado</SelectItem>
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
                       <SelectItem value="dono_obra">Dono de Obra</SelectItem>
@@ -917,6 +1084,7 @@ function UsersTab() {
                         <SelectItem value="user">Utilizador</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="ee">EE</SelectItem>
+                        <SelectItem value="ee_partner">EE — Parceiro</SelectItem>
                         <SelectItem value="raa">RAA</SelectItem>
                         <SelectItem value="rap">RAP</SelectItem>
                         <SelectItem value="dono_obra">Dono de Obra</SelectItem>

@@ -28,6 +28,7 @@ import CalendarioControl from "./pages/CalendarioControl";
 import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";
 import KPI from "./pages/KPI";
+import ProjectMap from "./pages/ProjectMap";
 import Welcome from "./pages/Welcome";
 
 function Router() {
@@ -49,6 +50,7 @@ function Router() {
         <Route path="/mirr" component={MIRR} />
         <Route path="/residuos" component={MIRR} />
         <Route path="/kpi" component={KPI} />
+        <Route path="/mapa" component={ProjectMap} />
         <Route path="/certificacoes" component={Certifications} />
         <Route path="/gamma" component={Gamma} />
         <Route path="/ficha" component={WeeklyForm} />

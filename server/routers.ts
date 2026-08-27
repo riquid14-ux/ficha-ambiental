@@ -58,9 +58,13 @@ function isAdminOrDono(role: string) {
 async function assertProjectAccess(user: any, projectId: number) {
   const project = await db.getProjectById(projectId);
   if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Projecto não encontrado." });
-  if (isAdminOrDono(user.role) || user.role === "pm") return project;
+  if (isAdminOrDono(user.role)) return project;
 
   const userProjects = await db.getUserProjects(user.id);
+  if (user.role === "pm") {
+    if (!userProjects.some((item: any) => item.projectId === projectId)) throw new TRPCError({ code: "FORBIDDEN", message: "Este projecto não está atribuído ao PM." });
+    return project;
+  }
   const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
   const allowedProjectIds = new Set([
     ...userProjects.map((item: any) => item.projectId),
@@ -73,10 +77,11 @@ async function assertProjectAccess(user: any, projectId: number) {
 }
 
 async function getAccessibleProjectIds(user: any) {
-  if (isAdminOrDono(user.role) || user.role === "pm") {
+  if (isAdminOrDono(user.role)) {
     return (await db.getAllProjects()).map(project => project.id);
   }
   const userProjects = await db.getUserProjects(user.id);
+  if (user.role === "pm") return userProjects.map((item: any) => item.projectId);
   const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
   return Array.from(new Set([
     ...userProjects.map((item: any) => item.projectId),
@@ -595,7 +600,12 @@ export const appRouter = router({
   // ─── Companies ───────────────────────────────────────────────────────────
   companies: router({
     list: protectedProcedure.query(async () => {
-      return db.getAllCompanies();
+      const [companies, partnerProfiles] = await Promise.all([db.getAllCompanies(), db.getPartnerCompanyProfiles()]);
+      return companies.map(company => {
+        const profile = partnerProfiles.find(item => item.companyId === company.id);
+        const parent = profile ? companies.find(item => item.id === profile.parentCompanyId) : null;
+        return { ...company, parentCompanyId: profile?.parentCompanyId ?? null, parentCompanyName: parent?.shortName ?? parent?.name ?? null, allowKpi: !!profile?.allowKpi, allowWaste: !!profile?.allowWaste };
+      });
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -603,9 +613,25 @@ export const appRouter = router({
         return db.getCompanyById(input.id);
       }),
     create: adminProcedure
-      .input(z.object({ name: z.string().min(1), shortName: z.string().min(1), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee") }))
-      .mutation(async ({ input }) => {
-        return db.createCompany({ name: input.name, shortName: input.shortName, companyType: input.companyType });
+      .input(z.object({
+        name: z.string().trim().min(2), shortName: z.string().trim().min(2),
+        companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee"),
+        projectIds: z.array(z.number().int().positive()).min(1, "Seleccione pelo menos um projecto."),
+        parentCompanyId: z.number().int().positive().optional(), allowKpi: z.boolean().default(false), allowWaste: z.boolean().default(false),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.companyType === "ee_partner") {
+          if (!input.parentCompanyId || (!input.allowKpi && !input.allowWaste)) throw new TRPCError({ code: "BAD_REQUEST", message: "Uma EEP exige EE principal e acesso a KPI e/ou Resíduos." });
+          const parent = await db.getCompanyById(input.parentCompanyId);
+          const allowed = await db.getProjectsForCompany(input.parentCompanyId);
+          const allowedIds = new Set(allowed.map(item => item.projectId));
+          if (parent?.companyType !== "ee" || input.projectIds.some(id => !allowedIds.has(id))) throw new TRPCError({ code: "FORBIDDEN", message: "A EEP só pode receber projectos da EE principal seleccionada." });
+        }
+        const created = await db.createCompany({ name: input.name, shortName: input.shortName, companyType: input.companyType });
+        await db.setCompanyProjects(created.id, input.projectIds);
+        if (input.companyType === "ee_partner") await db.upsertPartnerCompanyProfile({ companyId: created.id, parentCompanyId: input.parentCompanyId!, allowKpi: input.allowKpi, allowWaste: input.allowWaste, active: true, configuredBy: ctx.user.id });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "company_created", "companies", created.id, null, JSON.stringify(input));
+        return created;
       }),
     update: adminProcedure
       .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).optional() }))
@@ -617,12 +643,27 @@ export const appRouter = router({
 
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const database = await db.getDb();
         if (database) {
-          await database.execute(sql`UPDATE users SET companyId = NULL WHERE companyId = ${input.id}`);
-          await database.execute(sql`DELETE FROM company_projects WHERE companyId = ${input.id}`);
-          await database.execute(sql`DELETE FROM companies WHERE id = ${input.id}`);
+          const counts = await database.execute(sql`SELECT
+            (SELECT COUNT(*) FROM weekly_submissions WHERE companyId = ${input.id} AND status <> 'deleted') AS weeklyCount,
+            (SELECT COUNT(*) FROM waste_egars WHERE companyId = ${input.id}) AS wasteCount,
+            (SELECT COUNT(*) FROM kpi_submissions WHERE companyId = ${input.id}) AS kpiCount,
+            (SELECT COUNT(*) FROM partner_company_profiles WHERE parentCompanyId = ${input.id} AND active = 1) AS childCount`);
+          const row = ((counts as any)?.[0]?.[0] ?? {}) as Record<string, number>;
+          if (Number(row.weeklyCount) + Number(row.wasteCount) + Number(row.kpiCount) > 0) throw new TRPCError({ code: "CONFLICT", message: "A empresa tem dados históricos. Desactive-a em vez de a eliminar." });
+          if (Number(row.childCount) > 0) throw new TRPCError({ code: "CONFLICT", message: "A empresa tem EEP associadas. Reatribua ou desactive essas EEP antes de eliminar." });
+          await database.transaction(async tx => {
+            await tx.execute(sql`DELETE FROM project_users WHERE userId IN (SELECT id FROM users WHERE companyId = ${input.id})`);
+            await tx.execute(sql`DELETE FROM partner_access_profiles WHERE userId IN (SELECT id FROM users WHERE companyId = ${input.id})`);
+            await tx.execute(sql`UPDATE users SET companyId = NULL, role = 'user' WHERE companyId = ${input.id}`);
+            await tx.execute(sql`DELETE FROM invitations WHERE companyId = ${input.id}`);
+            await tx.execute(sql`DELETE FROM partner_company_profiles WHERE companyId = ${input.id}`);
+            await tx.execute(sql`DELETE FROM project_companies WHERE companyId = ${input.id}`);
+            await tx.execute(sql`DELETE FROM companies WHERE id = ${input.id}`);
+          });
+          await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "company_deleted", "companies", input.id, null, null);
         }
         return { success: true };
       }),
@@ -739,7 +780,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const targetUser = await db.getUserById(input.userId);
         if (!targetUser || targetUser.role !== "ee_partner") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um utilizador com o papel EE — Parceiro." });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um utilizador com o papel EEP — Entidade Executante Parceira." });
         }
         if (!targetUser.companyId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "O parceiro deve estar associado à sua empresa subcontratada." });
@@ -750,7 +791,7 @@ export const appRouter = router({
           db.getProjectsForCompany(input.parentCompanyId),
         ]);
         if (partnerCompany?.companyType !== "ee_partner") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa do utilizador deve ser do tipo EE — Parceiro." });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa do utilizador deve ser do tipo EEP — Entidade Executante Parceira." });
         }
         if (parentCompany?.companyType !== "ee") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "A empresa principal deve ser uma EE." });
@@ -771,6 +812,48 @@ export const appRouter = router({
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "partner_access_configured", "users", input.userId, null, JSON.stringify(input));
         return { success: true };
       }),
+  }),
+
+  eepRequests: router({
+    mine: protectedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas uma EE pode submeter pedidos EEP." });
+      return db.getEepRequests({ parentCompanyId: ctx.user.companyId });
+    }),
+    create: protectedProcedure.input(z.object({
+      companyName: z.string().trim().min(2).max(255), shortName: z.string().trim().min(2).max(50),
+      allowKpi: z.boolean(), allowWaste: z.boolean(), projectIds: z.array(z.number().int().positive()).min(1),
+      users: z.array(z.object({ fullName: z.string().trim().min(2).max(255), email: z.string().email() })).min(1).max(20),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas uma EE pode submeter pedidos EEP." });
+      if (!input.allowKpi && !input.allowWaste) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione acesso a KPI e/ou Resíduos." });
+      const company = await db.getCompanyById(ctx.user.companyId);
+      const allowed = await db.getProjectsForCompany(ctx.user.companyId);
+      const allowedIds = new Set(allowed.map(item => item.projectId));
+      if (company?.companyType !== "ee" || input.projectIds.some(id => !allowedIds.has(id))) throw new TRPCError({ code: "FORBIDDEN", message: "Só pode pedir EEP para projectos da sua EE." });
+      const emails = input.users.map(user => user.email.toLowerCase().trim());
+      if (new Set(emails).size !== emails.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Não repita o mesmo email no pedido." });
+      const allUsers = await db.getAllUsers(); const allInvites = await db.getAllInvitations(); const allCompanies = await db.getAllCompanies();
+      if (allCompanies.some(item => item.shortName.toLowerCase() === input.shortName.toLowerCase())) throw new TRPCError({ code: "CONFLICT", message: "Já existe uma empresa com esta sigla." });
+      if (emails.some(email => allUsers.some(user => user.email?.toLowerCase() === email) || allInvites.some(invite => invite.email.toLowerCase() === email && invite.status === "pending"))) throw new TRPCError({ code: "CONFLICT", message: "Um dos emails já tem conta ou convite pendente." });
+      const requestId = await db.createEepRequest({ requestedByUserId: ctx.user.id, parentCompanyId: ctx.user.companyId, companyName: input.companyName, shortName: input.shortName, allowKpi: input.allowKpi, allowWaste: input.allowWaste, projectIdsJson: JSON.stringify(input.projectIds) }, input.users.map((user, index) => ({ fullName: user.fullName, email: emails[index] })));
+      await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "eep_request_created", "eep_requests", requestId, null, JSON.stringify({ ...input, users: input.users.map(user => ({ ...user, email: user.email.toLowerCase().trim() })) }));
+      return { success: true, requestId };
+    }),
+    list: adminProcedure.query(async () => db.getEepRequests()),
+    approve: adminProcedure.input(z.object({ id: z.number().int().positive(), notes: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
+      const request = await db.getEepRequestById(input.id); if (!request || request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Pedido inexistente ou já decidido." });
+      const users = await db.getEepRequestUsers(input.id); const allInvites = await db.getAllInvitations(); const allUsers = await db.getAllUsers(); const allCompanies = await db.getAllCompanies();
+      if (allCompanies.some(item => item.shortName.toLowerCase() === request.shortName.toLowerCase())) throw new TRPCError({ code: "CONFLICT", message: "Já existe uma empresa com esta sigla." });
+      if (users.some(item => allUsers.some(user => user.email?.toLowerCase() === item.email) || allInvites.some(invite => invite.email.toLowerCase() === item.email && invite.status === "pending"))) throw new TRPCError({ code: "CONFLICT", message: "Um dos emails já tem conta ou convite pendente." });
+      const result = await db.approveEepRequest(input.id, ctx.user.id, input.notes ?? null); if (!result) throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi decidido." });
+      await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "eep_request_approved", "eep_requests", input.id, null, JSON.stringify({ companyId: result.companyId }));
+      return { success: true, companyId: result.companyId };
+    }),
+    reject: adminProcedure.input(z.object({ id: z.number().int().positive(), notes: z.string().trim().min(3).max(2000) })).mutation(async ({ ctx, input }) => {
+      if (!await db.rejectEepRequest(input.id, ctx.user.id, input.notes)) throw new TRPCError({ code: "CONFLICT", message: "O pedido já foi decidido." });
+      await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "eep_request_rejected", "eep_requests", input.id, null, input.notes);
+      return { success: true };
+    }),
   }),
 
   // ─── Invitations ────────────────────────────────────────────────────────────
@@ -806,7 +889,7 @@ export const appRouter = router({
         try {
           const company = await db.getCompanyById(input.companyId);
           const roleLabels: Record<string, string> = {
-            user: "Utilizador", admin: "Administrador", ee: "Entidade Executante", ee_partner: "EE — Parceiro",
+            user: "Utilizador", admin: "Administrador", ee: "Entidade Executante", ee_partner: "EEP — Entidade Executante Parceira",
             raa: "RAA", rap: "RAP", dono_obra: "Dono de Obra", observador: "Observador",
           };
           sendInvitationEmail(
@@ -1930,9 +2013,13 @@ export const appRouter = router({
     list: partnerAllowedProcedure.query(async ({ ctx }) => {
       const allProjects = await db.getAllProjects();
       const role = ctx.user.role;
-      // Admin/dono_obra/PM see all projects
-      if (role === "admin" || role === "dono_obra" || role === "pm") {
+      // Admin e Dono de Obra mantêm a visão global.
+      if (role === "admin" || role === "dono_obra") {
         return allProjects;
+      }
+      if (role === "pm") {
+        const assigned = new Set((await db.getUserProjects(ctx.user.id)).map(item => item.projectId));
+        return allProjects.filter(project => assigned.has(project.id));
       }
       if (role === "ee_partner") {
         const profile = await getActivePartnerProfile(ctx.user);
@@ -1958,8 +2045,8 @@ export const appRouter = router({
     }),
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
-        return db.getProjectById(input.id);
+      .query(async ({ ctx, input }) => {
+        return assertProjectAccess(ctx.user, input.id);
       }),
     create: adminProcedure
       .input(z.object({
@@ -1990,6 +2077,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "pm") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para listar empresas do projecto." });
         }
+        await assertProjectAccess(ctx.user, input.projectId);
         return db.getCompaniesForProject(input.projectId);
       }),
     addCompany: adminProcedure
@@ -2007,7 +2095,9 @@ export const appRouter = router({
     // User associations
     getUsers: protectedProcedure
       .input(z.object({ projectId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "pm") throw new TRPCError({ code: "FORBIDDEN" });
+        await assertProjectAccess(ctx.user, input.projectId);
         return db.getProjectUsers(input.projectId);
       }),
     // Get all user-project assignments (for admin panel)
@@ -2027,8 +2117,17 @@ export const appRouter = router({
       }),
     // Set company projects (replace all assignments for a company)
     setCompanyProjects: adminProcedure
-      .input(z.object({ companyId: z.number(), projectIds: z.array(z.number()) }))
+      .input(z.object({ companyId: z.number(), projectIds: z.array(z.number().int().positive()).min(1, "Seleccione pelo menos um projecto.") }))
       .mutation(async ({ input }) => {
+        const company = await db.getCompanyById(input.companyId);
+        if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Empresa não encontrada." });
+        if (company.companyType === "ee_partner") {
+          const profile = await db.getPartnerCompanyProfile(input.companyId);
+          if (!profile) throw new TRPCError({ code: "CONFLICT", message: "Configure primeiro a EE principal desta EEP." });
+          const parentProjects = await db.getProjectsForCompany(profile.parentCompanyId);
+          const allowedIds = new Set(parentProjects.map(item => item.projectId));
+          if (input.projectIds.some(projectId => !allowedIds.has(projectId))) throw new TRPCError({ code: "FORBIDDEN", message: "A EEP só pode receber projectos da sua EE principal." });
+        }
         await db.setCompanyProjects(input.companyId, input.projectIds);
         return { success: true };
       }),
@@ -3130,6 +3229,69 @@ export const appRouter = router({
       }),
   }),
 
+  partnerDashboard: router({
+    entities: protectedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Dashboard exclusivo da EE." });
+      await assertProjectAccess(ctx.user, input.projectId);
+      const assigned = await db.getProjectsForCompany(ctx.user.companyId);
+      if (!assigned.some(item => item.projectId === input.projectId)) throw new TRPCError({ code: "FORBIDDEN", message: "A sua EE não está associada a este projecto." });
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await database.execute(sql`
+        SELECT c.id, c.name, c.shortName, 'ee' AS entityType, 1 AS allowKpi, 1 AS allowWaste
+        FROM companies c WHERE c.id = ${ctx.user.companyId} AND c.active = 1
+        UNION ALL
+        SELECT c.id, c.name, c.shortName, 'eep' AS entityType, p.allowKpi, p.allowWaste
+        FROM partner_company_profiles p
+        JOIN companies c ON c.id = p.companyId AND c.active = 1
+        JOIN project_companies pc ON pc.companyId = c.id AND pc.projectId = ${input.projectId}
+        WHERE p.parentCompanyId = ${ctx.user.companyId} AND p.active = 1
+        ORDER BY entityType ASC, shortName ASC`);
+      return (rows as any)[0] || [];
+    }),
+    kpiMatrix: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), year: z.number().int().min(2020).max(2100), startWeek: z.number().int().min(1).max(53).default(1), endWeek: z.number().int().min(1).max(53).default(53) })).query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Dashboard exclusivo da EE." });
+      await assertProjectAccess(ctx.user, input.projectId);
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const rows = await database.execute(sql`
+        SELECT ks.id, ks.companyId, c.shortName, ks.weekNumber, ks.weekYear, ks.status, ks.updatedAt
+        FROM kpi_submissions ks JOIN companies c ON c.id = ks.companyId
+        WHERE ks.projectId = ${input.projectId} AND ks.weekYear = ${input.year}
+          AND ks.weekNumber BETWEEN ${input.startWeek} AND ${input.endWeek}
+          AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})
+        ORDER BY ks.weekNumber ASC, c.shortName ASC`);
+      return (rows as any)[0] || [];
+    }),
+    kpiSeries: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), year: z.number().int().min(2020).max(2100), companyId: z.number().int().positive().nullable().default(null) })).query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Dashboard exclusivo da EE." });
+      await assertProjectAccess(ctx.user, input.projectId);
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.companyId) {
+        const allowed = await database.execute(sql`SELECT c.id FROM companies c LEFT JOIN partner_company_profiles p ON p.companyId = c.id WHERE c.id = ${input.companyId} AND (c.id = ${ctx.user.companyId} OR (p.parentCompanyId = ${ctx.user.companyId} AND p.active = 1)) LIMIT 1`);
+        if (!(allowed as any)[0]?.length) throw new TRPCError({ code: "FORBIDDEN", message: "Entidade fora da rede da sua EE." });
+      }
+      let companyScope = sql` AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})`;
+      if (input.companyId) companyScope = sql` AND ks.companyId = ${input.companyId}`;
+      const [metrics, values] = await Promise.all([
+        database.execute(sql`SELECT id, name, unit, target, category, sortOrder FROM kpi_metrics WHERE active = 1 ORDER BY sortOrder ASC, id ASC`),
+        database.execute(sql`SELECT kv.metricId, kv.value, ks.companyId, c.shortName, ks.weekNumber, ks.weekYear FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId} AND ks.weekYear = ${input.year}${companyScope} ORDER BY kv.metricId, ks.weekNumber, c.shortName`),
+      ]);
+      return { metrics: (metrics as any)[0] || [], values: (values as any)[0] || [] };
+    }),
+    wasteMap: protectedProcedure.input(z.object({ projectId: z.number().int().positive(), year: z.number().int().min(2020).max(2100), companyId: z.number().int().positive().nullable().default(null) })).query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "ee" || !ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Dashboard exclusivo da EE." });
+      await assertProjectAccess(ctx.user, input.projectId);
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.companyId) {
+        const allowed = await database.execute(sql`SELECT c.id FROM companies c LEFT JOIN partner_company_profiles p ON p.companyId = c.id WHERE c.id = ${input.companyId} AND (c.id = ${ctx.user.companyId} OR (p.parentCompanyId = ${ctx.user.companyId} AND p.active = 1)) LIMIT 1`);
+        if (!(allowed as any)[0]?.length) throw new TRPCError({ code: "FORBIDDEN", message: "Entidade fora da rede da sua EE." });
+      }
+      let companyScope = sql` AND (we.companyId = ${ctx.user.companyId} OR we.parentCompanyId = ${ctx.user.companyId})`;
+      if (input.companyId) companyScope = sql` AND we.companyId = ${input.companyId}`;
+      const rows = await database.execute(sql`SELECT we.id, we.companyId, c.shortName, we.subProjectId, sp.name AS subProjectName, sp.code AS subProjectCode, we.lerCode, we.designation, we.quantity, we.correctedQuantity, we.destination, we.month, we.year FROM waste_egars we JOIN companies c ON c.id = we.companyId LEFT JOIN waste_subprojects sp ON sp.id = we.subProjectId WHERE we.projectId = ${input.projectId} AND we.year = ${input.year}${companyScope} ORDER BY we.month ASC, c.shortName ASC`);
+      return (rows as any)[0] || [];
+    }),
+  }),
+
   // ─── Private project map ──────────────────────────────────────────────────
   projectMap: router({
     list: protectedProcedure
@@ -3591,20 +3753,30 @@ export const appRouter = router({
     getByProject: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
         return db.getProjectCompaniesWithPeriods(input.projectId);
       }),
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
-        startWeek: z.number().nullable(),
-        startYear: z.number().nullable(),
-        endWeek: z.number().nullable(),
-        endYear: z.number().nullable(),
-        bufferWeeks: z.number().default(4),
+        startWeek: z.number().int().min(1).max(53).nullable(),
+        startYear: z.number().int().min(2020).max(2100).nullable(),
+        endWeek: z.number().int().min(1).max(53).nullable(),
+        endYear: z.number().int().min(2020).max(2100).nullable(),
+        bufferWeeks: z.number().int().min(0).max(12).default(4),
+      }).superRefine((period, validation) => {
+        if ((period.startWeek === null) !== (period.startYear === null)) validation.addIssue({ code: "custom", message: "Indique a semana e o ano de início.", path: ["startWeek"] });
+        if ((period.endWeek === null) !== (period.endYear === null)) validation.addIssue({ code: "custom", message: "Indique a semana e o ano de fim.", path: ["endWeek"] });
+        if (period.startWeek !== null && period.startYear !== null && period.endWeek !== null && period.endYear !== null) {
+          const start = period.startYear * 53 + period.startWeek;
+          const end = period.endYear * 53 + period.endWeek;
+          if (end < start) validation.addIssue({ code: "custom", message: "O fim dos trabalhos não pode ser anterior ao início.", path: ["endWeek"] });
+        }
       }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-        await db.updateCompanyPeriod(input.id, input.startWeek, input.startYear, input.endWeek, input.endYear, input.bufferWeeks);
+        const updated = await db.updateCompanyPeriod(input.id, input.startWeek, input.startYear, input.endWeek, input.endYear, input.bufferWeeks);
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "A associação entre empresa e projecto já não existe." });
         await db.insertAuditLog(ctx.user.id, ctx.user.name || ctx.user.email, "company_period_update", "project_companies", input.id, null, JSON.stringify({ startWeek: input.startWeek, startYear: input.startYear, endWeek: input.endWeek, endYear: input.endYear, bufferWeeks: input.bufferWeeks }));
         return { success: true };
       }),

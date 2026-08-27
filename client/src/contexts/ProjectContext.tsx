@@ -32,7 +32,7 @@ const PROJECT_STORAGE_KEY = "active-project-id";
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const canSeeAllProjects = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
+  const canSeeAllProjects = user?.role === "admin" || user?.role === "dono_obra";
 
   const { data: projects = [], isLoading } = trpc.projects.list.useQuery(undefined, {
     enabled: !!user,

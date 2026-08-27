@@ -39,12 +39,18 @@ import {
 import { calendarEvents, InsertCalendarEvent } from "../drizzle/schema";
 import {
   partnerAccessProfiles,
+  partnerCompanyProfiles,
+  eepRequests,
+  eepRequestUsers,
   wasteSubprojects,
   projectMapSettings,
   mapSurveys,
   mapPhotos,
   photogrammetryJobs,
   InsertPartnerAccessProfile,
+  InsertPartnerCompanyProfile,
+  InsertEepRequest,
+  InsertEepRequestUser,
   InsertWasteSubproject,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -131,6 +137,34 @@ export async function upsertUser(user: InsertUser): Promise<void> {
             role: invitation.role as any,
           }).where(eq(users.openId, user.openId));
           await acceptInvitation(invitation.id);
+          if (invitation.role === "ee_partner") {
+            const [companyProfile] = await db.select().from(partnerCompanyProfiles).where(eq(partnerCompanyProfiles.companyId, invitation.companyId)).limit(1);
+            const [approvedRequest] = companyProfile ? [] : await db.select().from(eepRequests)
+              .where(and(eq(eepRequests.createdCompanyId, invitation.companyId), eq(eepRequests.status, "approved"))).limit(1);
+            const access = companyProfile ?? approvedRequest;
+            if (access) {
+              const projectIds = approvedRequest
+                ? JSON.parse(approvedRequest.projectIdsJson) as number[]
+                : (await db.select().from(projectCompanies).where(eq(projectCompanies.companyId, invitation.companyId))).map(item => item.projectId);
+              const configuredBy = companyProfile?.configuredBy ?? approvedRequest?.reviewedBy ?? approvedRequest!.requestedByUserId;
+              await db.insert(partnerAccessProfiles).values({
+                userId: dbUser.id,
+                parentCompanyId: access.parentCompanyId,
+                allowKpi: access.allowKpi,
+                allowWaste: access.allowWaste,
+                active: true,
+                configuredBy,
+              }).onDuplicateKeyUpdate({ set: {
+                parentCompanyId: access.parentCompanyId,
+                allowKpi: access.allowKpi,
+                allowWaste: access.allowWaste,
+                active: true,
+                configuredBy,
+              }});
+              await db.delete(projectUsers).where(eq(projectUsers.userId, dbUser.id));
+              if (projectIds.length > 0) await db.insert(projectUsers).values(projectIds.map(projectId => ({ projectId, userId: dbUser.id })));
+            }
+          }
           // Auto-assigned user to company
         }
       }
@@ -867,6 +901,31 @@ export async function getPartnerAccessProfiles() {
   return db.select().from(partnerAccessProfiles).orderBy(partnerAccessProfiles.userId);
 }
 
+export async function getPartnerCompanyProfile(companyId: number) {
+  const database = await getDb();
+  if (!database) return undefined;
+  return (await database.select().from(partnerCompanyProfiles).where(eq(partnerCompanyProfiles.companyId, companyId)).limit(1))[0];
+}
+
+export async function getPartnerCompanyProfiles() {
+  const database = await getDb();
+  if (!database) return [];
+  return database.select().from(partnerCompanyProfiles).orderBy(partnerCompanyProfiles.companyId);
+}
+
+export async function upsertPartnerCompanyProfile(data: Omit<InsertPartnerCompanyProfile, "id" | "createdAt" | "updatedAt">) {
+  const database = await getDb();
+  if (!database) throw new Error("DB not available");
+  await database.insert(partnerCompanyProfiles).values(data).onDuplicateKeyUpdate({ set: {
+    parentCompanyId: data.parentCompanyId,
+    allowKpi: data.allowKpi,
+    allowWaste: data.allowWaste,
+    active: data.active,
+    configuredBy: data.configuredBy,
+  }});
+  return getPartnerCompanyProfile(data.companyId);
+}
+
 export async function upsertPartnerAccessProfile(data: Omit<InsertPartnerAccessProfile, "id" | "createdAt" | "updatedAt">) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -891,6 +950,77 @@ export async function getPartnerAllowedProjectIds(userId: number, parentCompanyI
   return userAssignments
     .map(item => item.projectId)
     .filter(projectId => parentProjectIds.has(projectId));
+}
+
+// ─── EEP requests ───────────────────────────────────────────────────────────
+
+export async function createEepRequest(request: Omit<InsertEepRequest, "id" | "status" | "reviewNotes" | "reviewedBy" | "reviewedAt" | "createdCompanyId" | "createdAt" | "updatedAt">, requestedUsers: Array<Omit<InsertEepRequestUser, "id" | "requestId" | "createdAt">>) {
+  const database = await getDb();
+  if (!database) throw new Error("DB not available");
+  return database.transaction(async tx => {
+    const result = await tx.insert(eepRequests).values(request);
+    const requestId = Number(result[0].insertId);
+    await tx.insert(eepRequestUsers).values(requestedUsers.map(user => ({ ...user, requestId })));
+    return requestId;
+  });
+}
+
+export async function getEepRequestById(id: number) {
+  const database = await getDb();
+  if (!database) return undefined;
+  return (await database.select().from(eepRequests).where(eq(eepRequests.id, id)).limit(1))[0];
+}
+
+export async function getEepRequestUsers(requestId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database.select().from(eepRequestUsers).where(eq(eepRequestUsers.requestId, requestId)).orderBy(eepRequestUsers.id);
+}
+
+export async function getEepRequests(filters?: { parentCompanyId?: number; requestedByUserId?: number }) {
+  const database = await getDb();
+  if (!database) return [];
+  const conditions = [];
+  if (filters?.parentCompanyId) conditions.push(eq(eepRequests.parentCompanyId, filters.parentCompanyId));
+  if (filters?.requestedByUserId) conditions.push(eq(eepRequests.requestedByUserId, filters.requestedByUserId));
+  const rows = conditions.length
+    ? await database.select().from(eepRequests).where(and(...conditions)).orderBy(sql`${eepRequests.createdAt} DESC`)
+    : await database.select().from(eepRequests).orderBy(sql`${eepRequests.createdAt} DESC`);
+  return Promise.all(rows.map(async request => ({ ...request, requestedUsers: await getEepRequestUsers(request.id) })));
+}
+
+export async function approveEepRequest(requestId: number, reviewerId: number, reviewNotes: string | null) {
+  const database = await getDb();
+  if (!database) throw new Error("DB not available");
+  return database.transaction(async tx => {
+    const [request] = await tx.select().from(eepRequests).where(eq(eepRequests.id, requestId)).limit(1);
+    if (!request || request.status !== "pending") return null;
+    const requestedUsers = await tx.select().from(eepRequestUsers).where(eq(eepRequestUsers.requestId, requestId));
+    const companyResult = await tx.insert(companies).values({ name: request.companyName, shortName: request.shortName, companyType: "ee_partner", active: 1 });
+    const companyId = Number(companyResult[0].insertId);
+    const projectIds = JSON.parse(request.projectIdsJson) as number[];
+    if (projectIds.length > 0) await tx.insert(projectCompanies).values(projectIds.map(projectId => ({ projectId, companyId })));
+    await tx.insert(partnerCompanyProfiles).values({
+      companyId,
+      parentCompanyId: request.parentCompanyId,
+      allowKpi: request.allowKpi,
+      allowWaste: request.allowWaste,
+      active: true,
+      configuredBy: reviewerId,
+    });
+    await tx.insert(invitations).values(requestedUsers.map(user => ({ email: user.email, companyId, role: "ee_partner" as const, invitedBy: reviewerId, status: "pending" as const })));
+    await tx.update(eepRequests).set({ status: "approved", reviewedBy: reviewerId, reviewedAt: new Date(), reviewNotes, createdCompanyId: companyId }).where(eq(eepRequests.id, requestId));
+    return { companyId, requestedUsers };
+  });
+}
+
+export async function rejectEepRequest(requestId: number, reviewerId: number, reviewNotes: string) {
+  const database = await getDb();
+  if (!database) return false;
+  const [request] = await database.select().from(eepRequests).where(eq(eepRequests.id, requestId)).limit(1);
+  if (!request || request.status !== "pending") return false;
+  await database.update(eepRequests).set({ status: "rejected", reviewedBy: reviewerId, reviewedAt: new Date(), reviewNotes }).where(eq(eepRequests.id, requestId));
+  return true;
 }
 
 // ─── Deletion Logs ────────────────────────────────────────────────────────────
@@ -1785,19 +1915,29 @@ export async function updatePhotogrammetryJob(id: number, data: Partial<typeof p
 // ─── Company Active Periods ─────────────────────────────────────────────────
 export async function updateCompanyPeriod(projectCompanyId: number, startWeek: number | null, startYear: number | null, endWeek: number | null, endYear: number | null, bufferWeeks: number) {
   const database = await getDb();
-  if (!database) return;
-  await database.execute(
-    sql`UPDATE project_companies SET startWeek = ${startWeek}, startYear = ${startYear}, endWeek = ${endWeek}, endYear = ${endYear}, bufferWeeks = ${bufferWeeks} WHERE id = ${projectCompanyId}`
-  );
+  if (!database) return false;
+  const [existing] = await database.select({ id: projectCompanies.id }).from(projectCompanies).where(eq(projectCompanies.id, projectCompanyId)).limit(1);
+  if (!existing) return false;
+  await database.update(projectCompanies).set({ startWeek, startYear, endWeek, endYear, bufferWeeks }).where(eq(projectCompanies.id, projectCompanyId));
+  return true;
 }
 
 export async function getProjectCompaniesWithPeriods(projectId: number) {
   const database = await getDb();
   if (!database) return [];
-  const rows = await database.execute(
-    sql`SELECT pc.*, c.name as companyName, c.shortName, c.companyType FROM project_companies pc JOIN companies c ON pc.companyId = c.id WHERE pc.projectId = ${projectId}`
-  );
-  return rows as any[];
+  return database.select({
+    id: projectCompanies.id,
+    projectId: projectCompanies.projectId,
+    companyId: projectCompanies.companyId,
+    companyName: companies.name,
+    shortName: companies.shortName,
+    companyType: companies.companyType,
+    startWeek: projectCompanies.startWeek,
+    startYear: projectCompanies.startYear,
+    endWeek: projectCompanies.endWeek,
+    endYear: projectCompanies.endYear,
+    bufferWeeks: projectCompanies.bufferWeeks,
+  }).from(projectCompanies).innerJoin(companies, eq(projectCompanies.companyId, companies.id)).where(eq(projectCompanies.projectId, projectId));
 }
 
 // ─── Weeks Without Work ─────────────────────────────────────────────────────

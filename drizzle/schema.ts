@@ -67,6 +67,66 @@ export const partnerAccessProfiles = mysqlTable("partner_access_profiles", {
 export type PartnerAccessProfile = typeof partnerAccessProfiles.$inferSelect;
 export type InsertPartnerAccessProfile = typeof partnerAccessProfiles.$inferInsert;
 
+export const partnerCompanyProfiles = mysqlTable("partner_company_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull(),
+  parentCompanyId: int("parentCompanyId").notNull(),
+  allowKpi: boolean("allowKpi").default(false).notNull(),
+  allowWaste: boolean("allowWaste").default(false).notNull(),
+  active: boolean("active").default(true).notNull(),
+  configuredBy: int("configuredBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  companyUnique: uniqueIndex("partner_company_profiles_company_unique").on(table.companyId),
+  parentCompanyIdx: index("partner_company_profiles_parent_idx").on(table.parentCompanyId),
+}));
+
+export type PartnerCompanyProfile = typeof partnerCompanyProfiles.$inferSelect;
+export type InsertPartnerCompanyProfile = typeof partnerCompanyProfiles.$inferInsert;
+
+/**
+ * Pedidos submetidos por uma EE para criação de uma EEP. A empresa, os
+ * projectos e os módulos só são materializados depois de aprovação Admin.
+ */
+export const eepRequests = mysqlTable("eep_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  requestedByUserId: int("requestedByUserId").notNull(),
+  parentCompanyId: int("parentCompanyId").notNull(),
+  companyName: varchar("companyName", { length: 255 }).notNull(),
+  shortName: varchar("shortName", { length: 50 }).notNull(),
+  allowKpi: boolean("allowKpi").default(false).notNull(),
+  allowWaste: boolean("allowWaste").default(false).notNull(),
+  projectIdsJson: text("projectIdsJson").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).default("pending").notNull(),
+  reviewNotes: text("reviewNotes"),
+  reviewedBy: int("reviewedBy"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdCompanyId: int("createdCompanyId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  parentCompanyIdx: index("eep_requests_parent_company_idx").on(table.parentCompanyId),
+  requesterIdx: index("eep_requests_requester_idx").on(table.requestedByUserId),
+  statusIdx: index("eep_requests_status_idx").on(table.status),
+}));
+
+export const eepRequestUsers = mysqlTable("eep_request_users", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: int("requestId").notNull(),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  requestIdx: index("eep_request_users_request_idx").on(table.requestId),
+  requestEmailUnique: uniqueIndex("eep_request_users_request_email_unique").on(table.requestId, table.email),
+}));
+
+export type EepRequest = typeof eepRequests.$inferSelect;
+export type InsertEepRequest = typeof eepRequests.$inferInsert;
+export type EepRequestUser = typeof eepRequestUsers.$inferSelect;
+export type InsertEepRequestUser = typeof eepRequestUsers.$inferInsert;
+
 /**
  * Sections (14 secções do documento)
  */

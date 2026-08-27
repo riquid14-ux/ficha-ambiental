@@ -6,11 +6,12 @@ const layoutCode = fs.readFileSync(`${process.cwd()}/client/src/components/AppLa
 const weeklyFormCode = fs.readFileSync(`${process.cwd()}/client/src/pages/WeeklyForm.tsx`, "utf-8");
 const reviewCode = fs.readFileSync(`${process.cwd()}/client/src/pages/ReviewPage.tsx`, "utf-8");
 const dashboardCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Dashboard.tsx`, "utf-8");
+const projectContextCode = fs.readFileSync(`${process.cwd()}/client/src/contexts/ProjectContext.tsx`, "utf-8");
 
 describe("Roles Drill Tests", () => {
 
   describe("Role Definitions", () => {
-    it("should have 8 role types defined in schema", () => {
+    it("should include the EEP role in the permission model", () => {
       expect(routerCode).toContain('"user"');
       expect(routerCode).toContain('"admin"');
       expect(routerCode).toContain('"ee"');
@@ -19,6 +20,7 @@ describe("Roles Drill Tests", () => {
       expect(routerCode).toContain('"dono_obra"');
       expect(routerCode).toContain('"observador"');
       expect(routerCode).toContain('"pm"');
+      expect(routerCode).toContain('"ee_partner"');
     });
   });
 
@@ -79,23 +81,32 @@ describe("Roles Drill Tests", () => {
       expect(adminPaths).toContain("/timeline");
     });
 
-    it("should give PM same access as Admin/DO", () => {
+    it("should give PM operational modules only inside assigned projects", () => {
       const pmMatch = layoutCode.match(/pm:\s*\[(.*?)\]/s);
       expect(pmMatch).toBeTruthy();
       const pmPaths = pmMatch![1];
       expect(pmPaths).toContain("/dashboard");
       expect(pmPaths).toContain("/calendario");
       expect(pmPaths).toContain("/timeline");
+      expect(projectContextCode).not.toMatch(/canSeeAllProjects[^;]*pm/);
     });
   });
 
   describe("All Projects Visibility", () => {
-    it("should only allow Admin, DO, PM to see Todos os Projetos", () => {
-      expect(layoutCode).toMatch(/admin.*dono_obra.*pm.*allProjectsMenuItems|includes.*allProjectsMenuItems/);
+    it("should only allow Admin and DO to see Todos os Projetos", () => {
+      expect(layoutCode).toMatch(/\["admin", "dono_obra"\]\.includes\(userRole\)/);
+      expect(projectContextCode).toContain('user?.role === "admin" || user?.role === "dono_obra"');
+      expect(projectContextCode).not.toMatch(/canSeeAllProjects[^;]*pm/);
     });
 
     it("should block EE, RAP, RAA from seeing all-projects view", () => {
-      expect(layoutCode).toContain("EE, RAP, RAA cannot see all-projects view");
+      expect(layoutCode).toContain("Apenas Admin e Dono de Obra podem abrir a visão global");
+    });
+
+    it("should expose Pedidos EEP and Dashboard Parceiros only to EE", () => {
+      expect(layoutCode).toContain('userRole === "ee"');
+      expect(layoutCode).toContain('path: "/pedidos-eep"');
+      expect(layoutCode).toContain('path: "/dashboard-parceiros"');
     });
   });
 

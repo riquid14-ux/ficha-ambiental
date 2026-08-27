@@ -110,12 +110,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
+  useEffect(() => {
+    if (!loading && !user) setLocation("/login");
+  }, [loading, user, setLocation]);
+
   if (loading) return <DashboardLayoutSkeleton />;
 
-  if (!user) {
-    setLocation("/login");
-    return null;
-  }
+  if (!user) return null;
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
@@ -183,8 +184,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // Observador: Dashboard, Ficha Semanal (read-only)
   const getFilteredMenuItems = () => {
     if (isAllProjects) {
-      // Only Admin, DO, PM can see "Todos os Projetos"
-      if (["admin", "dono_obra", "pm"].includes(userRole)) return allProjectsMenuItems;
+      // Apenas Admin e Dono de Obra podem abrir a visão global.
+      if (["admin", "dono_obra"].includes(userRole)) return allProjectsMenuItems;
       return []; // EE, RAP, RAA cannot see all-projects view
     }
     if (userRole === "ee_partner") {
@@ -212,6 +213,10 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const baseMenuItems = getFilteredMenuItems();
   const allItems = [
     ...baseMenuItems,
+    ...(userRole === "ee" ? [
+      { icon: BarChart3, label: "Dashboard Parceiros", path: "/dashboard-parceiros" },
+      { icon: ClipboardList, label: "Pedidos EEP", path: "/pedidos-eep" },
+    ] : []),
     ...(canAdmin ? adminMenuItems : []),
     ...(canAdminOrDO && !canAdmin ? [{ icon: Shield, label: "Administração", path: "/admin" }] : []),
   ];

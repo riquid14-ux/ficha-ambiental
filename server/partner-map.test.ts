@@ -50,7 +50,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("EE — Parceiro — modelo e isolamento", () => {
+describe("EEP — Entidade Executante Parceira — modelo e isolamento", () => {
   it("acrescenta o role e a configuração hierárquica sem migração destrutiva", () => {
     expect(schemaSource).toContain('"ee_partner"');
     expect(schemaSource).toContain('mysqlTable("partner_access_profiles"');
@@ -87,7 +87,7 @@ describe("EE — Parceiro — modelo e isolamento", () => {
   });
 });
 
-describe("EE — Parceiro — KPI e Resíduos", () => {
+describe("EEP — Entidade Executante Parceira — KPI e Resíduos", () => {
   it("guarda KPI parciais por empresa contributora sem sobrepor a EE ou outros parceiros", () => {
     expect(schemaSource).toContain('mysqlTable("kpi_submissions"');
     expect(schemaSource).toContain('mysqlEnum("sourceType", ["ee", "ee_partner"])');
@@ -173,6 +173,7 @@ describe("Mapa privado — segurança e geometria", () => {
 
   it("prova em execução que Dono de Obra e PM lêem o Mapa mas não conseguem criar levantamentos", async () => {
     vi.spyOn(db, "getProjectById").mockResolvedValue({ id: 1, code: "SIN02", name: "SIN02" } as any);
+    vi.spyOn(db, "getUserProjects").mockResolvedValue([{ projectId: 1 }] as any);
     vi.spyOn(db, "getProjectMapSetting").mockResolvedValue(undefined as any);
     vi.spyOn(db, "getMapSurveys").mockResolvedValue([] as any);
 

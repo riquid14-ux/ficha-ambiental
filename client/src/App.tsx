@@ -29,6 +29,8 @@ import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";
 import KPI from "./pages/KPI";
 import ProjectMap from "./pages/ProjectMap";
+import EepRequests from "./pages/EepRequests";
+import PartnerDashboard from "./pages/PartnerDashboard";
 import Welcome from "./pages/Welcome";
 
 function Router() {
@@ -51,6 +53,8 @@ function Router() {
         <Route path="/residuos" component={MIRR} />
         <Route path="/kpi" component={KPI} />
         <Route path="/mapa" component={ProjectMap} />
+        <Route path="/pedidos-eep" component={EepRequests} />
+        <Route path="/dashboard-parceiros" component={PartnerDashboard} />
         <Route path="/certificacoes" component={Certifications} />
         <Route path="/gamma" component={Gamma} />
         <Route path="/ficha" component={WeeklyForm} />

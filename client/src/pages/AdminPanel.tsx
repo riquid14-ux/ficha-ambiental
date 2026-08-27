@@ -21,7 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
   admin: "Administrador",
   ee: "EE",
-  ee_partner: "EE — Parceiro",
+  ee_partner: "EEP — Entidade Executante Parceira",
   raa: "RAA",
   rap: "RAP",
   dono_obra: "Dono de Obra",
@@ -43,6 +43,58 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   approved: "default",
   rejected: "destructive",
 };
+
+type CompanyPeriodRecord = {
+  id: number;
+  shortName: string;
+  companyType: string;
+  startWeek: number | null;
+  startYear: number | null;
+  endWeek: number | null;
+  endYear: number | null;
+  bufferWeeks: number | null;
+};
+
+function CompanyPeriodRow({ period, saving, onSave }: { period: CompanyPeriodRecord; saving: boolean; onSave: (input: { id: number; startWeek: number | null; startYear: number | null; endWeek: number | null; endYear: number | null; bufferWeeks: number }) => void }) {
+  const makeDraft = () => ({
+    startWeek: period.startWeek?.toString() ?? "",
+    startYear: period.startYear?.toString() ?? "",
+    endWeek: period.endWeek?.toString() ?? "",
+    endYear: period.endYear?.toString() ?? "",
+    bufferWeeks: (period.bufferWeeks ?? 4).toString(),
+  });
+  const [draft, setDraft] = useState(makeDraft);
+  useEffect(() => setDraft(makeDraft()), [period.id, period.startWeek, period.startYear, period.endWeek, period.endYear, period.bufferWeeks]);
+
+  const setField = (field: keyof typeof draft, value: string) => setDraft(current => ({ ...current, [field]: value }));
+  const nullableNumber = (value: string) => value.trim() === "" ? null : Number(value);
+  const save = () => {
+    const startWeek = nullableNumber(draft.startWeek);
+    const startYear = nullableNumber(draft.startYear);
+    const endWeek = nullableNumber(draft.endWeek);
+    const endYear = nullableNumber(draft.endYear);
+    const bufferWeeks = Number(draft.bufferWeeks);
+    if (![period.id, startWeek, startYear, endWeek, endYear, bufferWeeks].filter(value => value !== null).every(Number.isFinite)) return toast.error("Preencha os períodos apenas com números válidos.");
+    if ((startWeek === null) !== (startYear === null)) return toast.error("Indique a semana e o ano de início.");
+    if ((endWeek === null) !== (endYear === null)) return toast.error("Indique a semana e o ano de fim.");
+    if ([startWeek, endWeek].some(value => value !== null && (!Number.isInteger(value) || value < 1 || value > 53))) return toast.error("As semanas devem estar entre 1 e 53.");
+    if ([startYear, endYear].some(value => value !== null && (!Number.isInteger(value) || value < 2020 || value > 2100))) return toast.error("Os anos devem estar entre 2020 e 2100.");
+    if (!Number.isInteger(bufferWeeks) || bufferWeeks < 0 || bufferWeeks > 12) return toast.error("O buffer deve estar entre 0 e 12 semanas.");
+    if (startWeek !== null && startYear !== null && endWeek !== null && endYear !== null && endYear * 53 + endWeek < startYear * 53 + startWeek) return toast.error("O fim dos trabalhos não pode ser anterior ao início.");
+    onSave({ id: period.id, startWeek, startYear, endWeek, endYear, bufferWeeks });
+  };
+
+  return (
+    <TableRow>
+      <TableCell>{period.shortName}</TableCell>
+      <TableCell><Badge variant="outline">{period.companyType === "ee_partner" ? "EEP" : period.companyType?.toUpperCase()}</Badge></TableCell>
+      <TableCell><div className="flex gap-1"><Input aria-label={`Semana inicial ${period.shortName}`} type="number" min={1} max={53} className="w-16 h-8 text-xs" placeholder="S" value={draft.startWeek} onChange={event => setField("startWeek", event.target.value)} /><Input aria-label={`Ano inicial ${period.shortName}`} type="number" min={2020} max={2100} className="w-20 h-8 text-xs" placeholder="Ano" value={draft.startYear} onChange={event => setField("startYear", event.target.value)} /></div></TableCell>
+      <TableCell><div className="flex gap-1"><Input aria-label={`Semana final ${period.shortName}`} type="number" min={1} max={53} className="w-16 h-8 text-xs" placeholder="S" value={draft.endWeek} onChange={event => setField("endWeek", event.target.value)} /><Input aria-label={`Ano final ${period.shortName}`} type="number" min={2020} max={2100} className="w-20 h-8 text-xs" placeholder="Ano" value={draft.endYear} onChange={event => setField("endYear", event.target.value)} /></div></TableCell>
+      <TableCell><Input aria-label={`Buffer ${period.shortName}`} type="number" min={0} max={12} className="w-16 h-8 text-xs" value={draft.bufferWeeks} onChange={event => setField("bufferWeeks", event.target.value)} /></TableCell>
+      <TableCell><Button size="sm" className="h-8" disabled={saving} onClick={save}>{saving ? "A guardar..." : "Guardar"}</Button></TableCell>
+    </TableRow>
+  );
+}
 
 
 function AuditLogTab() {
@@ -121,7 +173,7 @@ export default function AdminPanel() {
               <div className="flex items-start gap-2 p-2 bg-background rounded border">
                 <Users className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">EE — Parceiro</p>
+                  <p className="text-xs font-bold text-foreground">EEP — Entidade Executante Parceira</p>
                   <p className="text-xs text-muted-foreground">Subcontratado de uma EE. Acede apenas a KPI e/ou Resíduos nos projectos autorizados.</p>
                 </div>
               </div>
@@ -171,6 +223,11 @@ export default function AdminPanel() {
             <TabsTrigger value="pedidos" className="gap-2">
               🔑 Pedidos de Acesso
             </TabsTrigger>
+            {user?.role === "admin" && (
+              <TabsTrigger value="pedidos-eep" className="gap-2">
+                <Building2 className="w-4 h-4" /> Pedidos EEP
+              </TabsTrigger>
+            )}
             <TabsTrigger value="melhorias" className="gap-2">
               💡 Melhorias
             </TabsTrigger>
@@ -201,6 +258,7 @@ export default function AdminPanel() {
             <ImagesTab />
           </TabsContent>
           <TabsContent value="pedidos" className="mt-4"><PendingAccountsTab /></TabsContent>
+          {user?.role === "admin" && <TabsContent value="pedidos-eep" className="mt-4"><EepRequestsAdminTab /></TabsContent>}
           <TabsContent value="melhorias" className="mt-4">
             <MelhoriasTab />
           </TabsContent>
@@ -241,6 +299,10 @@ function CompaniesTab() {
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
   const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador">("ee");
+  const [newProjectIds, setNewProjectIds] = useState<number[]>([]);
+  const [newParentCompanyId, setNewParentCompanyId] = useState<number | null>(null);
+  const [newAllowKpi, setNewAllowKpi] = useState(false);
+  const [newAllowWaste, setNewAllowWaste] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [selectedCompanyForPeriod, setSelectedCompanyForPeriod] = useState<any>(null);
@@ -293,7 +355,7 @@ function CompaniesTab() {
     if (companyAssignmentsQuery.data) {
       for (const a of companyAssignmentsQuery.data) {
         const existing = map.get(a.companyId) || [];
-        existing.push(a.projectId);
+        if (!existing.includes(a.projectId)) existing.push(a.projectId);
         map.set(a.companyId, existing);
       }
     }
@@ -308,6 +370,10 @@ function CompaniesTab() {
       setNewName("");
       setNewShortName("");
       setNewType("ee");
+      setNewProjectIds([]);
+      setNewParentCompanyId(null);
+      setNewAllowKpi(false);
+      setNewAllowWaste(false);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -335,25 +401,51 @@ function CompaniesTab() {
               </div>
               <div>
                 <Label>Tipo</Label>
-                <Select value={newType} onValueChange={(v) => setNewType(v as "ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador")}>
+                <Select value={newType} onValueChange={(v) => { setNewType(v as "ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador"); setNewProjectIds([]); setNewParentCompanyId(null); setNewAllowKpi(false); setNewAllowWaste(false); }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ee">EE - Entidade Executante</SelectItem>
-                    <SelectItem value="ee_partner">EE — Parceiro / Subcontratado</SelectItem>
+                    <SelectItem value="ee_partner">EEP — Entidade Executante Parceira</SelectItem>
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
                     <SelectItem value="dono_obra">Dono de Obra</SelectItem>
-                      <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {newType === "ee_partner" && (
+                <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
+                  <div>
+                    <Label>EE principal a que responde</Label>
+                    <Select value={newParentCompanyId ? String(newParentCompanyId) : undefined} onValueChange={value => { setNewParentCompanyId(Number(value)); setNewProjectIds([]); }}>
+                      <SelectTrigger><SelectValue placeholder="Seleccione uma EE" /></SelectTrigger>
+                      <SelectContent>{companiesQuery.data?.filter(company => company.companyType === "ee").map(company => <SelectItem key={company.id} value={String(company.id)}>{company.shortName} — {company.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={newAllowKpi} onChange={event => setNewAllowKpi(event.target.checked)} /> KPI</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={newAllowWaste} onChange={event => setNewAllowWaste(event.target.checked)} /> Resíduos</label>
+                  </div>
+                </div>
+              )}
+              <div>
+                <Label>Projectos <span className="text-destructive">*</span></Label>
+                <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border p-3">
+                  {projectsQuery.data?.filter(project => project.code !== "main" && project.code !== "SIN01-NEST" && (newType !== "ee_partner" || (newParentCompanyId && (companyProjectsMap.get(newParentCompanyId) || []).includes(project.id)))).map(project => (
+                    <label key={project.id} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={newProjectIds.includes(project.id)} onChange={event => setNewProjectIds(current => event.target.checked ? [...current, project.id] : current.filter(id => id !== project.id))} />
+                      {project.code}
+                    </label>
+                  ))}
+                  {newType === "ee_partner" && !newParentCompanyId && <p className="col-span-2 text-xs text-muted-foreground">Seleccione primeiro a EE principal.</p>}
+                </div>
+              </div>
               <Button
                 className="w-full"
-                onClick={() => createMutation.mutate({ name: newName, shortName: newShortName, companyType: newType })}
-                disabled={!newName || !newShortName}
+                onClick={() => createMutation.mutate({ name: newName, shortName: newShortName, companyType: newType, projectIds: newProjectIds, parentCompanyId: newParentCompanyId ?? undefined, allowKpi: newAllowKpi, allowWaste: newAllowWaste })}
+                disabled={!newName || !newShortName || newProjectIds.length === 0 || (newType === "ee_partner" && (!newParentCompanyId || (!newAllowKpi && !newAllowWaste)))}
               >
                 Criar
               </Button>
@@ -369,6 +461,7 @@ function CompaniesTab() {
               <TableHead>Nome</TableHead>
               <TableHead>Sigla</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Ligação EEP</TableHead>
               <TableHead>Projetos</TableHead>
               <TableHead>Estado</TableHead>
             </TableRow>
@@ -381,8 +474,16 @@ function CompaniesTab() {
                 <TableCell><Badge variant="outline">{c.companyType === "rap" ? "RAP - " : ""}{c.shortName}</Badge></TableCell>
                 <TableCell>
                   <Badge variant={c.companyType === "ee" ? "default" : c.companyType === "ee_partner" ? "secondary" : c.companyType === "rap" ? "secondary" : "outline"}>
-                    {c.companyType === "ee" ? "EE" : c.companyType === "ee_partner" ? "EE — Parceiro" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
+                    {c.companyType === "ee" ? "EE" : c.companyType === "ee_partner" ? "EEP" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  {c.companyType === "ee_partner" ? (
+                    <div className="text-xs">
+                      <span className="font-medium">EEP de {c.parentCompanyName || "—"}</span>
+                      <div className="text-muted-foreground">{[c.allowKpi && "KPI", c.allowWaste && "Resíduos"].filter(Boolean).join(" + ") || "Sem módulos"}</div>
+                    </div>
+                  ) : <span className="text-xs text-muted-foreground">—</span>}
                 </TableCell>
                 <TableCell>
                   {editingCompanyId === c.id ? (
@@ -448,7 +549,7 @@ function CompaniesTab() {
                       ) : (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <FolderKanban className="w-3 h-3" />
-                          Todos
+                          Sem projectos atribuídos
                         </span>
                       )}
                     </div>
@@ -514,32 +615,7 @@ function CompaniesTab() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {(companyPeriodsQuery.data as any[]).map((pc: any) => (
-                        <TableRow key={pc.id}>
-                          <TableCell>{pc.shortName}</TableCell>
-                          <TableCell><Badge variant="outline">{pc.companyType?.toUpperCase()}</Badge></TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Input type="number" className="w-16 h-7 text-xs" placeholder="S" defaultValue={pc.startWeek || ""} onBlur={e => { const v = e.target.value ? Number(e.target.value) : null; updatePeriodMutation.mutate({ id: pc.id, startWeek: v, startYear: pc.startYear || new Date().getFullYear(), endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: pc.bufferWeeks || 4 }); }} />
-                              <Input type="number" className="w-20 h-7 text-xs" placeholder="Ano" defaultValue={pc.startYear || new Date().getFullYear()} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: Number(e.target.value), endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: pc.bufferWeeks || 4 }); }} />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Input type="number" className="w-16 h-7 text-xs" placeholder="S" defaultValue={pc.endWeek || ""} onBlur={e => { const v = e.target.value ? Number(e.target.value) : null; updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: v, endYear: pc.endYear || new Date().getFullYear(), bufferWeeks: pc.bufferWeeks || 4 }); }} />
-                              <Input type="number" className="w-20 h-7 text-xs" placeholder="Ano" defaultValue={pc.endYear || new Date().getFullYear()} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: pc.endWeek, endYear: Number(e.target.value), bufferWeeks: pc.bufferWeeks || 4 }); }} />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" className="w-16 h-7 text-xs" defaultValue={pc.bufferWeeks || 4} onBlur={e => { updatePeriodMutation.mutate({ id: pc.id, startWeek: pc.startWeek, startYear: pc.startYear, endWeek: pc.endWeek, endYear: pc.endYear, bufferWeeks: Number(e.target.value) || 4 }); }} />
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={pc.startWeek ? "default" : "secondary"} className="text-[10px]">
-                              {pc.startWeek ? `S${pc.startWeek}/${pc.startYear} — ${pc.endWeek ? `S${pc.endWeek}/${pc.endYear}` : "Em curso"}` : "Sem período"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {companyPeriodsQuery.data.map(period => <CompanyPeriodRow key={period.id} period={period} saving={updatePeriodMutation.isPending} onSave={input => updatePeriodMutation.mutate(input)} />)}
                     </TableBody>
                   </Table>
                 )}
@@ -730,7 +806,7 @@ function UsersTab() {
 
   const configurePartnerMutation = trpc.partners.configure.useMutation({
     onSuccess: async () => {
-      toast.success("Acesso do EE — Parceiro actualizado");
+      toast.success("Acesso da EEP actualizado");
       setPartnerConfig(null);
       await Promise.all([
         utils.partners.list.invalidate(),
@@ -808,7 +884,7 @@ function UsersTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Users className="size-4 text-emerald-700" />
-            EE — Parceiros
+            EEP — Entidades Executantes Parceiras
           </CardTitle>
           <p className="text-xs text-muted-foreground">
             Cada parceiro pertence a uma EE principal e só pode usar KPI e/ou Resíduos nos projectos seleccionados dentro do âmbito dessa EE.
@@ -835,7 +911,7 @@ function UsersTab() {
                 size="sm"
                 onClick={() => setPartnerConfig({
                   userId: partner.id,
-                  name: partner.name || partner.email || "EE — Parceiro",
+                  name: partner.name || partner.email || "EEP",
                   parentCompanyId: partner.parentCompanyId ? String(partner.parentCompanyId) : "",
                   allowKpi: !!partner.allowKpi,
                   allowWaste: !!partner.allowWaste,
@@ -849,7 +925,7 @@ function UsersTab() {
           ))}
           {!partnersQuery.isLoading && (partnersQuery.data?.length ?? 0) === 0 && (
             <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              Crie uma empresa do tipo EE — Parceiro e atribua esse papel a um utilizador para configurar o acesso.
+              Crie uma empresa do tipo EEP e atribua o papel Entidade Executante Parceira a um utilizador para configurar o acesso.
             </p>
           )}
         </CardContent>
@@ -858,7 +934,7 @@ function UsersTab() {
       <Dialog open={!!partnerConfig} onOpenChange={open => !open && setPartnerConfig(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Configurar EE — Parceiro</DialogTitle>
+            <DialogTitle>Configurar EEP — Entidade Executante Parceira</DialogTitle>
           </DialogHeader>
           {partnerConfig && (
             <div className="space-y-5">
@@ -949,7 +1025,7 @@ function UsersTab() {
           <option value="dono_obra">Dono de Obra</option>
           <option value="pm">PM</option>
           <option value="ee">EE</option>
-          <option value="ee_partner">EE — Parceiro</option>
+          <option value="ee_partner">EEP — Entidade Executante Parceira</option>
           <option value="rap">RAP</option>
           <option value="raa">RAA</option>
           <option value="observador">Observador</option>
@@ -1032,7 +1108,7 @@ function UsersTab() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ee">EE — Entidade Executante</SelectItem>
-                      <SelectItem value="ee_partner">EE — Parceiro / Subcontratado</SelectItem>
+                      <SelectItem value="ee_partner">EEP — Entidade Executante Parceira</SelectItem>
                       <SelectItem value="rap">RAP — Resp. Acomp. Patrimonial</SelectItem>
                       <SelectItem value="raa">RAA — Resp. Acomp. Ambiental</SelectItem>
                       <SelectItem value="dono_obra">Dono de Obra</SelectItem>
@@ -1084,7 +1160,7 @@ function UsersTab() {
                         <SelectItem value="user">Utilizador</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="ee">EE</SelectItem>
-                        <SelectItem value="ee_partner">EE — Parceiro</SelectItem>
+                        <SelectItem value="ee_partner">EEP — Entidade Executante Parceira</SelectItem>
                         <SelectItem value="raa">RAA</SelectItem>
                         <SelectItem value="rap">RAP</SelectItem>
                         <SelectItem value="dono_obra">Dono de Obra</SelectItem>
@@ -1443,6 +1519,46 @@ function MelhoriasTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── EEP Requests Admin Tab ─────────────────────────────────────────────────
+function EepRequestsAdminTab() {
+  const requests = trpc.eepRequests.list.useQuery();
+  const companies = trpc.companies.list.useQuery();
+  const projects = trpc.projects.list.useQuery();
+  const approve = trpc.eepRequests.approve.useMutation({ onSuccess: () => { toast.success("Pedido EEP aprovado e convites criados"); requests.refetch(); }, onError: error => toast.error(error.message) });
+  const reject = trpc.eepRequests.reject.useMutation({ onSuccess: () => { toast.success("Pedido EEP rejeitado"); requests.refetch(); }, onError: error => toast.error(error.message) });
+  const statusLabel: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Rejeitado", cancelled: "Cancelado" };
+  const projectCodes = (json: string) => {
+    try { return (JSON.parse(json) as number[]).map(id => projects.data?.find(project => project.id === id)?.code || String(id)); } catch { return []; }
+  };
+
+  return (
+    <div className="space-y-4">
+      {requests.data?.map(request => (
+        <Card key={request.id}>
+          <CardContent className="p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><h3 className="font-semibold">{request.shortName} — {request.companyName}</h3><Badge variant={request.status === "approved" ? "default" : request.status === "rejected" ? "destructive" : "secondary"}>{statusLabel[request.status]}</Badge></div>
+                <p className="text-sm text-muted-foreground">Responde a <strong>{companies.data?.find(company => company.id === request.parentCompanyId)?.shortName || request.parentCompanyId}</strong> · {[request.allowKpi && "KPI", request.allowWaste && "Resíduos"].filter(Boolean).join(" + ")}</p>
+                <div className="flex flex-wrap gap-1">{projectCodes(request.projectIdsJson).map(code => <Badge key={code} variant="outline">{code}</Badge>)}</div>
+                <div className="text-sm"><p className="font-medium">Utilizadores a convidar</p>{request.requestedUsers.map(item => <p key={item.id} className="text-muted-foreground">{item.fullName} · {item.email}</p>)}</div>
+                {request.reviewNotes && <p className="rounded bg-muted p-2 text-xs">{request.reviewNotes}</p>}
+              </div>
+              {request.status === "pending" && (
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={approve.isPending} onClick={() => approve.mutate({ id: request.id })}><CheckCircle2 className="mr-1 h-4 w-4" />Aprovar</Button>
+                  <Button size="sm" variant="destructive" disabled={reject.isPending} onClick={() => { const notes = prompt("Motivo da rejeição:"); if (notes?.trim()) reject.mutate({ id: request.id, notes: notes.trim() }); }}><XCircle className="mr-1 h-4 w-4" />Rejeitar</Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      {requests.data?.length === 0 && <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">Não existem pedidos EEP.</CardContent></Card>}
     </div>
   );
 }

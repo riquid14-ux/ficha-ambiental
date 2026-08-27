@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { DEFAULT_PROJECT_MAP, MAP_READ_ROLES } from "../shared/project-map";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
@@ -112,10 +113,33 @@ async function assertPartnerProjectModuleAccess(user: any, projectId: number, mo
   return profile;
 }
 
+function assertMapReadRole(role: string) {
+  if (!(MAP_READ_ROLES as readonly string[]).includes(role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "O Mapa está disponível apenas para Administrador, Dono de Obra e Gestor de Projecto." });
+  }
+}
+
 function assertMapWriteRole(role: string) {
-  if (!["admin", "dono_obra", "pm", "raa", "ee"].includes(role)) {
+  if (role !== "admin") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para alterar levantamentos do Mapa." });
   }
+}
+
+function effectiveProjectMapSetting(projectId: number, stored?: Awaited<ReturnType<typeof db.getProjectMapSetting>>) {
+  return {
+    id: stored?.id ?? 0,
+    projectId,
+    baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
+    baseMapUrl: DEFAULT_PROJECT_MAP.url,
+    boundsJson: stored?.boundsJson ?? JSON.stringify(DEFAULT_PROJECT_MAP.bounds),
+    sourceName: DEFAULT_PROJECT_MAP.sourceName,
+    sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
+    attribution: DEFAULT_PROJECT_MAP.attribution,
+    license: DEFAULT_PROJECT_MAP.license,
+    updatedBy: stored?.updatedBy ?? null,
+    createdAt: stored?.createdAt ?? null,
+    updatedAt: stored?.updatedAt ?? null,
+  };
 }
 
 function canUpdatePlanProgress(user: any, assignment: any) {
@@ -3110,6 +3134,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
+        assertMapReadRole(ctx.user.role);
         await assertProjectAccess(ctx.user, input.projectId);
         const [setting, surveys] = await Promise.all([
           db.getProjectMapSetting(input.projectId),
@@ -3119,11 +3144,12 @@ export const appRouter = router({
           ...survey,
           photoCount: (await db.getMapPhotos(survey.id)).length,
         })));
-        return { setting: setting ?? null, surveys: items };
+        return { setting: effectiveProjectMapSetting(input.projectId, setting), surveys: items };
       }),
     survey: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
+        assertMapReadRole(ctx.user.role);
         const survey = await db.getMapSurveyById(input.id);
         if (!survey) throw new TRPCError({ code: "NOT_FOUND" });
         await assertProjectAccess(ctx.user, survey.projectId);
@@ -3131,7 +3157,7 @@ export const appRouter = router({
           db.getMapPhotos(survey.id),
           db.getProjectMapSetting(survey.projectId),
         ]);
-        return { survey, photos, setting: setting ?? null };
+        return { survey, photos, setting: effectiveProjectMapSetting(survey.projectId, setting) };
       }),
     createSurvey: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), capturedAt: z.number().optional() }))
@@ -3149,17 +3175,10 @@ export const appRouter = router({
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_survey_created", "map_surveys", result.id, null, JSON.stringify({ projectId: input.projectId, name: input.name }));
         return result;
       }),
-    uploadBaseMap: protectedProcedure
+    updateBaseMapBounds: protectedProcedure
       .input(z.object({
         projectId: z.number().int().positive(),
-        filename: z.string().min(1).max(255),
-        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-        base64: z.string().min(1),
         bounds: z.object({ west: z.number().gte(-180).lte(180), south: z.number().gte(-90).lte(90), east: z.number().gte(-180).lte(180), north: z.number().gte(-90).lte(90) }),
-        sourceName: z.string().trim().min(1).max(255),
-        sourceUrl: z.string().url().optional(),
-        attribution: z.string().trim().min(1).max(500),
-        license: z.string().trim().min(1).max(255),
       }))
       .mutation(async ({ ctx, input }) => {
         assertMapWriteRole(ctx.user.role);
@@ -3167,26 +3186,19 @@ export const appRouter = router({
         if (input.bounds.west >= input.bounds.east || input.bounds.south >= input.bounds.north) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Os limites geográficos do mapa base são inválidos." });
         }
-        const buffer = Buffer.from(input.base64, "base64");
-        if (buffer.length > 50 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "O mapa base não pode exceder 50 MB." });
-        const sanitized = await sanitizeFile(buffer, input.mimeType, input.filename);
-        if (!sanitized.safe) throw new TRPCError({ code: "BAD_REQUEST", message: sanitized.threats.join("; ") });
-        const project = await db.getProjectById(input.projectId);
-        const extension = input.mimeType === "image/png" ? "png" : input.mimeType === "image/webp" ? "webp" : "jpg";
-        const stored = await storagePut(`project-maps/${project?.code ?? input.projectId}/basemap-${Date.now()}.${extension}`, buffer, input.mimeType);
         const setting = await db.upsertProjectMapSetting({
           projectId: input.projectId,
-          baseMapFileKey: stored.key,
-          baseMapUrl: stored.url,
+          baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
+          baseMapUrl: DEFAULT_PROJECT_MAP.url,
           boundsJson: JSON.stringify(input.bounds),
-          sourceName: input.sourceName,
-          sourceUrl: input.sourceUrl ?? null,
-          attribution: input.attribution,
-          license: input.license,
+          sourceName: DEFAULT_PROJECT_MAP.sourceName,
+          sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
+          attribution: DEFAULT_PROJECT_MAP.attribution,
+          license: DEFAULT_PROJECT_MAP.license,
           updatedBy: ctx.user.id,
         });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_basemap_updated", "projects", input.projectId, null, JSON.stringify({ filename: input.filename, sourceName: input.sourceName }));
-        return setting;
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_bounds_updated", "projects", input.projectId, null, JSON.stringify({ bounds: input.bounds, sourceName: DEFAULT_PROJECT_MAP.sourceName }));
+        return effectiveProjectMapSetting(input.projectId, setting);
       }),
     uploadPhoto: protectedProcedure
       .input(z.object({

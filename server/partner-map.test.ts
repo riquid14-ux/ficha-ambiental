@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
+import * as db from "./db";
 import type { TrpcContext } from "./_core/context";
 import {
   assessProjectionConfidence,
@@ -24,8 +25,9 @@ const wasteSource = readFileSync(resolve(root, "client/src/pages/MIRR.tsx"), "ut
 const mapSource = readFileSync(resolve(root, "client/src/pages/ProjectMap.tsx"), "utf8");
 const mapCanvasSource = readFileSync(resolve(root, "client/src/components/ProjectMapCanvas.tsx"), "utf8");
 const welcomeSource = readFileSync(resolve(root, "client/src/pages/Welcome.tsx"), "utf8");
+const sharedMapSource = readFileSync(resolve(root, "shared/project-map.ts"), "utf8");
 
-function partnerContext(role: "ee_partner" | "observador" = "ee_partner") {
+function partnerContext(role: "admin" | "dono_obra" | "pm" | "ee_partner" | "observador" = "ee_partner") {
   return {
     user: {
       id: 780,
@@ -43,6 +45,10 @@ function partnerContext(role: "ee_partner" | "observador" = "ee_partner") {
     res: { clearCookie: () => undefined },
   } as unknown as TrpcContext;
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("EE — Parceiro — modelo e isolamento", () => {
   it("acrescenta o role e a configuração hierárquica sem migração destrutiva", () => {
@@ -119,19 +125,64 @@ describe("EE — Parceiro — KPI e Resíduos", () => {
 });
 
 describe("Mapa privado — segurança e geometria", () => {
-  it("guarda mapas e fotografias em storage externo com sanitização e limites", () => {
+  it("usa um mapa base oficial predefinido e deixa o Admin ajustar apenas limites WGS84", () => {
+    const mapRouter = routerSource.slice(routerSource.indexOf("projectMap: router"), routerSource.indexOf("feedback: router"));
+    expect(sharedMapSource).toContain("DEFAULT_PROJECT_MAP");
+    expect(sharedMapSource).toContain("Direção-Geral do Território — Ortofotos 2018");
+    expect(sharedMapSource).toContain("CC BY 4.0");
+    expect(sharedMapSource).toContain("/manus-storage/sines_dgt_ortos2018_332642c9.png");
+    expect(mapRouter).toContain("effectiveProjectMapSetting");
+    expect(mapRouter).toContain("updateBaseMapBounds");
+    expect(mapRouter).toContain("boundsJson: JSON.stringify(input.bounds)");
+    expect(mapSource).toContain("Ajustar limites");
+    expect(mapSource).toContain("A plataforma fornece o mapa base oficial");
+    expect(mapSource).not.toContain("Imagem raster");
+    expect(mapSource).not.toContain("setBaseMapFile");
+  });
+
+  it("guarda fotografias em storage externo com sanitização e limites, sem obrigar o utilizador a fornecer o raster base", () => {
     const mapRouter = routerSource.slice(routerSource.indexOf("projectMap: router"), routerSource.indexOf("feedback: router"));
     expect(mapRouter).toContain("sanitizeFile(buffer");
     expect(mapRouter).toContain("storagePut(`project-maps/");
-    expect(mapRouter).toContain("50 * 1024 * 1024");
     expect(mapRouter).toContain("25 * 1024 * 1024");
     expect(mapRouter).toContain('await import("exifr")');
     expect(mapRouter).toContain("exif.GPSAltitude");
     expect(mapRouter).toContain("exif.GPSImgDirection");
+    expect(mapRouter).not.toContain("uploadBaseMap:");
+    expect(mapRouter).not.toContain("50 * 1024 * 1024");
   });
 
-  it("recusa escrita no Mapa a um Observador antes de consultar a base de dados", async () => {
+  it("limita a leitura do Mapa a Admin, Dono de Obra e PM e bloqueia Observador antes de consultar a base de dados", async () => {
+    expect(sharedMapSource).toContain('MAP_READ_ROLES = ["admin", "dono_obra", "pm"]');
+    expect(routerSource).toContain("assertMapReadRole(ctx.user.role)");
+    expect(layoutSource).toContain('const canViewMap = ["admin", "dono_obra", "pm"].includes(userRole)');
+    expect(layoutSource).toContain('item.path !== "/mapa" || canViewMap');
+    expect(layoutSource).not.toContain('ee: ["/welcome", "/workflow", "/mapa"');
     await expect(appRouter.createCaller(partnerContext("observador")).projectMap.createSurvey({ projectId: 1, name: "Teste" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(partnerContext("observador")).projectMap.list({ projectId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("permite escrita no Mapa apenas ao Admin", () => {
+    const mapRouter = routerSource.slice(routerSource.indexOf("projectMap: router"), routerSource.indexOf("feedback: router"));
+    expect(routerSource).toContain('if (role !== "admin")');
+    expect(mapRouter).toContain("createSurvey: protectedProcedure");
+    expect(mapRouter).toContain("updateBaseMapBounds: protectedProcedure");
+    expect(mapSource).toContain('const canWrite = user?.role === "admin"');
+    expect(mapSource).toContain("Novo levantamento");
+  });
+
+  it("prova em execução que Dono de Obra e PM lêem o Mapa mas não conseguem criar levantamentos", async () => {
+    vi.spyOn(db, "getProjectById").mockResolvedValue({ id: 1, code: "SIN02", name: "SIN02" } as any);
+    vi.spyOn(db, "getProjectMapSetting").mockResolvedValue(undefined as any);
+    vi.spyOn(db, "getMapSurveys").mockResolvedValue([] as any);
+
+    for (const role of ["dono_obra", "pm"] as const) {
+      const caller = appRouter.createCaller(partnerContext(role));
+      const result = await caller.projectMap.list({ projectId: 1 });
+      expect(result.setting?.sourceName).toContain("Direção-Geral do Território");
+      await expect(caller.projectMap.createSurvey({ projectId: 1, name: `Teste ${role}` })).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(caller.projectMap.updateBaseMapBounds({ projectId: 1, bounds: { west: -8.885, south: 37.94, east: -8.855, north: 37.965 } })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
   });
 
   it("calcula um buffer real de 200 m e converte coordenadas para a vista", () => {
@@ -160,7 +211,7 @@ describe("Mapa privado — segurança e geometria", () => {
   });
 
   it("apresenta uma experiência map-first privada e distingue footprints de ortomosaico", () => {
-    expect(mapSource).toContain("Mapa base privado do projecto");
+    expect(mapSource).toContain("Ajustar limites do mapa base");
     expect(mapSource).toContain("Fotografias sem GPS não são forçadas para o mapa");
     expect(mapCanvasSource).toContain("Mapa privado");
     expect(mapCanvasSource).toContain("buffer 200 m");

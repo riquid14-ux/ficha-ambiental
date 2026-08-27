@@ -172,6 +172,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
   const canAdmin = userRole === "admin";
   const canAdminOrDO = userRole === "admin" || userRole === "dono_obra";
+  const canViewMap = ["admin", "dono_obra", "pm"].includes(userRole);
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
   
   // Role-based sidebar filtering (permissions matrix from doc)
@@ -193,16 +194,16 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       ].filter((path): path is string => !!path);
       return projectMenuItems.filter(item => allowedPaths.includes(item.path));
     }
-    if (isOperationOnly) return operationProjectMenuItems;
+    if (isOperationOnly) return operationProjectMenuItems.filter(item => item.path !== "/mapa" || canViewMap);
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
       admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      ee: ["/welcome", "/workflow", "/mapa", "/ficha", "/residuos", "/kpi"],
-      raa: ["/welcome", "/workflow", "/mapa", "/ficha", "/residuos", "/kpi"],
-      rap: ["/welcome", "/workflow", "/mapa", "/ficha", "/kpi"],
-      observador: ["/welcome", "/dashboard", "/mapa", "/ficha"],
+      ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
+      raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
+      rap: ["/welcome", "/workflow", "/ficha", "/kpi"],
+      observador: ["/welcome", "/dashboard", "/ficha"],
       user: ["/welcome", "/ficha"],
     };
     const allowed = allowedPaths[userRole] || allowedPaths.user;

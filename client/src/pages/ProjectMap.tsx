@@ -34,7 +34,8 @@ export default function ProjectMap() {
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
   const projectId = activeProject?.id ?? 0;
-  const canWrite = ["admin", "dono_obra", "pm", "raa", "ee"].includes(user?.role ?? "");
+  const canView = ["admin", "dono_obra", "pm"].includes(user?.role ?? "");
+  const canWrite = user?.role === "admin";
   const [selectedSurveyId, setSelectedSurveyId] = useState<number | null>(null);
   const [showSurveyDialog, setShowSurveyDialog] = useState(false);
   const [showBaseMapDialog, setShowBaseMapDialog] = useState(false);
@@ -42,11 +43,10 @@ export default function ProjectMap() {
   const [surveyDate, setSurveyDate] = useState(new Date().toISOString().slice(0, 10));
   const [uploading, setUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const [baseMapFile, setBaseMapFile] = useState<File | null>(null);
-  const [baseMapForm, setBaseMapForm] = useState({ west: "", south: "", east: "", north: "", sourceName: "", sourceUrl: "", attribution: "", license: "" });
+  const [baseMapForm, setBaseMapForm] = useState({ west: "", south: "", east: "", north: "" });
 
-  const listQuery = trpc.projectMap.list.useQuery({ projectId }, { enabled: projectId > 0 && !isAllProjects });
-  const surveyQuery = trpc.projectMap.survey.useQuery({ id: selectedSurveyId ?? 0 }, { enabled: !!selectedSurveyId });
+  const listQuery = trpc.projectMap.list.useQuery({ projectId }, { enabled: canView && projectId > 0 && !isAllProjects });
+  const surveyQuery = trpc.projectMap.survey.useQuery({ id: selectedSurveyId ?? 0 }, { enabled: canView && !!selectedSurveyId });
 
   useEffect(() => {
     if (listQuery.data?.surveys.length && !listQuery.data.surveys.some(item => item.id === selectedSurveyId)) {
@@ -66,12 +66,11 @@ export default function ProjectMap() {
     onError: error => toast.error(error.message),
   });
   const uploadPhotoMutation = trpc.projectMap.uploadPhoto.useMutation();
-  const uploadBaseMapMutation = trpc.projectMap.uploadBaseMap.useMutation({
+  const updateBaseMapBoundsMutation = trpc.projectMap.updateBaseMapBounds.useMutation({
     onSuccess: async () => {
       await Promise.all([listQuery.refetch(), surveyQuery.refetch()]);
       setShowBaseMapDialog(false);
-      setBaseMapFile(null);
-      toast.success("Mapa base privado actualizado");
+      toast.success("Limites do mapa base actualizados");
     },
     onError: error => toast.error(error.message),
   });
@@ -98,24 +97,28 @@ export default function ProjectMap() {
     }
   };
 
-  const handleBaseMapUpload = async () => {
-    if (!baseMapFile || !projectId) return toast.error("Seleccione o ficheiro do mapa base.");
+  const openBaseMapDialog = () => {
+    const setting = listQuery.data?.setting;
+    try {
+      const bounds = setting?.boundsJson ? JSON.parse(setting.boundsJson) : {};
+      setBaseMapForm({ west: String(bounds.west ?? ""), south: String(bounds.south ?? ""), east: String(bounds.east ?? ""), north: String(bounds.north ?? "") });
+    } catch {
+      setBaseMapForm({ west: "", south: "", east: "", north: "" });
+    }
+    setShowBaseMapDialog(true);
+  };
+
+  const handleBaseMapBounds = () => {
+    if (!projectId) return;
     const west = Number(baseMapForm.west), south = Number(baseMapForm.south), east = Number(baseMapForm.east), north = Number(baseMapForm.north);
     if (![west, south, east, north].every(Number.isFinite)) return toast.error("Preencha os quatro limites WGS84.");
-    if (!baseMapForm.sourceName.trim() || !baseMapForm.attribution.trim() || !baseMapForm.license.trim()) return toast.error("Fonte, atribuição e licença são obrigatórias.");
-    uploadBaseMapMutation.mutate({
+    updateBaseMapBoundsMutation.mutate({
       projectId,
-      filename: baseMapFile.name,
-      mimeType: baseMapFile.type as "image/jpeg" | "image/png" | "image/webp",
-      base64: await fileToBase64(baseMapFile),
       bounds: { west, south, east, north },
-      sourceName: baseMapForm.sourceName.trim(),
-      sourceUrl: baseMapForm.sourceUrl.trim() || undefined,
-      attribution: baseMapForm.attribution.trim(),
-      license: baseMapForm.license.trim(),
     });
   };
 
+  if (!canView) return <AppLayout><div className="p-8 text-center text-muted-foreground">O Mapa está disponível apenas para Administrador, Dono de Obra e Gestor de Projecto.</div></AppLayout>;
   if (isAllProjects || !activeProject) return <AppLayout><div className="p-8 text-center text-muted-foreground">Seleccione um projecto individual para abrir o Mapa.</div></AppLayout>;
 
   const surveys = listQuery.data?.surveys ?? [];
@@ -132,7 +135,7 @@ export default function ProjectMap() {
             <p className="mt-1 text-sm text-muted-foreground">Levantamentos privados, camadas fotográficas e ortomosaicos do projecto</p>
           </div>
           {canWrite && <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setShowBaseMapDialog(true)}><Layers3 className="mr-2 size-4" />Mapa base</Button>
+            <Button variant="outline" onClick={openBaseMapDialog}><Layers3 className="mr-2 size-4" />Ajustar limites</Button>
             <Button onClick={() => setShowSurveyDialog(true)}><Plus className="mr-2 size-4" />Novo levantamento</Button>
           </div>}
         </div>
@@ -194,13 +197,12 @@ export default function ProjectMap() {
 
       <Dialog open={showBaseMapDialog} onOpenChange={setShowBaseMapDialog}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Mapa base privado do projecto</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Ajustar limites do mapa base</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Carregue um raster autorizado e indique os limites WGS84. A imagem fica em storage privado; a fonte, atribuição e licença ficam auditadas.</p>
-            <div className="space-y-2"><Label>Imagem raster</Label><Input type="file" accept="image/jpeg,image/png,image/webp" onChange={event => setBaseMapFile(event.target.files?.[0] ?? null)} /></div>
+            <p className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">A plataforma fornece o mapa base oficial. Ajuste apenas os limites WGS84 para alinhar o enquadramento do projecto.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{(["west", "south", "east", "north"] as const).map(key => <div key={key} className="space-y-1"><Label className="capitalize">{key}</Label><Input type="number" step="0.000001" value={baseMapForm[key]} onChange={event => setBaseMapForm(current => ({ ...current, [key]: event.target.value }))} /></div>)}</div>
-            <div className="grid gap-3 sm:grid-cols-2"><div className="space-y-1"><Label>Fonte</Label><Input value={baseMapForm.sourceName} onChange={event => setBaseMapForm(current => ({ ...current, sourceName: event.target.value }))} /></div><div className="space-y-1"><Label>URL da fonte</Label><Input value={baseMapForm.sourceUrl} onChange={event => setBaseMapForm(current => ({ ...current, sourceUrl: event.target.value }))} /></div><div className="space-y-1"><Label>Atribuição</Label><Input value={baseMapForm.attribution} onChange={event => setBaseMapForm(current => ({ ...current, attribution: event.target.value }))} /></div><div className="space-y-1"><Label>Licença</Label><Input value={baseMapForm.license} onChange={event => setBaseMapForm(current => ({ ...current, license: event.target.value }))} /></div></div>
-            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowBaseMapDialog(false)}>Cancelar</Button><Button disabled={uploadBaseMapMutation.isPending} onClick={handleBaseMapUpload}><ShieldCheck className="mr-2 size-4" />{uploadBaseMapMutation.isPending ? "A guardar..." : "Guardar mapa base"}</Button></div>
+            <div className="rounded-lg border bg-muted/30 p-3 text-xs"><p className="font-medium">{listQuery.data?.setting?.sourceName}</p><p className="mt-1 text-muted-foreground">{listQuery.data?.setting?.attribution} · {listQuery.data?.setting?.license}</p></div>
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowBaseMapDialog(false)}>Cancelar</Button><Button disabled={updateBaseMapBoundsMutation.isPending} onClick={handleBaseMapBounds}><ShieldCheck className="mr-2 size-4" />{updateBaseMapBoundsMutation.isPending ? "A guardar..." : "Guardar limites"}</Button></div>
           </div>
         </DialogContent>
       </Dialog>

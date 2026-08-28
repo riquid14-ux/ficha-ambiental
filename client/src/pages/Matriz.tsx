@@ -80,6 +80,8 @@ export default function Matriz(props: any) {
     if (!matrixQuery.data) return { rows: [], weeks: [] };
 
     const { submissions, companies, weeks, projects: projectsMap } = matrixQuery.data as any;
+    // Defesa adicional da interface: EEP não possui workflow de Ficha Semanal.
+    const weeklyCompanies = companies.filter((company: any) => company.companyType !== "ee_partner");
 
     // Build a lookup: companyId -> weekKey -> best status
     const lookup = new Map<number, Map<string, string>>();
@@ -94,7 +96,7 @@ export default function Matriz(props: any) {
       }
     }
 
-    const rows = companies.map((company: any) => ({
+    const rows = weeklyCompanies.map((company: any) => ({
       company,
       cells: weeks.map((weekKey: string) => ({
         weekKey,

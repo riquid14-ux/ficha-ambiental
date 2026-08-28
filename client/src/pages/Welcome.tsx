@@ -5,6 +5,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
+import { isProjectRouteEnabled } from "@/lib/project-modules";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -26,9 +27,10 @@ interface FeatureCard {
   icon: React.ElementType;
   title: string;
   description: string;
+  module?: "dashboard" | "calendar" | "map" | "timeline" | "ficha" | "residuos" | "kpi";
 }
 
-function getFeatures(role: string, projectCode: string, isAllProjects: boolean, isNest: boolean): FeatureCard[] {
+function getFeatures(role: string, projectCode: string, isAllProjects: boolean, isNest: boolean, enabledModules?: string | null): FeatureCard[] {
   if (isAllProjects) {
     return [
       { icon: ClipboardList, title: "Dashboard Global", description: "Visão geral do cumprimento ambiental de todos os projetos Start Campus." },
@@ -52,10 +54,10 @@ function getFeatures(role: string, projectCode: string, isAllProjects: boolean, 
   }
   const features: FeatureCard[] = [];
   if (["admin", "dono_obra", "pm"].includes(role)) {
-    features.push({ icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental com fichas aprovadas, em revisão, rascunhos e alertas de incumprimento." });
+    features.push({ icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental com fichas aprovadas, em revisão, rascunhos e alertas de incumprimento.", module: "dashboard" });
   }
   if (["admin", "dono_obra", "pm", "ee", "raa", "rap"].includes(role)) {
-    features.push({ icon: BookOpen, title: "Workflow", description: "Consulte o fluxo de submissão e aprovação das fichas de controlo ambiental." });
+    features.push({ icon: BookOpen, title: "Workflow", description: "Consulte o fluxo de submissão e aprovação das fichas de controlo ambiental.", module: "ficha" });
     features.push({
       icon: ClipboardList,
       title: "Ficha Semanal",
@@ -65,18 +67,19 @@ function getFeatures(role: string, projectCode: string, isAllProjects: boolean, 
         ? "Submeta fichas de controlo semanais relativas às medidas ambientais da sua responsabilidade."
         : role === "raa"
         ? "Reveja as fichas submetidas pelas entidades executantes. Aprove ou rejeite com comentários por medida."
-        : "Crie, submeta e acompanhe fichas de controlo semanais. Consulte a matriz e o histórico completo."
+        : "Crie, submeta e acompanhe fichas de controlo semanais. Consulte a matriz e o histórico completo.",
+      module: "ficha",
     });
   }
   if (["admin", "dono_obra", "pm", "ee", "raa"].includes(role)) {
-    features.push({ icon: Recycle, title: "Gestão de Resíduos", description: "Registe resíduos por código LER, crie sub-projetos, gere Wastemap e exporte MIRR." });
+    features.push({ icon: Recycle, title: "Gestão de Resíduos", description: "Registe resíduos por código LER, crie sub-projetos, gere Wastemap e exporte MIRR.", module: "residuos" });
   }
   if (["admin", "dono_obra", "pm", "ee", "rap"].includes(role)) {
-    features.push({ icon: BarChart3, title: "KPI's", description: "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes." });
+    features.push({ icon: BarChart3, title: "KPI's", description: "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes.", module: "kpi" });
   }
-  features.push({ icon: CalendarDays, title: "Calendário", description: "Consulte os prazos de reporting ambiental e as datas importantes do projeto." });
-  features.push({ icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação." });
-  return features;
+  features.push({ icon: CalendarDays, title: "Calendário", description: "Consulte os prazos de reporting ambiental e as datas importantes do projeto.", module: "calendar" });
+  features.push({ icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.", module: "timeline" });
+  return features.filter(feature => !feature.module || isProjectRouteEnabled(enabledModules, `/${feature.module === "calendar" ? "calendario" : feature.module}`));
 }
 
 export default function Welcome() {
@@ -97,7 +100,7 @@ export default function Welcome() {
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
     : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
 
-  const features = getFeatures(userRole, projectCode, isAllProjects, isNest);
+  const features = getFeatures(userRole, projectCode, isAllProjects, isNest, activeProject?.enabledModules);
   const roleLabel = ROLE_LABELS[userRole] || userRole;
   const projectName = isAllProjects ? "Todos os Projetos" : (activeProject?.name || projectCode);
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
@@ -201,7 +204,7 @@ export default function Welcome() {
 
         {/* Quick tips */}
         {/* Workflow Diagram - How the process works */}
-        {!isAllProjects && !isNest && (
+        {!isAllProjects && !isNest && isProjectRouteEnabled(activeProject?.enabledModules, "/ficha") && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">

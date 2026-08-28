@@ -13,6 +13,7 @@ import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pen
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { describeKpiValue, splitWaterMetrics } from "@/lib/kpi-context";
 
 const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 const CAT_LABELS: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", energy: "Energia", water: "Água", emissions: "Emissões", incidents: "Incidentes", other: "Outros" };
@@ -64,6 +65,11 @@ export default function KPI() {
   const targets = (targetsQuery.data || []) as any[];
   const companies = (companiesQuery.data || []) as any[];
   const isAdminOrDO = user?.role === "admin" || user?.role === "dono_obra";
+  const submittingCompanyName = useMemo(() => {
+    if (isPartner) return partnerAccessQuery.data?.companyName || "empresa parceira";
+    return companies.find(company => company.id === user?.companyId)?.shortName || undefined;
+  }, [companies, isPartner, partnerAccessQuery.data?.companyName, user?.companyId]);
+  const waterMetricGroups = useMemo(() => splitWaterMetrics(manualMetrics), [manualMetrics]);
 
   // Categories for step-by-step form
   const categories = useMemo(() => {
@@ -184,6 +190,21 @@ export default function KPI() {
   // Current category for step form
   const currentCat = categories[formStep] || categories[0];
   const currentCatMetrics = manualMetrics.filter((m: any) => m.category === currentCat);
+  const standardWaterMetrics = currentCat === "water" ? waterMetricGroups.operational : currentCatMetrics;
+  const affluentWaterMetrics = currentCat === "water" ? waterMetricGroups.affluent : [];
+  const renderMetricCards = (metricList: any[]) => metricList.map((m: any) => (
+    <Card key={m.id} className={`transition-all ${formValues[m.id] ? "border-primary/40 bg-primary/5" : "hover:border-primary/20"}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-medium">{m.name}</p>
+          <Badge variant="outline" className="text-[10px]">{m.unit}</Badge>
+        </div>
+        <Input type="number" step="any" placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => setFormValues({ ...formValues, [m.id]: e.target.value })} className="text-lg h-10 font-mono" />
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{describeKpiValue(m, activeProject?.code, submittingCompanyName, formWeek, formYear)}</p>
+        {m.target && m.target !== "N/A" && <p className="text-[10px] text-muted-foreground mt-1">Meta: {m.target}</p>}
+      </CardContent>
+    </Card>
+  ));
 
   return (
     <AppLayout>
@@ -303,20 +324,13 @@ export default function KPI() {
                 </div>
 
                 {/* Current category cards */}
-                <div className="grid gap-3 md:grid-cols-2">
-                  {currentCatMetrics.map((m: any) => (
-                    <Card key={m.id} className={`transition-all ${formValues[m.id] ? "border-primary/40 bg-primary/5" : "hover:border-primary/20"}`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-medium">{m.name}</p>
-                          <Badge variant="outline" className="text-[10px]">{m.unit}</Badge>
-                        </div>
-                        <Input type="number" step="any" placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => setFormValues({ ...formValues, [m.id]: e.target.value })} className="text-lg h-10 font-mono" />
-                        {m.target && m.target !== "N/A" && <p className="text-[10px] text-muted-foreground mt-1">Meta: {m.target}</p>}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <div className="grid gap-3 md:grid-cols-2">{renderMetricCards(standardWaterMetrics)}</div>
+                {affluentWaterMetrics.length > 0 && (
+                  <section className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50/50 p-4">
+                    <div className="mb-3 flex items-start gap-2"><Droplets className="mt-0.5 size-4 text-cyan-700" /><div><h3 className="text-sm font-semibold text-cyan-950">Águas Afluentes</h3><p className="text-xs text-cyan-900/80">Registe separadamente as águas residuais e operações associadas ao período seleccionado.</p></div></div>
+                    <div className="grid gap-3 md:grid-cols-2">{renderMetricCards(affluentWaterMetrics)}</div>
+                  </section>
+                )}
 
                 {/* Calculated values preview */}
                 {formStep === categories.length - 1 && calculatedMetrics.length > 0 && (
@@ -364,8 +378,9 @@ export default function KPI() {
                 {dashPage === 1 && <>
                 <ChartCard title={t("Consumo Água (L)")}><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" /></BarChart></ChartCard>
                 <ChartCard title={t("Água Acumulada")}><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumWater || 0; acc.push({ ...d, cumWater: prev + (d.water || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumWater" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} /></AreaChart></ChartCard>
-                <ChartCard title={t("Repartição por Tipo de Água")}><PieChart><Pie data={metrics.filter((m: any) => m.category === "water" && m.inputType === "manual" && (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ChartCard>
+                <ChartCard title={t("Repartição por Tipo de Água")}><PieChart><Pie data={waterMetricGroups.operational.filter((m: any) => (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ChartCard>
                 <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-sky-50"><Droplets className="w-8 h-8 text-blue-500 mb-2" /><p className="text-2xl font-bold text-blue-700">{formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))} L</p><p className="text-xs text-muted-foreground">{t("Total Água Consumida")}</p></Card>
+                {waterMetricGroups.affluent.length > 0 && <div className="md:col-span-2 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4"><div className="mb-3 flex items-center gap-2"><Droplets className="size-4 text-cyan-700" /><div><h3 className="text-sm font-semibold text-cyan-950">Águas Afluentes</h3><p className="text-xs text-cyan-900/80">Indicadores registados separadamente do consumo de água.</p></div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{waterMetricGroups.affluent.map((metric: any) => <div key={metric.id} className="rounded-lg border border-cyan-100 bg-white p-3"><p className="text-xs text-slate-600">{metric.name}</p><p className="mt-1 text-lg font-semibold text-cyan-800">{formatNumber(totals[metric.id] || 0)} <span className="text-xs font-medium">{metric.unit}</span></p></div>)}</div></div>}
                 </>}
                 {dashPage === 2 && <>
                 <ChartCard title="Trabalhadores em Obra"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ChartCard>

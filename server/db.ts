@@ -1088,6 +1088,8 @@ export async function getMatrixData(projectId?: number, year?: number) {
     const allCompanies = await db.select().from(companies).where(eq(companies.active, 1));
     relevantCompanies = allCompanies;
   }
+  // EEP contribui apenas para KPI/Resíduos; nunca é obrigada a submeter Ficha Semanal.
+  relevantCompanies = relevantCompanies.filter(company => company.companyType !== "ee_partner");
 
   const conditions: any[] = [sql`${weeklySubmissions.status} != 'deleted'`];
   if (projectId) conditions.push(eq(weeklySubmissions.projectId, projectId));

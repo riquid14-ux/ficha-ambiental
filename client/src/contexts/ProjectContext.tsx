@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, useEffect, ReactNode } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -7,6 +7,7 @@ interface Project {
   code: string;
   name: string;
   description: string | null;
+  enabledModules: string;
   active: number;
 }
 
@@ -38,18 +39,19 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     enabled: !!user,
   });
 
-  const [activeProjectId, setActiveProjectId] = useState<number | null>(() => {
+  const [activeProjectId, setStoredActiveProjectId] = useState<number | null>(() => {
     const saved = localStorage.getItem(PROJECT_STORAGE_KEY);
     return saved ? parseInt(saved, 10) : null;
   });
 
-  useEffect(() => {
-    if (activeProjectId !== null) {
-      localStorage.setItem(PROJECT_STORAGE_KEY, activeProjectId.toString());
+  const setActiveProjectId = useCallback((id: number | null) => {
+    if (id !== null) {
+      localStorage.setItem(PROJECT_STORAGE_KEY, id.toString());
     } else {
       localStorage.removeItem(PROJECT_STORAGE_KEY);
     }
-  }, [activeProjectId]);
+    setStoredActiveProjectId(id);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && projects.length > 0 && !canSeeAllProjects && activeProjectId === null) {

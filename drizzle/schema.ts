@@ -294,6 +294,7 @@ export const projects = mysqlTable("projects", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   workflowDescription: text("workflowDescription"),
+  enabledModules: varchar("enabledModules", { length: 1000 }).notNull().default('["dashboard","calendar","map","timeline","ficha","residuos","kpi"]'),
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),

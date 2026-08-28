@@ -298,7 +298,7 @@ export default function AdminPanel() {
 
 function CompaniesTab() {
   const { t } = useLanguage();
-  const { activeProject } = useProject();
+  const { activeProject, isAllProjects } = useProject();
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
   const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador">("ee");
@@ -364,6 +364,14 @@ function CompaniesTab() {
     }
     return map;
   }, [companyAssignmentsQuery.data]);
+  const visibleCompanies = useMemo(() => {
+    const companies = companiesQuery.data || [];
+    if (isAllProjects || !activeProject) return companies;
+    const companyIds = new Set((companyAssignmentsQuery.data || [])
+      .filter(assignment => assignment.projectId === activeProject.id)
+      .map(assignment => assignment.companyId));
+    return companies.filter(company => companyIds.has(company.id));
+  }, [activeProject?.id, companiesQuery.data, companyAssignmentsQuery.data, isAllProjects]);
 
   const createMutation = trpc.companies.create.useMutation({
     onSuccess: async () => {
@@ -473,7 +481,7 @@ function CompaniesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {companiesQuery.data?.map((c) => (
+            {visibleCompanies.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-mono text-xs">{c.id}</TableCell>
                 <TableCell>{c.name}</TableCell>
@@ -581,7 +589,7 @@ function CompaniesTab() {
                 </TableCell>
               </TableRow>
             ))}
-            {companiesQuery.data?.length === 0 && (
+            {visibleCompanies.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   Nenhuma empresa registada
@@ -672,7 +680,7 @@ function CompaniesTab() {
           </Dialog>
         </div>
         <CompanyRelationshipMap
-          companies={(companiesQuery.data || []).map(company => ({
+          companies={visibleCompanies.map(company => ({
             id: company.id,
             name: company.name,
             shortName: company.shortName,
@@ -753,6 +761,7 @@ function UsersTab() {
   const { t } = useLanguage();
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const { activeProject, isAllProjects } = useProject();
   const usersQuery = trpc.users.list.useQuery();
   const companiesQuery = trpc.companies.list.useQuery();
   const invitationsQuery = trpc.invitations.list.useQuery();
@@ -785,18 +794,54 @@ function UsersTab() {
     active: boolean;
     projectIds: number[];
   } | null>(null);
+  const userProjectsMap = useMemo(() => {
+    const map = new Map<number, number[]>();
+    for (const assignment of userAssignmentsQuery.data || []) {
+      const existing = map.get(assignment.userId) || [];
+      if (!existing.includes(assignment.projectId)) existing.push(assignment.projectId);
+      map.set(assignment.userId, existing);
+    }
+    return map;
+  }, [userAssignmentsQuery.data]);
+  const scopedProjectId = isAllProjects ? null : activeProject?.id ?? null;
+  const scopedCompanyIds = useMemo(() => new Set(
+    scopedProjectId === null ? [] : (companyAssignmentsQuery.data || [])
+      .filter(assignment => assignment.projectId === scopedProjectId)
+      .map(assignment => assignment.companyId),
+  ), [companyAssignmentsQuery.data, scopedProjectId]);
+  const scopedCompanies = useMemo(() => {
+    const companies = companiesQuery.data || [];
+    return scopedProjectId === null ? companies : companies.filter(company => scopedCompanyIds.has(company.id));
+  }, [companiesQuery.data, scopedCompanyIds, scopedProjectId]);
+  const scopedUsers = useMemo(() => {
+    const users = usersQuery.data || [];
+    if (scopedProjectId === null) return users;
+    return users.filter((candidate: any) =>
+      scopedCompanyIds.has(candidate.companyId) ||
+      (userProjectsMap.get(candidate.id) || []).includes(scopedProjectId) ||
+      ["admin", "dono_obra", "raa"].includes(candidate.role),
+    );
+  }, [scopedCompanyIds, scopedProjectId, userProjectsMap, usersQuery.data]);
+  const scopedInvitations = useMemo(() => {
+    const invitations = invitationsQuery.data || [];
+    return scopedProjectId === null ? invitations : invitations.filter(invitation => scopedCompanyIds.has(invitation.companyId));
+  }, [invitationsQuery.data, scopedCompanyIds, scopedProjectId]);
+  const scopedPartners = useMemo(() => {
+    const partners = partnersQuery.data || [];
+    return scopedProjectId === null ? partners : partners.filter((partner: any) => (partner.projectIds || []).includes(scopedProjectId));
+  }, [partnersQuery.data, scopedProjectId]);
 
   // Filtered and paginated users
   const filteredUsers = useMemo(() => {
-    const data = usersQuery.data || [];
+    const data = scopedUsers;
     return data.filter((u: any) => {
       const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchRole = filterRole === "all" || u.role === filterRole;
-      const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
+      const matchProject = scopedProjectId !== null || filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
       const matchCompany = filterCompany === "all" || String(u.companyId) === filterCompany;
       return matchSearch && matchRole && matchProject && matchCompany;
     });
-  }, [usersQuery.data, searchTerm, filterRole, filterProject, filterCompany]);
+  }, [scopedUsers, searchTerm, filterRole, filterProject, filterCompany, scopedProjectId, userProjectsMap]);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const paginatedUsers = useMemo(() => {
@@ -805,7 +850,7 @@ function UsersTab() {
   }, [filteredUsers, currentPage, PAGE_SIZE]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole, filterProject, filterCompany]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterRole, filterProject, filterCompany, scopedProjectId]);
 
   const deleteUserMutation = trpc.auth.deleteUser.useMutation({
     onSuccess: () => { toast.success(t("Utilizador eliminado")); setDeleteUserId(null); setDeleteConfirmName(""); usersQuery.refetch(); },
@@ -866,19 +911,6 @@ function UsersTab() {
     },
   });
 
-  // Build a map of userId -> projectIds
-  const userProjectsMap = useMemo(() => {
-    const map = new Map<number, number[]>();
-    if (userAssignmentsQuery.data) {
-      for (const a of userAssignmentsQuery.data) {
-        const existing = map.get(a.userId) || [];
-        existing.push(a.projectId);
-        map.set(a.userId, existing);
-      }
-    }
-    return map;
-  }, [userAssignmentsQuery.data]);
-
   const handleInvite = () => {
     if (!inviteEmail || !inviteCompanyId || !inviteRole) {
       toast.error("Preencha todos os campos");
@@ -891,7 +923,7 @@ function UsersTab() {
     });
   };
 
-  const eeCompanies = companiesQuery.data?.filter(company => company.companyType === "ee") ?? [];
+  const eeCompanies = scopedCompanies.filter(company => company.companyType === "ee");
   const parentProjectIds = new Set(
     (companyAssignmentsQuery.data ?? [])
       .filter(item => String(item.companyId) === partnerConfig?.parentCompanyId)
@@ -912,7 +944,7 @@ function UsersTab() {
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {(partnersQuery.data ?? []).map((partner: any) => (
+          {scopedPartners.map((partner: any) => (
             <div key={partner.id} className="flex flex-col gap-3 rounded-lg border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="font-medium">{partner.name || partner.email}</p>
@@ -944,7 +976,7 @@ function UsersTab() {
               </Button>
             </div>
           ))}
-          {!partnersQuery.isLoading && (partnersQuery.data?.length ?? 0) === 0 && (
+          {!partnersQuery.isLoading && scopedPartners.length === 0 && (
             <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
               Crie uma empresa do tipo EEP e atribua o papel Entidade Executante Parceira a um utilizador para configurar o acesso.
             </p>
@@ -1051,7 +1083,7 @@ function UsersTab() {
           <option value="raa">RAA</option>
           <option value="observador">Observador</option>
         </select>
-        <select
+        {isAllProjects && <select
           className="border rounded-md px-3 py-2 text-sm bg-background"
           value={filterProject}
           onChange={(e) => setFilterProject(e.target.value)}
@@ -1060,26 +1092,18 @@ function UsersTab() {
           {projectsQuery.data?.map((p: any) => (
             <option key={p.id} value={String(p.id)}>{p.code}</option>
           ))}
-        </select>
+        </select>}
         <select
           className="border rounded-md px-3 py-2 text-sm bg-background"
           value={filterCompany}
           onChange={(e) => setFilterCompany(e.target.value)}
         >
           <option value="all">{t("Todas")} {t("Empresas")}</option>
-          {companiesQuery.data?.map((c: any) => (
+          {scopedCompanies.map((c: any) => (
             <option key={c.id} value={String(c.id)}>{c.shortName} ({c.companyType.toUpperCase()})</option>
           ))}
         </select>
-        <span className="text-sm text-muted-foreground">
-          {usersQuery.data?.filter((u: any) => {
-            const matchSearch = !searchTerm || u.name?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchRole = filterRole === "all" || u.role === filterRole;
-            const matchProject = filterProject === "all" || (userProjectsMap.get(u.id) || []).includes(Number(filterProject));
-            const matchCompany = filterCompany === "all" || String(u.companyId) === filterCompany;
-            return matchSearch && matchRole && matchProject && matchCompany;
-          })?.length || 0} {t("Utilizadores")}
-        </span>
+        <span className="text-sm text-muted-foreground">{filteredUsers.length} {t("Utilizadores")}</span>
       </div>
       {/* Invite User Button + Dialog */}
       <Card>
@@ -1113,7 +1137,7 @@ function UsersTab() {
                       <SelectValue placeholder="Selecionar empresa" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companiesQuery.data?.map((c) => (
+                      {scopedCompanies.map((c) => (
                         <SelectItem key={c.id} value={String(c.id)}>
                           {c.shortName} ({c.companyType.toUpperCase()})
                         </SelectItem>
@@ -1317,7 +1341,7 @@ function UsersTab() {
       )}
 
       {/* Pending Invitations */}
-      {invitationsQuery.data && invitationsQuery.data.filter((i) => i.status === "pending").length > 0 && (
+      {scopedInvitations.filter((i) => i.status === "pending").length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -1337,7 +1361,7 @@ function UsersTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invitationsQuery.data.filter((i) => i.status === "pending").map((inv) => (
+                {scopedInvitations.filter((i) => i.status === "pending").map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-medium">{inv.email}</TableCell>
                     <TableCell>{inv.companyName}</TableCell>

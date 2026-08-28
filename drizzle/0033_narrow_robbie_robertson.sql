@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `enabledModules` varchar(1000) DEFAULT '["dashboard","calendar","map","timeline","ficha","residuos","kpi"]' NOT NULL;

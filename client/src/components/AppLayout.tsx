@@ -48,6 +48,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Recycle, Home, Bell, MapPinned } from "lucide-react";
+import { isProjectRouteEnabled } from "@/lib/project-modules";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -62,7 +63,6 @@ const projectMenuItems = [
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
   { icon: BarChart3, label: "KPI's", path: "/kpi" },
-  { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)
@@ -199,8 +199,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     if (isOperationOnly) return operationProjectMenuItems.filter(item => item.path !== "/mapa" || canViewMap);
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
-      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi", "/rdcd"],
-      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi", "/rdcd"],
+      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
       raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
@@ -209,7 +209,9 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       user: ["/welcome", "/ficha"],
     };
     const allowed = allowedPaths[userRole] || allowedPaths.user;
-    return projectMenuItems.filter(item => allowed.includes(item.path));
+    return projectMenuItems.filter(item =>
+      allowed.includes(item.path) && isProjectRouteEnabled(activeProject?.enabledModules, item.path),
+    );
   };
   const baseMenuItems = getFilteredMenuItems();
   const allItems = [

@@ -6,9 +6,12 @@ describe("acesso RDCD", () => {
   const layout = readFileSync(resolve(process.cwd(), "client/src/components/AppLayout.tsx"), "utf8");
   const rdcd = readFileSync(resolve(process.cwd(), "client/src/pages/RDCD.tsx"), "utf8");
 
-  it("mantém o RDCD no menu individual de Admin e Dono de Obra", () => {
-    expect(layout).toContain('{ icon: FileBarChart, label: "RDCD", path: "/rdcd" }');
-    expect(layout).toContain('"/kpi", "/rdcd"]');
+  it("mantém o RDCD exclusivamente no menu Todos os Projetos de Admin e Dono de Obra", () => {
+    const allProjectsMenu = layout.slice(layout.indexOf("const allProjectsMenuItems"), layout.indexOf("const adminMenuItems"));
+    const projectMenu = layout.slice(layout.indexOf("const projectMenuItems"), layout.indexOf("const operationProjectMenuItems"));
+    expect(allProjectsMenu).toContain('{ icon: FileBarChart, label: "RDCD", path: "/rdcd" }');
+    expect(projectMenu).not.toContain('label: "RDCD"');
+    expect(layout).not.toContain('"/kpi", "/rdcd"]');
   });
 
   it("não anuncia acesso PM quando a consulta base de fichas não lhe é autorizada", () => {

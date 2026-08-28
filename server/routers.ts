@@ -80,6 +80,30 @@ async function assertProjectAccess(user: any, projectId: number) {
   return project;
 }
 
+type ProjectModule = "dashboard" | "calendar" | "map" | "timeline" | "ficha" | "residuos" | "kpi";
+const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"];
+
+function getEnabledProjectModules(project: any): ProjectModule[] {
+  if (typeof project?.enabledModules !== "string") return DEFAULT_PROJECT_MODULES;
+  try {
+    const parsed = JSON.parse(project.enabledModules);
+    if (Array.isArray(parsed) && parsed.every(module => DEFAULT_PROJECT_MODULES.includes(module))) {
+      return parsed as ProjectModule[];
+    }
+  } catch {
+    // Configurações antigas ou inválidas mantêm os módulos completos por compatibilidade.
+  }
+  return DEFAULT_PROJECT_MODULES;
+}
+
+async function assertProjectModuleAccess(user: any, projectId: number, module: ProjectModule) {
+  const project = await assertProjectAccess(user, projectId);
+  if (!getEnabledProjectModules(project).includes(module)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Este módulo não está activo no projecto seleccionado." });
+  }
+  return project;
+}
+
 async function getAccessibleProjectIds(user: any) {
   if (isAdminOrDono(user.role)) {
     return (await db.getAllProjects()).map(project => project.id);
@@ -1005,6 +1029,7 @@ export const appRouter = router({
         if (!input.projectId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione um projeto específico para criar uma ficha." });
         }
+        await assertProjectModuleAccess(user, input.projectId, "ficha");
         if (!user.companyId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Utilizador não está associado a nenhuma empresa." });
         }
@@ -1055,6 +1080,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.projectId) await assertProjectModuleAccess(ctx.user, sub.projectId, "ficha");
 
         // RAA can see all, EE/RAP can only see own company
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador" && sub.companyId !== ctx.user.companyId) {
@@ -1091,6 +1117,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.projectId) await assertProjectModuleAccess(ctx.user, sub.projectId, "ficha");
         // Only the creator or admin can submit
         if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode submeter esta ficha." });
@@ -1143,6 +1170,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.projectId) await assertProjectModuleAccess(ctx.user, sub.projectId, "ficha");
         if (sub.status !== "rejected") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Só fichas rejeitadas podem ser re-submetidas." });
         }
@@ -1160,6 +1188,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const sub = await db.getSubmissionById(input.id);
         if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        if (sub.projectId) await assertProjectModuleAccess(ctx.user, sub.projectId, "ficha");
         // Non-admin users can only delete draft or rejected fichas
         if (!isAdminOrDono(ctx.user.role) && sub.status !== "draft" && sub.status !== "rejected") {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Apenas fichas em rascunho ou rejeitadas podem ser eliminadas." });
@@ -2081,9 +2110,21 @@ export const appRouter = router({
         code: z.string().min(1).max(50),
         name: z.string().min(1).max(255),
         description: z.string().optional(),
+        enabledModules: z.array(z.string().min(1).max(40)).min(1).optional(),
       }))
-      .mutation(async ({ input }) => {
-        return db.createProject(input);
+      .mutation(async ({ ctx, input }) => {
+        const { enabledModules, ...projectData } = input;
+        const created = await db.createProject({
+          ...projectData,
+          enabledModules: JSON.stringify(enabledModules || ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"]),
+        });
+        const projectId = (created as any)?.[0]?.insertId ?? (created as any)?.insertId ?? null;
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "project_created", "projects", projectId, null, JSON.stringify({
+          code: input.code,
+          name: input.name,
+          enabledModules: enabledModules || ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"],
+        }));
+        return created;
       }),
     update: adminProcedure
       .input(z.object({
@@ -2092,10 +2133,18 @@ export const appRouter = router({
         name: z.string().min(1).max(255).optional(),
         description: z.string().optional(),
         active: z.number().optional(),
+        enabledModules: z.array(z.string().min(1).max(40)).min(1).optional(),
       }))
-      .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        await db.updateProject(id, data);
+      .mutation(async ({ ctx, input }) => {
+        const { id, enabledModules, ...data } = input;
+        await db.updateProject(id, {
+          ...data,
+          ...(enabledModules ? { enabledModules: JSON.stringify(enabledModules) } : {}),
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "project_updated", "projects", id, null, JSON.stringify({
+          ...data,
+          ...(enabledModules ? { enabledModules } : {}),
+        }));
         return { success: true };
       }),
     // Company associations
@@ -2636,7 +2685,7 @@ export const appRouter = router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         return await db.getProjectPhases(input.projectId);
       }),
 
@@ -2653,7 +2702,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar responsáveis internos." });
         }
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         const allUsers = await db.getAllUsers();
         const candidates: Array<{ id: number; name: string; email: string; role: string }> = [];
         for (const candidate of allUsers) {
@@ -2806,7 +2855,7 @@ export const appRouter = router({
     getStatuses: protectedProcedure
       .input(z.object({ projectId: z.number() }))
       .query(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         return await db.getPhaseMeasureStatuses(input.projectId);
       }),
 
@@ -2816,7 +2865,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar responsáveis internos das medidas." });
         }
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         const allUsers = await db.getAllUsers();
         const candidates: Array<{ id: number; name: string; email: string; role: string }> = [];
         for (const candidate of allUsers) {
@@ -3326,7 +3375,7 @@ export const appRouter = router({
       .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         assertMapReadRole(ctx.user.role);
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
         const [setting, surveys] = await Promise.all([
           db.getProjectMapSetting(input.projectId),
           db.getMapSurveys(input.projectId),
@@ -3343,7 +3392,7 @@ export const appRouter = router({
     overview: protectedProcedure.query(async ({ ctx }) => {
       assertMapReadRole(ctx.user.role);
       const allowedProjectIds = new Set(await getAccessibleProjectIds(ctx.user));
-      const accessibleProjects = (await db.getAllProjects()).filter(project => allowedProjectIds.has(project.id));
+      const accessibleProjects = (await db.getAllProjects()).filter(project => allowedProjectIds.has(project.id) && getEnabledProjectModules(project).includes("map"));
       const settings = await Promise.all(accessibleProjects.map(async project => ({
         project: { id: project.id, code: project.code, name: project.name },
         setting: effectiveProjectMapSetting(project.id, await db.getProjectMapSetting(project.id)),
@@ -3370,7 +3419,7 @@ export const appRouter = router({
         assertMapReadRole(ctx.user.role);
         const survey = await db.getMapSurveyById(input.id);
         if (!survey) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertProjectAccess(ctx.user, survey.projectId);
+        await assertProjectModuleAccess(ctx.user, survey.projectId, "map");
         const [photos, setting, job] = await Promise.all([
           db.getMapPhotos(survey.id),
           db.getProjectMapSetting(survey.projectId),
@@ -3386,7 +3435,7 @@ export const appRouter = router({
       .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), capturedAt: z.number().optional() }))
       .mutation(async ({ ctx, input }) => {
         assertMapWriteRole(ctx.user.role);
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
         const result = await db.createMapSurvey({
           projectId: input.projectId,
           name: input.name,
@@ -3405,7 +3454,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         assertMapWriteRole(ctx.user.role);
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
         if (input.bounds.west >= input.bounds.east || input.bounds.south >= input.bounds.north) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Os limites geográficos do mapa base são inválidos." });
         }
@@ -3440,7 +3489,7 @@ export const appRouter = router({
         assertMapWriteRole(ctx.user.role);
         const survey = await db.getMapSurveyById(input.surveyId);
         if (!survey || survey.projectId !== input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Levantamento inválido para o projecto." });
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
         const buffer = Buffer.from(input.base64, "base64");
         if (buffer.length > 25 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada fotografia não pode exceder 25 MB." });
         const sanitized = await sanitizeFile(buffer, input.mimeType, input.filename);

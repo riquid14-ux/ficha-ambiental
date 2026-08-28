@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -8,24 +8,42 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2 } from "lucide-react";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun } from "docx";
 import { saveAs } from "file-saver";
+import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows, SIN02_RDCD_METADATA } from "@/lib/rdcd-template";
 
 // Wizard steps
 const STEPS = [
-  { id: 1, labelKey: "Projetos", descKey: "Selecionar projeto(s)" },
+  { id: 1, labelKey: "Projeto", descKey: "Selecionar projeto" },
   { id: 2, labelKey: "Período", descKey: "Definir semanas do relatório" },
   { id: 3, labelKey: "Medidas", descKey: "Compilar e selecionar evidências" },
   { id: 4, labelKey: "Pré-visualização", descKey: "Rever e gerar Word" },
 ];
 
+function rdcdCell(value: string, bold = false) {
+  return new TableCell({
+    children: [new Paragraph({ children: [new TextRun({ text: value || "—", size: 18, bold })] })],
+  });
+}
+
+function rdcdTable(headers: string[], rows: string[][]) {
+  return new Table({
+    rows: [
+      new TableRow({ children: headers.map(header => rdcdCell(header, true)) }),
+      ...rows.map(row => new TableRow({ children: row.map(value => rdcdCell(value)) })),
+    ],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+  });
+}
+
 export default function RDCD() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { projects } = useProject();
-  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
+  const { projects, activeProject } = useProject();
+  const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
   const [step, setStep] = useState(1);
   const [selectedProjects, setSelectedProjects] = useState<number[]>([]);
@@ -36,6 +54,15 @@ export default function RDCD() {
   const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const [measureSelections, setMeasureSelections] = useState<Record<number, { status: string; selectedWeeks: string[]; notes: string }>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [reportNumber, setReportNumber] = useState("");
+  const [reportPhase, setReportPhase] = useState("Execução da obra");
+  const [preparedBy, setPreparedBy] = useState("");
+  const [reviewedBy, setReviewedBy] = useState("");
+  const [revision, setRevision] = useState("00");
+  const [projectWasChosen, setProjectWasChosen] = useState(false);
+  // Em Todos os Projectos, o contexto pode ainda estar a actualizar a selecção global.
+  // A consulta própria preserva a lista autorizada para o wizard não ficar vazio.
+  const { data: authorisedProjects = [] } = trpc.projects.list.useQuery(undefined, { enabled: !!user && isAdminOrDono });
 
   // Fetch submissions for selected projects and period
   const { data: allSubmissions, isLoading: loadingSubs } = trpc.submissions.listAll.useQuery(undefined, { enabled: step >= 3 });
@@ -135,19 +162,25 @@ export default function RDCD() {
     })).filter(s => s.measures.length > 0);
   }, [sections, compiledMeasures]);
 
-  // Available projects (exclude operation-only)
-  const availableProjects = projects.filter(p => p.code !== "SIN01");
+  // O modelo oficial é produzido projecto a projecto; SIN01 permanece fora deste workflow de construção.
+  const projectChoices = projects.length > 0 ? projects : authorisedProjects;
+  const availableProjects = projectChoices.filter(p => p.code !== "SIN01");
+  const selectedProject = projectChoices.find(project => project.id === selectedProjects[0]) || null;
+  const usesSin02Template = selectedProject?.code === "SIN02";
+
+  useEffect(() => {
+    if (!projectWasChosen && activeProject && activeProject.code !== "SIN01") {
+      setSelectedProjects(current => current.length === 1 && current[0] === activeProject.id ? current : [activeProject.id]);
+    }
+  }, [activeProject?.id, activeProject?.code, projectWasChosen]);
 
   // Year options
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
   function toggleProject(id: number) {
-    setSelectedProjects(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
-  }
-
-  function selectAllProjects() {
-    setSelectedProjects(availableProjects.map(p => p.id));
+    setProjectWasChosen(true);
+    setSelectedProjects(prev => prev.includes(id) ? [] : [id]);
   }
 
   // Week date formatter
@@ -164,9 +197,18 @@ export default function RDCD() {
   async function generateWord() {
     setIsGenerating(true);
     try {
-      const projNames = selectedProjects.length > 0
-        ? projects.filter(p => selectedProjects.includes(p.id)).map(p => `${p.code} — ${p.name}`).join(", ")
-        : "Todos os projetos";
+      if (!selectedProject || !startWeek || !endWeek) {
+        toast.error("Seleccione um projecto e um período válidos antes de gerar o RDCD.");
+        return;
+      }
+      const projNames = `${selectedProject.code} — ${selectedProject.name}`;
+      const weeklyRows = buildRdcdWeeklyRows(filteredSubmissions as any[], (allResponses || []) as any[], measures || [], sections || [], reportPhase);
+      const phaseRows = buildRdcdPhaseRows((allResponses || []) as any[], measures || [], sections || []);
+      const nonConformityRows = buildRdcdNonConformityRows((allResponses || []) as any[], measures || [], filteredSubmissions as any[]);
+      const periodLabel = `Semana ${startWeek.split("-W")[1]} a Semana ${endWeek.split("-W")[1]} de ${selectedYear}`;
+      const totals = weeklyRows.reduce((acc, row) => ({ i: acc.i + row.i, c: acc.c + row.c, nc: acc.nc + row.nc, na: acc.na + row.na }), { i: 0, c: 0, nc: 0, na: 0 });
+      const metadata = usesSin02Template ? SIN02_RDCD_METADATA : null;
+      const resolvedReportNumber = reportNumber.trim() || `RDCD-${selectedProject.code}-[n.º]`;
 
       const measuresWithData = compiledMeasures.filter(m => m.totalResponses > 0);
 
@@ -199,81 +241,82 @@ export default function RDCD() {
         }
       }
 
-      // Build measure rows for the table
-      const measureRows = measuresWithData.map(m => {
-        const sel = measureSelections[m.id];
-        const status = sel?.status || m.autoStatus;
-        const statusText = status === "na" ? "N.A." : status === "conform" ? "Cumprido" : status === "nc" ? "Não Conforme" : status === "partial" ? "Parcialmente Cumprido" : "Em curso";
-        const notes = sel?.notes || m.latestObservation || "";
-        const imgs = evidenceByMeasure[m.id] || [];
-        const evidenceText = imgs.length > 0 ? `${imgs.length} foto(s) — ver Anexo` : `Fichas S${startWeek.split("-W")[1]} a S${endWeek.split("-W")[1]}`;
-        return new TableRow({
-          children: [
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: m.number || `${m.id}`, size: 20 })] })], width: { size: 8, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: (m.description || "").substring(0, 200), size: 18 })] })], width: { size: 32, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: notes.substring(0, 300), size: 18 })] })], width: { size: 30, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: evidenceText, size: 18 })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-            new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: statusText, bold: true, size: 20, color: status === "conform" ? "008000" : status === "nc" ? "FF0000" : "000000" })] })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-          ],
-        });
-      });
-
       // Build selected plans content
       const selectedPlans = (plans || []).filter((p: any) => selectedPlanIds.includes(p.id));
+      const technicalRows = [
+        ["Designação do relatório", "RDCD – Relatório de Demonstração do Cumprimento da DCAPE"],
+        ["Projeto", metadata?.projectName || projNames],
+        ["Proponente", metadata?.proponent || "[A confirmar pelo responsável do relatório]"],
+        ["N.º do TUA", metadata?.tua || "[A preencher]"],
+        ["Código APA", metadata?.apaCode || "[A preencher]"],
+        ["Processo de AIA / RECAPE", metadata?.aiaRecape || "[A preencher]"],
+        ["DIA", metadata?.dia || "[A preencher]"],
+        ["DCAPE", metadata?.dcape || "[A preencher]"],
+        ["Entidade licenciadora", metadata?.licensingEntity || "[A preencher]"],
+        ["Fase da obra reportada", reportPhase],
+        ["N.º do relatório", resolvedReportNumber],
+        ["Período de reporte", periodLabel],
+        ["Fichas incluídas", weeklyRows.length > 0 ? weeklyRows.map(row => `S${row.week} (${row.period})`).join("; ") : "Sem fichas aprovadas no período"],
+        ["Elaborado por", preparedBy.trim() || "[Nome / função — Equipa Ambiental Start Campus]"],
+        ["Revisto / Aprovado por", reviewedBy.trim() || "[Nome / função]"],
+        ["Data de elaboração", new Date().toLocaleDateString("pt-PT")],
+        ["Revisão", revision.trim() || "00"],
+      ];
 
       const doc = new Document({
         sections: [{
           children: [
             new Paragraph({ text: "RDCD — Relatório de Demonstração de Cumprimento da DCAPE", heading: HeadingLevel.TITLE }),
             new Paragraph({ text: "" }),
-            new Paragraph({ children: [new TextRun({ text: "Projeto: ", bold: true }), new TextRun({ text: projNames })] }),
-            new Paragraph({ children: [new TextRun({ text: "Período: ", bold: true }), new TextRun({ text: `Semana ${startWeek.split("-W")[1]} a Semana ${endWeek.split("-W")[1]} de ${selectedYear}` })] }),
-            new Paragraph({ children: [new TextRun({ text: "Data de emissão: ", bold: true }), new TextRun({ text: new Date().toLocaleDateString("pt-PT") })] }),
-            new Paragraph({ children: [new TextRun({ text: "Fichas analisadas: ", bold: true }), new TextRun({ text: `${filteredSubmissions.length} fichas aprovadas` })] }),
+            new Paragraph({ text: "Ficha Técnica do Relatório", heading: HeadingLevel.HEADING_1 }),
+            rdcdTable(["Campo", "Informação"], technicalRows),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "1. Introdução", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "O presente relatório visa demonstrar o cumprimento das condições ambientais definidas na DCAPE, para o período indicado. Este documento compila as evidências recolhidas nas fichas de controlo semanais submetidas pelas entidades executantes e verificadas pela RAA." }),
+            new Paragraph({ text: `O presente Relatório de Demonstração do Cumprimento da DCAPE é elaborado para ${metadata?.projectName || projNames}, no período ${periodLabel}. Consolida ${weeklyRows.length} ficha(s) de controlo semanal aprovada(s), classificando as medidas como Implementada (I), Conforme (C), Não Conforme (NC) ou Não Aplicável (NA). As fichas integrais são referidas no Anexo I.` }),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "2. Descrição sumária do projeto", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A preencher — descrição do projeto e componentes]" }),
+            new Paragraph({ text: "2. Enquadramento do Projeto no TUA", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: metadata ? `${metadata.projectName} encontra-se enquadrado no TUA n.º ${metadata.tua}, com código APA ${metadata.apaCode}. A confirmação final de números de processo, datas e vigência deve ser feita face ao TUA em vigor na data de emissão.` : "[A completar pelo responsável com os elementos do TUA, AIA/RECAPE, DIA, DCAPE e entidade licenciadora.]" }),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "3. Ponto de situação do desenvolvimento do projeto", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A preencher — atividades realizadas no período]" }),
+            new Paragraph({ text: "3. Ponto de Situação do Desenvolvimento da Obra", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: "Uma linha por ficha aprovada incluída no período. As actividades e frentes de obra devem ser confirmadas pelo responsável antes da emissão." }),
+            rdcdTable(["Sem.", "Período", "Principais atividades", "Frentes de obra", "Ficha SIN02 n.º"], weeklyRows.length > 0
+              ? weeklyRows.map(row => [String(row.week), row.period, "[A confirmar na ficha semanal]", "[A confirmar na ficha semanal]", row.reference])
+              : [["—", "—", "Sem fichas aprovadas no período seleccionado.", "—", "—"]]),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "4. Demonstração do cumprimento das condições ambientais", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: `Total de medidas analisadas: ${measuresWithData.length}. Fichas aprovadas no período: ${filteredSubmissions.length}.` }),
-            new Paragraph({ text: `Resumo: ${compiledMeasures.filter(m => m.autoStatus === "conform").length} conformes, ${compiledMeasures.filter(m => m.autoStatus === "nc").length} não conformes, ${compiledMeasures.filter(m => m.autoStatus === "na").length} N/A.` }),
+            new Paragraph({ text: "4. Resumo das Fichas de Controlo de Medidas", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: "O presente ponto consolida as Fichas de Controlo de Medidas de Gestão Ambiental Semanal incluídas no período. A classificação é apresentada por ficha e por semana; as fichas originais constam do Anexo I." }),
+            rdcdTable(["Ficha n.º", "Semana", "Período", "Fase(s) da obra", "I", "C", "NC", "NA", "Observações relevantes"], [
+              ...(weeklyRows.length > 0 ? weeklyRows.map(row => [row.reference, String(row.week), row.period, row.phases, String(row.i), String(row.c), String(row.nc), String(row.na), row.observations]) : [["—", "—", "—", "—", "0", "0", "0", "0", "Sem fichas aprovadas no período seleccionado."]]),
+              ["TOTAL", "—", periodLabel, "—", String(totals.i), String(totals.c), String(totals.nc), String(totals.na), "—"],
+            ]),
             new Paragraph({ text: "" }),
-            new Table({
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "N.º", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Descrição da Medida", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Modo de Implementação / Observações", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Evidências", bold: true, size: 20 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Estado", bold: true, size: 20 })] })] }),
-                  ],
-                }),
-                ...measureRows,
-              ],
-              width: { size: 100, type: WidthType.PERCENTAGE },
-            }),
+            new Paragraph({ text: "5. Resumo do Estado das Medidas da DCAPE", heading: HeadingLevel.HEADING_1 }),
+            rdcdTable(["Fase da DCAPE", "N.º de medidas", "I", "C", "NC", "NA"], phaseRows.map(row => [row.section, String(row.totalMeasures), String(row.i), String(row.c), String(row.nc), String(row.na)])),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "5. Resposta a anteriores pareceres", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A preencher / Não aplicável]" }),
+            new Paragraph({ text: "Medidas com registo de Não Conformidade ou observações relevantes", heading: HeadingLevel.HEADING_2 }),
+            rdcdTable(["N.º Medida", "Medida / grupo temático", "Semana / Ficha", "Registo", "Seguimento"], nonConformityRows.length > 0
+              ? nonConformityRows.map(row => [String(row.number), row.description.slice(0, 180), row.reference, `${row.finding}: ${row.observation}`, "A validar pelo responsável no ponto 6"])
+              : [["—", "Sem não conformidades ou observações relevantes registadas.", "—", "—", "—"]]),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "6. Monitorização", heading: HeadingLevel.HEADING_1 }),
-            ...(includePlans && selectedPlans.length > 0 ? [
-              new Paragraph({ text: `Planos de monitorização incluídos: ${selectedPlans.length}` }),
-              ...selectedPlans.map((p: any) => new Paragraph({ text: `• ${p.name} — Periodicidade: ${p.periodicity || "—"} — Estado: ${p.submissionStatus === "delivered" ? "Entregue" : p.submissionStatus === "submitted" ? "Submetido" : "Pendente"}` })),
-            ] : [new Paragraph({ text: "[Não incluído neste relatório]" })]),
+            new Paragraph({ text: "6. Ações Corretivas e Seguimento", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: nonConformityRows.length > 0 ? "As ações corretivas associadas às não conformidades devem ser confirmadas e completadas pelo responsável técnico antes da emissão." : "Não foram identificadas não conformidades no conjunto de fichas seleccionado." }),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "7. Auditorias de Pós-Avaliação", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A preencher / Não aplicável]" }),
+            new Paragraph({ text: "7. Relatórios de Monitorização", heading: HeadingLevel.HEADING_1 }),
+            rdcdTable(["Tipo de monitorização", "Periodicidade", "Situação / resultado", "Ref. Anexo"], includePlans && selectedPlans.length > 0
+              ? selectedPlans.map((plan: any) => [plan.name, plan.periodicity || "—", plan.submissionStatus === "delivered" ? "Entregue" : plan.submissionStatus === "submitted" ? "Submetido" : "Pendente", "A completar"])
+              : [["Sem planos seleccionados", "—", "Não incluído neste relatório", "—"]]),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "8. Reclamações associadas ao projeto", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[Sem reclamações no período em análise]" }),
+            new Paragraph({ text: "8. Questões em Aberto Relativas a Períodos Anteriores", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: "[A completar pelo responsável: o registo estruturado de questões de RDCD anteriores ainda não está disponível na plataforma.]" }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ text: "10. Reclamações e Contactos com o Público", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: "[A completar pelo responsável: o registo estruturado de reclamações não está disponível na plataforma.]" }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ text: "11. Conclusões", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: `No período ${periodLabel}, foram consolidadas ${weeklyRows.length} ficha(s) aprovada(s), com ${totals.i} registo(s) Implementada(s), ${totals.c} Conforme(s), ${totals.nc} Não Conforme(s) e ${totals.na} Não Aplicável(eis). Esta síntese deve ser revista e completada pelo responsável técnico antes da emissão.` }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ text: "Anexo I — Fichas de Controlo de Medidas (Modelo SIN02) do período", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: weeklyRows.length > 0 ? `Fichas a anexar a partir do arquivo documental: ${weeklyRows.map(row => row.reference).join(", ")}.` : "Sem fichas aprovadas seleccionadas." }),
             // Annex: Evidence Photos (embedded)
             ...(() => {
               const annexItems: any[] = [];
@@ -284,7 +327,7 @@ export default function RDCD() {
                   if (!hasPhotos) {
                     annexItems.push(
                       new Paragraph({ text: "" }),
-                      new Paragraph({ text: "Anexo — Evidências Fotográficas", heading: HeadingLevel.HEADING_1 }),
+                      new Paragraph({ text: "Anexo II — Registo Fotográfico", heading: HeadingLevel.HEADING_1 }),
                       new Paragraph({ text: "As seguintes fotografias foram recolhidas durante o período de análise e documentam o cumprimento das medidas ambientais." }),
                     );
                     hasPhotos = true;
@@ -376,10 +419,9 @@ export default function RDCD() {
         {step === 1 && (
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">{t("Selecionar Projeto(s)")}</h2>
-              <p className="text-sm text-muted-foreground mb-4">{t("Escolha os projetos a incluir neste RDCD. Pode selecionar um, vários ou todos.")}</p>
+              <h2 className="text-lg font-semibold mb-1">{t("Selecionar Projeto")}</h2>
+              <p className="text-sm text-muted-foreground mb-4">{t("Cada RDCD é emitido por projeto. Selecione o projeto a incluir no relatório.")}</p>
               <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={selectAllProjects}>{t("Selecionar Todos")}</Button>
                 <Button size="sm" variant="outline" onClick={() => setSelectedProjects([])}>{t("Limpar")}</Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -625,12 +667,40 @@ export default function RDCD() {
           <Card>
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Pré-visualização do RDCD")}</h2>
-              <p className="text-sm text-muted-foreground mb-4">{t("Reveja o resumo antes de gerar o documento Word.")}</p>
+              <p className="text-sm text-muted-foreground mb-4">{t("Reveja o resumo e complete a ficha técnica antes de gerar o documento Word.")}</p>
+              <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
+                <p className="mb-3 text-sm font-semibold text-emerald-950">Ficha técnica do relatório</p>
+                {usesSin02Template && <p className="mb-3 text-xs text-emerald-900">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">N.º do relatório</label>
+                    <Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Fase da obra reportada</label>
+                    <select value={reportPhase} onChange={event => setReportPhase(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-white px-3 text-sm">
+                      <option>Preparação prévia</option><option>Execução da obra</option><option>Fase final</option><option>Desativação</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Elaborado por</label>
+                    <Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder="Nome / função — Equipa Ambiental Start Campus" className="mt-1 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Revisto / aprovado por</label>
+                    <Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder="Nome / função" className="mt-1 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Revisão</label>
+                    <Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 bg-white md:max-w-32" />
+                  </div>
+                </div>
+              </div>
               
               <div className="border rounded-lg p-4 space-y-4 bg-muted/20 mb-6">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Projetos")}</p>
-                  <p className="text-sm">{projects.filter(p => selectedProjects.includes(p.id)).map(p => `${p.code} — ${p.name}`).join(", ")}</p>
+                  <p className="text-sm">{selectedProject ? `${selectedProject.code} — ${selectedProject.name}` : "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Período")}</p>

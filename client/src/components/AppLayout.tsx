@@ -62,6 +62,7 @@ const projectMenuItems = [
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
   { icon: BarChart3, label: "KPI's", path: "/kpi" },
+  { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)
@@ -198,8 +199,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     if (isOperationOnly) return operationProjectMenuItems.filter(item => item.path !== "/mapa" || canViewMap);
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
-      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi", "/rdcd"],
+      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi", "/rdcd"],
       pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
       raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],

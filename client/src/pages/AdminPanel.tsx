@@ -16,6 +16,8 @@ import { toast } from "sonner";
 import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon, Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Settings2 } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
+import { CompanyRelationshipMap } from "@/components/CompanyRelationshipMap";
+import { useProject } from "@/contexts/ProjectContext";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
@@ -296,6 +298,7 @@ export default function AdminPanel() {
 
 function CompaniesTab() {
   const { t } = useLanguage();
+  const { activeProject } = useProject();
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
   const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador">("ee");
@@ -363,9 +366,12 @@ function CompaniesTab() {
   }, [companyAssignmentsQuery.data]);
 
   const createMutation = trpc.companies.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(t("Empresa criada com sucesso"));
-      utils.companies.list.invalidate();
+      await Promise.all([
+        utils.companies.list.invalidate(),
+        utils.projects.allCompanyAssignments.invalidate(),
+      ]);
       setDialogOpen(false);
       setNewName("");
       setNewShortName("");
@@ -665,6 +671,21 @@ function CompaniesTab() {
             </DialogContent>
           </Dialog>
         </div>
+        <CompanyRelationshipMap
+          companies={(companiesQuery.data || []).map(company => ({
+            id: company.id,
+            name: company.name,
+            shortName: company.shortName,
+            companyType: company.companyType,
+            active: company.active,
+            parentCompanyId: company.parentCompanyId,
+            allowKpi: company.allowKpi,
+            allowWaste: company.allowWaste,
+          }))}
+          assignments={companyAssignmentsQuery.data || []}
+          projects={projectsQuery.data || []}
+          activeProjectId={activeProject?.id}
+        />
       </CardContent>
     </Card>
   );

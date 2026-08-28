@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
 import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
+import { groupsWithMeasures } from "@/lib/phase-measure-presentation";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -322,48 +323,54 @@ export default function PhaseMeasures(props: any) {
             )}
 
             {/* Measures list */}
-            {(phaseData[phase.key] || []).map(({ section, measures }: any) => (
-              <div key={section.id} className="space-y-2">
-                {measures.length === 0 ? (
+            {(() => {
+              const groups = groupsWithMeasures(phaseData[phase.key] || []);
+              if (groups.length === 0) {
+                return (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>{t("Nenhuma medida registada nesta fase.")}</p>
                     {isAdminOrDono && <p className="text-sm">{t("Use o botão 'Adicionar Medida' para começar.")}</p>}
                   </div>
-                ) : measures.map((measure: any) => (
-                  <MeasureCard
-                    key={measure.id}
-                    measure={measure}
-                    tracking={trackingByMeasure[measure.id] || null}
-                    projectId={projectId}
-                    evidence={evidenceByMeasure[measure.id] || []}
-                    isExpanded={expandedMeasures.has(measure.id)}
-                    onToggle={() => toggleMeasure(measure.id)}
-                    onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content, referenceYear: isOperationOnly ? evidenceYear : undefined })}
-                    onUploadFile={(file, isPhoto) => {
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const base64 = (reader.result as string).split(",")[1];
-                        uploadFileMutation.mutate({
-                          projectId,
-                          measureId: measure.id,
-                          filename: file.name,
-                          mimeType: file.type,
-                          data: base64,
-                          isPhoto,
-                        });
-                      };
-                      reader.readAsDataURL(file);
-                    }}
-                    onDeleteEvidence={(id) => deleteEvidenceMutation.mutate({ id })}
-                    isEditable={!!isAdminOrDono}
-                    phaseColor={phase.color}
-                    isOperationOnly={!!isOperationOnly}
-                    evidenceYear={evidenceYear}
-                  />
-                ))}
-              </div>
-            ))}
+                );
+              }
+              return groups.map(({ section, measures }: any) => (
+                <div key={section.id} className="space-y-2">
+                  {measures.map((measure: any) => (
+                    <MeasureCard
+                      key={measure.id}
+                      measure={measure}
+                      tracking={trackingByMeasure[measure.id] || null}
+                      projectId={projectId}
+                      evidence={evidenceByMeasure[measure.id] || []}
+                      isExpanded={expandedMeasures.has(measure.id)}
+                      onToggle={() => toggleMeasure(measure.id)}
+                      onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content, referenceYear: isOperationOnly ? evidenceYear : undefined })}
+                      onUploadFile={(file, isPhoto) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const base64 = (reader.result as string).split(",")[1];
+                          uploadFileMutation.mutate({
+                            projectId,
+                            measureId: measure.id,
+                            filename: file.name,
+                            mimeType: file.type,
+                            data: base64,
+                            isPhoto,
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      onDeleteEvidence={(id) => deleteEvidenceMutation.mutate({ id })}
+                      isEditable={!!isAdminOrDono}
+                      phaseColor={phase.color}
+                      isOperationOnly={!!isOperationOnly}
+                      evidenceYear={evidenceYear}
+                    />
+                  ))}
+                </div>
+              ));
+            })()}
           </TabsContent>
         ))}
       </Tabs>

@@ -29,8 +29,9 @@ export default function KPI() {
   const [formValues, setFormValues] = useState<Record<number, string>>({});
   const [formStep, setFormStep] = useState(0);
   const [editingMetric, setEditingMetric] = useState<any>(null);
-  const [dashFilter, setDashFilter] = useState<"week" | "month" | "semester" | "year" | "project">("month");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [reportStartWeek, setReportStartWeek] = useState("1");
+  const [reportEndWeek, setReportEndWeek] = useState(String(getISOWeek(new Date())));
   const [dashPage, setDashPage] = useState(0);
   
   const [targetYear, setTargetYear] = useState(new Date().getFullYear());
@@ -40,7 +41,7 @@ export default function KPI() {
   const isPartner = user?.role === "ee_partner";
   const metricsQuery = trpc.kpi.metrics.useQuery();
   const matrixQuery = trpc.kpi.matrix.useQuery({ projectId }, { enabled: projectId > 0 });
-  const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId, weekYear: selectedYear }, { enabled: projectId > 0 });
+  const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId, weekYear: selectedYear, startWeek: Number(reportStartWeek), endWeek: Number(reportEndWeek) }, { enabled: projectId > 0 && Number(reportStartWeek) <= Number(reportEndWeek) });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery(undefined, { enabled: !isPartner });
   const partnerAccessQuery = trpc.partners.myAccess.useQuery(undefined, { enabled: isPartner });
@@ -129,33 +130,52 @@ export default function KPI() {
     submitMutation.mutate({ projectId, companyId: user.companyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values });
   };
 
+  const reportPeriodLabel = `S${reportStartWeek} a S${reportEndWeek} · ${selectedYear}`;
+  const openNewMetric = (preset?: Partial<any>) => {
+    const highestSortOrder = metrics.reduce((highest: number, metric: any) => Math.max(highest, Number(metric.sortOrder) || 0), 0);
+    setEditingMetric({ name: "", unit: "N.º", target: "", category: "other", inputType: "manual", sortOrder: highestSortOrder + 1, ...preset });
+  };
+  const saveMetric = () => {
+    const name = String(editingMetric?.name || "").trim();
+    const unit = String(editingMetric?.unit || "").trim();
+    if (name.length < 3 || !unit) return toast.error("Indique um nome com pelo menos 3 caracteres e a unidade da métrica.");
+    upsertMetricMutation.mutate({ ...editingMetric, name, unit, target: String(editingMetric.target || "").trim() || undefined, sortOrder: Number(editingMetric.sortOrder) || 0 });
+  };
+
   const handleExportExcel = () => {
+    if (Number(reportStartWeek) > Number(reportEndWeek)) return toast.error("A semana inicial não pode ser posterior à semana final.");
     import("exceljs").then(async (ExcelJS) => {
       const wb = new ExcelJS.Workbook();
-      const ws = wb.addWorksheet("KPIs");
-      ws.columns = [
-        { header: "Categoria", key: "cat", width: 20 },
-        { header: "Métrica", key: "name", width: 40 },
-        { header: "Unidade", key: "unit", width: 15 },
-        { header: "Total", key: "total", width: 15 },
-      ];
-      const headerRow = ws.getRow(1);
-      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF16A34A" } };
-      for (const m of metrics) {
-        ws.addRow({ cat: t(CAT_LABELS[m.category] || m.category), name: m.name, unit: m.unit, total: Number((totals[m.id] || 0).toFixed(2)) });
-      }
-      ws.autoFilter = { from: "A1", to: "D1" };
+      wb.creator = "Plataforma de Gestão Ambiental — Start Campus";
+      wb.created = new Date();
+      const ws = wb.addWorksheet("Resumo KPI");
+      ws.columns = [{ width: 22 }, { width: 42 }, { width: 14 }, { width: 18 }, { width: 20 }];
+      ws.mergeCells("A1:E1"); ws.getCell("A1").value = "RELATÓRIO DE KPI";
+      ws.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } }; ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } }; ws.getCell("A1").alignment = { vertical: "middle" };
+      ws.mergeCells("A2:E2"); ws.getCell("A2").value = `Projecto: ${activeProject?.code || "—"} — ${activeProject?.name || "—"}`;
+      ws.mergeCells("A3:E3"); ws.getCell("A3").value = `Período: ${reportPeriodLabel} | Gerado em ${new Date().toLocaleDateString("pt-PT")}`;
+      ws.getCell("A2").font = { bold: true, color: { argb: "FF065F46" } }; ws.getCell("A3").font = { italic: true, color: { argb: "FF475569" } };
+      const metricRows = metrics.map((metric: any) => ({ category: CAT_LABELS[metric.category] || metric.category, name: metric.name, unit: metric.unit, total: Number((totals[metric.id] || 0).toFixed(2)), weeks: new Set(allValues.filter((value: any) => value.metricId === metric.id).map((value: any) => `${value.weekYear}-${value.weekNumber}`)).size }));
+      ws.addTable({ name: "ResumoKPI", ref: "A5", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: [{ name: "Categoria" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Total" }, { name: "Semanas com dados" }], rows: metricRows.map(row => [row.category, row.name, row.unit, row.total, row.weeks]) });
+      ws.views = [{ state: "frozen", ySplit: 5 }];
+      const detail = wb.addWorksheet("Detalhe semanal");
+      detail.columns = [{ width: 12 }, { width: 14 }, { width: 26 }, { width: 22 }, { width: 42 }, { width: 14 }, { width: 16 }];
+      detail.mergeCells("A1:G1"); detail.getCell("A1").value = `DETALHE SEMANAL — ${activeProject?.code || "Projecto"} — ${reportPeriodLabel}`;
+      detail.getCell("A1").font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } }; detail.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+      const detailRows = allValues.map((value: any) => { const metric = metrics.find((item: any) => item.id === value.metricId); return [value.weekYear, `S${value.weekNumber}`, value.companyName || "—", CAT_LABELS[metric?.category] || metric?.category || "—", metric?.name || `Métrica ${value.metricId}`, metric?.unit || "—", Number(value.value) || 0]; }).sort((a: any[], b: any[]) => Number(a[0]) - Number(b[0]) || Number(String(a[1]).slice(1)) - Number(String(b[1]).slice(1)) || String(a[3]).localeCompare(String(b[3]), "pt"));
+      if (detailRows.length) detail.addTable({ name: "DetalheKPI", ref: "A3", headerRow: true, style: { theme: "TableStyleMedium2", showRowStripes: true }, columns: [{ name: "Ano" }, { name: "Semana" }, { name: "Entidade" }, { name: "Categoria" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Valor" }], rows: detailRows });
+      else detail.getCell("A3").value = "Não existem valores KPI submetidos no período seleccionado.";
+      detail.views = [{ state: "frozen", ySplit: 3 }];
       const buffer = await wb.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.xlsx`; a.click(); URL.revokeObjectURL(url);
+      const a = document.createElement("a"); a.href = url; a.download = `Relatorio_KPI_${activeProject?.code}_S${reportStartWeek}-S${reportEndWeek}_${selectedYear}.xlsx`; a.click(); URL.revokeObjectURL(url);
     }).catch(() => {
-      let csv = "Métrica,Unidade,Total\n";
-      for (const m of metrics) { csv += `"${m.name}",${m.unit},${(totals[m.id] || 0).toFixed(2)}\n`; }
+      let csv = `Relatório KPI — ${activeProject?.code || "Projecto"}\nPeríodo;${reportPeriodLabel}\n\nCategoria;Métrica;Unidade;Total\n`;
+      for (const m of metrics) { csv += `"${CAT_LABELS[m.category] || m.category}";"${m.name}";${m.unit};${(totals[m.id] || 0).toFixed(2)}\n`; }
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url; a.download = `KPIs_${activeProject?.code}_${formYear}.csv`; a.click(); URL.revokeObjectURL(url);
+      const a = document.createElement("a"); a.href = url; a.download = `Relatorio_KPI_${activeProject?.code}_S${reportStartWeek}-S${reportEndWeek}_${selectedYear}.csv`; a.click(); URL.revokeObjectURL(url);
     });
   };
 
@@ -174,10 +194,20 @@ export default function KPI() {
             <p className="text-sm text-muted-foreground">Indicadores de sustentabilidade — {activeProject?.name}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> {t("Exportar")}</Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> Exportar relatório</Button>
             {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
           </div>
         </div>
+
+        <Card className="border-emerald-100 bg-emerald-50/40">
+          <CardContent className="flex flex-wrap items-end gap-3 p-4">
+            <div className="min-w-44"><p className="text-sm font-semibold text-emerald-950">Período de análise e relatório</p><p className="text-xs text-emerald-800">Os dashboards e a exportação usam exactamente este intervalo.</p></div>
+            <div><label className="mb-1 block text-xs font-medium">Ano</label><Select value={String(selectedYear)} onValueChange={value => setSelectedYear(Number(value))}><SelectTrigger className="h-9 w-24 bg-background"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select></div>
+            <div><label className="mb-1 block text-xs font-medium">Semana inicial</label><Select value={reportStartWeek} onValueChange={setReportStartWeek}><SelectTrigger className="h-9 w-28 bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
+            <div><label className="mb-1 block text-xs font-medium">Semana final</label><Select value={reportEndWeek} onValueChange={setReportEndWeek}><SelectTrigger className="h-9 w-28 bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
+            <Badge variant="outline" className="mb-1 h-9 border-emerald-300 bg-white px-3 text-emerald-900">{reportPeriodLabel}</Badge>
+          </CardContent>
+        </Card>
 
         {isPartner && (
           <Card className="border-emerald-200 bg-emerald-50/60">
@@ -202,8 +232,8 @@ export default function KPI() {
         {/* Settings */}
         {showSettings && user?.role === "admin" && (
           <Card className="border-amber-200 bg-amber-50/50">
-            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="w-4 h-4 inline mr-1" />{t("Definições")}</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
+            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="mr-1 inline h-4 w-4" />Configuração de métricas KPI</CardTitle><p className="text-xs text-muted-foreground">Crie métricas manuais como viaturas em obra, defina unidade, categoria, meta e posição. Todas as alterações ficam auditadas.</p></CardHeader>
+            <CardContent className="space-y-3">
               <div className="grid gap-1 max-h-40 overflow-y-auto text-xs">
                 {metrics.map((m: any) => (
                   <div key={m.id} className="flex items-center gap-2 p-1 rounded border bg-background">
@@ -213,17 +243,20 @@ export default function KPI() {
                   </div>
                 ))}
               </div>
-              <Button size="sm" variant="outline" onClick={() => setEditingMetric({ name: "", unit: "", category: "other", inputType: "manual" })}><Plus className="w-3 h-3 mr-1" /> {t("Nova Métrica")}</Button>
+              <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openNewMetric()}><Plus className="mr-1 h-3 w-3" /> Nova métrica</Button><Button size="sm" variant="outline" onClick={() => openNewMetric({ name: "Viaturas em obra", unit: "N.º", category: "transport" })}><Car className="mr-1 h-3 w-3" /> Pré-preencher: Viaturas em obra</Button></div>
               {editingMetric && (
-                <div className="p-3 border rounded bg-background space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder={t("Nome")} value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" />
-                    <Input placeholder="Unidade" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" />
-                    <Select value={editingMetric.category} onValueChange={v => setEditingMetric({ ...editingMetric, category: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select>
-                    <Select value={editingMetric.inputType} onValueChange={v => setEditingMetric({ ...editingMetric, inputType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">{t("Manual")}</SelectItem><SelectItem value="calculated">{t("Calculado")}</SelectItem></SelectContent></Select>
+                <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
+                  <div className="flex items-center justify-between"><p className="text-sm font-semibold">{editingMetric.id ? "Editar métrica" : "Nova métrica KPI"}</p><Badge variant="outline">{editingMetric.inputType === "calculated" ? "Calculada" : "Manual"}</Badge></div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <label className="space-y-1 text-xs font-medium">Nome da métrica<Input value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" /></label>
+                    <label className="space-y-1 text-xs font-medium">Unidade<Input placeholder="Ex.: N.º, km, L, kWh" value={editingMetric.unit} onChange={e => setEditingMetric({ ...editingMetric, unit: e.target.value })} className="text-sm" /></label>
+                    <label className="space-y-1 text-xs font-medium">Categoria<Select value={editingMetric.category} onValueChange={value => setEditingMetric({ ...editingMetric, category: value })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(CAT_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></label>
+                    <label className="space-y-1 text-xs font-medium">Tipo<Select value={editingMetric.inputType} onValueChange={value => setEditingMetric({ ...editingMetric, inputType: value, formulaType: value === "manual" ? undefined : editingMetric.formulaType })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual">Recolha manual</SelectItem><SelectItem value="calculated">Calculada</SelectItem></SelectContent></Select></label>
+                    <label className="space-y-1 text-xs font-medium">Meta indicativa (opcional)<Input placeholder="Ex.: 10/mês" value={editingMetric.target || ""} onChange={e => setEditingMetric({ ...editingMetric, target: e.target.value })} className="text-sm" /></label>
+                    <label className="space-y-1 text-xs font-medium">Ordem de apresentação<Input type="number" min="0" max="999" value={editingMetric.sortOrder ?? 0} onChange={e => setEditingMetric({ ...editingMetric, sortOrder: e.target.value })} className="text-sm" /></label>
                   </div>
-                  {editingMetric.inputType === "calculated" && <div className="grid grid-cols-3 gap-2"><Input placeholder="PCI" value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="text-sm" /><Input placeholder="FE" value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="text-sm" /><Input placeholder="Densidade" value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="text-sm" /></div>}
-                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertMetricMutation.mutate(editingMetric)}>{t("Guardar")}</Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>{t("Cancelar")}</Button></div>
+                  {editingMetric.inputType === "calculated" && <div className="grid gap-3 rounded-md border border-amber-200 bg-amber-50/50 p-3 md:grid-cols-2 lg:grid-cols-4"><label className="space-y-1 text-xs font-medium">Fórmula<Select value={editingMetric.formulaType || ""} onValueChange={value => setEditingMetric({ ...editingMetric, formulaType: value })}><SelectTrigger className="bg-background text-sm"><SelectValue placeholder="Seleccione" /></SelectTrigger><SelectContent><SelectItem value="fuel_to_co2">Combustível para CO₂</SelectItem><SelectItem value="sum_co2">Soma de CO₂</SelectItem></SelectContent></Select></label>{editingMetric.formulaType === "fuel_to_co2" && <label className="space-y-1 text-xs font-medium">Métrica de origem<Select value={editingMetric.formulaSourceMetricId ? String(editingMetric.formulaSourceMetricId) : ""} onValueChange={value => setEditingMetric({ ...editingMetric, formulaSourceMetricId: Number(value) })}><SelectTrigger className="bg-background text-sm"><SelectValue placeholder="Seleccione" /></SelectTrigger><SelectContent>{manualMetrics.map((metric: any) => <SelectItem key={metric.id} value={String(metric.id)}>{metric.name}</SelectItem>)}</SelectContent></Select></label>}<label className="space-y-1 text-xs font-medium">PCI<Input value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="bg-background text-sm" /></label><label className="space-y-1 text-xs font-medium">Factor de emissão<Input value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="bg-background text-sm" /></label><label className="space-y-1 text-xs font-medium">Densidade<Input value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="bg-background text-sm" /></label></div>}
+                  <div className="flex gap-2"><Button size="sm" onClick={saveMetric} disabled={upsertMetricMutation.isPending}>{upsertMetricMutation.isPending ? "A guardar..." : "Guardar métrica"}</Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>Cancelar</Button></div>
                 </div>
               )}
             </CardContent>
@@ -314,18 +347,7 @@ export default function KPI() {
           {/* Dashboard (16 charts) */}
           {isAdminOrDO && (
             <TabsContent value="dashboard" className="space-y-4">
-              <div className="flex gap-2 items-center mb-2">
-                <span className="text-sm text-muted-foreground">{t("Período")}:</span>
-                {(["week", "month", "semester", "year", "project"] as const).map(f => (
-                  <Button key={f} size="sm" variant={dashFilter === f ? "default" : "outline"} onClick={() => setDashFilter(f)} className="text-xs h-7">{f === "week" ? t("Semana") : f === "month" ? t("Mês") : f === "semester" ? t("Semestre") : f === "year" ? t("Ano") : t("Projeto")}</Button>
-                ))}
-                {(dashFilter === "year" || dashFilter === "semester" || dashFilter === "month") && (
-                  <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
-                  </Select>
-                )}
-              </div>
+              <div className="mb-2 flex items-center gap-2"><span className="text-sm text-muted-foreground">Dashboards do período:</span><Badge variant="outline">{reportPeriodLabel}</Badge></div>
               <div className="flex gap-1 mb-3 flex-wrap">
 
                   {[t("Energia & CO2"), t("Água"), t("Trabalhadores"), t("Incidentes")].map((p, i) => (

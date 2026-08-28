@@ -45,15 +45,28 @@ describe("Fotogrametria DJI — validação e isolamento", () => {
     expect(readyMigrationSource).toContain("'ready'");
   });
 
-  it("aceita um lote georreferenciado e distingue imagens nadir de oblíquas", () => {
+  it("aceita apenas um lote georreferenciado com fotografias verticais a 90°", () => {
     const result = validatePhotogrammetryBatch([
-      photo(1), photo(2), photo(3), photo(4, { pitch: -60 }), photo(5, { pitch: -30 }),
+      photo(1), photo(2), photo(3), photo(4), photo(5),
     ]);
     expect(result.accepted).toBe(true);
     expect(result.geolocatedCount).toBe(5);
-    expect(result.nadirCount).toBe(3);
-    expect(result.obliqueCount).toBe(2);
+    expect(result.nadirCount).toBe(5);
+    expect(result.obliqueCount).toBe(0);
     expect(result.geographicBounds).not.toBeNull();
+  });
+
+  it("rejeita um lote que contenha fotografias oblíquas ou sem orientação vertical verificável", () => {
+    const oblique = validatePhotogrammetryBatch([photo(1), photo(2), photo(3), photo(4), photo(5, { pitch: -60 })]);
+    expect(oblique.accepted).toBe(false);
+    expect(oblique.issues.map(issue => issue.code)).toContain("NADIR_90_REQUIRED");
+    expect(oblique.obliqueCount).toBe(1);
+
+    const noPitch = photo(6);
+    noPitch.metadataJson = JSON.stringify({ gimbalYawDegree: 35, relativeAltitudeM: 90 });
+    const missingOrientation = validatePhotogrammetryBatch([photo(1), photo(2), photo(3), photo(4), noPitch]);
+    expect(missingOrientation.accepted).toBe(false);
+    expect(missingOrientation.issues.map(issue => issue.code)).toContain("NADIR_90_REQUIRED");
   });
 
   it("rejeita lotes demasiado pequenos ou com menos de 80% de GPS", () => {
@@ -78,10 +91,13 @@ describe("Fotogrametria DJI — validação e isolamento", () => {
 
   it("expõe estados e controlos sem simular o início quando não há worker", () => {
     expect(routerSource).toContain("validatePhotogrammetryBatch");
+    expect(routerSource).toContain("fotografias DJI verticais a 90°");
+    expect(workerSource).toContain("NADIR_90_REQUIRED");
     expect(routerSource).toContain("if (!worker.configured || !worker.healthy)");
     expect(routerSource).toContain("return { started: false, job, worker }");
     expect(pageSource).toContain("Pronto para processar");
     expect(pageSource).toContain("Processar ortomosaico");
+    expect(pageSource).toContain("Adicionar fotografias a 90°");
     expect(pageSource).toContain("worker?.message");
     expect(workerSource).toContain("Worker NodeODM privado ainda não configurado");
   });

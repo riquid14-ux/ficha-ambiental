@@ -68,7 +68,13 @@ export default function ProjectMap() {
   const [baseMapForm, setBaseMapForm] = useState({ west: "", south: "", east: "", north: "" });
 
   const listQuery = trpc.projectMap.list.useQuery({ projectId }, { enabled: canView && projectId > 0 && !isAllProjects });
+  const overviewQuery = trpc.projectMap.overview.useQuery(undefined, { enabled: canView && isAllProjects });
   const surveyQuery = trpc.projectMap.survey.useQuery({ id: selectedSurveyId ?? 0 }, { enabled: canView && !!selectedSurveyId });
+  const surveys = listQuery.data?.surveys ?? [];
+  const chronologicalSurveys = [...surveys].sort((a, b) => Number(a.capturedAt ?? 0) - Number(b.capturedAt ?? 0));
+  const selectedTimelineIndex = chronologicalSurveys.findIndex(item => item.id === selectedSurveyId);
+  const previousSurveyId = selectedTimelineIndex > 0 ? chronologicalSurveys[selectedTimelineIndex - 1]?.id : null;
+  const comparisonQuery = trpc.projectMap.survey.useQuery({ id: previousSurveyId ?? 0 }, { enabled: canView && !isAllProjects && compareWithPrevious && !!previousSurveyId });
 
   useEffect(() => {
     if (listQuery.data?.surveys.length && !listQuery.data.surveys.some(item => item.id === selectedSurveyId)) {
@@ -114,7 +120,7 @@ export default function ProjectMap() {
     onSuccess: async () => {
       await Promise.all([listQuery.refetch(), surveyQuery.refetch()]);
       setShowBaseMapDialog(false);
-      toast.success("Limites do mapa base actualizados");
+      toast.success("Limites do projecto actualizados");
     },
     onError: error => toast.error(error.message),
   });
@@ -168,13 +174,22 @@ export default function ProjectMap() {
   };
 
   if (!canView) return <AppLayout><div className="p-8 text-center text-muted-foreground">O Mapa está disponível apenas para Administrador, Dono de Obra e Gestor de Projecto.</div></AppLayout>;
-  if (isAllProjects || !activeProject) return <AppLayout><div className="p-8 text-center text-muted-foreground">Seleccione um projecto individual para abrir o Mapa.</div></AppLayout>;
+  if (isAllProjects) {
+    const overview = overviewQuery.data;
+    const configuredProjectCount = overview?.projects.filter(item => item.setting.hasCustomBounds).length ?? 0;
+    const overviewSetting = overview?.baseMap ? {
+      ...overview.baseMap,
+      boundsJson: overview.baseMap.referenceBoundsJson,
+      baseMapBoundsJson: overview.baseMap.boundsJson,
+    } : undefined;
+    return <AppLayout><div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><MapPinned className="size-6 text-emerald-700" /><h1 className="text-2xl font-bold">Mapa global</h1><Badge variant="outline">Todos os projectos</Badge></div><p className="mt-1 text-sm text-muted-foreground">Vista consolidada dos limites definidos para os projectos da Start Campus.</p></div><Badge className="bg-emerald-700">{configuredProjectCount}/{overview?.projects.length ?? 0} limites definidos</Badge></div>
+      <Card className="border-emerald-200 bg-emerald-50/50"><CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-xs text-emerald-900"><span className="flex items-center gap-1.5 font-medium"><LockKeyhole className="size-4" />Mapa base privado — sem pedidos a cartografia pública</span><span>Área de referência Start Campus: raio de 1 km</span><span>Defina os limites em cada projecto para os ver aqui</span></CardContent></Card>
+      {overviewQuery.isLoading ? <div className="rounded-2xl border bg-card p-12 text-center text-sm text-muted-foreground">A carregar os limites dos projectos...</div> : <ProjectMapCanvas photos={[]} setting={overviewSetting} projectBoundaries={overview?.projects ?? []} isOverview />}
+    </div></AppLayout>;
+  }
+  if (!activeProject) return <AppLayout><div className="p-8 text-center text-muted-foreground">Seleccione um projecto individual para abrir o Mapa.</div></AppLayout>;
 
-  const surveys = listQuery.data?.surveys ?? [];
-  const chronologicalSurveys = [...surveys].sort((a, b) => Number(a.capturedAt ?? 0) - Number(b.capturedAt ?? 0));
-  const selectedTimelineIndex = chronologicalSurveys.findIndex(item => item.id === selectedSurveyId);
-  const previousSurveyId = selectedTimelineIndex > 0 ? chronologicalSurveys[selectedTimelineIndex - 1]?.id : null;
-  const comparisonQuery = trpc.projectMap.survey.useQuery({ id: previousSurveyId ?? 0 }, { enabled: canView && compareWithPrevious && !!previousSurveyId });
   const selectedData = surveyQuery.data;
   const photos = selectedData?.photos ?? [];
   const locatedPhotos = photos.filter(photo => Number.isFinite(Number(photo.latitude)) && Number.isFinite(Number(photo.longitude)));
@@ -191,7 +206,7 @@ export default function ProjectMap() {
             <p className="mt-1 text-sm text-muted-foreground">Levantamentos privados, camadas fotográficas e ortomosaicos do projecto</p>
           </div>
           {canWrite && <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={openBaseMapDialog}><Layers3 className="mr-2 size-4" />Ajustar limites</Button>
+            <Button variant="outline" onClick={openBaseMapDialog}><Layers3 className="mr-2 size-4" />Definir limites do projecto</Button>
             <Button onClick={() => setShowSurveyDialog(true)}><Plus className="mr-2 size-4" />Novo levantamento</Button>
           </div>}
         </div>
@@ -199,7 +214,7 @@ export default function ProjectMap() {
         <Card className="border-emerald-200 bg-emerald-50/50">
           <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-xs text-emerald-900">
             <span className="flex items-center gap-1.5 font-medium"><LockKeyhole className="size-4" />Sem envio de coordenadas para mapas públicos</span>
-            <span>Buffer automático de 200 m</span><span>Imagens oblíquas ficam como referência GPS</span><span>“Ortomosaico” apenas quando existe produto fotogramétrico real</span>
+            <span>Buffer automático de 200 m</span><span>Para o mosaico são aceites apenas fotografias DJI verticais a 90°</span><span>“Ortomosaico” apenas quando existe produto fotogramétrico real</span>
           </CardContent>
         </Card>
 
@@ -227,7 +242,7 @@ export default function ProjectMap() {
             </div>
             {selectedSurveyId && canWrite && <>
               <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={event => handlePhotoFiles(event.target.files)} />
-              <Button className="w-full" variant="outline" disabled={uploading} onClick={() => photoInputRef.current?.click()}><Upload className="mr-2 size-4" />{uploading ? `A carregar ${uploadProgress.completed}/${uploadProgress.total}` : "Adicionar fotografias"}</Button>
+              <Button className="w-full" variant="outline" disabled={uploading} onClick={() => photoInputRef.current?.click()}><Upload className="mr-2 size-4" />{uploading ? `A carregar ${uploadProgress.completed}/${uploadProgress.total}` : "Adicionar fotografias a 90°"}</Button>
               {uploading && <Progress value={uploadProgress.total ? (uploadProgress.completed / uploadProgress.total) * 100 : 0} className="h-2" />}
             </>}
             {selectedSurveyId && canWrite && photos.length > 0 && <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
@@ -236,7 +251,7 @@ export default function ProjectMap() {
               {job && <>
                 <div className="flex items-center justify-between text-[11px]"><span>Estado</span><Badge variant={job.status === "completed" ? "default" : job.status === "rejected" || job.status === "failed" ? "destructive" : "outline"}>{JOB_LABELS[job.status] ?? job.status}</Badge></div>
                 {(job.status === "queued" || job.status === "processing") && <Progress value={job.progress} className="h-2" />}
-                <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground"><span>{job.geolocatedCount}/{job.imageCount} com GPS</span><span>{job.nadirCount} nadir · {job.obliqueCount} oblíquas</span></div>
+                <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground"><span>{job.geolocatedCount}/{job.imageCount} com GPS</span><span>{job.nadirCount}/{job.imageCount} a 90° · {job.obliqueCount} rejeitadas</span></div>
                 {job.status === "ready" && <Button className="w-full" size="sm" onClick={() => startProcessingMutation.mutate({ surveyId: selectedSurveyId })} disabled={startProcessingMutation.isPending}>{startProcessingMutation.isPending ? "A verificar worker..." : "Processar ortomosaico"}</Button>}
                 {["ready", "queued", "processing"].includes(job.status) && <Button className="w-full" size="sm" variant="ghost" onClick={() => cancelProcessingMutation.mutate({ surveyId: selectedSurveyId })} disabled={cancelProcessingMutation.isPending}>Cancelar trabalho</Button>}
                 {job.status === "completed" && <div className="space-y-1.5 rounded-lg border bg-background p-2 text-[10px]">
@@ -288,9 +303,9 @@ export default function ProjectMap() {
 
       <Dialog open={showBaseMapDialog} onOpenChange={setShowBaseMapDialog}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Ajustar limites do mapa base</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Limites do projecto — {activeProject?.code}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <p className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">A plataforma fornece o mapa base oficial. Ajuste apenas os limites WGS84 para alinhar o enquadramento do projecto.</p>
+            <p className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">Defina o rectângulo WGS84 desta área de projecto sobre o mapa base privado. O raster de referência e a sua licença são geridos pela plataforma e não são alterados aqui.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{(["west", "south", "east", "north"] as const).map(key => <div key={key} className="space-y-1"><Label className="capitalize">{key}</Label><Input type="number" step="0.000001" value={baseMapForm[key]} onChange={event => setBaseMapForm(current => ({ ...current, [key]: event.target.value }))} /></div>)}</div>
             <div className="rounded-lg border bg-muted/30 p-3 text-xs"><p className="font-medium">{listQuery.data?.setting?.sourceName}</p><p className="mt-1 text-muted-foreground">{listQuery.data?.setting?.attribution} · {listQuery.data?.setting?.license}</p></div>
             <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowBaseMapDialog(false)}>Cancelar</Button><Button disabled={updateBaseMapBoundsMutation.isPending} onClick={handleBaseMapBounds}><ShieldCheck className="mr-2 size-4" />{updateBaseMapBoundsMutation.isPending ? "A guardar..." : "Guardar limites"}</Button></div>

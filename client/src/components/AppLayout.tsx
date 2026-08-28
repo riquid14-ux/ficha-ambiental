@@ -81,6 +81,7 @@ const allProjectsMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
+  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
   { icon: Heart, label: "GAMMA", path: "/gamma" },
@@ -172,7 +173,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const userRole = user?.role || "user";
   const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
   const canAdmin = userRole === "admin";
-  const canAdminOrDO = userRole === "admin" || userRole === "dono_obra";
   const canViewMap = ["admin", "dono_obra", "pm"].includes(userRole);
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
   
@@ -218,7 +218,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       { icon: ClipboardList, label: "Pedidos EEP", path: "/pedidos-eep" },
     ] : []),
     ...(canAdmin ? adminMenuItems : []),
-    ...(canAdminOrDO && !canAdmin ? [{ icon: Shield, label: "Administração", path: "/admin" }] : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
 

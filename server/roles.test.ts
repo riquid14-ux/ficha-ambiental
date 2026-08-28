@@ -158,9 +158,13 @@ describe("Roles Drill Tests", () => {
       expect(fs.readFileSync(`${process.cwd()}/client/src/pages/KPI.tsx`, "utf-8")).toContain('role === "admin"');
     });
 
-    it("should restrict Administração page to admin/DO", () => {
+    it("should restrict Administração page and management mutations to Admin", () => {
       expect(layoutCode).toContain("canAdmin");
-      expect(layoutCode).toContain("canAdminOrDO");
+      expect(layoutCode).not.toContain("canAdminOrDO");
+      expect(routerCode).toContain("function assertAdminOnly");
+      expect(routerCode).toContain('"company_updated"');
+      expect(routerCode).toContain('"user_role_updated"');
+      expect(routerCode).toContain('"invitation_created"');
     });
   });
 

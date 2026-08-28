@@ -55,6 +55,10 @@ function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
 }
 
+function assertAdminOnly(user: { role: string }) {
+  if (user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem gerir empresas, utilizadores, funções e convites." });
+}
+
 async function assertProjectAccess(user: any, projectId: number) {
   const project = await db.getProjectById(projectId);
   if (!project) throw new TRPCError({ code: "NOT_FOUND", message: "Projecto não encontrado." });
@@ -138,6 +142,10 @@ function effectiveProjectMapSetting(projectId: number, stored?: Awaited<ReturnTy
     baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
     baseMapUrl: DEFAULT_PROJECT_MAP.url,
     boundsJson: stored?.boundsJson ?? JSON.stringify(DEFAULT_PROJECT_MAP.bounds),
+    hasCustomBounds: Boolean(stored?.boundsJson),
+    baseMapBoundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.rasterBounds),
+    referenceCenter: DEFAULT_PROJECT_MAP.referenceCenter,
+    referenceRadiusM: DEFAULT_PROJECT_MAP.referenceRadiusM,
     sourceName: DEFAULT_PROJECT_MAP.sourceName,
     sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
     attribution: DEFAULT_PROJECT_MAP.attribution,
@@ -472,11 +480,13 @@ export const appRouter = router({
         const passwordHash = await bcrypt.hash(input.password, 10);
         const displayName = input.companyName ? `${input.name} (${input.companyName})` : input.name;
         await db.upsertUser({ openId, name: displayName, email, loginMethod: "email", role: "user" });
+        const registeredUser = await db.getUserByOpenId(openId);
+        const invitationAccepted = !!registeredUser?.companyId && registeredUser.role !== "user";
         const database = await db.getDb();
         if (database) {
-          await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = 'pending' WHERE openId = ${openId}`);
+          await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = ${invitationAccepted ? "active" : "pending"} WHERE openId = ${openId}`);
         }
-        return { success: true, message: "Conta criada com sucesso. Aguarde aprovação do administrador." };
+        return { success: true, message: invitationAccepted ? "Convite aceite. Já pode iniciar sessão." : "Conta criada com sucesso. Aguarde aprovação do administrador." };
       }),
 
     // ─── Change password ────────────────────────────────────────────────────
@@ -620,6 +630,7 @@ export const appRouter = router({
         parentCompanyId: z.number().int().positive().optional(), allowKpi: z.boolean().default(false), allowWaste: z.boolean().default(false),
       }))
       .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
         if (input.companyType === "ee_partner") {
           if (!input.parentCompanyId || (!input.allowKpi && !input.allowWaste)) throw new TRPCError({ code: "BAD_REQUEST", message: "Uma EEP exige EE principal e acesso a KPI e/ou Resíduos." });
           const parent = await db.getCompanyById(input.parentCompanyId);
@@ -635,15 +646,21 @@ export const appRouter = router({
       }),
     update: adminProcedure
       .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        assertAdminOnly(ctx.user);
         const { id, ...data } = input;
+        const existing = await db.getCompanyById(id);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Empresa não encontrada." });
+        if (data.companyType && data.companyType !== existing.companyType) throw new TRPCError({ code: "BAD_REQUEST", message: "O tipo de empresa não pode ser alterado. Crie a empresa com o tipo correcto." });
         await db.updateCompany(id, data);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "company_updated", "companies", id, JSON.stringify(existing), JSON.stringify(data));
         return { success: true };
       }),
 
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
+        assertAdminOnly(ctx.user);
         const database = await db.getDb();
         if (database) {
           const counts = await database.execute(sql`SELECT
@@ -671,22 +688,24 @@ export const appRouter = router({
 
   // ─── Users Management (Admin / Dono de Obra) ──────────────────────────────
   users: router({
-    list: adminProcedure.query(async () => {
+    list: adminProcedure.query(async ({ ctx }) => {
+      assertAdminOnly(ctx.user);
       return db.getAllUsers();
     }),
     assignCompany: adminProcedure
       .input(z.object({ userId: z.number(), companyId: z.number().nullable() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        assertAdminOnly(ctx.user);
+        const userBefore = await db.getUserById(input.userId);
+        if (!userBefore) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador não encontrado." });
+        const assignedCompany = input.companyId ? await db.getCompanyById(input.companyId) : null;
+        if (input.companyId && !assignedCompany) throw new TRPCError({ code: "NOT_FOUND", message: "Empresa não encontrada." });
         await db.updateUserCompany(input.userId, input.companyId);
         // Auto-assign role based on company type
         if (input.companyId) {
           // Never demote an admin when assigning company
           const targetUser = await db.getUserById(input.userId);
-          if (targetUser?.role === "admin") {
-            return { success: true };
-          }
-          const company = await db.getCompanyById(input.companyId);
-          if (company) {
+          if (targetUser?.role !== "admin" && assignedCompany) {
             const roleMap: Record<string, string> = {
               ee: "ee",
               ee_partner: "ee_partner",
@@ -695,15 +714,18 @@ export const appRouter = router({
               raa: "raa",
               observador: "observador",
             };
-            const newRole = (roleMap[company.companyType] || "user") as "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador";
+            const newRole = (roleMap[assignedCompany.companyType] || "user") as "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador";
             await db.updateUserRole(input.userId, newRole);
           }
         }
+        const userAfter = await db.getUserById(input.userId);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "user_company_assigned", "users", input.userId, JSON.stringify({ companyId: userBefore.companyId ?? null, role: userBefore.role }), JSON.stringify({ companyId: userAfter?.companyId ?? null, role: userAfter?.role ?? null }));
         return { success: true };
       }),
     updateRole: adminProcedure
       .input(z.object({ userId: z.number(), role: z.enum(["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]) }))
       .mutation(async ({ input, ctx }) => {
+        assertAdminOnly(ctx.user);
         // Only admin can promote to admin or dono_obra
         if ((input.role === "admin" || input.role === "dono_obra") && ctx.user.role !== "admin") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem atribuir o papel de Admin ou Dono de Obra." });
@@ -719,6 +741,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o papel de um Dono de Obra." });
         }
         await db.updateUserRole(input.userId, input.role);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "user_role_updated", "users", input.userId, JSON.stringify({ role: targetUser?.role ?? null }), JSON.stringify({ role: input.role }));
         return { success: true };
       }),
   }),
@@ -858,7 +881,8 @@ export const appRouter = router({
 
   // ─── Invitations ────────────────────────────────────────────────────────────
   invitations: router({
-    list: adminProcedure.query(async () => {
+    list: adminProcedure.query(async ({ ctx }) => {
+      assertAdminOnly(ctx.user);
       const allInvitations = await db.getAllInvitations();
       const allCompanies = await db.getAllCompanies();
       return allInvitations.map((inv) => ({
@@ -873,18 +897,20 @@ export const appRouter = router({
         role: z.enum(["user", "admin", "ee", "ee_partner", "raa", "rap", "dono_obra", "observador", "pm"]),
       }))
       .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
         // Check if there's already a pending invitation for this email
         const normalizedEmail = input.email.toLowerCase().trim();
         const existing = await db.getPendingInvitationByEmail(normalizedEmail);
         if (existing) {
           throw new TRPCError({ code: "CONFLICT", message: "Já existe um convite pendente para este email." });
         }
-        await db.createInvitation({
+        const created = await db.createInvitation({
           email: normalizedEmail,
           companyId: input.companyId,
           role: input.role,
           invitedBy: ctx.user.id,
         });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "invitation_created", "invitations", (created as any)?.[0]?.insertId ?? null, null, JSON.stringify({ email: normalizedEmail, companyId: input.companyId, role: input.role }));
         // Send invitation email (async, don't block)
         try {
           const company = await db.getCompanyById(input.companyId);
@@ -903,8 +929,10 @@ export const appRouter = router({
       }),
     delete: adminProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        assertAdminOnly(ctx.user);
         await db.deleteInvitation(input.id);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "invitation_deleted", "invitations", input.id, null, null);
         return { success: true };
       }),
   }),
@@ -3312,6 +3340,30 @@ export const appRouter = router({
         }));
         return { setting: effectiveProjectMapSetting(input.projectId, setting), surveys: items, worker: getPhotogrammetryWorkerStatus() };
       }),
+    overview: protectedProcedure.query(async ({ ctx }) => {
+      assertMapReadRole(ctx.user.role);
+      const allowedProjectIds = new Set(await getAccessibleProjectIds(ctx.user));
+      const accessibleProjects = (await db.getAllProjects()).filter(project => allowedProjectIds.has(project.id));
+      const settings = await Promise.all(accessibleProjects.map(async project => ({
+        project: { id: project.id, code: project.code, name: project.name },
+        setting: effectiveProjectMapSetting(project.id, await db.getProjectMapSetting(project.id)),
+      })));
+      return {
+        baseMap: {
+          baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
+          baseMapUrl: DEFAULT_PROJECT_MAP.url,
+          boundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.rasterBounds),
+          referenceBoundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.bounds),
+          referenceCenter: DEFAULT_PROJECT_MAP.referenceCenter,
+          referenceRadiusM: DEFAULT_PROJECT_MAP.referenceRadiusM,
+          sourceName: DEFAULT_PROJECT_MAP.sourceName,
+          sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
+          attribution: DEFAULT_PROJECT_MAP.attribution,
+          license: DEFAULT_PROJECT_MAP.license,
+        },
+        projects: settings,
+      };
+    }),
     survey: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -3421,6 +3473,10 @@ export const appRouter = router({
           flightYawDegree: exif.FlightYawDegree,
           focalLength35mm: exif.FocalLengthIn35mmFormat,
         };
+        const gimbalPitchDegree = Number(metadata.gimbalPitchDegree);
+        if (!Number.isFinite(gimbalPitchDegree) || Math.abs(Math.abs(gimbalPitchDegree) - 90) > 5) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Para o mosaico, carregue apenas fotografias DJI verticais a 90° para baixo (tolerância de 5°), com orientação de câmara disponível." });
+        }
         const project = await db.getProjectById(input.projectId);
         const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
         const stored = await storagePut(`project-maps/${project?.code ?? input.projectId}/survey-${survey.id}/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
@@ -3572,8 +3628,10 @@ export const appRouter = router({
       const rows = await database.execute(sql`SELECT * FROM kpi_values WHERE submissionId = ${input.submissionId}`);
       return (rows as any)[0] || [];
     }),
-    allValues: partnerAllowedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional() })).query(async ({ ctx, input }) => {
+    allValues: partnerAllowedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional(), startWeek: z.number().int().min(1).max(53).optional(), endWeek: z.number().int().min(1).max(53).optional() })).query(async ({ ctx, input }) => {
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      if (input.startWeek && input.endWeek && input.startWeek > input.endWeek) throw new TRPCError({ code: "BAD_REQUEST", message: "A semana inicial não pode ser posterior à semana final." });
+      if ((input.startWeek || input.endWeek) && !input.weekYear) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione o ano do período KPI." });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, ks.parentCompanyId, ks.sourceType, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId}`;
@@ -3581,6 +3639,8 @@ export const appRouter = router({
       else if (ctx.user.role === "ee" && ctx.user.companyId) q = sql`${q} AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})`;
       if (input.weekYear) q = sql`${q} AND ks.weekYear = ${input.weekYear}`;
       if (input.weekNumber) q = sql`${q} AND ks.weekNumber = ${input.weekNumber}`;
+      if (input.startWeek) q = sql`${q} AND ks.weekNumber >= ${input.startWeek}`;
+      if (input.endWeek) q = sql`${q} AND ks.weekNumber <= ${input.endWeek}`;
       const rows = await database.execute(q);
       return (rows as any)[0] || [];
     }),
@@ -3646,16 +3706,27 @@ export const appRouter = router({
       }
       return { success: true, submissionId, status, sourceType };
     }),
-    upsertMetric: protectedProcedure.input(z.object({ id: z.number().optional(), name: z.string(), nameEn: z.string().optional(), unit: z.string(), target: z.string().optional(), category: z.string(), inputType: z.string().default("manual"), formulaType: z.string().optional(), formulaSourceMetricId: z.number().optional(), pci: z.string().optional(), emissionFactor: z.string().optional(), density: z.string().optional(), sortOrder: z.number().optional() })).mutation(async ({ ctx, input }) => {
+    upsertMetric: protectedProcedure.input(z.object({ id: z.number().int().positive().optional(), name: z.string().trim().min(3).max(120), nameEn: z.string().trim().max(120).optional(), unit: z.string().trim().min(1).max(24), target: z.string().trim().max(80).optional(), category: z.enum(["workforce", "transport", "fuel", "energy", "water", "emissions", "incidents", "other"]), inputType: z.enum(["manual", "calculated"]).default("manual"), formulaType: z.enum(["fuel_to_co2", "sum_co2"]).optional(), formulaSourceMetricId: z.number().int().positive().optional(), pci: z.string().trim().max(40).optional(), emissionFactor: z.string().trim().max(40).optional(), density: z.string().trim().max(40).optional(), sortOrder: z.number().int().min(0).max(999).optional() })).mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.inputType === "calculated" && !input.formulaType) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione a fórmula para a métrica calculada." });
+      if (input.formulaType === "fuel_to_co2" && !input.formulaSourceMetricId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione a métrica de origem para o cálculo." });
+      const duplicateQuery = input.id
+        ? sql`SELECT id FROM kpi_metrics WHERE LOWER(name) = LOWER(${input.name}) AND active = 1 AND id <> ${input.id} LIMIT 1`
+        : sql`SELECT id FROM kpi_metrics WHERE LOWER(name) = LOWER(${input.name}) AND active = 1 LIMIT 1`;
+      const duplicates = await database.execute(duplicateQuery);
+      if ((duplicates as any)[0]?.length) throw new TRPCError({ code: "CONFLICT", message: "Já existe uma métrica KPI activa com este nome." });
+      const calculated = input.inputType === "calculated";
       if (input.id) {
-        await database.execute(sql`UPDATE kpi_metrics SET name=${input.name}, nameEn=${input.nameEn||null}, unit=${input.unit}, target=${input.target||null}, category=${input.category}, inputType=${input.inputType}, formulaType=${input.formulaType||null}, formulaSourceMetricId=${input.formulaSourceMetricId||null}, pci=${input.pci||null}, emissionFactor=${input.emissionFactor||null}, density=${input.density||null}, sortOrder=${input.sortOrder||0} WHERE id=${input.id}`);
+        await database.execute(sql`UPDATE kpi_metrics SET name=${input.name}, nameEn=${input.nameEn||null}, unit=${input.unit}, target=${input.target||null}, category=${input.category}, inputType=${input.inputType}, formulaType=${calculated ? input.formulaType || null : null}, formulaSourceMetricId=${calculated ? input.formulaSourceMetricId || null : null}, pci=${calculated ? input.pci || null : null}, emissionFactor=${calculated ? input.emissionFactor || null : null}, density=${calculated ? input.density || null : null}, sortOrder=${input.sortOrder||0} WHERE id=${input.id}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "kpi_metric_updated", "kpi_metrics", input.id, null, JSON.stringify({ name: input.name, category: input.category, inputType: input.inputType }));
         return { success: true, id: input.id };
       } else {
-        const result = await database.execute(sql`INSERT INTO kpi_metrics (name, nameEn, unit, target, category, inputType, formulaType, formulaSourceMetricId, pci, emissionFactor, density, sortOrder) VALUES (${input.name}, ${input.nameEn||null}, ${input.unit}, ${input.target||null}, ${input.category}, ${input.inputType}, ${input.formulaType||null}, ${input.formulaSourceMetricId||null}, ${input.pci||null}, ${input.emissionFactor||null}, ${input.density||null}, ${input.sortOrder||0})`);
-        return { success: true, id: (result as any)[0].insertId };
+        const result = await database.execute(sql`INSERT INTO kpi_metrics (name, nameEn, unit, target, category, inputType, formulaType, formulaSourceMetricId, pci, emissionFactor, density, sortOrder) VALUES (${input.name}, ${input.nameEn||null}, ${input.unit}, ${input.target||null}, ${input.category}, ${input.inputType}, ${calculated ? input.formulaType || null : null}, ${calculated ? input.formulaSourceMetricId || null : null}, ${calculated ? input.pci || null : null}, ${calculated ? input.emissionFactor || null : null}, ${calculated ? input.density || null : null}, ${input.sortOrder||0})`);
+        const id = (result as any)[0].insertId;
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "kpi_metric_created", "kpi_metrics", id, null, JSON.stringify({ name: input.name, category: input.category, inputType: input.inputType }));
+        return { success: true, id };
       }
     }),
     deleteMetric: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
@@ -3663,6 +3734,7 @@ export const appRouter = router({
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await database.execute(sql`UPDATE kpi_metrics SET active = 0 WHERE id = ${input.id}`);
+      await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "kpi_metric_archived", "kpi_metrics", input.id, null, null);
       return { success: true };
     }),
     // KPI Targets (Metas)

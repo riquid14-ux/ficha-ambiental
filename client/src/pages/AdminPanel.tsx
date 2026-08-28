@@ -135,12 +135,12 @@ export default function AdminPanel() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (user?.role !== "admin" && user?.role !== "dono_obra") {
+  if (user?.role !== "admin") {
     return (
       <AppLayout>
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Acesso restrito a administradores e Dono de Obra.</p>
+            <p className="text-muted-foreground">Acesso restrito a administradores.</p>
           </CardContent>
         </Card>
       </AppLayout>

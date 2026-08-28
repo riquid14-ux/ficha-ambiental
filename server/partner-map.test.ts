@@ -125,19 +125,48 @@ describe("EEP — Entidade Executante Parceira — KPI e Resíduos", () => {
 });
 
 describe("Mapa privado — segurança e geometria", () => {
-  it("usa um mapa base oficial predefinido e deixa o Admin ajustar apenas limites WGS84", () => {
+  it("usa um mapa base privado de referência Start Campus e deixa o Admin guardar limites WGS84 por projecto", () => {
     const mapRouter = routerSource.slice(routerSource.indexOf("projectMap: router"), routerSource.indexOf("feedback: router"));
     expect(sharedMapSource).toContain("DEFAULT_PROJECT_MAP");
     expect(sharedMapSource).toContain("Direção-Geral do Território — Ortofotos 2018");
     expect(sharedMapSource).toContain("CC BY 4.0");
     expect(sharedMapSource).toContain("/manus-storage/sines_dgt_ortos2018_332642c9.png");
+    expect(sharedMapSource).toContain("referenceRadiusM: 1000");
+    expect(sharedMapSource).toContain("rasterBounds");
     expect(mapRouter).toContain("effectiveProjectMapSetting");
     expect(mapRouter).toContain("updateBaseMapBounds");
     expect(mapRouter).toContain("boundsJson: JSON.stringify(input.bounds)");
-    expect(mapSource).toContain("Ajustar limites");
-    expect(mapSource).toContain("A plataforma fornece o mapa base oficial");
+    expect(routerSource).toContain("hasCustomBounds: Boolean(stored?.boundsJson)");
+    expect(mapSource).toContain("Definir limites do projecto");
+    expect(mapSource).toContain("Defina o rectângulo WGS84 desta área de projecto");
     expect(mapSource).not.toContain("Imagem raster");
     expect(mapSource).not.toContain("setBaseMapFile");
+  });
+
+  it("compõe uma vista global apenas com os limites dos projectos autorizados", async () => {
+    vi.spyOn(db, "getAllProjects").mockResolvedValue([
+      { id: 1, code: "SIN01", name: "SIN01" },
+      { id: 2, code: "SIN02", name: "SIN02" },
+    ] as any);
+    vi.spyOn(db, "getUserProjects").mockResolvedValue([{ projectId: 1 }] as any);
+    vi.spyOn(db, "getProjectMapSetting").mockResolvedValue(undefined as any);
+
+    const pmResult = await appRouter.createCaller(partnerContext("pm")).projectMap.overview();
+    expect(pmResult.projects.map(item => item.project.id)).toEqual([1]);
+    expect(pmResult.baseMap.referenceRadiusM).toBe(1000);
+    expect(pmResult.baseMap.boundsJson).toContain("west");
+    await expect(appRouter.createCaller(partnerContext("observador")).projectMap.overview()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(mapSource).toContain("Mapa global");
+    expect(mapSource).toContain("Todos os projectos");
+    expect(mapSource).toContain("trpc.projectMap.overview");
+    expect(mapCanvasSource).toContain("projectBoundaries");
+    expect(mapCanvasSource).toContain("isOverview");
+    expect(mapCanvasSource).toContain("Start Campus · raio 1 km");
+    expect(mapCanvasSource).toContain("item.setting.hasCustomBounds");
+    expect(mapSource).toContain("limites definidos");
+    const allProjectsMenu = layoutSource.slice(layoutSource.indexOf('const allProjectsMenuItems'), layoutSource.indexOf('const adminMenuItems'));
+    expect(allProjectsMenu).toContain('{ icon: MapPinned, label: "Mapa", path: "/mapa" }');
   });
 
   it("guarda fotografias em storage externo com sanitização e limites, sem obrigar o utilizador a fornecer o raster base", () => {
@@ -212,7 +241,7 @@ describe("Mapa privado — segurança e geometria", () => {
   });
 
   it("apresenta uma experiência map-first privada e distingue footprints de ortomosaico", () => {
-    expect(mapSource).toContain("Ajustar limites do mapa base");
+    expect(mapSource).toContain("Limites do projecto");
     expect(mapSource).toContain("Fotografias sem GPS não são forçadas para o mapa");
     expect(mapCanvasSource).toContain("Mapa privado");
     expect(mapCanvasSource).toContain("buffer 200 m");

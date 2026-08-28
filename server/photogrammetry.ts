@@ -50,7 +50,7 @@ export function validatePhotogrammetryBatch(photos: MapPhoto[]): PhotogrammetryV
     if (latitude != null && longitude != null) coordinates.push({ latitude, longitude });
     if (pitch != null) {
       const distanceFromNadir = Math.abs(Math.abs(pitch) - 90);
-      if (distanceFromNadir <= 15) nadirCount += 1;
+      if (distanceFromNadir <= 5) nadirCount += 1;
       else obliqueCount += 1;
     }
     if (latitude == null || longitude == null || pitch == null || yaw == null || altitude == null || !hasCameraDimensions) {
@@ -73,8 +73,11 @@ export function validatePhotogrammetryBatch(photos: MapPhoto[]): PhotogrammetryV
     issues.push({ code: "INCOMPLETE_DJI_METADATA", level: "warning", message: "Mais de 20% das fotografias não têm todos os metadados de posição, altitude, orientação e dimensões." });
   }
 
-  if (nadirCount === 0) {
-    issues.push({ code: "NO_NADIR_IMAGES", level: "warning", message: "Não foram detectadas fotografias próximas de 90°; um ortomosaico 2D preciso pode exigir imagens nadir adicionais." });
+  if (nadirCount !== photos.length) {
+    const orientationMessage = obliqueCount > 0
+      ? `${obliqueCount} fotografia(s) não estão orientadas verticalmente a 90°.`
+      : "Não foi possível confirmar a orientação vertical de todas as fotografias.";
+    issues.push({ code: "NADIR_90_REQUIRED", level: "error", message: `${orientationMessage} O mosaico só aceita fotografias DJI nadir, apontadas para baixo a 90° (tolerância de 5°).` });
   }
 
   let geographicBounds: PhotogrammetryValidation["geographicBounds"] = null;

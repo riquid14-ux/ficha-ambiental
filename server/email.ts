@@ -194,8 +194,8 @@ export async function sendInvitationEmail(
       <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Função:</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${roleName}</td></tr>
       <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Email de acesso:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${recipientEmail}</td></tr>
     </table>
-    <p style="color: #333;">Para aceder à plataforma, utilize o seu email e a palavra-passe inicial: <strong>123456</strong></p>
-    <p style="color: #e11d48; font-size: 13px;">⚠️ Por razões de segurança, altere a sua palavra-passe no primeiro acesso.</p>
+    <p style="color: #333;">No primeiro acesso, seleccione <strong>Criar conta</strong>, utilize este email e defina uma palavra-passe pessoal.</p>
+    <p style="color: #e11d48; font-size: 13px;">⚠️ Nunca partilhe a sua palavra-passe com outras pessoas.</p>
     <div style="text-align: center; margin: 20px 0;">
       <a href="https://ambientfich.co" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Aceder à Plataforma</a>
     </div>`;

@@ -120,20 +120,9 @@ O repositório já contém CI, deployment aprovado, watchdog de PM2, backup, hea
 
 ## 8. Fotogrametria DJI / NodeODM
 
-O Mapa está preparado para referência privada, limites WGS84 individuais, vista global e lotes de imagens. A aplicação aceita para mosaico apenas fotografias DJI **verticais/nadir a 90°**. Fotografias oblíquas a 30° ou 60° não entram no fluxo de ortofoto, pois reduzem a comparabilidade geométrica e podem criar resultados enganadores.
+O módulo de Mapa e de fotogrametria foi retirado da aplicação activa por decisão de produto em 31 de Agosto de 2026. A Plataforma não expõe rotas, ecrãs, APIs, armazenamento ou tabelas de dados para levantamentos DJI, ortofotos, DSM ou NodeODM.
 
-NodeODM disponibiliza uma API REST para processamento de imagens aéreas e a própria documentação recomenda a execução através de Docker.[5] O serviço deve viver numa VM/servidor separado da aplicação, numa rede privada, com armazenamento persistente e recursos dimensionados para o tamanho do lote. Como referência de engenharia, preparar pelo menos 16 GB de RAM para lotes iniciais e confirmar a capacidade através de um voo de ensaio antes de alargar utilização.
-
-O contrato já existente entre aplicação e worker requer:
-
-| Pedido da aplicação | Resposta do worker |
-| --- | --- |
-| `jobId`, `projectId`, `surveyId`, chaves privadas das fotos e limite WGS84 | `taskUuid`, estado, progresso e mensagem controlada |
-| Resolução da ortofoto, geração DSM/tiles/relatório e uso de EXIF | Chaves privadas da ortofoto, tiles, DSM e relatório |
-| Pedido de cancelamento | Estado `cancelled` confirmado |
-| Consulta de health/progress | Limites calculados, CRS, GSD e erro reprojetivo quando disponíveis |
-
-O worker não deve expor o NodeODM à Internet. A comunicação deve ocorrer por rede privada, autenticação serviço-a-serviço e allowlist; as fotos e outputs devem usar chaves privadas no armazenamento, com URLs temporárias apenas quando necessárias. A aplicação não tem fallback de processamento local: enquanto o worker não estiver configurado, a interface informa claramente que o processamento real não está disponível.
+Caso a Start Campus pretenda retomar esta possibilidade, deverá ser planeada como iniciativa separada, num worker privado e isolado da aplicação web. Os requisitos de segurança, capacidade e aceitação estão registados no documento [Ferramentas Futuras](./FERRAMENTAS_FUTURAS.md); não constituem trabalho de implementação pendente para a equipa de IT nesta versão.
 
 ## 9. Testes de aceitação antes de produção
 
@@ -144,14 +133,12 @@ O worker não deve expor o NodeODM à Internet. A comunicação deve ocorrer por
 | SharePoint | Ficha aprovada fica no caminho correcto, com URL/referência e recuperação confirmada. |
 | ACC | Documento é carregado uma vez na pasta correcta e a falha devolve erro controlado sem perder o workflow. |
 | KPI/MIRR | Exportação por período mostra cabeçalhos profissionais, resumo e detalhe semanal correctos. |
-| Mapa | Admin define limites; DO/PM lêem; restantes roles são bloqueados; lote oblíquo é recusado. |
-| NodeODM | Lote nadir 90° de ensaio gera resultados privados; falha do worker não degrada KPI, resíduos ou fichas. |
 | Recuperação | Crash-loop em staging cria backup, alerta para vários destinatários, issue/PR opcional e rollback após readiness falhar. |
 | Segurança | Segredos não surgem em Git/logs; auditoria de dependências, testes e health check passam. |
 
 ## 10. Entregáveis que o IT deve devolver à Start Campus
 
-A passagem a produção deve terminar com um dossier de evidências: diagrama de rede e identidades técnicas; inventário de segredos e rotação; mapeamento projecto plataforma→ACC→SharePoint; resultado de testes de upload/arquivo/restauro; prova de SPF/DKIM/DMARC; relatório de health check e rollback; evidência de branch protection/reviews; e relatório do voo NodeODM de aceitação. O template RDCD final continua a ser o elemento funcional que falta para validar a geração do relatório oficial com a estrutura exigida pela APA.
+A passagem a produção deve terminar com um dossier de evidências: diagrama de rede e identidades técnicas; inventário de segredos e rotação; mapeamento projecto plataforma→ACC→SharePoint; resultado de testes de upload/arquivo/restauro; prova de SPF/DKIM/DMARC; relatório de health check e rollback; e evidência de branch protection/reviews. O template RDCD final continua a ser o elemento funcional que falta para validar a geração do relatório oficial com a estrutura exigida pela APA.
 
 ## Referências
 

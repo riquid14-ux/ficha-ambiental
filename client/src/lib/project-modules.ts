@@ -1,9 +1,8 @@
-export const DEFAULT_PROJECT_MODULES = ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"] as const;
+export const DEFAULT_PROJECT_MODULES = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi"] as const;
 
 const routeModule: Record<string, string> = {
   "/dashboard": "dashboard",
   "/calendario": "calendar",
-  "/mapa": "map",
   "/timeline": "timeline",
   "/ficha": "ficha",
   "/residuos": "residuos",

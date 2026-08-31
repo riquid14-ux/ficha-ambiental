@@ -21,15 +21,13 @@ function caller() {
 }
 
 describe("Módulos activos por projecto", () => {
-  it("bloqueia no backend Mapa e Timeline em ACP, mas mantém LMAT1 disponível", async () => {
+  it("bloqueia Timeline e Ficha em ACP, mas mantém LMAT1 disponível", async () => {
     const projects = await db.getAllProjects();
     const acp = projects.find(project => project.code === "ACP");
     const lmat1 = projects.find(project => project.code === "LMAT1");
     expect(acp).toBeDefined();
     expect(lmat1).toBeDefined();
 
-    await expect(caller().projectMap.list({ projectId: acp!.id }))
-      .rejects.toMatchObject({ code: "FORBIDDEN", message: "Este módulo não está activo no projecto seleccionado." });
     await expect(caller().projectPhases.list({ projectId: acp!.id }))
       .rejects.toMatchObject({ code: "FORBIDDEN", message: "Este módulo não está activo no projecto seleccionado." });
     await expect(caller().submissions.createOrGet({
@@ -39,6 +37,6 @@ describe("Módulos activos por projecto", () => {
       weekStartDate: "2026-01-05",
       weekEndDate: "2026-01-11",
     })).rejects.toMatchObject({ code: "FORBIDDEN", message: "Este módulo não está activo no projecto seleccionado." });
-    await expect(caller().projectMap.list({ projectId: lmat1!.id })).resolves.toMatchObject({ surveys: expect.any(Array) });
+    await expect(caller().projectPhases.list({ projectId: lmat1!.id })).resolves.toEqual(expect.any(Array));
   });
 });

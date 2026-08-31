@@ -14,12 +14,11 @@ describe("módulos autorizados por projecto", () => {
     expect(isProjectRouteEnabled(acpModules, "/kpi")).toBe(true);
     expect(isProjectRouteEnabled(acpModules, "/ficha")).toBe(false);
     expect(isProjectRouteEnabled(acpModules, "/timeline")).toBe(false);
-    expect(isProjectRouteEnabled(acpModules, "/mapa")).toBe(false);
   });
 
   it("recupera o conjunto completo quando a configuração persistida for inválida", () => {
     expect(parseProjectModules("inválido")).toContain("ficha");
-    expect(parseProjectModules(null)).toContain("map");
+    expect(parseProjectModules(null)).not.toContain("map");
   });
 
   it("exige Admin e grava auditoria ao criar ou configurar módulos de um projecto", () => {

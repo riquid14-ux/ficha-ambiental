@@ -1,7 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { DEFAULT_PROJECT_MAP, MAP_READ_ROLES } from "../shared/project-map";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
@@ -15,7 +14,6 @@ import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 import { sanitizeFile } from "./file-sanitizer";
-import { getPhotogrammetryWorkerStatus, validatePhotogrammetryBatch } from "./photogrammetry";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -80,8 +78,8 @@ async function assertProjectAccess(user: any, projectId: number) {
   return project;
 }
 
-type ProjectModule = "dashboard" | "calendar" | "map" | "timeline" | "ficha" | "residuos" | "kpi";
-const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"];
+type ProjectModule = "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi";
+const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi"];
 
 function getEnabledProjectModules(project: any): ProjectModule[] {
   if (typeof project?.enabledModules !== "string") return DEFAULT_PROJECT_MODULES;
@@ -145,39 +143,6 @@ async function assertPartnerProjectModuleAccess(user: any, projectId: number, mo
     throw new TRPCError({ code: "FORBIDDEN", message: "Este projecto não pertence ao âmbito autorizado da EE principal." });
   }
   return profile;
-}
-
-function assertMapReadRole(role: string) {
-  if (!(MAP_READ_ROLES as readonly string[]).includes(role)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "O Mapa está disponível apenas para Administrador, Dono de Obra e Gestor de Projecto." });
-  }
-}
-
-function assertMapWriteRole(role: string) {
-  if (role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para alterar levantamentos do Mapa." });
-  }
-}
-
-function effectiveProjectMapSetting(projectId: number, stored?: Awaited<ReturnType<typeof db.getProjectMapSetting>>) {
-  return {
-    id: stored?.id ?? 0,
-    projectId,
-    baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
-    baseMapUrl: DEFAULT_PROJECT_MAP.url,
-    boundsJson: stored?.boundsJson ?? JSON.stringify(DEFAULT_PROJECT_MAP.bounds),
-    hasCustomBounds: Boolean(stored?.boundsJson),
-    baseMapBoundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.rasterBounds),
-    referenceCenter: DEFAULT_PROJECT_MAP.referenceCenter,
-    referenceRadiusM: DEFAULT_PROJECT_MAP.referenceRadiusM,
-    sourceName: DEFAULT_PROJECT_MAP.sourceName,
-    sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
-    attribution: DEFAULT_PROJECT_MAP.attribution,
-    license: DEFAULT_PROJECT_MAP.license,
-    updatedBy: stored?.updatedBy ?? null,
-    createdAt: stored?.createdAt ?? null,
-    updatedAt: stored?.updatedAt ?? null,
-  };
 }
 
 function canUpdatePlanProgress(user: any, assignment: any) {
@@ -3367,266 +3332,6 @@ export const appRouter = router({
       const rows = await database.execute(sql`SELECT we.id, we.companyId, c.shortName, we.subProjectId, sp.name AS subProjectName, sp.code AS subProjectCode, we.lerCode, we.designation, we.quantity, we.correctedQuantity, we.destination, we.month, we.year FROM waste_egars we JOIN companies c ON c.id = we.companyId LEFT JOIN waste_subprojects sp ON sp.id = we.subProjectId WHERE we.projectId = ${input.projectId} AND we.year = ${input.year}${companyScope} ORDER BY we.month ASC, c.shortName ASC`);
       return (rows as any)[0] || [];
     }),
-  }),
-
-  // ─── Private project map ──────────────────────────────────────────────────
-  projectMap: router({
-    list: protectedProcedure
-      .input(z.object({ projectId: z.number().int().positive() }))
-      .query(async ({ ctx, input }) => {
-        assertMapReadRole(ctx.user.role);
-        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
-        const [setting, surveys] = await Promise.all([
-          db.getProjectMapSetting(input.projectId),
-          db.getMapSurveys(input.projectId),
-        ]);
-        const items = await Promise.all(surveys.map(async survey => {
-          const [photos, job] = await Promise.all([
-            db.getMapPhotos(survey.id),
-            db.getPhotogrammetryJobBySurvey(survey.id),
-          ]);
-          return { ...survey, photoCount: photos.length, job: job ?? null };
-        }));
-        return { setting: effectiveProjectMapSetting(input.projectId, setting), surveys: items, worker: getPhotogrammetryWorkerStatus() };
-      }),
-    overview: protectedProcedure.query(async ({ ctx }) => {
-      assertMapReadRole(ctx.user.role);
-      const allowedProjectIds = new Set(await getAccessibleProjectIds(ctx.user));
-      const accessibleProjects = (await db.getAllProjects()).filter(project => allowedProjectIds.has(project.id) && getEnabledProjectModules(project).includes("map"));
-      const settings = await Promise.all(accessibleProjects.map(async project => ({
-        project: { id: project.id, code: project.code, name: project.name },
-        setting: effectiveProjectMapSetting(project.id, await db.getProjectMapSetting(project.id)),
-      })));
-      return {
-        baseMap: {
-          baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
-          baseMapUrl: DEFAULT_PROJECT_MAP.url,
-          boundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.rasterBounds),
-          referenceBoundsJson: JSON.stringify(DEFAULT_PROJECT_MAP.bounds),
-          referenceCenter: DEFAULT_PROJECT_MAP.referenceCenter,
-          referenceRadiusM: DEFAULT_PROJECT_MAP.referenceRadiusM,
-          sourceName: DEFAULT_PROJECT_MAP.sourceName,
-          sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
-          attribution: DEFAULT_PROJECT_MAP.attribution,
-          license: DEFAULT_PROJECT_MAP.license,
-        },
-        projects: settings,
-      };
-    }),
-    survey: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
-      .query(async ({ ctx, input }) => {
-        assertMapReadRole(ctx.user.role);
-        const survey = await db.getMapSurveyById(input.id);
-        if (!survey) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertProjectModuleAccess(ctx.user, survey.projectId, "map");
-        const [photos, setting, job] = await Promise.all([
-          db.getMapPhotos(survey.id),
-          db.getProjectMapSetting(survey.projectId),
-          db.getPhotogrammetryJobBySurvey(survey.id),
-        ]);
-        return { survey, photos, job: job ?? null, setting: effectiveProjectMapSetting(survey.projectId, setting), worker: getPhotogrammetryWorkerStatus() };
-      }),
-    workerStatus: protectedProcedure.query(({ ctx }) => {
-      assertMapReadRole(ctx.user.role);
-      return getPhotogrammetryWorkerStatus();
-    }),
-    createSurvey: protectedProcedure
-      .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(1).max(255), capturedAt: z.number().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
-        const result = await db.createMapSurvey({
-          projectId: input.projectId,
-          name: input.name,
-          capturedAt: input.capturedAt ?? Date.now(),
-          status: "draft",
-          resultType: "photo_layers",
-          createdBy: ctx.user.id,
-        });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_survey_created", "map_surveys", result.id, null, JSON.stringify({ projectId: input.projectId, name: input.name }));
-        return result;
-      }),
-    updateBaseMapBounds: protectedProcedure
-      .input(z.object({
-        projectId: z.number().int().positive(),
-        bounds: z.object({ west: z.number().gte(-180).lte(180), south: z.number().gte(-90).lte(90), east: z.number().gte(-180).lte(180), north: z.number().gte(-90).lte(90) }),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
-        if (input.bounds.west >= input.bounds.east || input.bounds.south >= input.bounds.north) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Os limites geográficos do mapa base são inválidos." });
-        }
-        const setting = await db.upsertProjectMapSetting({
-          projectId: input.projectId,
-          baseMapFileKey: DEFAULT_PROJECT_MAP.fileKey,
-          baseMapUrl: DEFAULT_PROJECT_MAP.url,
-          boundsJson: JSON.stringify(input.bounds),
-          sourceName: DEFAULT_PROJECT_MAP.sourceName,
-          sourceUrl: DEFAULT_PROJECT_MAP.sourceUrl,
-          attribution: DEFAULT_PROJECT_MAP.attribution,
-          license: DEFAULT_PROJECT_MAP.license,
-          updatedBy: ctx.user.id,
-        });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_bounds_updated", "projects", input.projectId, null, JSON.stringify({ bounds: input.bounds, sourceName: DEFAULT_PROJECT_MAP.sourceName }));
-        return effectiveProjectMapSetting(input.projectId, setting);
-      }),
-    uploadPhoto: protectedProcedure
-      .input(z.object({
-        surveyId: z.number().int().positive(),
-        projectId: z.number().int().positive(),
-        filename: z.string().min(1).max(255),
-        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
-        base64: z.string().min(1),
-        latitude: z.number().gte(-90).lte(90).optional(),
-        longitude: z.number().gte(-180).lte(180).optional(),
-        relativeAltitudeM: z.number().positive().max(5000).optional(),
-        gimbalYawDegree: z.number().min(-360).max(360).optional(),
-        gimbalPitchDegree: z.number().min(-180).max(180).optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        const survey = await db.getMapSurveyById(input.surveyId);
-        if (!survey || survey.projectId !== input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Levantamento inválido para o projecto." });
-        await assertProjectModuleAccess(ctx.user, input.projectId, "map");
-        const buffer = Buffer.from(input.base64, "base64");
-        if (buffer.length > 25 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada fotografia não pode exceder 25 MB." });
-        const sanitized = await sanitizeFile(buffer, input.mimeType, input.filename);
-        if (!sanitized.safe) throw new TRPCError({ code: "BAD_REQUEST", message: sanitized.threats.join("; ") });
-        let exif: Record<string, any> = {};
-        try {
-          const parser = await import("exifr");
-          exif = (await parser.parse(buffer, { gps: true, tiff: true, exif: true, xmp: true })) ?? {};
-        } catch {
-          exif = {};
-        }
-        const latitude = input.latitude ?? exif.latitude ?? exif.Latitude;
-        const longitude = input.longitude ?? exif.longitude ?? exif.Longitude;
-        const relativeAltitudeM = input.relativeAltitudeM
-          ?? exif.RelativeAltitude
-          ?? exif.relativeAltitude
-          ?? exif.GPSAltitude
-          ?? exif.altitude;
-        const imageWidth = Number(exif.ExifImageWidth ?? exif.ImageWidth ?? 0) || null;
-        const imageHeight = Number(exif.ExifImageHeight ?? exif.ImageHeight ?? 0) || null;
-        const metadata = {
-          relativeAltitudeM: relativeAltitudeM == null ? undefined : Number(relativeAltitudeM),
-          imageWidth: imageWidth ?? undefined,
-          imageHeight: imageHeight ?? undefined,
-          gimbalYawDegree: input.gimbalYawDegree
-            ?? exif.GimbalYawDegree
-            ?? exif.GPSImgDirection,
-          gimbalPitchDegree: input.gimbalPitchDegree ?? exif.GimbalPitchDegree,
-          gimbalRollDegree: exif.GimbalRollDegree,
-          flightYawDegree: exif.FlightYawDegree,
-          focalLength35mm: exif.FocalLengthIn35mmFormat,
-        };
-        const gimbalPitchDegree = Number(metadata.gimbalPitchDegree);
-        if (!Number.isFinite(gimbalPitchDegree) || Math.abs(Math.abs(gimbalPitchDegree) - 90) > 5) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Para o mosaico, carregue apenas fotografias DJI verticais a 90° para baixo (tolerância de 5°), com orientação de câmara disponível." });
-        }
-        const project = await db.getProjectById(input.projectId);
-        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const stored = await storagePut(`project-maps/${project?.code ?? input.projectId}/survey-${survey.id}/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
-        const capturedAt = exif.DateTimeOriginal instanceof Date ? exif.DateTimeOriginal.getTime() : survey.capturedAt ?? Date.now();
-        const result = await db.createMapPhoto({
-          surveyId: survey.id,
-          projectId: input.projectId,
-          fileKey: stored.key,
-          fileUrl: stored.url,
-          filename: input.filename,
-          mimeType: input.mimeType,
-          latitude: Number.isFinite(Number(latitude)) ? String(Number(latitude)) : null,
-          longitude: Number.isFinite(Number(longitude)) ? String(Number(longitude)) : null,
-          relativeAltitudeM: Number.isFinite(Number(relativeAltitudeM)) ? String(Number(relativeAltitudeM)) : null,
-          imageWidth,
-          imageHeight,
-          metadataJson: JSON.stringify(metadata),
-          capturedAt,
-          createdBy: ctx.user.id,
-        });
-        await db.updateMapSurvey(survey.id, { status: "ready" });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_photo_uploaded", "map_photos", result.id, null, JSON.stringify({ projectId: input.projectId, surveyId: survey.id, filename: input.filename, geolocated: !!latitude && !!longitude }));
-        return { ...result, geolocated: Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) };
-      }),
-    validateSurvey: protectedProcedure
-      .input(z.object({ surveyId: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        const survey = await db.getMapSurveyById(input.surveyId);
-        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
-        await assertProjectAccess(ctx.user, survey.projectId);
-        const photos = await db.getMapPhotos(survey.id);
-        const validation = validatePhotogrammetryBatch(photos);
-        const job = await db.createPhotogrammetryJob({
-          surveyId: survey.id,
-          projectId: survey.projectId,
-          status: validation.accepted ? "ready" : "rejected",
-          progress: 0,
-          imageCount: validation.imageCount,
-          geolocatedCount: validation.geolocatedCount,
-          nadirCount: validation.nadirCount,
-          obliqueCount: validation.obliqueCount,
-          missingMetadataCount: validation.missingMetadataCount,
-          validationJson: JSON.stringify(validation),
-          optionsJson: JSON.stringify({
-            engine: "NodeODM",
-            outputs: ["orthophoto", "dsm", "tiles", "quality_report"],
-            orthophotoResolutionCm: 5,
-            boundaryMode: "project_bounds",
-            useExif: true,
-          }),
-          requestedBy: ctx.user.id,
-          errorMessage: validation.accepted ? null : validation.issues.filter(issue => issue.level === "error").map(issue => issue.message).join(" "),
-        });
-        await db.updateMapSurvey(survey.id, { status: validation.accepted ? "ready" : "failed" });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "photogrammetry_batch_validated", "photogrammetry_jobs", job?.id ?? null, null, JSON.stringify({ surveyId: survey.id, accepted: validation.accepted, imageCount: validation.imageCount }));
-        return { job, validation, worker: getPhotogrammetryWorkerStatus() };
-      }),
-    startProcessing: protectedProcedure
-      .input(z.object({ surveyId: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        const survey = await db.getMapSurveyById(input.surveyId);
-        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
-        await assertProjectAccess(ctx.user, survey.projectId);
-        const job = await db.getPhotogrammetryJobBySurvey(survey.id);
-        if (!job || job.status !== "ready") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Valide primeiro o lote DJI e corrija os erros detectados." });
-        }
-        const worker = getPhotogrammetryWorkerStatus();
-        if (!worker.configured || !worker.healthy) {
-          return { started: false, job, worker };
-        }
-        return { started: false, job, worker };
-      }),
-    cancelProcessing: protectedProcedure
-      .input(z.object({ surveyId: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        const survey = await db.getMapSurveyById(input.surveyId);
-        if (!survey) throw new TRPCError({ code: "NOT_FOUND", message: "Levantamento não encontrado." });
-        await assertProjectAccess(ctx.user, survey.projectId);
-        const job = await db.getPhotogrammetryJobBySurvey(survey.id);
-        if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Job fotogramétrico não encontrado." });
-        if (job.status === "completed") throw new TRPCError({ code: "BAD_REQUEST", message: "Um processamento concluído não pode ser cancelado." });
-        await db.updatePhotogrammetryJob(job.id, { status: "cancelled", finishedAt: new Date() });
-        await db.updateMapSurvey(survey.id, { status: "ready" });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "photogrammetry_job_cancelled", "photogrammetry_jobs", job.id, JSON.stringify({ status: job.status }), JSON.stringify({ status: "cancelled" }));
-        return { success: true };
-      }),
-    deletePhoto: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
-      .mutation(async ({ ctx, input }) => {
-        assertMapWriteRole(ctx.user.role);
-        const photo = await db.getMapPhotoById(input.id);
-        if (!photo) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertProjectAccess(ctx.user, photo.projectId);
-        await db.deleteMapPhoto(photo.id);
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "map_photo_deleted", "map_photos", photo.id, JSON.stringify({ filename: photo.filename }), null);
-        return { success: true };
-      }),
   }),
 
   feedback: router({

@@ -27,7 +27,7 @@ interface FeatureCard {
   icon: React.ElementType;
   title: string;
   description: string;
-  module?: "dashboard" | "calendar" | "map" | "timeline" | "ficha" | "residuos" | "kpi";
+  module?: "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi";
 }
 
 function getFeatures(role: string, projectCode: string, isAllProjects: boolean, isNest: boolean, enabledModules?: string | null): FeatureCard[] {

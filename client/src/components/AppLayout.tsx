@@ -47,7 +47,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle, Home, Bell, MapPinned } from "lucide-react";
+import { Recycle, Home, Bell } from "lucide-react";
 import { isProjectRouteEnabled } from "@/lib/project-modules";
 
 // Projects that are operation-only (no construction phase)
@@ -58,7 +58,6 @@ const projectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
@@ -70,7 +69,6 @@ const operationProjectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: FileBarChart, label: "Certificações", path: "/certificacoes" },
@@ -82,7 +80,6 @@ const allProjectsMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
-  { icon: MapPinned, label: "Mapa", path: "/mapa" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
   { icon: Heart, label: "GAMMA", path: "/gamma" },
@@ -174,7 +171,6 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const userRole = user?.role || "user";
   const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
   const canAdmin = userRole === "admin";
-  const canViewMap = ["admin", "dono_obra", "pm"].includes(userRole);
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
   
   // Role-based sidebar filtering (permissions matrix from doc)
@@ -196,12 +192,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       ].filter((path): path is string => !!path);
       return projectMenuItems.filter(item => allowedPaths.includes(item.path));
     }
-    if (isOperationOnly) return operationProjectMenuItems.filter(item => item.path !== "/mapa" || canViewMap);
+    if (isOperationOnly) return operationProjectMenuItems;
     // Per-project menu items based on role
     const allowedPaths: Record<string, string[]> = {
-      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/mapa", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
+      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
       ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
       raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
       rap: ["/welcome", "/workflow", "/ficha", "/kpi"],

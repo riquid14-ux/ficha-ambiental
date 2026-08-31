@@ -17,15 +17,6 @@ function context(role: Role): TrpcContext {
 }
 
 describe("Drill de leituras sensíveis por função", () => {
-  it.each(allRoles)("aplica a matriz de leitura do Mapa a %s", async (role) => {
-    const request = appRouter.createCaller(context(role)).projectMap.overview();
-    if (["admin", "dono_obra", "pm"].includes(role)) {
-      await expect(request).resolves.toMatchObject({ baseMap: expect.any(Object), projects: expect.any(Array) });
-    } else {
-      await expect(request).rejects.toMatchObject({ code: "FORBIDDEN" });
-    }
-  });
-
   it.each(allRoles.filter(role => role !== "ee"))("recusa o Dashboard Parceiros a %s antes da leitura de dados", async (role) => {
     const caller = appRouter.createCaller(context(role));
     await expect(caller.partnerDashboard.entities({ projectId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });

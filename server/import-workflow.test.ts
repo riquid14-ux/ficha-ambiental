@@ -8,6 +8,7 @@ const weeklyFormCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Weekly
 const dbCode = fs.readFileSync(`${process.cwd()}/server/db.ts`, "utf8");
 const historyCode = fs.readFileSync(`${process.cwd()}/client/src/pages/SubmissionHistory.tsx`, "utf8");
 const matrixCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Matriz.tsx`, "utf8");
+const matrixStatusCode = fs.readFileSync(`${process.cwd()}/client/src/lib/matrix-status.ts`, "utf8");
 const dashboardCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Dashboard.tsx`, "utf8");
 const rdcdCode = fs.readFileSync(`${process.cwd()}/client/src/pages/RDCD.tsx`, "utf8");
 
@@ -83,7 +84,8 @@ describe("Importação de fichas externas", () => {
 
     it("faz a Matriz consumir fichas aprovadas da tabela semanal", () => {
       expect(matrixCode).toContain("trpc.matrix.getData.useQuery");
-      expect(matrixCode).toContain('case "approved"');
+      expect(matrixCode).toContain("getMatrixStatusDisplay");
+      expect(matrixStatusCode).toContain('case "approved"');
       expect(dbCode).toContain("export async function getMatrixData");
       expect(dbCode).toContain("weeklySubmissions");
     });

@@ -8,22 +8,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getMatrixStatusDisplay } from "@/lib/matrix-status";
 
 // Map submission status to display info
 function getStatusDisplay(status: string) {
-  switch (status) {
-    case "draft":
-      return { label: "Criada", color: "bg-amber-400", textColor: "text-amber-900", description: "Ficha criada (rascunho)" };
-    case "submitted":
-    case "under_review":
-      return { label: "Em Revisão", color: "bg-blue-400", textColor: "text-blue-900", description: "Em processo de revisão" };
-    case "approved":
-      return { label: "Entregue", color: "bg-emerald-500", textColor: "text-white", description: "Aprovada/Entregue" };
-    case "rejected":
-      return { label: "Rejeitada", color: "bg-red-500", textColor: "text-white", description: "Rejeitada — necessita correção" };
-    default:
-      return { label: "—", color: "bg-muted", textColor: "text-muted-foreground", description: "" };
-  }
+  return getMatrixStatusDisplay(status);
 }
 
 export default function Matriz(props: any) {
@@ -201,7 +190,7 @@ export default function Matriz(props: any) {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-emerald-500" />
-                <span>{t("Entregue")}</span>
+                <span>{t("Aprovada")}</span>
               </div>
               <span className="text-muted-foreground">|</span>
               <div className="flex items-center gap-1.5">
@@ -227,7 +216,7 @@ export default function Matriz(props: any) {
             <CardTitle className="text-lg">
               {isAllProjects ? t("Visão Agregada por Empresa") : activeProject?.name || "Projeto"}
             </CardTitle>
-            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">{t("Cada linha representa uma empresa")}. Verde = todas as fichas entregues nessa semana.</p>}
+            {isAllProjects && <p className="text-xs text-muted-foreground mt-1">{t("Cada linha representa uma empresa")}. Verde = todas as fichas aprovadas nessa semana.</p>}
           </CardHeader>
           <CardContent className="p-0">
             {matrixQuery.isLoading && (
@@ -412,7 +401,7 @@ export default function Matriz(props: any) {
                   <p className="text-2xl font-bold text-emerald-600">
                     {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "approved").length, 0)}
                   </p>
-                  <p className="text-xs text-muted-foreground">{t("Entregues")}</p>
+                  <p className="text-xs text-muted-foreground">{t("Aprovadas")}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-blue-500">

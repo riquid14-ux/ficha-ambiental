@@ -16,8 +16,8 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { describeKpiValue, splitWaterMetrics } from "@/lib/kpi-context";
 
 const COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
-const CAT_LABELS: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", energy: "Energia", water: "Água", emissions: "Emissões", incidents: "Incidentes", other: "Outros" };
-const CAT_ICONS: Record<string, string> = { workforce: "👷", transport: "🚗", fuel: "⛽", energy: "⚡", water: "💧", incidents: "⚠️", other: "📋" };
+const CAT_LABELS: Record<string, string> = { workforce: "Mão de Obra", transport: "Transporte", fuel: "Combustível", generators: "Geradores", energy: "Energia", water: "Água", emissions: "Emissões", air_noise: "Qualidade do Ar e Ruído", incidents: "Incidentes", other: "Outros" };
+const CAT_ICONS: Record<string, string> = { workforce: "👷", transport: "🚗", fuel: "⛽", generators: "🔌", energy: "⚡", water: "💧", emissions: "🌿", air_noise: "🔊", incidents: "⚠️", other: "📋" };
 
 export default function KPI() {
   const { t } = useLanguage();

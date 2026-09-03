@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import fs from "fs";
+import { getVisibleNavigationPaths } from "../client/src/lib/role-navigation";
 
 const routerCode = fs.readFileSync(`${process.cwd()}/server/routers.ts`, "utf-8");
 const layoutCode = fs.readFileSync(`${process.cwd()}/client/src/components/AppLayout.tsx`, "utf-8");
@@ -7,6 +8,7 @@ const weeklyFormCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Weekly
 const reviewCode = fs.readFileSync(`${process.cwd()}/client/src/pages/ReviewPage.tsx`, "utf-8");
 const dashboardCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Dashboard.tsx`, "utf-8");
 const projectContextCode = fs.readFileSync(`${process.cwd()}/client/src/contexts/ProjectContext.tsx`, "utf-8");
+const projectInput = { isAllProjects: false, isOperationOnly: false, enabledModules: null };
 
 describe("Roles Drill Tests", () => {
 
@@ -25,88 +27,62 @@ describe("Roles Drill Tests", () => {
   });
 
   describe("Sidebar Visibility", () => {
-    it("should restrict EE to Welcome, Workflow, Ficha, Resíduos, KPI", () => {
-      const eeMatch = layoutCode.match(/ee:\s*\[(.*?)\]/s);
-      expect(eeMatch).toBeTruthy();
-      const eePaths = eeMatch![1];
-      expect(eePaths).toContain("/welcome");
-      expect(eePaths).toContain("/ficha");
-      expect(eePaths).toContain("/kpi");
-      expect(eePaths).not.toContain("/dashboard");
-      expect(eePaths).not.toContain("/admin");
-      expect(eePaths).not.toContain("/rdcd");
+    it("should restrict EE to the modules visible in its menu", () => {
+      expect(getVisibleNavigationPaths({ role: "ee", ...projectInput })).toEqual([
+        "/welcome", "/ficha", "/residuos", "/kpi", "/dashboard-parceiros", "/pedidos-eep",
+      ]);
     });
 
-    it("should restrict RAA to Welcome, Workflow, Ficha, Resíduos, KPI", () => {
-      const raaMatch = layoutCode.match(/raa:\s*\[(.*?)\]/s);
-      expect(raaMatch).toBeTruthy();
-      const raaPaths = raaMatch![1];
-      expect(raaPaths).toContain("/welcome");
-      expect(raaPaths).toContain("/ficha");
-      expect(raaPaths).not.toContain("/dashboard");
-      expect(raaPaths).not.toContain("/admin");
+    it("should restrict RAA to Ficha, Resíduos and KPI", () => {
+      expect(getVisibleNavigationPaths({ role: "raa", ...projectInput })).toEqual([
+        "/welcome", "/ficha", "/residuos", "/kpi",
+      ]);
     });
 
-    it("should restrict RAP to Welcome, Workflow, Ficha, KPI (no Resíduos)", () => {
-      const rapMatch = layoutCode.match(/rap:\s*\[(.*?)\]/s);
-      expect(rapMatch).toBeTruthy();
-      const rapPaths = rapMatch![1];
-      expect(rapPaths).toContain("/welcome");
-      expect(rapPaths).toContain("/ficha");
-      expect(rapPaths).toContain("/kpi");
-      expect(rapPaths).not.toContain("/residuos");
-      expect(rapPaths).not.toContain("/dashboard");
+    it("should restrict RAP to Ficha and KPI, without Resíduos", () => {
+      expect(getVisibleNavigationPaths({ role: "rap", ...projectInput })).toEqual([
+        "/welcome", "/ficha", "/kpi",
+      ]);
     });
 
     it("should give Observador only Welcome, Dashboard, Ficha (read-only)", () => {
-      const obsMatch = layoutCode.match(/observador:\s*\[(.*?)\]/s);
-      expect(obsMatch).toBeTruthy();
-      const obsPaths = obsMatch![1];
-      expect(obsPaths).toContain("/welcome");
-      expect(obsPaths).toContain("/dashboard");
-      expect(obsPaths).toContain("/ficha");
-      expect(obsPaths).not.toContain("/admin");
-      expect(obsPaths).not.toContain("/kpi");
+      expect(getVisibleNavigationPaths({ role: "observador", ...projectInput })).toEqual([
+        "/welcome", "/dashboard", "/ficha",
+      ]);
     });
 
     it("should give Admin full access", () => {
-      const adminMatch = layoutCode.match(/admin:\s*\[(.*?)\]/s);
-      expect(adminMatch).toBeTruthy();
-      const adminPaths = adminMatch![1];
-      expect(adminPaths).toContain("/welcome");
-      expect(adminPaths).toContain("/dashboard");
-      expect(adminPaths).toContain("/ficha");
-      expect(adminPaths).toContain("/kpi");
-      expect(adminPaths).toContain("/calendario");
-      expect(adminPaths).toContain("/timeline");
+      expect(getVisibleNavigationPaths({ role: "admin", ...projectInput })).toEqual([
+        "/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi",
+      ]);
     });
 
     it("should give PM operational modules only inside assigned projects", () => {
-      const pmMatch = layoutCode.match(/pm:\s*\[(.*?)\]/s);
-      expect(pmMatch).toBeTruthy();
-      const pmPaths = pmMatch![1];
-      expect(pmPaths).toContain("/dashboard");
-      expect(pmPaths).toContain("/calendario");
-      expect(pmPaths).toContain("/timeline");
+      expect(getVisibleNavigationPaths({ role: "pm", ...projectInput })).toContain("/dashboard");
+      expect(getVisibleNavigationPaths({ role: "pm", ...projectInput })).toContain("/calendario");
+      expect(getVisibleNavigationPaths({ role: "pm", ...projectInput })).toContain("/timeline");
       expect(projectContextCode).not.toMatch(/canSeeAllProjects[^;]*pm/);
     });
   });
 
   describe("All Projects Visibility", () => {
     it("should only allow Admin and DO to see Todos os Projetos", () => {
-      expect(layoutCode).toMatch(/\["admin", "dono_obra"\]\.includes\(userRole\)/);
+      expect(getVisibleNavigationPaths({ role: "admin", ...projectInput, isAllProjects: true })).toContain("/rdcd");
+      expect(getVisibleNavigationPaths({ role: "dono_obra", ...projectInput, isAllProjects: true })).toContain("/rdcd");
+      expect(getVisibleNavigationPaths({ role: "pm", ...projectInput, isAllProjects: true })).toEqual([]);
       expect(projectContextCode).toContain('user?.role === "admin" || user?.role === "dono_obra"');
       expect(projectContextCode).not.toMatch(/canSeeAllProjects[^;]*pm/);
     });
 
     it("should block EE, RAP, RAA from seeing all-projects view", () => {
-      expect(layoutCode).toContain("Apenas Admin e Dono de Obra podem abrir a visão global");
+      for (const role of ["ee", "rap", "raa"]) {
+        expect(getVisibleNavigationPaths({ role, ...projectInput, isAllProjects: true })).toEqual([]);
+      }
     });
 
     it("should expose Pedidos EEP and Dashboard Parceiros only to EE", () => {
-      expect(layoutCode).toContain('userRole === "ee"');
-      expect(layoutCode).toContain('path: "/pedidos-eep"');
-      expect(layoutCode).toContain('path: "/dashboard-parceiros"');
+      expect(getVisibleNavigationPaths({ role: "ee", ...projectInput })).toEqual(expect.arrayContaining(["/pedidos-eep", "/dashboard-parceiros"]));
+      expect(getVisibleNavigationPaths({ role: "raa", ...projectInput })).not.toEqual(expect.arrayContaining(["/pedidos-eep", "/dashboard-parceiros"]));
     });
   });
 

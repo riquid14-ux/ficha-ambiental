@@ -11,6 +11,7 @@ const routerSource = readFileSync(resolve(root, "server/routers.ts"), "utf8");
 const trpcSource = readFileSync(resolve(root, "server/_core/trpc.ts"), "utf8");
 const dbSource = readFileSync(resolve(root, "server/db.ts"), "utf8");
 const layoutSource = readFileSync(resolve(root, "client/src/components/AppLayout.tsx"), "utf8");
+const navigationSource = readFileSync(resolve(root, "client/src/lib/role-navigation.ts"), "utf8");
 const adminSource = readFileSync(resolve(root, "client/src/pages/AdminPanel.tsx"), "utf8");
 const kpiSource = readFileSync(resolve(root, "client/src/pages/KPI.tsx"), "utf8");
 const wasteSource = readFileSync(resolve(root, "client/src/pages/MIRR.tsx"), "utf8");
@@ -51,8 +52,8 @@ describe("EEP — Entidade Executante Parceira — modelo e isolamento", () => {
   it("permite apenas KPI, Resíduos e projectos através do procedimento explícito", () => {
     expect(routerSource).toContain("partnerAllowedProcedure");
     expect(routerSource).toContain("assertPartnerProjectModuleAccess");
-    expect(layoutSource).toContain('partnerAccess?.allowWaste ? "/residuos" : null');
-    expect(layoutSource).toContain('partnerAccess?.allowKpi ? "/kpi" : null');
+    expect(navigationSource).toContain('partnerAccess?.allowWaste ? ["/residuos"] : []');
+    expect(navigationSource).toContain('partnerAccess?.allowKpi ? ["/kpi"] : []');
     expect(layoutSource).toContain('userRole !== "ee_partner" && <NotificationBell />');
     expect(layoutSource).toContain("void logout().finally");
     expect(layoutSource).toContain('window.location.href = "/login"');

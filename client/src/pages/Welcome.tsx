@@ -5,7 +5,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { isProjectRouteEnabled } from "@/lib/project-modules";
+import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -27,59 +27,34 @@ interface FeatureCard {
   icon: React.ElementType;
   title: string;
   description: string;
-  module?: "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi";
+  path: string;
 }
 
-function getFeatures(role: string, projectCode: string, isAllProjects: boolean, isNest: boolean, enabledModules?: string | null): FeatureCard[] {
-  if (isAllProjects) {
-    return [
-      { icon: ClipboardList, title: "Dashboard Global", description: "Visão geral do cumprimento ambiental de todos os projetos Start Campus." },
-      { icon: CalendarDays, title: "Calendário Integrado", description: "Consulte todos os prazos regulatórios e internos de reporting num único calendário." },
-      { icon: GitBranch, title: "Timeline de Projetos", description: "Acompanhe o progresso de cada projeto e em que fase se encontra." },
-      { icon: FileBarChart, title: "RDCD", description: "Gere relatórios de demonstração de cumprimento da DCAPE." },
-      { icon: Heart, title: "GAMMA", description: "Programa comunitário GAMMA com candidaturas, avaliações e projetos vencedores." },
-    ];
-  }
-  if (isNest) {
-    const features: FeatureCard[] = [
-      { icon: CalendarDays, title: "Calendário de Reporting", description: "Consulte e atualize os prazos de reporting ambiental, incluindo MIRR, gases fluorados, medidas de operação e outros entregáveis." },
-      { icon: Recycle, title: "MIRR", description: "Registe e acompanhe os resíduos do projeto. Importe e-GARs, gere o Wastemap e exporte o MIRR anual." },
-      { icon: Layers, title: "Fases de Exploração", description: "Submeta evidências anuais das medidas de exploração da DCAPE, organizadas por ano." },
-      { icon: FileBarChart, title: "Certificações", description: "Acompanhe as certificações LEED O&M, EED e CELE com submissão de evidências." },
-    ];
-    if (role === "admin" || role === "dono_obra") {
-      features.unshift({ icon: Shield, title: "Dashboard SIN01", description: "Visão geral dos indicadores de operação, resíduos e certificações do projeto NEST." });
-    }
-    return features;
-  }
-  const features: FeatureCard[] = [];
-  if (["admin", "dono_obra", "pm"].includes(role)) {
-    features.push({ icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental com fichas aprovadas, em revisão, rascunhos e alertas de incumprimento.", module: "dashboard" });
-  }
-  if (["admin", "dono_obra", "pm", "ee", "raa", "rap"].includes(role)) {
-    features.push({ icon: BookOpen, title: "Workflow", description: "Consulte o fluxo de submissão e aprovação das fichas de controlo ambiental.", module: "ficha" });
-    features.push({
-      icon: ClipboardList,
-      title: "Ficha Semanal",
-      description: role === "ee"
-        ? "Crie e submeta fichas de controlo semanais com as medidas ambientais atribuídas à sua empresa."
-        : role === "rap"
-        ? "Submeta fichas de controlo semanais relativas às medidas ambientais da sua responsabilidade."
-        : role === "raa"
-        ? "Reveja as fichas submetidas pelas entidades executantes. Aprove ou rejeite com comentários por medida."
-        : "Crie, submeta e acompanhe fichas de controlo semanais. Consulte a matriz e o histórico completo.",
-      module: "ficha",
-    });
-  }
-  if (["admin", "dono_obra", "pm", "ee", "raa"].includes(role)) {
-    features.push({ icon: Recycle, title: "Gestão de Resíduos", description: "Registe resíduos por código LER, crie sub-projetos, gere Wastemap e exporte MIRR.", module: "residuos" });
-  }
-  if (["admin", "dono_obra", "pm", "ee", "rap"].includes(role)) {
-    features.push({ icon: BarChart3, title: "KPI's", description: "Submeta dados semanais de sustentabilidade incluindo trabalhadores, consumos de energia, água e incidentes.", module: "kpi" });
-  }
-  features.push({ icon: CalendarDays, title: "Calendário", description: "Consulte os prazos de reporting ambiental e as datas importantes do projeto.", module: "calendar" });
-  features.push({ icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto, desde o pré-licenciamento até à operação.", module: "timeline" });
-  return features.filter(feature => !feature.module || isProjectRouteEnabled(enabledModules, `/${feature.module === "calendar" ? "calendario" : feature.module}`));
+function getFeatures(role: string, visiblePaths: string[]): FeatureCard[] {
+  const descriptionFicha = role === "ee"
+    ? "Crie e submeta fichas de controlo semanais com as medidas ambientais atribuídas à sua empresa."
+    : role === "rap"
+    ? "Submeta fichas de controlo semanais relativas às medidas ambientais da sua responsabilidade."
+    : role === "raa"
+    ? "Reveja as fichas submetidas pelas entidades executantes. Aprove ou rejeite com comentários por medida."
+    : "Crie, submeta e acompanhe fichas de controlo semanais. Consulte a matriz e o histórico completo.";
+  const catalogue: FeatureCard[] = [
+    { icon: Shield, title: "Dashboard", description: "Visão geral do cumprimento ambiental e dos alertas aplicáveis ao seu perfil.", path: "/dashboard" },
+    { icon: ClipboardList, title: "Ficha Semanal", description: descriptionFicha, path: "/ficha" },
+    { icon: Recycle, title: "Gestão de Resíduos", description: "Registe e consulte resíduos dentro do âmbito permitido à sua entidade.", path: "/residuos" },
+    { icon: BarChart3, title: "KPI's", description: "Submeta e consulte indicadores de sustentabilidade no âmbito autorizado.", path: "/kpi" },
+    { icon: CalendarDays, title: "Calendário", description: "Consulte os prazos de reporting ambiental e as datas importantes do projeto.", path: "/calendario" },
+    { icon: GitBranch, title: "Timeline", description: "Acompanhe o progresso das fases do projeto dentro do seu âmbito de acesso.", path: "/timeline" },
+    { icon: BarChart3, title: "Dashboard Parceiros", description: "Acompanhe os contributos KPI e resíduos da sua EE e das EEP autorizadas.", path: "/dashboard-parceiros" },
+    { icon: ClipboardList, title: "Pedidos EEP", description: "Submeta pedidos de criação e acesso para Entidades Executantes Parceiras.", path: "/pedidos-eep" },
+    { icon: Recycle, title: "MIRR", description: "Registe e acompanhe os resíduos do projeto, incluindo e-GAR e exportação MIRR.", path: "/mirr" },
+    { icon: Layers, title: "Fases de Exploração", description: "Submeta evidências anuais das medidas de exploração da DCAPE.", path: "/fases" },
+    { icon: FileBarChart, title: "Certificações", description: "Acompanhe as certificações ambientais do projeto.", path: "/certificacoes" },
+    { icon: FileBarChart, title: "RDCD", description: "Gere relatórios de demonstração de cumprimento da DCAPE.", path: "/rdcd" },
+    { icon: Heart, title: "GAMMA", description: "Consulte candidaturas, avaliações e projetos vencedores do programa GAMMA.", path: "/gamma" },
+    { icon: ClipboardList, title: "Planos", description: "Consulte planos de monitorização, responsáveis, atualizações e prazos de reporting.", path: "/planos" },
+  ];
+  return catalogue.filter(feature => visiblePaths.includes(feature.path));
 }
 
 export default function Welcome() {
@@ -89,6 +64,7 @@ export default function Welcome() {
   const userRole = (user as any)?.role || "user";
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
+  const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
 
   const settingsQuery = trpc.appSettings.getAll.useQuery(undefined, {
     enabled: userRole !== "ee_partner",
@@ -100,7 +76,14 @@ export default function Welcome() {
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
     : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
 
-  const features = getFeatures(userRole, projectCode, isAllProjects, isNest, activeProject?.enabledModules);
+  const visiblePaths = getVisibleNavigationPaths({
+    role: userRole,
+    isAllProjects,
+    isOperationOnly: isNest,
+    enabledModules: activeProject?.enabledModules,
+    partnerAccess,
+  });
+  const features = getFeatures(userRole, visiblePaths);
   const roleLabel = ROLE_LABELS[userRole] || userRole;
   const projectName = isAllProjects ? "Todos os Projetos" : (activeProject?.name || projectCode);
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
@@ -204,7 +187,7 @@ export default function Welcome() {
 
         {/* Quick tips */}
         {/* Workflow Diagram - How the process works */}
-        {!isAllProjects && !isNest && isProjectRouteEnabled(activeProject?.enabledModules, "/ficha") && (
+        {!isAllProjects && !isNest && visiblePaths.includes("/ficha") && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">

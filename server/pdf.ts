@@ -89,7 +89,7 @@ export function registerPdfRoutes(app: Express) {
         return res.status(401).json({ error: "Não autorizado" });
       }
 
-      const submissionId = parseInt(req.params.id);
+      const submissionId = parseInt(String(req.params.id), 10);
       if (isNaN(submissionId)) {
         return res.status(400).json({ error: "ID inválido" });
       }

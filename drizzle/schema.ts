@@ -17,6 +17,7 @@ export const users = mysqlTable("users", {
   mustChangePassword: int("mustChangePassword").default(1),
   totpSecret: varchar("totpSecret", { length: 255 }),
   totpEnabled: int("totpEnabled").default(0),
+  twoFactorGraceUntil: timestamp("twoFactorGraceUntil"),
   accountStatus: varchar("accountStatus", { length: 20 }).default("active"),
   passwordResetToken: varchar("passwordResetToken", { length: 255 }),
   passwordResetExpiry: bigint("passwordResetExpiry", { mode: "number" }),

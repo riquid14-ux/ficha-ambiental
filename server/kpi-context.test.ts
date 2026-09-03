@@ -18,9 +18,9 @@ describe("contexto e capítulos KPI", () => {
   });
 
   it("explica cada valor com projecto, empresa e período quando disponíveis", () => {
-    expect(describeKpiValue({ name: "Trabalhadores em Obra" }, "SIN02", "GC1", "12", "2026"))
-      .toContain("Número de trabalhadores em obra no projecto SIN02, da empresa GC1");
-    expect(describeKpiValue({ name: "Trabalhadores em Obra" }, "SIN02", "GC1", "12", "2026"))
+    expect(describeKpiValue({ name: "Trabalhadores em projeto" }, "SIN02", "GC1", "12", "2026"))
+      .toContain("Número total de trabalhadores no projeto, no projecto SIN02, da empresa GC1");
+    expect(describeKpiValue({ name: "Trabalhadores em projeto" }, "SIN02", "GC1", "12", "2026"))
       .toContain("semana 12/2026");
   });
 });

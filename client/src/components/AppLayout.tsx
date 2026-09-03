@@ -1,6 +1,7 @@
 import React from 'react';
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { requiresTwoFactorEnrollment } from "@/lib/two-factor-policy";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -49,6 +50,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Recycle, Home, Bell } from "lucide-react";
 import { isProjectRouteEnabled } from "@/lib/project-modules";
+import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -90,6 +92,11 @@ const adminMenuItems = [
   { icon: Shield, label: "Administração", path: "/admin" },
 ];
 const reviewMenuItems: typeof projectMenuItems = [
+];
+
+const eeAdditionalMenuItems = [
+  { icon: BarChart3, label: "Dashboard Parceiros", path: "/dashboard-parceiros" },
+  { icon: ClipboardList, label: "Pedidos EEP", path: "/pedidos-eep" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -156,9 +163,8 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     onSuccess: () => { setShow2FASetup(false); setQrData(null); setTotpCode(""); window.location.reload(); },
   });
 
-  // Check if 2FA enforcement is needed (7 days after account creation without 2FA)
-  const needs2FA = user && !(user as any).totpEnabled && user.createdAt &&
-    (Date.now() - new Date(user.createdAt).getTime() > 30 * 24 * 60 * 60 * 1000);
+  // A extensão individual de 2FA prevalece sobre o prazo padrão; 2FA já activo nunca é desactivado.
+  const needs2FA = requiresTwoFactorEnrollment(user as any);
 
   const { projects, activeProject, setActiveProjectId, isAllProjects, canSeeAllProjects } = useProject();
   const [location, setLocation] = useLocation();
@@ -171,7 +177,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const userRole = user?.role || "user";
   const { data: partnerAccess } = trpc.partners.myAccess.useQuery(undefined, { enabled: userRole === "ee_partner" });
   const canAdmin = userRole === "admin";
-  const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+  const isOperationOnly = !isAllProjects && !!activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
   
   // Role-based sidebar filtering (permissions matrix from doc)
   // EE/RAA: Workflow, Ficha Semanal, Gestão de Resíduos, KPI's
@@ -180,42 +186,30 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // DO/Admin: everything
   // Observador: Dashboard, Ficha Semanal (read-only)
   const getFilteredMenuItems = () => {
+    const visiblePaths = getVisibleNavigationPaths({
+      role: userRole,
+      isAllProjects,
+      isOperationOnly,
+      enabledModules: activeProject?.enabledModules,
+      partnerAccess,
+    });
     if (isAllProjects) {
-      // Apenas Admin e Dono de Obra podem abrir a visão global.
-      if (["admin", "dono_obra"].includes(userRole)) return allProjectsMenuItems;
-      return []; // EE, RAP, RAA cannot see all-projects view
+      return allProjectsMenuItems.filter(item => visiblePaths.includes(item.path));
     }
-    if (userRole === "ee_partner") {
-      const allowedPaths = [
-        partnerAccess?.allowWaste ? "/residuos" : null,
-        partnerAccess?.allowKpi ? "/kpi" : null,
-      ].filter((path): path is string => !!path);
-      return projectMenuItems.filter(item => allowedPaths.includes(item.path));
-    }
-    if (isOperationOnly) return operationProjectMenuItems;
-    // Per-project menu items based on role
-    const allowedPaths: Record<string, string[]> = {
-      admin: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      dono_obra: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      pm: ["/welcome", "/dashboard", "/workflow", "/calendario", "/fases", "/timeline", "/ficha", "/residuos", "/kpi"],
-      ee: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
-      raa: ["/welcome", "/workflow", "/ficha", "/residuos", "/kpi"],
-      rap: ["/welcome", "/workflow", "/ficha", "/kpi"],
-      observador: ["/welcome", "/dashboard", "/ficha"],
-      user: ["/welcome", "/ficha"],
-    };
-    const allowed = allowedPaths[userRole] || allowedPaths.user;
-    return projectMenuItems.filter(item =>
-      allowed.includes(item.path) && isProjectRouteEnabled(activeProject?.enabledModules, item.path),
-    );
+    const menuItems = isOperationOnly ? operationProjectMenuItems : projectMenuItems;
+    return menuItems.filter(item => visiblePaths.includes(item.path));
   };
   const baseMenuItems = getFilteredMenuItems();
+  const visiblePaths = getVisibleNavigationPaths({
+    role: userRole,
+    isAllProjects,
+    isOperationOnly,
+    enabledModules: activeProject?.enabledModules,
+    partnerAccess,
+  });
   const allItems = [
     ...baseMenuItems,
-    ...(userRole === "ee" ? [
-      { icon: BarChart3, label: "Dashboard Parceiros", path: "/dashboard-parceiros" },
-      { icon: ClipboardList, label: "Pedidos EEP", path: "/pedidos-eep" },
-    ] : []),
+    ...eeAdditionalMenuItems.filter(item => visiblePaths.includes(item.path)),
     ...(canAdmin ? adminMenuItems : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));

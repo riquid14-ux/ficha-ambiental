@@ -23,3 +23,7 @@ Foi exportado, sem erro, o relatório **SIN02 · S1–S36 · 2026**. O ficheiro 
 ## Acessos configurados
 
 Foram confirmadas as contas activas e associadas a SIN02: JPA como Administrador; Julia Linhares como EE da GC1/TSL; Paula Quitério como PM; Ana Faustino como RAA. As credenciais iniciais foram tratadas fora do repositório e não constam deste documento.
+
+## Publicação
+
+A versão **4409ec8d** foi publicada e comparada com o ramo principal remoto. Os hashes local e remoto coincidem, confirmando que a versão publicada é a que passou a regressão, o build e a auditoria.

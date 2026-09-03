@@ -36,7 +36,7 @@ export const companies = mysqlTable("companies", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   shortName: varchar("shortName", { length: 50 }).notNull(),
-  companyType: mysqlEnum("companyType", ["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee").notNull(),
+  companyType: mysqlEnum("companyType", ["ee", "ee_partner", "rap", "dono_obra", "raa", "pm", "observador"]).default("ee").notNull(),
   logoUrl: text("logoUrl"),
   active: int("active").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

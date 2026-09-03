@@ -25,6 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
   ee: "EE",
   ee_partner: "EEP — Entidade Executante Parceira",
   raa: "RAA",
+  pm: "PM — Gestor de Projeto",
   rap: "RAP",
   dono_obra: "Dono de Obra",
   observador: "Observador",
@@ -194,6 +195,13 @@ export default function AdminPanel() {
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+                <Users className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-foreground">PM — Gestor de Projeto</p>
+                  <p className="text-xs text-muted-foreground">{t("Acompanha o projecto, o calendário, a timeline e os indicadores dentro do seu âmbito.")}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
                 <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
@@ -301,7 +309,7 @@ function CompaniesTab() {
   const { activeProject, isAllProjects } = useProject();
   const [newName, setNewName] = useState("");
   const [newShortName, setNewShortName] = useState("");
-  const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador">("ee");
+  const [newType, setNewType] = useState<"ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "pm" | "observador">("ee");
   const [newProjectIds, setNewProjectIds] = useState<number[]>([]);
   const [newParentCompanyId, setNewParentCompanyId] = useState<number | null>(null);
   const [newAllowKpi, setNewAllowKpi] = useState(false);
@@ -415,7 +423,7 @@ function CompaniesTab() {
               </div>
               <div>
                 <Label>Tipo</Label>
-                <Select value={newType} onValueChange={(v) => { setNewType(v as "ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "observador"); setNewProjectIds([]); setNewParentCompanyId(null); setNewAllowKpi(false); setNewAllowWaste(false); }}>
+                <Select value={newType} onValueChange={(v) => { setNewType(v as "ee" | "ee_partner" | "rap" | "dono_obra" | "raa" | "pm" | "observador"); setNewProjectIds([]); setNewParentCompanyId(null); setNewAllowKpi(false); setNewAllowWaste(false); }}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -425,6 +433,7 @@ function CompaniesTab() {
                     <SelectItem value="rap">RAP - Resp. Acompanhamento Patrimonial</SelectItem>
                     <SelectItem value="dono_obra">Dono de Obra</SelectItem>
                     <SelectItem value="raa">RAA - Resp. Acompanhamento Ambiental</SelectItem>
+                    <SelectItem value="pm">PM — Gestor de Projeto</SelectItem>
                     <SelectItem value="observador">Observador</SelectItem>
                   </SelectContent>
                 </Select>
@@ -488,7 +497,7 @@ function CompaniesTab() {
                 <TableCell><Badge variant="outline">{c.companyType === "rap" ? "RAP - " : ""}{c.shortName}</Badge></TableCell>
                 <TableCell>
                   <Badge variant={c.companyType === "ee" ? "default" : c.companyType === "ee_partner" ? "secondary" : c.companyType === "rap" ? "secondary" : "outline"}>
-                    {c.companyType === "ee" ? "EE" : c.companyType === "ee_partner" ? "EEP" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : "Observador"}
+                    {c.companyType === "ee" ? "EE" : c.companyType === "ee_partner" ? "EEP" : c.companyType === "rap" ? "RAP" : c.companyType === "dono_obra" ? "Dono de Obra" : c.companyType === "raa" ? "RAA" : c.companyType === "pm" ? "PM" : "Observador"}
                   </Badge>
                 </TableCell>
                 <TableCell>

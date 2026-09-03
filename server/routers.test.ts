@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
+import * as db from "./db";
+import { vi } from "vitest";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -122,6 +124,33 @@ describe("companies.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.companies.list();
     expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("companies.update — tipo de entidade", () => {
+  it("rejeita em runtime a alteração de uma empresa PM para outro tipo", async () => {
+    const getCompanySpy = vi.spyOn(db, "getCompanyById").mockResolvedValue({
+      id: 991001,
+      name: "PM de validação",
+      shortName: "PM-QA",
+      companyType: "pm",
+      active: 1,
+    } as any);
+    const updateCompanySpy = vi.spyOn(db, "updateCompany");
+    const auditSpy = vi.spyOn(db, "insertAuditLog");
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.companies.update({ id: 991001, companyType: "ee" })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "O tipo de empresa não pode ser alterado. Crie a empresa com o tipo correcto.",
+    });
+    expect(updateCompanySpy).not.toHaveBeenCalled();
+    expect(auditSpy).not.toHaveBeenCalled();
+
+    getCompanySpy.mockRestore();
+    updateCompanySpy.mockRestore();
+    auditSpy.mockRestore();
   });
 });
 

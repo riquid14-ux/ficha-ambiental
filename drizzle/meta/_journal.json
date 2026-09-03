@@ -253,6 +253,13 @@
       "when": 1788444309652,
       "tag": "0035_fuzzy_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1788448806507,
+      "tag": "0036_mean_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

@@ -614,7 +614,7 @@ export const appRouter = router({
     create: adminProcedure
       .input(z.object({
         name: z.string().trim().min(2), shortName: z.string().trim().min(2),
-        companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).default("ee"),
+        companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "pm", "observador"]).default("ee"),
         projectIds: z.array(z.number().int().positive()).min(1, "Seleccione pelo menos um projecto."),
         parentCompanyId: z.number().int().positive().optional(), allowKpi: z.boolean().default(false), allowWaste: z.boolean().default(false),
       }))
@@ -634,7 +634,7 @@ export const appRouter = router({
         return created;
       }),
     update: adminProcedure
-      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "observador"]).optional() }))
+      .input(z.object({ id: z.number(), name: z.string().optional(), shortName: z.string().optional(), active: z.number().optional(), companyType: z.enum(["ee", "ee_partner", "rap", "dono_obra", "raa", "pm", "observador"]).optional() }))
       .mutation(async ({ input, ctx }) => {
         assertAdminOnly(ctx.user);
         const { id, ...data } = input;
@@ -701,9 +701,10 @@ export const appRouter = router({
               rap: "rap",
               dono_obra: "dono_obra",
               raa: "raa",
+              pm: "pm",
               observador: "observador",
             };
-            const newRole = (roleMap[assignedCompany.companyType] || "user") as "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador";
+            const newRole = (roleMap[assignedCompany.companyType] || "user") as "user" | "admin" | "ee" | "ee_partner" | "raa" | "rap" | "dono_obra" | "observador" | "pm";
             await db.updateUserRole(input.userId, newRole);
           }
         }

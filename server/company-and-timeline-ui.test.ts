@@ -20,4 +20,22 @@ describe("regressões de Empresas e Timeline", () => {
     expect(source).toContain("utils.projects.allCompanyAssignments.invalidate()");
     expect(source).toContain("onSuccess: async () =>");
   });
+
+  it("disponibiliza PM como tipo de entidade e conserva o mapeamento automático para o papel PM", () => {
+    const adminSource = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPanel.tsx"), "utf8");
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const schemaSource = readFileSync(resolve(process.cwd(), "drizzle/schema.ts"), "utf8");
+
+    expect(adminSource).toContain('<SelectItem value="pm">PM — Gestor de Projeto</SelectItem>');
+    expect(routerSource).toContain('pm: "pm"');
+    expect(schemaSource).toContain('"raa", "pm", "observador"');
+  });
+
+  it("impede a alteração do tipo de entidade após a criação, incluindo PM", () => {
+    const routerSource = readFileSync(resolve(process.cwd(), "server/routers.ts"), "utf8");
+
+    expect(routerSource).toContain('data.companyType && data.companyType !== existing.companyType');
+    expect(routerSource).toContain('O tipo de empresa não pode ser alterado. Crie a empresa com o tipo correcto.');
+    expect(routerSource).toContain('"raa", "pm", "observador"');
+  });
 });

@@ -1,0 +1,1 @@
+ALTER TABLE `companies` MODIFY COLUMN `companyType` enum('ee','ee_partner','rap','dono_obra','raa','pm','observador') NOT NULL DEFAULT 'ee';

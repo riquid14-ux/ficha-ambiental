@@ -52,7 +52,14 @@ function createResponse() {
 }
 
 describe("Biblioteca documental — acesso por perfil", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  const projectId = 1;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(db, "getProjectById").mockResolvedValue({ id: projectId, code: "SIN02" } as any);
+    vi.spyOn(db, "getUserProjects").mockResolvedValue([{ projectId }] as any);
+    vi.spyOn(db, "getProjectsForCompany").mockResolvedValue([{ projectId }] as any);
+  });
 
   it("aceita apenas os perfis autorizados a consultar documentação", () => {
     for (const role of ["admin", "dono_obra", "pm", "raa", "ee"]) expect(canReadDocumentLibrary({ role })).toBe(true);
@@ -69,26 +76,26 @@ describe("Biblioteca documental — acesso por perfil", () => {
   it("impede EEP, RAP e Observador de listar documentos em runtime", async () => {
     const listSpy = vi.spyOn(db, "listDocumentLibrary");
     for (const role of ["ee_partner", "rap", "observador"]) {
-      await expect(callerFor(role).documentLibrary.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(callerFor(role).documentLibrary.list({ projectId })).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
     expect(listSpy).not.toHaveBeenCalled();
   });
 
   it("entrega apenas documentos publicados à EE e permite rascunhos à Administração", async () => {
     const listSpy = vi.spyOn(db, "listDocumentLibrary").mockResolvedValue([] as any);
-    await callerFor("ee").documentLibrary.list();
-    expect(listSpy).toHaveBeenLastCalledWith(false);
+    await callerFor("ee").documentLibrary.list({ projectId });
+    expect(listSpy).toHaveBeenLastCalledWith(false, projectId);
     await callerFor("admin").documentLibrary.list();
-    expect(listSpy).toHaveBeenLastCalledWith(true);
+    expect(listSpy).toHaveBeenLastCalledWith(true, undefined);
   });
 
   it("permite a consulta em runtime a EE, Dono de Obra, PM e RAA", async () => {
     const listSpy = vi.spyOn(db, "listDocumentLibrary").mockResolvedValue([] as any);
     for (const role of ["ee", "dono_obra", "pm", "raa"]) {
-      await expect(callerFor(role).documentLibrary.list()).resolves.toEqual([]);
+      await expect(callerFor(role).documentLibrary.list({ projectId })).resolves.toEqual([]);
     }
     expect(listSpy).toHaveBeenCalledTimes(4);
-    expect(listSpy).toHaveBeenCalledWith(false);
+    expect(listSpy).toHaveBeenCalledWith(false, projectId);
   });
 
   it("apresenta a mesma Central obrigatória em modo apenas de consulta a EE e PM", () => {
@@ -120,7 +127,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
       createdAt: new Date(),
     };
     for (const role of ["ee", "pm"] as const) {
-      const markup = renderToStaticMarkup(createElement(DocumentLibraryReadOnlyContent, { role, documents: [centralDocument] }));
+      const markup = renderToStaticMarkup(createElement(DocumentLibraryReadOnlyContent, { role, documents: [centralDocument], projectId }));
       expect(markup).toContain("Central de Documentos do Projeto");
       expect(markup).toContain("DCAPE — documento-base obrigatório");
       expect(markup).toContain("Obrigatório");
@@ -143,7 +150,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
     } as any;
     vi.spyOn(db, "listDocumentLibrary").mockResolvedValue([centralDocument]);
     for (const role of ["admin", "dono_obra", "pm", "raa", "ee"]) {
-      const items = await callerFor(role).documentLibrary.list();
+      const items = await callerFor(role).documentLibrary.list(role === "admin" ? { projectId } : { projectId });
       expect(items).toHaveLength(1);
       expect(items[0]).toMatchObject({ id: 8282, isProjectCentral: 1, isMandatoryRead: 1 });
       expect(items[0]).not.toHaveProperty("fileKey");
@@ -159,11 +166,12 @@ describe("Biblioteca documental — acesso por perfil", () => {
       filename: "referencia.pdf",
     } as any);
     const authSpy = vi.spyOn(sdk, "authenticateRequest");
+    vi.spyOn(db, "documentLibraryAppliesToProject").mockResolvedValue(true);
 
     for (const role of ["dono_obra", "pm", "raa"]) {
-      authSpy.mockResolvedValueOnce({ role } as any);
+      authSpy.mockResolvedValueOnce({ id: 8181, role, companyId: 1 } as any);
       const response = createResponse();
-      await route({ params: { id: "7171" } }, response);
+      await route({ params: { id: "7171" }, query: { projectId: String(projectId) } }, response);
       expect(documentSpy).toHaveBeenCalledWith(7171);
       expect(response.status).not.toHaveBeenCalledWith(401);
       expect(response.status).not.toHaveBeenCalledWith(403);
@@ -192,6 +200,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
       mimeType: "application/pdf",
       data: Buffer.from("conteúdo que não é PDF e tem tamanho suficiente").toString("base64"),
       status: "draft",
+      appliesToAllProjects: true,
     })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Carregue um PDF válido até 10 MB." });
     expect(uploadSpy).not.toHaveBeenCalled();
   });
@@ -206,6 +215,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
       mimeType: "application/pdf",
       data: Buffer.from("%PDF-1.4\nvalidação\n%%EOF").toString("base64"),
       status: "draft",
+      appliesToAllProjects: true,
     })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "Indique um nome de ficheiro PDF válido." });
     expect(uploadSpy).not.toHaveBeenCalled();
   });
@@ -223,6 +233,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
       isProjectCentral: false,
       isMandatoryRead: true,
       centralOrder: 0,
+      appliesToAllProjects: true,
     })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
     expect(createSpy).not.toHaveBeenCalled();
   });

@@ -8,9 +8,9 @@ type NavigationInput = {
   partnerAccess?: { allowWaste?: boolean; allowKpi?: boolean } | null;
 };
 
-const GLOBAL_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/rdcd", "/gamma", "/documentacao"];
+const GLOBAL_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/rdcd", "/gamma"];
 const OPERATION_ROUTES = ["/welcome", "/dashboard", "/calendario", "/mirr", "/fases", "/certificacoes", "/documentacao"];
-const STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"];
+const STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"];
 const OPERATION_ROLE_ROUTES: Record<string, string[]> = {
   admin: OPERATION_ROUTES,
   dono_obra: OPERATION_ROUTES,
@@ -19,11 +19,11 @@ const OPERATION_ROLE_ROUTES: Record<string, string[]> = {
   raa: ["/welcome", "/documentacao"],
 };
 const PROJECT_ROLE_ROUTES: Record<string, string[]> = {
-  admin: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
-  dono_obra: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
-  pm: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  admin: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  dono_obra: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  pm: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
   ee: ["/welcome", "/ficha", "/residuos", "/kpi", "/dashboard-parceiros", "/pedidos-eep", "/documentacao"],
-  raa: ["/welcome", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  raa: ["/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao"],
   rap: ["/welcome", "/ficha", "/kpi"],
   observador: ["/welcome", "/dashboard", "/ficha"],
   user: ["/welcome", "/ficha"],

@@ -7,7 +7,7 @@ import PhaseMeasures from "./PhaseMeasures";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers, Settings, EyeOff, Eye } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers, Settings, EyeOff, Eye, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -292,10 +292,10 @@ export default function Timeline() {
               {t("Visão geral do cumprimento de medidas por fase")} — {activeProject?.name}
             </p>
           </div>
-          {user?.role === "admin" && (
-            <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
-              <Settings className="w-4 h-4 mr-1" />{t("Definições")}</Button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/pdf/fases/${projectId}`, "_blank", "noopener,noreferrer")}><Download className="mr-1 h-4 w-4" />Relatório PDF</Button>
+            {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" />{t("Definições")}</Button>}
+          </div>
         </div>
       </div>
       {/* Sub-navigation: Vista Geral | Fases */}

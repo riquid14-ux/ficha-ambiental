@@ -695,21 +695,23 @@ function CompaniesTab() {
             </DialogContent>
           </Dialog>
         </div>
-        <CompanyRelationshipMap
-          companies={visibleCompanies.map(company => ({
-            id: company.id,
-            name: company.name,
-            shortName: company.shortName,
-            companyType: company.companyType,
-            active: company.active,
-            parentCompanyId: company.parentCompanyId,
-            allowKpi: company.allowKpi,
-            allowWaste: company.allowWaste,
-          }))}
-          assignments={companyAssignmentsQuery.data || []}
-          projects={projectsQuery.data || []}
-          activeProjectId={activeProject?.id}
-        />
+        {!isAllProjects && activeProject && (
+          <CompanyRelationshipMap
+            companies={visibleCompanies.map(company => ({
+              id: company.id,
+              name: company.name,
+              shortName: company.shortName,
+              companyType: company.companyType,
+              active: company.active,
+              parentCompanyId: company.parentCompanyId,
+              allowKpi: company.allowKpi,
+              allowWaste: company.allowWaste,
+            }))}
+            assignments={companyAssignmentsQuery.data || []}
+            projects={projectsQuery.data || []}
+            activeProjectId={activeProject.id}
+          />
+        )}
       </CardContent>
     </Card>
   );

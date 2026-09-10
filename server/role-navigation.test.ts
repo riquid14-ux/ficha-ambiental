@@ -10,10 +10,14 @@ describe("navegação visível por identidade", () => {
     ]);
   });
 
-  it("não anuncia calendário ou timeline à RAA quando não estão no menu", () => {
+  it("mostra à RAA os Planos, sem anunciar calendário ou Timeline", () => {
     expect(getVisibleNavigationPaths({ role: "raa", ...project })).toEqual([
-      "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
+      "/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao",
     ]);
+  });
+
+  it("mostra Planos à PM no projeto individual para permitir a exportação por projeto", () => {
+    expect(getVisibleNavigationPaths({ role: "pm", ...project })).toContain("/planos");
   });
 
   it("limita a EEP aos módulos KPI e resíduos autorizados", () => {

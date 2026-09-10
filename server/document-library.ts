@@ -10,6 +10,19 @@ export function canReadDocumentLibrary(user: { role?: string } | null | undefine
   return Boolean(user?.role && DOCUMENT_LIBRARY_READER_ROLES.has(user.role));
 }
 
+async function userCanAccessProject(user: { id: number; role: string; companyId?: number | null }, projectId: number) {
+  const project = await db.getProjectById(projectId);
+  if (!project) return false;
+  if (user.role === "admin" || user.role === "dono_obra") return true;
+
+  const userProjects = await db.getUserProjects(user.id);
+  if (user.role === "pm") return userProjects.some((item: any) => item.projectId === projectId);
+
+  const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
+  return userProjects.some((item: any) => item.projectId === projectId)
+    || companyProjects.some((item: any) => item.projectId === projectId);
+}
+
 function safeDownloadName(filename: string) {
   return filename.replace(/[\\/\r\n"]/g, "_").slice(0, 180) || "documento.pdf";
 }
@@ -38,8 +51,22 @@ export function registerDocumentLibraryRoutes(app: Express) {
       return;
     }
 
+    const projectId = Number(req.query.projectId);
+    if (!Number.isSafeInteger(projectId) || projectId < 1) {
+      res.status(400).send("Seleccione um projeto válido para consultar o documento.");
+      return;
+    }
+    if (!await userCanAccessProject(user, projectId)) {
+      res.status(403).send("Sem acesso ao projeto seleccionado.");
+      return;
+    }
+
     const document = await db.getDocumentLibraryItemById(documentId);
     if (!document || (document.status !== "published" && user.role !== "admin")) {
+      res.status(404).send("Documento não encontrado.");
+      return;
+    }
+    if (!await db.documentLibraryAppliesToProject(documentId, projectId)) {
       res.status(404).send("Documento não encontrado.");
       return;
     }

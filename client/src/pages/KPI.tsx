@@ -8,8 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
-import { useState, useMemo } from "react";
-import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pencil, Trash2, CheckCircle, XCircle, Target, BarChart3, Users, Car, Leaf, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { Settings, Download, Send, Droplets, Fuel, Zap, AlertTriangle, Plus, Pencil, Trash2, CheckCircle, XCircle, Target, BarChart3, Users, Car, Leaf, TrendingUp, TrendingDown, Activity, Save, Upload, FileSpreadsheet, History } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -29,6 +29,12 @@ export default function KPI() {
   const [formYear, setFormYear] = useState(String(new Date().getFullYear()));
   const [formValues, setFormValues] = useState<Record<number, string>>({});
   const [formStep, setFormStep] = useState(0);
+  const [selectedContributionCompanyId, setSelectedContributionCompanyId] = useState<number | null>(null);
+  const [editingSubmittedValues, setEditingSubmittedValues] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [importMode, setImportMode] = useState<"draft" | "submit">("draft");
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [editingMetric, setEditingMetric] = useState<any>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [reportStartWeek, setReportStartWeek] = useState("1");
@@ -42,11 +48,19 @@ export default function KPI() {
   const isPartner = user?.role === "ee_partner";
   const metricsQuery = trpc.kpi.metrics.useQuery();
   const matrixQuery = trpc.kpi.matrix.useQuery({ projectId }, { enabled: projectId > 0 });
+  const editableCompaniesQuery = trpc.kpi.editableCompanies.useQuery({ projectId }, { enabled: projectId > 0 });
+  const editableCompanies = (editableCompaniesQuery.data || []) as any[];
+  const effectiveCompanyId = selectedContributionCompanyId || user?.companyId || 0;
+  const currentSubmissionQuery = trpc.kpi.draft.useQuery({ projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear) }, { enabled: projectId > 0 && effectiveCompanyId > 0 });
   const allValuesQuery = trpc.kpi.allValues.useQuery({ projectId, weekYear: selectedYear, startWeek: Number(reportStartWeek), endWeek: Number(reportEndWeek) }, { enabled: projectId > 0 && Number(reportStartWeek) <= Number(reportEndWeek) });
   const targetsQuery = trpc.kpi.targets.useQuery({ projectId, year: targetYear }, { enabled: projectId > 0 });
   const companiesQuery = trpc.companies.list.useQuery(undefined, { enabled: !isPartner });
   const partnerAccessQuery = trpc.partners.myAccess.useQuery(undefined, { enabled: isPartner });
-  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success(isPartner ? "Contributo KPI parcial submetido à EE principal." : "KPIs submetidos com sucesso!"); matrixQuery.refetch(); allValuesQuery.refetch(); setFormValues({}); setFormStep(0); } });
+  const refreshKpiViews = () => { matrixQuery.refetch(); allValuesQuery.refetch(); currentSubmissionQuery.refetch(); };
+  const saveDraftMutation = trpc.kpi.saveDraft.useMutation({ onSuccess: () => { setDraftStatus("saved"); refreshKpiViews(); }, onError: () => setIsFormDirty(true) });
+  const submitMutation = trpc.kpi.submit.useMutation({ onSuccess: () => { toast.success(isPartner ? "Contributo KPI parcial submetido à EE principal." : "KPIs submetidos com sucesso!"); setEditingSubmittedValues(false); setDraftStatus("idle"); refreshKpiViews(); } });
+  const correctMutation = trpc.kpi.correct.useMutation({ onSuccess: () => { toast.success("Correção KPI registada no histórico da semana."); setEditingSubmittedValues(false); refreshKpiViews(); } });
+  const importExcelMutation = trpc.kpi.importExcel.useMutation({ onSuccess: (result) => { toast.success(`${result.importedWeeks} ${result.importedWeeks === 1 ? "semana importada" : "semanas importadas"} como ${result.mode === "draft" ? "rascunho" : "submissão"}.`); refreshKpiViews(); if (importInputRef.current) importInputRef.current.value = ""; } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success(t("Métrica guardada.")); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success(t("Métrica removida.")); } });
   const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
@@ -64,11 +78,10 @@ export default function KPI() {
   const matrixData = (matrixQuery.data || []) as any[];
   const targets = (targetsQuery.data || []) as any[];
   const companies = (companiesQuery.data || []) as any[];
+  const existingSubmission = currentSubmissionQuery.data as any;
   const isAdminOrDO = user?.role === "admin" || user?.role === "dono_obra";
-  const submittingCompanyName = useMemo(() => {
-    if (isPartner) return partnerAccessQuery.data?.companyName || "empresa parceira";
-    return companies.find(company => company.id === user?.companyId)?.shortName || undefined;
-  }, [companies, isPartner, partnerAccessQuery.data?.companyName, user?.companyId]);
+  const selectedContribution = editableCompanies.find(company => company.id === effectiveCompanyId);
+  const submittingCompanyName = useMemo(() => selectedContribution?.shortName || (isPartner ? partnerAccessQuery.data?.companyName || "empresa parceira" : companies.find(company => company.id === user?.companyId)?.shortName || undefined), [companies, isPartner, partnerAccessQuery.data?.companyName, selectedContribution?.shortName, user?.companyId]);
   const waterMetricGroups = useMemo(() => splitWaterMetrics(manualMetrics), [manualMetrics]);
 
   // Categories for step-by-step form
@@ -129,11 +142,69 @@ export default function KPI() {
 
   const findMetric = (cat: string, name: string) => metrics.find((m: any) => m.category === cat && m.name.toLowerCase().includes(name.toLowerCase()));
 
+  useEffect(() => {
+    if (selectedContributionCompanyId) return;
+    if (user?.companyId) { setSelectedContributionCompanyId(user.companyId); return; }
+    if (editableCompanies[0]) setSelectedContributionCompanyId(editableCompanies[0].id);
+  }, [editableCompanies, selectedContributionCompanyId, user?.companyId]);
+
+  useEffect(() => {
+    const submission = currentSubmissionQuery.data as any;
+    if (currentSubmissionQuery.isLoading) return;
+    if (!submission) { setFormValues({}); setEditingSubmittedValues(false); setDraftStatus("idle"); setIsFormDirty(false); return; }
+    setFormValues(Object.fromEntries((submission.values || []).map((row: any) => [row.metricId, row.value])));
+    setEditingSubmittedValues(false);
+    setDraftStatus(submission.status === "draft" ? "saved" : "idle");
+    setIsFormDirty(false);
+  }, [currentSubmissionQuery.data, currentSubmissionQuery.isLoading, effectiveCompanyId, formWeek, formYear]);
+
+  const getFormPayload = () => Object.entries(formValues).filter(([, value]) => value.trim() !== "").map(([metricId, value]) => ({ metricId: Number(metricId), value }));
+  const saveDraft = (silent = false) => {
+    if (!effectiveCompanyId || !projectId) return;
+    const values = getFormPayload();
+    if (!values.length) return;
+    setDraftStatus("saving");
+    setIsFormDirty(false);
+    saveDraftMutation.mutate({ projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values }, { onError: error => { setDraftStatus("idle"); if (!silent) toast.error(error.message); } });
+  };
   const handleSubmit = () => {
-    if (!user?.companyId || !projectId) { toast.error("Verifique a sua empresa e projeto."); return; }
-    const values = Object.entries(formValues).filter(([, v]) => v.trim() !== "").map(([metricId, value]) => ({ metricId: Number(metricId), value }));
+    if (!effectiveCompanyId || !projectId) { toast.error("Verifique a empresa selecionada e o projeto."); return; }
+    const values = getFormPayload();
     if (values.length === 0) { toast.error("Preencha pelo menos um campo."); return; }
-    submitMutation.mutate({ projectId, companyId: user.companyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values });
+    const input = { projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values };
+    if (currentSubmissionQuery.data && (currentSubmissionQuery.data as any).status !== "draft") correctMutation.mutate(input);
+    else submitMutation.mutate(input);
+  };
+
+  useEffect(() => {
+    const submission = currentSubmissionQuery.data as any;
+    if (!isFormDirty || (submission && submission.status !== "draft") || Object.keys(formValues).length === 0 || saveDraftMutation.isPending) return;
+    const timer = window.setTimeout(() => saveDraft(true), 1000);
+    return () => window.clearTimeout(timer);
+  }, [formValues]);
+
+  const downloadKpiImportTemplate = () => {
+    if (Number(reportStartWeek) > Number(reportEndWeek)) return toast.error("A semana inicial não pode ser posterior à semana final.");
+    import("exceljs").then(async (ExcelJS) => {
+      const workbook = new ExcelJS.Workbook(); workbook.creator = "Plataforma de Gestão Ambiental — Start Campus";
+      const sheet = workbook.addWorksheet("Importar KPI");
+      sheet.columns = [{ width: 12 }, { width: 12 }, { width: 15 }, { width: 42 }, { width: 14 }, { width: 18 }];
+      sheet.mergeCells("A1:F1"); sheet.getCell("A1").value = "MODELO DE IMPORTAÇÃO KPI"; sheet.getCell("A1").font = { bold: true, size: 15, color: { argb: "FFFFFFFF" } }; sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } };
+      sheet.mergeCells("A2:F2"); sheet.getCell("A2").value = `Projeto: ${activeProject?.code || "—"} — preencha apenas a coluna Valor. Não altere Ano, Semana ou ID da métrica.`; sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+      const rows: Array<Array<string | number>> = [];
+      for (let week = Number(reportStartWeek); week <= Number(reportEndWeek); week += 1) for (const metric of manualMetrics) rows.push([selectedYear, week, metric.id, metric.name, metric.unit, ""]);
+      sheet.addTable({ name: "ImportarKPI", ref: "A4", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: [{ name: "Ano" }, { name: "Semana" }, { name: "ID da métrica" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Valor" }], rows });
+      sheet.views = [{ state: "frozen", ySplit: 4 }];
+      const buffer = await workbook.xlsx.writeBuffer(); const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `Modelo_Importacao_KPI_${activeProject?.code}_S${reportStartWeek}-S${reportEndWeek}_${selectedYear}.xlsx`; anchor.click(); URL.revokeObjectURL(url);
+    }).catch(() => toast.error("Não foi possível gerar o modelo Excel."));
+  };
+
+  const importKpiExcel = (file?: File) => {
+    if (!file || !effectiveCompanyId) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 10 * 1024 * 1024) return toast.error("Importe um ficheiro .xlsx até 10 MB.");
+    const reader = new FileReader();
+    reader.onload = () => { const dataUrl = String(reader.result || ""); const data = dataUrl.split(",")[1]; if (!data) return toast.error("Não foi possível ler o ficheiro Excel."); importExcelMutation.mutate({ projectId, companyId: effectiveCompanyId, mode: importMode, filename: file.name, data }); };
+    reader.readAsDataURL(file);
   };
 
   const reportPeriodLabel = `S${reportStartWeek} a S${reportEndWeek} · ${selectedYear}`;
@@ -199,7 +270,7 @@ export default function KPI() {
           <p className="text-sm font-medium">{m.name}</p>
           <Badge variant="outline" className="text-[10px]">{m.unit}</Badge>
         </div>
-        <Input type="number" step="any" placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => setFormValues({ ...formValues, [m.id]: e.target.value })} className="text-lg h-10 font-mono" />
+        <Input type="number" step="any" disabled={Boolean(currentSubmissionQuery.data && (currentSubmissionQuery.data as any).status !== "draft" && !editingSubmittedValues)} placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => { setFormValues({ ...formValues, [m.id]: e.target.value }); setIsFormDirty(true); }} className="text-lg h-10 font-mono" />
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{describeKpiValue(m, activeProject?.code, submittingCompanyName, formWeek, formYear)}</p>
         {m.target && m.target !== "N/A" && <p className="text-[10px] text-muted-foreground mt-1">Meta: {m.target}</p>}
       </CardContent>
@@ -214,8 +285,12 @@ export default function KPI() {
             <h1 className="text-2xl font-bold tracking-tight">KPI's</h1>
             <p className="text-sm text-muted-foreground">Indicadores de sustentabilidade — {activeProject?.name}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> Exportar relatório</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> Exportar dados</Button>
+            <Button variant="outline" size="sm" onClick={downloadKpiImportTemplate}><FileSpreadsheet className="w-4 h-4 mr-1" /> Modelo Excel</Button>
+            <Select value={importMode} onValueChange={value => setImportMode(value as "draft" | "submit")}><SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Importar rascunhos</SelectItem><SelectItem value="submit">Importar histórico</SelectItem></SelectContent></Select>
+            <input ref={importInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={event => importKpiExcel(event.target.files?.[0])} />
+            <Button variant="outline" size="sm" disabled={importExcelMutation.isPending || !effectiveCompanyId} onClick={() => importInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" /> {importExcelMutation.isPending ? "A importar..." : "Importar Excel"}</Button>
             {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
           </div>
         </div>
@@ -310,8 +385,10 @@ export default function KPI() {
                 <div className="flex flex-wrap gap-4 items-end">
                   <div><label className="text-xs text-muted-foreground block mb-1">{t("Semana")}</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
                   <div><label className="text-xs text-muted-foreground block mb-1">Ano</label><Select value={formYear} onValueChange={setFormYear}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
+                  {editableCompanies.length > 1 && <div><label className="text-xs text-muted-foreground block mb-1">Contributo de</label><Select value={String(effectiveCompanyId)} onValueChange={value => setSelectedContributionCompanyId(Number(value))}><SelectTrigger className="min-w-48"><SelectValue /></SelectTrigger><SelectContent>{editableCompanies.map(company => <SelectItem key={company.id} value={String(company.id)}>{company.shortName}{company.sourceType === "ee_partner" ? " · EEP" : " · EE"}</SelectItem>)}</SelectContent></Select></div>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 bg-muted/50 px-3 py-1.5 rounded">{t("Período:")} <strong>{weekPeriod}</strong></p>
+                {existingSubmission && <div className={`mt-3 rounded-md border px-3 py-2 text-xs ${existingSubmission.status === "draft" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-sky-200 bg-sky-50 text-sky-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{existingSubmission.status === "draft" ? "Rascunho retomado" : "KPI já submetido"} · {submittingCompanyName} · S{existingSubmission.weekNumber}/{existingSubmission.weekYear}</span>{existingSubmission.status !== "draft" && !editingSubmittedValues && <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingSubmittedValues(true)}><Pencil className="mr-1 h-3 w-3" />Corrigir valores</Button>}</div>{existingSubmission.changes?.[0] && <p className="mt-1 flex items-center gap-1"><History className="h-3 w-3" />{existingSubmission.changes[0].summary}</p>}{editingSubmittedValues && <p className="mt-1 font-medium">Está a corrigir uma submissão. A alteração ficará anotada com o seu nome e semana.</p>}</div>}
               </CardHeader>
               <CardContent>
                 {/* Step navigation */}
@@ -346,13 +423,16 @@ export default function KPI() {
                 )}
 
                 {/* Navigation + Submit */}
-                <div className="flex justify-between mt-4">
+                <div className="mt-4 flex flex-wrap justify-between gap-2">
                   <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>{t("← Anterior")}</Button>
-                  {formStep < categories.length - 1 ? (
-                    <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
-                  ) : (
-                    <Button onClick={handleSubmit} disabled={submitMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending ? "A submeter..." : isPartner ? "Submeter contributo parcial" : "Submeter KPIs"}</Button>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {(existingSubmission?.status === "draft" || !existingSubmission) && <Button variant="outline" onClick={() => saveDraft()} disabled={saveDraftMutation.isPending || Object.keys(formValues).length === 0}><Save className="mr-2 h-4 w-4" />{draftStatus === "saving" ? "A guardar..." : draftStatus === "saved" ? "Rascunho guardado" : "Guardar rascunho"}</Button>}
+                    {formStep < categories.length - 1 ? (
+                      <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
+                    ) : (
+                      <Button onClick={handleSubmit} disabled={submitMutation.isPending || correctMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending || correctMutation.isPending ? "A guardar..." : existingSubmission && existingSubmission.status !== "draft" ? "Registar correção" : isPartner ? "Submeter contributo parcial" : "Submeter KPIs"}</Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

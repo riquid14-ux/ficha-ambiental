@@ -74,7 +74,8 @@ describe("EEP — Entidade Executante Parceira — KPI e Resíduos", () => {
     expect(schemaSource).toContain('mysqlTable("kpi_submissions"');
     expect(schemaSource).toContain('mysqlEnum("sourceType", ["ee", "ee_partner"])');
     expect(schemaSource).toContain("kpi_submissions_contribution_unique");
-    expect(routerSource).toContain('sourceType = "ee_partner"');
+    expect(routerSource).toContain('contribution.sourceType === "ee_partner"');
+    expect(routerSource).toContain('sourceType = ${contribution.sourceType}');
     expect(kpiSource).toContain("Submeter contributo parcial");
   });
 

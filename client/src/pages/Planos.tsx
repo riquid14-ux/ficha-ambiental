@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -181,6 +182,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
 export default function Planos() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { activeProject } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -289,6 +291,7 @@ export default function Planos() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={exportUpdates}><Download className="mr-2 h-4 w-4" />Exportar updates</Button>
+            <Button variant="outline" disabled={!activeProject?.id} title={!activeProject?.id ? "Seleccione um projeto individual para exportar." : undefined} onClick={() => activeProject?.id && window.open(`/api/pdf/planos/${activeProject.id}`, "_blank", "noopener,noreferrer")}><FileText className="mr-2 h-4 w-4" />Relatório PDF</Button>
             {isAdminOrDono && (
               <Dialog open={showCreate} onOpenChange={setShowCreate}>
                 <DialogTrigger asChild><Button><Plus className="mr-2 h-4 w-4" />Novo plano</Button></DialogTrigger>

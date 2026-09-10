@@ -274,6 +274,20 @@
       "when": 1789033868914,
       "tag": "0038_fluffy_veda",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1789039099386,
+      "tag": "0039_living_doorman",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1789039778028,
+      "tag": "0040_white_pixie",
+      "breakpoints": true
     }
   ]
 }

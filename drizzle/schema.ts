@@ -491,6 +491,7 @@ export const documentLibrary = mysqlTable("document_library", {
   title: varchar("title", { length: 255 }).notNull(),
   language: varchar("language", { length: 50 }).notNull(),
   description: text("description"),
+  appliesToAllProjects: int("appliesToAllProjects").default(0).notNull(),
   fileKey: varchar("fileKey", { length: 500 }).notNull(),
   filename: varchar("filename", { length: 255 }).notNull(),
   mimeType: varchar("mimeType", { length: 100 }).notNull(),
@@ -512,6 +513,24 @@ export const documentLibrary = mysqlTable("document_library", {
 
 export type DocumentLibraryItem = typeof documentLibrary.$inferSelect;
 export type InsertDocumentLibraryItem = typeof documentLibrary.$inferInsert;
+
+/**
+ * Âmbito de projeto de cada documento da biblioteca. Quando appliesToAllProjects
+ * está ativo no documento, esta tabela não é necessária; caso contrário, pelo
+ * menos um projeto deve ser associado aqui.
+ */
+export const documentLibraryProjects = mysqlTable("document_library_projects", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  projectId: int("projectId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  documentProjectUnique: uniqueIndex("document_library_project_unique").on(table.documentId, table.projectId),
+  projectIdx: index("document_library_project_idx").on(table.projectId, table.documentId),
+}));
+
+export type DocumentLibraryProject = typeof documentLibraryProjects.$inferSelect;
+export type InsertDocumentLibraryProject = typeof documentLibraryProjects.$inferInsert;
 
 // ─── Project Phases (Fases do Projeto - controlo por fase) ────────────────────
 export const projectPhases = mysqlTable("project_phases", {
@@ -790,6 +809,23 @@ export const kpiValues = mysqlTable("kpi_values", {
 });
 export type KpiValue = typeof kpiValues.$inferSelect;
 export type InsertKpiValue = typeof kpiValues.$inferInsert;
+
+// Histórico explícito de rascunhos, submissões e correções KPI.
+// Os valores ficam em JSON de auditoria; os valores operacionais continuam em kpi_values.
+export const kpiSubmissionChanges = mysqlTable("kpi_submission_changes", {
+  id: serial("id").primaryKey(),
+  submissionId: int("submissionId").notNull(),
+  action: varchar("action", { length: 40 }).notNull(),
+  actorId: int("actorId").notNull(),
+  actorName: varchar("actorName", { length: 255 }).notNull(),
+  summary: varchar("summary", { length: 500 }).notNull(),
+  changedValues: text("changedValues"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  submissionIdx: index("kpi_submission_changes_submission_idx").on(table.submissionId, table.createdAt),
+}));
+export type KpiSubmissionChange = typeof kpiSubmissionChanges.$inferSelect;
+export type InsertKpiSubmissionChange = typeof kpiSubmissionChanges.$inferInsert;
 
 // KPI Targets (Metas)
 export const kpiTargets = mysqlTable("kpi_targets", {

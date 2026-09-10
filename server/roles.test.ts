@@ -33,9 +33,9 @@ describe("Roles Drill Tests", () => {
       ]);
     });
 
-    it("should restrict RAA to Ficha, Resíduos and KPI", () => {
+    it("should show RAA the operational modules and Planos", () => {
       expect(getVisibleNavigationPaths({ role: "raa", ...projectInput })).toEqual([
-        "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
+        "/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 
@@ -53,7 +53,7 @@ describe("Roles Drill Tests", () => {
 
     it("should give Admin full access", () => {
       expect(getVisibleNavigationPaths({ role: "admin", ...projectInput })).toEqual([
-        "/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao",
+        "/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 

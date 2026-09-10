@@ -1,4 +1,4 @@
-import { and, desc, eq, sql, or, isNull } from "drizzle-orm";
+import { and, desc, eq, sql, or, isNull, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   companies,
@@ -30,6 +30,7 @@ import {
   InsertMonitoringPlanUpdate,
   InsertMonitoringPlanAttachment,
   documentLibrary,
+  documentLibraryProjects,
   InsertDocumentLibraryItem,
   projectPhases,
   projectPhaseUpdates,
@@ -1315,14 +1316,56 @@ export async function getDocumentLibraryItemById(id: number) {
   return result[0];
 }
 
-export async function listDocumentLibrary(includeUnpublished = false) {
+export async function getDocumentLibraryProjectIds(documentId: number) {
   const db = await getDb();
   if (!db) return [];
-  const query = db.select().from(documentLibrary);
-  const items = includeUnpublished
-    ? await query.orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100)
-    : await query.where(eq(documentLibrary.status, "published")).orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100);
-  return items;
+  const rows = await db.select({ projectId: documentLibraryProjects.projectId })
+    .from(documentLibraryProjects)
+    .where(eq(documentLibraryProjects.documentId, documentId));
+  return rows.map(row => row.projectId);
+}
+
+export async function documentLibraryAppliesToProject(documentId: number, projectId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const document = await getDocumentLibraryItemById(documentId);
+  if (!document) return false;
+  if (document.appliesToAllProjects === 1) return true;
+  const matches = await db.select({ id: documentLibraryProjects.id })
+    .from(documentLibraryProjects)
+    .where(and(
+      eq(documentLibraryProjects.documentId, documentId),
+      eq(documentLibraryProjects.projectId, projectId),
+    ))
+    .limit(1);
+  return matches.length > 0;
+}
+
+export async function listDocumentLibrary(includeUnpublished = false, projectId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const scope = projectId
+    ? or(
+      eq(documentLibrary.appliesToAllProjects, 1),
+      sql`EXISTS (SELECT 1 FROM document_library_projects dlp WHERE dlp.documentId = ${documentLibrary.id} AND dlp.projectId = ${projectId})`,
+    )
+    : undefined;
+  const condition = includeUnpublished
+    ? scope
+    : scope ? and(eq(documentLibrary.status, "published"), scope) : eq(documentLibrary.status, "published");
+  const items = condition
+    ? await db.select().from(documentLibrary).where(condition).orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100)
+    : await db.select().from(documentLibrary).orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100);
+  if (!items.length) return [];
+  const ids = items.map(item => item.id);
+  const scopes = await db.select({ documentId: documentLibraryProjects.documentId, projectId: documentLibraryProjects.projectId })
+    .from(documentLibraryProjects)
+    .where(inArray(documentLibraryProjects.documentId, ids));
+  const projectIdsByDocument = new Map<number, number[]>();
+  for (const item of scopes) {
+    projectIdsByDocument.set(item.documentId, [...(projectIdsByDocument.get(item.documentId) || []), item.projectId]);
+  }
+  return items.map(item => ({ ...item, projectIds: projectIdsByDocument.get(item.id) || [] }));
 }
 
 export async function createDocumentLibraryItem(data: Omit<InsertDocumentLibraryItem, "id" | "createdAt" | "updatedAt">) {
@@ -1332,7 +1375,17 @@ export async function createDocumentLibraryItem(data: Omit<InsertDocumentLibrary
   return getDocumentLibraryItemById(result[0].insertId);
 }
 
-export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<InsertDocumentLibraryItem, "topic" | "subtopic" | "title" | "language" | "description" | "status" | "isProjectCentral" | "isMandatoryRead" | "centralOrder" | "fileKey" | "filename" | "mimeType" | "fileSize">>) {
+export async function replaceDocumentLibraryProjects(documentId: number, projectIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(documentLibraryProjects).where(eq(documentLibraryProjects.documentId, documentId));
+  const uniqueProjectIds = Array.from(new Set(projectIds.filter(Number.isInteger)));
+  if (uniqueProjectIds.length) {
+    await db.insert(documentLibraryProjects).values(uniqueProjectIds.map(projectId => ({ documentId, projectId })));
+  }
+}
+
+export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<InsertDocumentLibraryItem, "topic" | "subtopic" | "title" | "language" | "description" | "status" | "isProjectCentral" | "isMandatoryRead" | "centralOrder" | "appliesToAllProjects" | "fileKey" | "filename" | "mimeType" | "fileSize">>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(documentLibrary).set(data).where(eq(documentLibrary.id, id));
@@ -1342,6 +1395,7 @@ export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<I
 export async function deleteDocumentLibraryItem(id: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  await db.delete(documentLibraryProjects).where(eq(documentLibraryProjects.documentId, id));
   await db.delete(documentLibrary).where(eq(documentLibrary.id, id));
 }
 

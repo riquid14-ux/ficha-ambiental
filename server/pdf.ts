@@ -7,6 +7,78 @@ import { sdk } from "./_core/sdk";
 import * as db from "./db";
 import { generateWeeklyControlPdfBuffer } from "./weekly-control-pdf";
 
+const TRACKING_STATUS_LABELS: Record<string, string> = {
+  nao_iniciado: "Não iniciado",
+  em_curso: "Em curso",
+  em_validacao: "Em validação",
+  concluido: "Concluído",
+  bloqueado: "Bloqueado",
+};
+
+function formatPdfDate(value?: string | number | Date | null) {
+  if (!value) return "—";
+  const date = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00`) : new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("pt-PT");
+}
+
+export function formatPhaseEvidenceLines(evidenceItems: any[]) {
+  return evidenceItems.map((item) => {
+    const author = item.createdByName?.trim() || "Autor não identificado";
+    const registeredAt = formatPdfDate(item.createdAt);
+    if (item.type === "comment") {
+      return `Comentário: ${item.content?.trim() || "Sem conteúdo"} — ${author}, ${registeredAt}`;
+    }
+    const evidenceType = item.type === "photo" ? "Foto" : "Ficheiro";
+    return `${evidenceType}: ${item.filename?.trim() || "Ficheiro sem nome"} — ${author}, ${registeredAt}`;
+  });
+}
+
+const TIMELINE_PHASE_ALIASES: Record<string, string> = {
+  previas_licenciamento: "Prévias Licenciamento",
+  "Previamente ao Licenciamento": "Prévias Licenciamento",
+  desativacao: "Desativação (Pós-Exploração)",
+  "Desativação": "Desativação (Pós-Exploração)",
+  execucao_obra: "Execução da Obra",
+  construcao: "Execução da Obra",
+};
+
+export function resolveTimelineSectionPhase(phase: any) {
+  return TIMELINE_PHASE_ALIASES[phase.phaseKey] || TIMELINE_PHASE_ALIASES[phase.phaseName] || phase.phaseKey || phase.phaseName;
+}
+
+export function formatMonitoringPlanSubmissionStatus(status?: string | null) {
+  const labels: Record<string, string> = {
+    pending: "Pendente",
+    submitted: "Submetido",
+    delivered: "Entregue",
+  };
+  return labels[status || ""] || "Pendente";
+}
+
+function writePdfHeader(doc: any, title: string, subtitle: string, project: any) {
+  doc.fontSize(17).font("Helvetica-Bold").fillColor("#047857").text(title, { align: "center" });
+  doc.moveDown(0.25);
+  doc.fontSize(10).font("Helvetica").fillColor("#334155").text(subtitle, { align: "center" });
+  doc.fontSize(9).text(`Projeto: ${project?.code || "—"} — ${project?.name || "—"}`, { align: "center" });
+  doc.moveDown(1);
+  doc.fillColor("#111827");
+}
+
+function writePdfFooter(doc: any) {
+  doc.moveDown(1);
+  doc.fontSize(7).font("Helvetica").fillColor("#64748b").text(`Plataforma de Gestão Ambiental — Start Campus · Gerado em ${new Date().toLocaleString("pt-PT")}`, { align: "center" });
+  doc.fillColor("#111827");
+}
+
+async function canExportProjectPdf(user: any, projectId: number) {
+  if (user.role === "admin" || user.role === "dono_obra") return true;
+  const [userProjects, companyProjects] = await Promise.all([
+    db.getUserProjects(user.id),
+    user.companyId ? db.getProjectsForCompany(user.companyId) : Promise.resolve([]),
+  ]);
+  return userProjects.some((item: any) => item.projectId === projectId) || companyProjects.some((item: any) => item.projectId === projectId);
+}
+
 // Helper: determine which measures a user can export based on their role
 // Admin, RAA, dono_obra, observador → all measures
 // EE → only measures with "EE" in responsible
@@ -80,6 +152,104 @@ async function buildWeeklyControlPdf(
 }
 
 export function registerPdfRoutes(app: Express) {
+  app.get("/api/pdf/fases/:projectId", async (req: Request, res: Response) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) return res.status(401).json({ error: "Não autorizado" });
+      const projectId = Number(req.params.projectId);
+      if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
+      if (!await canExportProjectPdf(user, projectId)) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
+      const project = await db.getProjectById(projectId);
+      if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
+      const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getAllSections(), db.getAllMeasures(), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
+      const statusMap = new Map(statuses.map((status: any) => [status.measureId, status]));
+      const evidenceByMeasure = new Map<number, any[]>();
+      for (const item of evidence) {
+        const items = evidenceByMeasure.get(item.measureId) || [];
+        items.push(item);
+        evidenceByMeasure.set(item.measureId, items);
+      }
+      const doc = new PDFDocument({ size: "A4", margin: 44 });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `attachment; filename="Fases_${project.code}.pdf"`);
+      doc.pipe(res);
+      writePdfHeader(doc, "RELATÓRIO DE FASES", "Estado, responsáveis, suporte e atualizações dos pontos de acompanhamento", project);
+      for (const phase of phases.filter((phase: any) => !phase.hidden)) {
+        if (doc.y > 630) doc.addPage();
+        const sectionPhase = resolveTimelineSectionPhase(phase);
+        const phaseSections = sections.filter((section: any) => section.phase === sectionPhase);
+        const sectionIds = new Set(phaseSections.map((section: any) => section.id));
+        const phaseMeasures = measures.filter((measure: any) => sectionIds.has(measure.sectionId));
+        const completed = phaseMeasures.filter((measure: any) => statusMap.get(measure.id)?.status === "concluido").length;
+        doc.fontSize(12).font("Helvetica-Bold").fillColor("#047857").text(`${phase.phaseName} · ${phase.progress ?? Math.round((completed / Math.max(phaseMeasures.length, 1)) * 100)}%`);
+        doc.fontSize(8).font("Helvetica").fillColor("#334155").text(`Estado: ${TRACKING_STATUS_LABELS[phase.trackingStatus] || phase.trackingStatus} | Responsável: ${phase.ownerName || "Por definir"} | Suporte: ${phase.supportName || "—"}`);
+        doc.text(`Período: ${formatPdfDate(phase.startDate)} a ${formatPdfDate(phase.endDate)} | Pontos concluídos: ${completed}/${phaseMeasures.length}`);
+        const phaseUpdates = await db.getProjectPhaseUpdates(phase.id);
+        if (phaseUpdates[0]) doc.fontSize(8).font("Helvetica-Oblique").fillColor("#475569").text(`Última atualização: ${phaseUpdates[0].updateText} — ${phaseUpdates[0].createdByName}, ${formatPdfDate(phaseUpdates[0].createdAt)}`);
+        doc.moveDown(0.45);
+        for (const measure of phaseMeasures) {
+          const item = statusMap.get(measure.id) as any;
+          const updates = await db.getPhaseMeasureUpdates(projectId, measure.id);
+          if (doc.y > 690) doc.addPage();
+          doc.fontSize(8.5).font("Helvetica-Bold").fillColor("#111827").text(`${measure.number ? `Medida ${measure.number}` : "Ponto"} — ${measure.description}`);
+          doc.fontSize(7.5).font("Helvetica").fillColor("#475569").text(`Estado: ${TRACKING_STATUS_LABELS[item?.trackingStatus || item?.status || "nao_iniciado"] || item?.trackingStatus || item?.status || "Não iniciado"} | Responsável: ${item?.ownerName || "Por definir"} | Suporte: ${item?.supportName || "—"}`);
+          if (updates[0]) doc.fontSize(7.5).font("Helvetica-Oblique").text(`Última atualização: ${updates[0].updateText} — ${updates[0].createdByName}, ${formatPdfDate(updates[0].createdAt)}`);
+          const evidenceLines = formatPhaseEvidenceLines(evidenceByMeasure.get(measure.id) || []);
+          if (evidenceLines.length > 0) {
+            if (doc.y > 665) doc.addPage();
+            doc.fontSize(7.5).font("Helvetica-Bold").fillColor("#475569").text(`Evidências do ponto (${evidenceLines.length}):`);
+            doc.font("Helvetica").fillColor("#475569");
+            for (const evidenceLine of evidenceLines) {
+              if (doc.y > 690) doc.addPage();
+              doc.text(`— ${evidenceLine}`, { indent: 8 });
+            }
+          }
+          doc.moveDown(0.25);
+        }
+        doc.moveDown(0.6);
+      }
+      writePdfFooter(doc); doc.end();
+    } catch (error: any) { console.error("[PDF Fases] Error:", error); if (!res.headersSent) res.status(500).json({ error: error.message || "Erro ao gerar relatório de Fases" }); }
+  });
+
+  app.get("/api/pdf/planos/:projectId", async (req: Request, res: Response) => {
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (!user) return res.status(401).json({ error: "Não autorizado" });
+      const projectId = Number(req.params.projectId);
+      if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
+      if (!await canExportProjectPdf(user, projectId)) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
+      const project = await db.getProjectById(projectId);
+      if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
+      const plans = await db.getMonitoringPlans(projectId);
+      const doc = new PDFDocument({ size: "A4", margin: 44 });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("Content-Disposition", `attachment; filename="Planos_${project.code}.pdf"`);
+      doc.pipe(res);
+      writePdfHeader(doc, "RELATÓRIO DE PLANOS DE MONITORIZAÇÃO", "Estado, reporting, responsáveis, suporte e última atualização", project);
+      for (const plan of plans) {
+        if (doc.y > 650) doc.addPage();
+        const assignment = await db.getMonitoringPlanAssignment(plan.id, projectId);
+        const updates = await db.getMonitoringPlanUpdates(plan.id);
+        const update = updates.find((item: any) => !item.assignmentId || item.assignmentId === assignment?.id);
+        const status = assignment?.status || plan.trackingStatus;
+        const owner = assignment?.ownerName || plan.ownerName;
+        const nextDate = assignment?.nextReportingDate || plan.nextReportingDate;
+        const lastDate = assignment?.lastReportingDate || plan.lastReportingDate;
+        doc.fontSize(11).font("Helvetica-Bold").fillColor("#047857").text(`${plan.planNumber || `P-${plan.id}`} · ${plan.name}`);
+        doc.fontSize(8).font("Helvetica").fillColor("#334155").text(`Estado: ${TRACKING_STATUS_LABELS[status] || status} | Entrega: ${formatMonitoringPlanSubmissionStatus(assignment?.submissionStatus || plan.submissionStatus)} | Periodicidade: ${plan.periodicity || "—"}`);
+        doc.text(`Responsável: ${owner || "Por definir"} | Suporte: ${plan.supportName || "—"}${plan.supportCompany ? ` (${plan.supportCompany})` : ""}`);
+        doc.text(`Último reporting: ${formatPdfDate(lastDate)} | Próximo reporting: ${formatPdfDate(nextDate)}`);
+        if (plan.notes) doc.fontSize(8).font("Helvetica-Oblique").text(`Notas: ${plan.notes}`);
+        if (update) doc.fontSize(8).font("Helvetica-Oblique").text(`Última atualização: ${update.updateText} — ${update.createdByName}, ${formatPdfDate(update.createdAt)}`);
+        doc.moveDown(0.7);
+      }
+      writePdfFooter(doc); doc.end();
+    } catch (error: any) { console.error("[PDF Planos] Error:", error); if (!res.headersSent) res.status(500).json({ error: error.message || "Erro ao gerar relatório de Planos" }); }
+  });
+
   // Generate PDF report for a submission
   app.get("/api/pdf/submission/:id", async (req: Request, res: Response) => {
     try {

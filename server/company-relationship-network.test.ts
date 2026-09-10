@@ -30,9 +30,10 @@ describe("mapa de empresas por projecto", () => {
     expect(network.orphanPartners.map(company => company.shortName)).toEqual(["CON"]);
   });
 
-  it("recebe o projecto activo da Administração para iniciar no contexto em que o utilizador entrou", () => {
+  it("só monta a hierarquia da Administração no projecto individual activo", () => {
     const source = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPanel.tsx"), "utf8");
-    expect(source).toContain("activeProjectId={activeProject?.id}");
+    expect(source).toContain("!isAllProjects && activeProject");
+    expect(source).toContain("activeProjectId={activeProject.id}");
   });
 
   it("apresenta entidades PM como PM e não como Observador", () => {

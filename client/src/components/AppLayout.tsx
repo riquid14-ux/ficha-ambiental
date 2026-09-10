@@ -59,6 +59,7 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const projectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
@@ -87,7 +88,6 @@ const allProjectsMenuItems = [
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
   { icon: Heart, label: "GAMMA", path: "/gamma" },
-  { icon: BookOpen, label: "Documentação", path: "/documentacao" },
 ];
 
 const adminMenuItems = [

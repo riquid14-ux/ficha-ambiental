@@ -15,6 +15,7 @@ import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 import { sanitizeFile } from "./file-sanitizer";
 import { canReadDocumentLibrary } from "./document-library";
+import ExcelJS from "exceljs";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -165,6 +166,78 @@ function getSafePdfFilename(value: string) {
 // Helper: check if user can submit forms (ee or rap)
 function canSubmitForms(role: string) {
   return role === "ee" || role === "rap" || role === "admin" || role === "dono_obra";
+}
+
+type KpiWriteMode = "draft" | "submit" | "correct" | "import_draft" | "import_submit";
+type KpiValueInput = { metricId: number; value: string };
+
+async function resolveKpiContribution(user: any, database: any, projectId: number, requestedCompanyId: number) {
+  if (!Number.isSafeInteger(requestedCompanyId) || requestedCompanyId < 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione uma empresa válida para os KPI." });
+  const assigned = await database.execute(sql`SELECT pc.companyId FROM project_companies pc JOIN companies c ON c.id = pc.companyId WHERE pc.projectId = ${projectId} AND pc.companyId = ${requestedCompanyId} AND c.companyType IN ('ee', 'ee_partner') LIMIT 1`);
+  if (!(assigned as any)[0]?.length) throw new TRPCError({ code: "FORBIDDEN", message: "A empresa não está atribuída ao projeto seleccionado." });
+  if (user.role === "ee_partner") {
+    if (!user.companyId || requestedCompanyId !== user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Uma EEP só pode gerir os seus próprios KPI." });
+    const profile = await getActivePartnerProfile(user, "kpi");
+    return { companyId: user.companyId, parentCompanyId: profile!.parentCompanyId, sourceType: "ee_partner" as const };
+  }
+  if (user.role === "ee") {
+    if (!user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "EE sem empresa associada." });
+    if (requestedCompanyId === user.companyId) return { companyId: user.companyId, parentCompanyId: user.companyId, sourceType: "ee" as const };
+    const partners = await database.execute(sql`SELECT companyId FROM partner_company_profiles WHERE companyId = ${requestedCompanyId} AND parentCompanyId = ${user.companyId} AND active = 1 LIMIT 1`);
+    if (!(partners as any)[0]?.length) throw new TRPCError({ code: "FORBIDDEN", message: "A EE só pode corrigir contributos KPI das suas EEP." });
+    return { companyId: requestedCompanyId, parentCompanyId: user.companyId, sourceType: "ee_partner" as const };
+  }
+  if (!isAdminOrDono(user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para gerir KPI." });
+  const partner = await database.execute(sql`SELECT parentCompanyId FROM partner_company_profiles WHERE companyId = ${requestedCompanyId} AND active = 1 LIMIT 1`);
+  return { companyId: requestedCompanyId, parentCompanyId: (partner as any)[0]?.[0]?.parentCompanyId || requestedCompanyId, sourceType: (partner as any)[0]?.[0] ? "ee_partner" as const : "ee" as const };
+}
+
+async function writeKpiSubmission(params: { user: any; database: any; projectId: number; weekNumber: number; weekYear: number; contribution: { companyId: number; parentCompanyId: number | null; sourceType: "ee" | "ee_partner" }; values: KpiValueInput[]; mode: KpiWriteMode; }) {
+  const { user, database, projectId, weekNumber, weekYear, contribution, mode } = params;
+  const valuesByMetric = new Map<number, string>();
+  for (const row of params.values) { const value = String(row.value ?? "").trim(); if (value) valuesByMetric.set(Number(row.metricId), value); }
+  if (valuesByMetric.size === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Preencha pelo menos um valor KPI." });
+  if (valuesByMetric.size > 100) throw new TRPCError({ code: "BAD_REQUEST", message: "O limite é de 100 métricas por submissão." });
+  const metricIds = Array.from(valuesByMetric.keys());
+  const metricsResult = await database.execute(sql`SELECT id FROM kpi_metrics WHERE active = 1 AND inputType = 'manual' AND id IN (${sql.join(metricIds.map(id => sql`${id}`), sql`,`)})`);
+  if (((metricsResult as any)[0] || []).length !== metricIds.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro inclui uma métrica KPI inactiva ou inexistente." });
+  const existingRows = await database.execute(sql`SELECT id, userId, parentCompanyId, sourceType, status FROM kpi_submissions WHERE projectId = ${projectId} AND companyId = ${contribution.companyId} AND weekNumber = ${weekNumber} AND weekYear = ${weekYear} LIMIT 1`);
+  const existing = (existingRows as any)[0]?.[0] as any;
+  const actorName = getUserDisplayName(user);
+  const action = mode === "draft" || mode === "import_draft" ? "draft_saved" : mode === "correct" ? "corrected" : mode === "import_submit" ? "imported" : "submitted";
+  const finalStatus = mode === "draft" || mode === "import_draft" ? "draft" : contribution.sourceType === "ee_partner" ? "partial" : "submitted";
+  let submissionId: number;
+  let previousValues: any[] = [];
+  if (existing) {
+    const isOriginalAuthor = Number(existing.userId) === Number(user.id);
+    const isParentEe = user.role === "ee" && Number(existing.parentCompanyId) === Number(user.companyId) && existing.sourceType === "ee_partner";
+    if (!isOriginalAuthor && !isParentEe && !isAdminOrDono(user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Só o autor pode editar este KPI; a EE pode corrigir contributos das suas EEP." });
+    if ((mode === "draft" || mode === "import_draft") && existing.status !== "draft") throw new TRPCError({ code: "CONFLICT", message: "Esta semana já foi submetida. Use a correção auditável para alterar os valores." });
+    if (mode === "correct" && existing.status === "draft") throw new TRPCError({ code: "BAD_REQUEST", message: "Este registo ainda é um rascunho; guarde-o ou submeta-o normalmente." });
+    submissionId = Number(existing.id);
+    const previousRows = await database.execute(sql`SELECT metricId, value FROM kpi_values WHERE submissionId = ${submissionId}`);
+    previousValues = (previousRows as any)[0] || [];
+    await database.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
+    const preserveAuthor = mode === "correct" && !isOriginalAuthor;
+    await database.execute(sql`UPDATE kpi_submissions SET userId = ${preserveAuthor ? existing.userId : user.id}, parentCompanyId = ${contribution.parentCompanyId}, sourceType = ${contribution.sourceType}, status = ${finalStatus}, updatedAt = NOW() WHERE id = ${submissionId}`);
+  } else {
+    const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status) VALUES (${projectId}, ${contribution.companyId}, ${contribution.parentCompanyId}, ${contribution.sourceType}, ${user.id}, ${weekNumber}, ${weekYear}, ${finalStatus})`);
+    submissionId = Number((result as any)[0].insertId);
+  }
+  for (const [metricId, value] of Array.from(valuesByMetric.entries())) await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${metricId}, ${value})`);
+  const currentValues = Array.from(valuesByMetric.entries()).map(([metricId, value]) => ({ metricId, value }));
+  const summary = action === "corrected" ? `${actorName} corrigiu os KPI da semana ${weekNumber}/${weekYear}.` : action === "draft_saved" ? `${actorName} guardou um rascunho da semana ${weekNumber}/${weekYear}.` : action === "imported" ? `${actorName} importou KPI da semana ${weekNumber}/${weekYear}.` : `${actorName} submeteu KPI da semana ${weekNumber}/${weekYear}.`;
+  await database.execute(sql`INSERT INTO kpi_submission_changes (submissionId, action, actorId, actorName, summary, changedValues) VALUES (${submissionId}, ${action}, ${user.id}, ${actorName}, ${summary}, ${JSON.stringify({ previous: previousValues, current: currentValues })})`);
+  await db.insertAuditLog(user.id, actorName, `kpi_submission_${action}`, "kpi_submissions", submissionId, null, JSON.stringify({ projectId, companyId: contribution.companyId, weekNumber, weekYear, values: currentValues.length }));
+  return { submissionId, status: finalStatus, sourceType: contribution.sourceType, action };
+}
+
+async function archiveKpiSubmissionWhenFinal(projectId: number, contribution: { companyId: number; parentCompanyId: number | null; sourceType: "ee" | "ee_partner" }, weekNumber: number, weekYear: number, submissionId: number, values: KpiValueInput[], userId: number) {
+  try {
+    const { archiveDocument } = await import("./archive-provider");
+    const [project, company] = await Promise.all([db.getProjectById(projectId), db.getCompanyById(contribution.companyId)]);
+    await archiveDocument("kpi", project?.code || "UNKNOWN", weekYear, { submissionId, projectId, companyId: contribution.companyId, parentCompanyId: contribution.parentCompanyId, sourceType: contribution.sourceType, weekNumber, weekYear, values, userId }, { weekNumber, weekYear, companyId: contribution.companyId, companyName: company?.name || null });
+  } catch (error) { console.warn("KPI archive failed (non-fatal):", error); }
 }
 
 // Helper: check if user can review forms (raa, admin, dono_obra)
@@ -1988,13 +2061,18 @@ export const appRouter = router({
 
   // ─── Biblioteca Documental ────────────────────────────────────────────────
   documentLibrary: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number().int().positive().optional() }).optional()).query(async ({ ctx, input }) => {
       if (!canReadDocumentLibrary(ctx.user)) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Sem autorização para consultar a biblioteca documental." });
       }
       const isAdmin = ctx.user.role === "admin";
-      const documents = await db.listDocumentLibrary(isAdmin);
-      return documents.map(({ fileKey, ...document }) => document);
+      const projectId = input?.projectId;
+      if (!isAdmin && !projectId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar a documentação." });
+      }
+      if (projectId) await assertProjectAccess(ctx.user, projectId);
+      const documents = await db.listDocumentLibrary(isAdmin && !projectId, projectId);
+      return documents.map(({ fileKey, projectIds, ...document }) => isAdmin ? { ...document, projectIds } : document);
     }),
     create: adminProcedure
       .input(z.object({
@@ -2007,6 +2085,8 @@ export const appRouter = router({
         isProjectCentral: z.boolean().default(false),
         isMandatoryRead: z.boolean().default(false),
         centralOrder: z.number().int().min(0).max(999).default(0),
+        appliesToAllProjects: z.boolean().default(false),
+        projectIds: z.array(z.number().int().positive()).max(50).default([]),
         filename: z.string().trim().min(1).max(255),
         mimeType: z.literal("application/pdf"),
         data: z.string().min(16).max(MAX_FILE_SIZE_B64),
@@ -2018,6 +2098,14 @@ export const appRouter = router({
         }
         if (input.isMandatoryRead && !input.isProjectCentral) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
+        }
+        const projectIds = Array.from(new Set(input.projectIds));
+        if (!input.appliesToAllProjects && projectIds.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione pelo menos um projeto ou aplique o documento a todos os projetos." });
+        }
+        const validProjectIds = new Set((await db.getAllProjects()).filter(project => project.code !== "main").map(project => project.id));
+        if (projectIds.some(projectId => !validProjectIds.has(projectId))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Um ou mais projetos selecionados não são válidos." });
         }
         const filename = getSafePdfFilename(input.filename);
         if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) {
@@ -2041,6 +2129,7 @@ export const appRouter = router({
           title: input.title,
           language: input.language,
           description: input.description || null,
+          appliesToAllProjects: input.appliesToAllProjects ? 1 : 0,
           fileKey: key,
           filename,
           mimeType: input.mimeType,
@@ -2052,9 +2141,13 @@ export const appRouter = router({
           createdBy: ctx.user.id,
           createdByName: getUserDisplayName(ctx.user),
         });
+        if (created?.id && !input.appliesToAllProjects) {
+          await db.replaceDocumentLibraryProjects(created.id, projectIds);
+        }
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_created", "document_library", created?.id ?? null, null, JSON.stringify({
           topic: input.topic, subtopic: input.subtopic || null, title: input.title, language: input.language, status: input.status,
           isProjectCentral: input.isProjectCentral, isMandatoryRead: input.isMandatoryRead, centralOrder: input.centralOrder,
+          appliesToAllProjects: input.appliesToAllProjects, projectCount: input.appliesToAllProjects ? "todos" : projectIds.length,
         }));
         return created;
       }),
@@ -2070,10 +2163,12 @@ export const appRouter = router({
         isProjectCentral: z.boolean().optional(),
         isMandatoryRead: z.boolean().optional(),
         centralOrder: z.number().int().min(0).max(999).optional(),
+        appliesToAllProjects: z.boolean().optional(),
+        projectIds: z.array(z.number().int().positive()).max(50).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         assertAdminOnly(ctx.user);
-        const { id, isProjectCentral: centralInput, isMandatoryRead: mandatoryInput, ...data } = input;
+        const { id, isProjectCentral: centralInput, isMandatoryRead: mandatoryInput, appliesToAllProjects: allProjectsInput, projectIds: projectIdsInput, ...data } = input;
         const existing = await db.getDocumentLibraryItemById(id);
         if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
         const effectiveTopic = data.topic ?? existing.topic;
@@ -2086,14 +2181,27 @@ export const appRouter = router({
         if (isMandatoryRead && !isProjectCentral) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
         }
+        const appliesToAllProjects = allProjectsInput ?? existing.appliesToAllProjects === 1;
+        const projectIds = projectIdsInput === undefined ? await db.getDocumentLibraryProjectIds(id) : Array.from(new Set(projectIdsInput));
+        if (!appliesToAllProjects && projectIds.length === 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione pelo menos um projeto ou aplique o documento a todos os projetos." });
+        }
+        const validProjectIds = new Set((await db.getAllProjects()).filter(project => project.code !== "main").map(project => project.id));
+        if (projectIds.some(projectId => !validProjectIds.has(projectId))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Um ou mais projetos selecionados não são válidos." });
+        }
         const updateData = {
           ...data,
           ...(centralInput === undefined ? {} : { isProjectCentral: centralInput ? 1 : 0 }),
           ...(mandatoryInput === undefined ? {} : { isMandatoryRead: mandatoryInput ? 1 : 0 }),
+          ...(allProjectsInput === undefined ? {} : { appliesToAllProjects: allProjectsInput ? 1 : 0 }),
           ...(centralInput === false ? { isMandatoryRead: 0, centralOrder: 0 } : {}),
         };
         const updated = await db.updateDocumentLibraryItem(id, updateData);
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_updated", "document_library", id, JSON.stringify(existing), JSON.stringify(updateData));
+        if (projectIdsInput !== undefined || appliesToAllProjects) {
+          await db.replaceDocumentLibraryProjects(id, appliesToAllProjects ? [] : projectIds);
+        }
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_updated", "document_library", id, JSON.stringify({ title: existing.title, appliesToAllProjects: existing.appliesToAllProjects }), JSON.stringify({ ...updateData, projectCount: appliesToAllProjects ? "todos" : projectIds.length }));
         return updated;
       }),
     delete: adminProcedure
@@ -3492,6 +3600,19 @@ export const appRouter = router({
       const rows = await database.execute(sql`SELECT * FROM kpi_metrics WHERE active = 1 ORDER BY sortOrder ASC`);
       return (rows as any)[0] || [];
     }),
+    editableCompanies: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (ctx.user.role === "ee_partner") return ctx.user.companyId ? (await database.execute(sql`SELECT c.id, c.name, c.shortName, 'ee_partner' AS sourceType FROM companies c WHERE c.id = ${ctx.user.companyId} AND c.active = 1 LIMIT 1`) as any)[0] || [] : [];
+      if (ctx.user.role === "ee" && ctx.user.companyId) {
+        const rows = await database.execute(sql`SELECT c.id, c.name, c.shortName, CASE WHEN c.id = ${ctx.user.companyId} THEN 'ee' ELSE 'ee_partner' END AS sourceType FROM companies c JOIN project_companies pc ON pc.companyId = c.id AND pc.projectId = ${input.projectId} LEFT JOIN partner_company_profiles p ON p.companyId = c.id AND p.active = 1 WHERE c.active = 1 AND (c.id = ${ctx.user.companyId} OR p.parentCompanyId = ${ctx.user.companyId}) ORDER BY sourceType ASC, c.shortName ASC`);
+        return (rows as any)[0] || [];
+      }
+      if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+      const rows = await database.execute(sql`SELECT c.id, c.name, c.shortName, CASE WHEN p.companyId IS NULL THEN 'ee' ELSE 'ee_partner' END AS sourceType FROM companies c JOIN project_companies pc ON pc.companyId = c.id AND pc.projectId = ${input.projectId} LEFT JOIN partner_company_profiles p ON p.companyId = c.id AND p.active = 1 WHERE c.active = 1 AND c.companyType IN ('ee', 'ee_partner') ORDER BY c.shortName ASC`);
+      return (rows as any)[0] || [];
+    }),
     matrix: partnerAllowedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb();
@@ -3514,13 +3635,27 @@ export const appRouter = router({
       const rows = await database.execute(sql`SELECT * FROM kpi_values WHERE submissionId = ${input.submissionId}`);
       return (rows as any)[0] || [];
     }),
+    draft: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive().optional(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100) })).query(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb();
+      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId || ctx.user.companyId || 0);
+      const rows = await database.execute(sql`SELECT id, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status, createdAt, updatedAt FROM kpi_submissions WHERE projectId = ${input.projectId} AND companyId = ${contribution.companyId} AND weekNumber = ${input.weekNumber} AND weekYear = ${input.weekYear} LIMIT 1`);
+      const submission = (rows as any)[0]?.[0];
+      if (!submission) return null;
+      const [values, changes] = await Promise.all([
+        database.execute(sql`SELECT metricId, value FROM kpi_values WHERE submissionId = ${submission.id} ORDER BY metricId ASC`),
+        database.execute(sql`SELECT action, actorId, actorName, summary, createdAt FROM kpi_submission_changes WHERE submissionId = ${submission.id} ORDER BY createdAt DESC LIMIT 20`),
+      ]);
+      return { ...submission, values: (values as any)[0] || [], changes: (changes as any)[0] || [] };
+    }),
     allValues: partnerAllowedProcedure.input(z.object({ projectId: z.number(), weekYear: z.number().optional(), weekNumber: z.number().optional(), startWeek: z.number().int().min(1).max(53).optional(), endWeek: z.number().int().min(1).max(53).optional() })).query(async ({ ctx, input }) => {
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       if (input.startWeek && input.endWeek && input.startWeek > input.endWeek) throw new TRPCError({ code: "BAD_REQUEST", message: "A semana inicial não pode ser posterior à semana final." });
       if ((input.startWeek || input.endWeek) && !input.weekYear) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione o ano do período KPI." });
       const database = await db.getDb();
       if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, ks.parentCompanyId, ks.sourceType, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId}`;
+      let q = sql`SELECT kv.metricId, kv.value, ks.weekNumber, ks.weekYear, ks.companyId, ks.parentCompanyId, ks.sourceType, c.shortName as companyName FROM kpi_values kv JOIN kpi_submissions ks ON ks.id = kv.submissionId JOIN companies c ON c.id = ks.companyId WHERE ks.projectId = ${input.projectId} AND ks.status <> 'draft'`;
       if (ctx.user.role === "ee_partner") q = sql`${q} AND ks.companyId = ${ctx.user.companyId}`;
       else if (ctx.user.role === "ee" && ctx.user.companyId) q = sql`${q} AND (ks.companyId = ${ctx.user.companyId} OR ks.parentCompanyId = ${ctx.user.companyId})`;
       if (input.weekYear) q = sql`${q} AND ks.weekYear = ${input.weekYear}`;
@@ -3530,67 +3665,57 @@ export const appRouter = router({
       const rows = await database.execute(q);
       return (rows as any)[0] || [];
     }),
-    submit: partnerAllowedProcedure.input(z.object({ projectId: z.number(), companyId: z.number(), weekNumber: z.number(), weekYear: z.number(), values: z.array(z.object({ metricId: z.number(), value: z.string() })) })).mutation(async ({ ctx, input }) => {
-      if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a EE, os parceiros autorizados ou a administração podem submeter KPI." });
+    saveDraft: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+      if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para guardar rascunhos KPI." });
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
+      return writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "draft" });
+    }),
+    submit: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+      if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a EE, as EEP autorizadas ou a administração podem submeter KPI." });
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
+      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "submit" });
+      await archiveKpiSubmissionWhenFinal(input.projectId, contribution, input.weekNumber, input.weekYear, result.submissionId, input.values, ctx.user.id);
+      return { success: true, ...result };
+    }),
+    correct: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
+      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "correct" });
+      await archiveKpiSubmissionWhenFinal(input.projectId, contribution, input.weekNumber, input.weekYear, result.submissionId, input.values, ctx.user.id);
+      return result;
+    }),
+    importExcel: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), mode: z.enum(["draft", "submit"]).default("draft"), filename: z.string().min(1).max(255), data: z.string().min(20).max(15 * 1024 * 1024) })).mutation(async ({ ctx, input }) => {
+      if (!/\.xlsx$/i.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Importe apenas ficheiros Excel (.xlsx) gerados pelo modelo KPI." });
+      await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+      const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
+      let workbook: ExcelJS.Workbook;
+      try { workbook = new ExcelJS.Workbook(); await workbook.xlsx.load(Buffer.from(input.data, "base64") as any); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel não é válido." }); }
+      const worksheet = workbook.getWorksheet("Importar KPI") || workbook.worksheets[0];
+      if (!worksheet || worksheet.rowCount > 5001) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel está vazio ou excede 5 000 linhas." });
+      const grouped = new Map<string, { weekNumber: number; weekYear: number; values: KpiValueInput[] }>();
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const [, yearRaw, weekRaw, metricIdRaw, _metricName, _unit, valueRaw] = row.values as any[];
+        if ([yearRaw, weekRaw, metricIdRaw, valueRaw].every(value => value === undefined || value === null || value === "")) return;
+        const weekYear = Number(yearRaw); const weekNumber = Number(weekRaw); const metricId = Number(metricIdRaw); const value = String(valueRaw ?? "").trim();
+        if (!Number.isInteger(weekYear) || weekYear < 2020 || weekYear > 2100 || !Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 53 || !Number.isInteger(metricId) || metricId < 1 || !value || value.length > 255) throw new TRPCError({ code: "BAD_REQUEST", message: `Linha ${rowNumber}: confirme Ano, Semana, ID da métrica e Valor.` });
+        const key = `${weekYear}-${weekNumber}`; const group = grouped.get(key) || { weekNumber, weekYear, values: [] }; group.values.push({ metricId, value }); grouped.set(key, group);
+      });
+      if (!grouped.size) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel não contém valores KPI para importar." });
+      if (grouped.size > 53) throw new TRPCError({ code: "BAD_REQUEST", message: "O limite de importação é 53 semanas de cada vez." });
+      const results = [];
+      for (const group of Array.from(grouped.values())) {
+        const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: group.weekNumber, weekYear: group.weekYear, contribution, values: group.values, mode: input.mode === "draft" ? "import_draft" : "import_submit" });
+        if (input.mode === "submit") await archiveKpiSubmissionWhenFinal(input.projectId, contribution, group.weekNumber, group.weekYear, result.submissionId, group.values, ctx.user.id);
+        results.push(result);
       }
-      const profile = await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
-      let contributorCompanyId = input.companyId;
-      let parentCompanyId: number | null = input.companyId;
-      let sourceType: "ee" | "ee_partner" = "ee";
-      let status = "submitted";
-      if (ctx.user.role === "ee_partner") {
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Parceiro sem empresa associada." });
-        contributorCompanyId = ctx.user.companyId;
-        parentCompanyId = profile!.parentCompanyId;
-        sourceType = "ee_partner";
-        status = "partial";
-      } else if (ctx.user.role === "ee") {
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "EE sem empresa associada." });
-        contributorCompanyId = ctx.user.companyId;
-        parentCompanyId = ctx.user.companyId;
-      }
-      const database = await db.getDb();
-      if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const existing = await database.execute(sql`SELECT id FROM kpi_submissions WHERE projectId = ${input.projectId} AND companyId = ${contributorCompanyId} AND weekNumber = ${input.weekNumber} AND weekYear = ${input.weekYear}`);
-      let submissionId: number;
-      if ((existing as any)[0]?.length > 0) {
-        submissionId = (existing as any)[0][0].id;
-        await database.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
-        await database.execute(sql`UPDATE kpi_submissions SET userId = ${ctx.user.id}, parentCompanyId = ${parentCompanyId}, sourceType = ${sourceType}, status = ${status}, updatedAt = NOW() WHERE id = ${submissionId}`);
-      } else {
-        const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status) VALUES (${input.projectId}, ${contributorCompanyId}, ${parentCompanyId}, ${sourceType}, ${ctx.user.id}, ${input.weekNumber}, ${input.weekYear}, ${status})`);
-        submissionId = (result as any)[0].insertId;
-      }
-      for (const value of input.values) {
-        if (value.value && value.value.trim() !== "") {
-          await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${value.metricId}, ${value.value})`);
-        }
-      }
-      try {
-        const { archiveDocument } = await import("./archive-provider");
-        const project = await db.getProjectById(input.projectId);
-        const company = await db.getCompanyById(contributorCompanyId);
-        await archiveDocument("kpi", project?.code || "UNKNOWN", input.weekYear, {
-          submissionId,
-          projectId: input.projectId,
-          companyId: contributorCompanyId,
-          parentCompanyId,
-          sourceType,
-          weekNumber: input.weekNumber,
-          weekYear: input.weekYear,
-          values: input.values,
-          userId: ctx.user.id,
-        }, {
-          weekNumber: input.weekNumber,
-          weekYear: input.weekYear,
-          companyId: contributorCompanyId,
-          companyName: company?.name || null,
-        });
-      } catch (error) {
-        console.warn("KPI archive failed (non-fatal):", error);
-      }
-      return { success: true, submissionId, status, sourceType };
+      return { success: true, importedWeeks: results.length, mode: input.mode, results };
     }),
     upsertMetric: protectedProcedure.input(z.object({ id: z.number().int().positive().optional(), name: z.string().trim().min(3).max(120), nameEn: z.string().trim().max(120).optional(), unit: z.string().trim().min(1).max(24), target: z.string().trim().max(80).optional(), category: z.enum(["workforce", "transport", "fuel", "generators", "energy", "water", "emissions", "air_noise", "incidents", "other"]), inputType: z.enum(["manual", "calculated"]).default("manual"), formulaType: z.enum(["fuel_to_co2", "sum_co2"]).optional(), formulaSourceMetricId: z.number().int().positive().optional(), pci: z.string().trim().max(40).optional(), emissionFactor: z.string().trim().max(40).optional(), density: z.string().trim().max(40).optional(), sortOrder: z.number().int().min(0).max(999).optional() })).mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });

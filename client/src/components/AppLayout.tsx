@@ -64,6 +64,7 @@ const projectMenuItems = [
   { icon: ClipboardList, label: "Ficha Semanal", path: "/ficha" },
   { icon: Recycle, label: "Gestão de Resíduos", path: "/residuos" },
   { icon: BarChart3, label: "KPI's", path: "/kpi" },
+  { icon: BookOpen, label: "Documentação", path: "/documentacao" },
 ];
 
 // Menu items for operation-only projects (no construction workflow)
@@ -74,6 +75,7 @@ const operationProjectMenuItems = [
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
   { icon: FileBarChart, label: "Certificações", path: "/certificacoes" },
+  { icon: BookOpen, label: "Documentação", path: "/documentacao" },
 ];
 
 // Menu items for "Todos os Projetos" view
@@ -85,6 +87,7 @@ const allProjectsMenuItems = [
   { icon: GitBranch, label: "Timeline", path: "/timeline" },
   { icon: FileBarChart, label: "RDCD", path: "/rdcd" },
   { icon: Heart, label: "GAMMA", path: "/gamma" },
+  { icon: BookOpen, label: "Documentação", path: "/documentacao" },
 ];
 
 const adminMenuItems = [

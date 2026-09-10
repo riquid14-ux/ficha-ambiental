@@ -99,6 +99,24 @@ describe("Security Drill Tests", () => {
     it("should set Referrer-Policy", () => {
       expect(indexCode).toContain("referrerPolicy");
     });
+
+    it("should enforce a content security policy without allowing arbitrary framing", () => {
+      expect(indexCode).toContain("contentSecurityPolicy: {");
+      expect(indexCode).toContain("frameAncestors");
+      expect(indexCode).not.toContain('"ALLOWALL"');
+    });
+
+    it("should refuse unsafe inline scripts in production", () => {
+      expect(indexCode).toContain('process.env.NODE_ENV === "production"');
+      expect(indexCode).toContain('cspScriptSources');
+    });
+
+    it("should limit document reads and administrative document operations", () => {
+      expect(indexCode).toContain("documentReadLimiter");
+      expect(indexCode).toContain("documentWriteLimiter");
+      expect(indexCode).toContain("/api/trpc/documentLibrary.create");
+      expect(indexCode).toContain("/api/documentos");
+    });
   });
 
   describe("A7: XSS Prevention", () => {

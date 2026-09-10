@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { execFileSync } from "child_process";
+import { readSafeZipEntries } from "./safe-zip";
 
 interface ExtractedImage {
   page: number;
@@ -19,13 +20,12 @@ export async function extractDocumentText(documentBuffer: Buffer, filename: stri
   const lowerName = filename.toLowerCase();
 
   if (lowerName.endsWith(".docx")) {
-    const AdmZip = (await import("adm-zip")).default;
-    const zip = new AdmZip(documentBuffer);
-    const entry = zip.getEntry("word/document.xml");
+    const entries = await readSafeZipEntries(documentBuffer);
+    const entry = entries.find(item => item.fileName === "word/document.xml");
     if (!entry) throw new Error("Documento Word sem conteúdo legível.");
 
     return entry
-      .getData()
+      .data
       .toString("utf8")
       .replace(/<w:tab\s*\/?>/g, "\t")
       .replace(/<w:br\s*\/?>/g, "\n")
@@ -125,17 +125,15 @@ export async function extractImagesFromPdf(pdfBuffer: Buffer): Promise<Extracted
  * DOCX files are ZIP archives with images in word/media/ folder.
  */
 export async function extractImagesFromDocx(docxBuffer: Buffer): Promise<ExtractedImage[]> {
-  const AdmZip = (await import("adm-zip")).default;
-  const zip = new AdmZip(docxBuffer);
+  const entries = await readSafeZipEntries(docxBuffer);
   const images: ExtractedImage[] = [];
 
-  const entries = zip.getEntries();
   let imgIndex = 0;
 
   for (const entry of entries) {
     // Word stores images in word/media/ folder
-    if (entry.entryName.startsWith("word/media/") && !entry.isDirectory) {
-      const ext = path.extname(entry.entryName).toLowerCase();
+    if (entry.fileName.startsWith("word/media/") && !entry.isDirectory) {
+      const ext = path.extname(entry.fileName).toLowerCase();
       const mimeMap: Record<string, string> = {
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
@@ -153,7 +151,7 @@ export async function extractImagesFromDocx(docxBuffer: Buffer): Promise<Extract
       // Skip EMF/WMF (vector graphics, usually logos)
       if (ext === ".emf" || ext === ".wmf") continue;
 
-      const buffer = entry.getData();
+      const buffer = entry.data;
 
       // Skip very small images (< 5KB) - likely icons
       if (buffer.length < 5000) continue;
@@ -162,7 +160,7 @@ export async function extractImagesFromDocx(docxBuffer: Buffer): Promise<Extract
         page: imgIndex,
         buffer,
         mimeType,
-        filename: path.basename(entry.entryName),
+        filename: path.basename(entry.fileName),
       });
       imgIndex++;
     }

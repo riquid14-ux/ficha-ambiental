@@ -14,6 +14,7 @@ import { TOTP, Secret } from "otpauth";
 import QRCode from "qrcode";
 import { sendFichaSubmittedNotification, sendFichaReviewedNotification, sendInvitationEmail } from "./email";
 import { sanitizeFile } from "./file-sanitizer";
+import { canReadDocumentLibrary } from "./document-library";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -151,6 +152,14 @@ function canUpdatePlanProgress(user: any, assignment: any) {
 
 function getUserDisplayName(user: any) {
   return user.fullName || user.name || user.email || `Utilizador ${user.id}`;
+}
+
+function getSafePdfFilename(value: string) {
+  const filename = value.trim();
+  if (!filename.toLowerCase().endsWith(".pdf") || /[\\/\r\n\0]/.test(filename) || filename.length > 255) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Indique um nome de ficheiro PDF válido." });
+  }
+  return filename;
 }
 
 // Helper: check if user can submit forms (ee or rap)
@@ -1974,6 +1983,104 @@ export const appRouter = router({
           filename: input.filename,
           uploadedBy: ctx.user.id,
         });
+      }),
+  }),
+
+  // ─── Biblioteca Documental ────────────────────────────────────────────────
+  documentLibrary: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      if (!canReadDocumentLibrary(ctx.user)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Sem autorização para consultar a biblioteca documental." });
+      }
+      const isAdmin = ctx.user.role === "admin";
+      const documents = await db.listDocumentLibrary(isAdmin);
+      return documents.map(({ fileKey, ...document }) => document);
+    }),
+    create: adminProcedure
+      .input(z.object({
+        topic: z.enum(["obrigacoes_ambientais", "certificacoes", "recomendacoes"]),
+        subtopic: z.string().trim().max(100).nullable().optional(),
+        title: z.string().trim().min(3).max(255),
+        language: z.string().trim().min(2).max(50),
+        description: z.string().trim().max(2_000).nullable().optional(),
+        status: z.enum(["draft", "published"]).default("draft"),
+        filename: z.string().trim().min(1).max(255),
+        mimeType: z.literal("application/pdf"),
+        data: z.string().min(16).max(MAX_FILE_SIZE_B64),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        if (input.topic !== "certificacoes" && input.subtopic) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Os subtópicos são permitidos apenas em Certificações." });
+        }
+        const filename = getSafePdfFilename(input.filename);
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O conteúdo do PDF é inválido." });
+        }
+        const buffer = Buffer.from(input.data, "base64");
+        const hasPdfHeader = buffer.subarray(0, 1024).includes(Buffer.from("%PDF-"));
+        const hasPdfEndMarker = buffer.subarray(Math.max(0, buffer.length - 1024)).includes(Buffer.from("%%EOF"));
+        if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024 || !hasPdfHeader || !hasPdfEndMarker) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Carregue um PDF válido até 10 MB." });
+        }
+        const sanitizeResult = await sanitizeFile(buffer, input.mimeType, filename);
+        await logFileUpload(ctx.user.id, filename, input.mimeType, sanitizeResult.safe, sanitizeResult.threats, "document-library");
+        if (!sanitizeResult.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitizeResult.threats[0]}` });
+        }
+        const { key } = await storagePut(`document-library/${input.topic}/${filename}`, buffer, input.mimeType);
+        const created = await db.createDocumentLibraryItem({
+          topic: input.topic,
+          subtopic: input.subtopic || null,
+          title: input.title,
+          language: input.language,
+          description: input.description || null,
+          fileKey: key,
+          filename,
+          mimeType: input.mimeType,
+          fileSize: buffer.length,
+          status: input.status,
+          createdBy: ctx.user.id,
+          createdByName: getUserDisplayName(ctx.user),
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_created", "document_library", created?.id ?? null, null, JSON.stringify({
+          topic: input.topic, subtopic: input.subtopic || null, title: input.title, language: input.language, status: input.status,
+        }));
+        return created;
+      }),
+    update: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        topic: z.enum(["obrigacoes_ambientais", "certificacoes", "recomendacoes"]).optional(),
+        subtopic: z.string().trim().max(100).nullable().optional(),
+        title: z.string().trim().min(3).max(255).optional(),
+        language: z.string().trim().min(2).max(50).optional(),
+        description: z.string().trim().max(2_000).nullable().optional(),
+        status: z.enum(["draft", "published", "archived"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        const { id, ...data } = input;
+        const existing = await db.getDocumentLibraryItemById(id);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+        const effectiveTopic = data.topic ?? existing.topic;
+        const effectiveSubtopic = data.subtopic === undefined ? existing.subtopic : data.subtopic;
+        if (effectiveTopic !== "certificacoes" && effectiveSubtopic) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Os subtópicos são permitidos apenas em Certificações." });
+        }
+        const updated = await db.updateDocumentLibraryItem(id, data);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_updated", "document_library", id, JSON.stringify(existing), JSON.stringify(data));
+        return updated;
+      }),
+    delete: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        const existing = await db.getDocumentLibraryItemById(input.id);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
+        await db.deleteDocumentLibraryItem(input.id);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_deleted", "document_library", input.id, JSON.stringify({ title: existing.title }), null);
+        return { success: true };
       }),
   }),
 

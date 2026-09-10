@@ -2,6 +2,7 @@
 // File Sanitizer — Protects against malicious PDFs and Word documents
 // Checks for: JavaScript in PDFs, macros in Word, external links, embedded objects
 // ═══════════════════════════════════════════════════════════════════════════════
+import { readSafeZipEntries } from "./safe-zip";
 
 export interface SanitizeResult {
   safe: boolean;
@@ -64,12 +65,10 @@ export async function sanitizeDocx(buffer: Buffer): Promise<SanitizeResult> {
   const threats: string[] = [];
 
   try {
-    const AdmZip = (await import("adm-zip")).default;
-    const zip = new AdmZip(buffer);
-    const entries = zip.getEntries();
+    const entries = await readSafeZipEntries(buffer);
 
     for (const entry of entries) {
-      const name = entry.entryName.toLowerCase();
+      const name = entry.fileName.toLowerCase();
 
       // 1. Check for VBA macros (most dangerous — .docm disguised as .docx)
       if (name.includes("vbaproject") || name.includes("vbadata")) {
@@ -83,7 +82,7 @@ export async function sanitizeDocx(buffer: Buffer): Promise<SanitizeResult> {
 
       // 3. Check for embedded OLE objects (can contain executables)
       if (name.includes("oleobject") || name.includes("embeddings/")) {
-        const data = entry.getData().toString("latin1");
+        const data = entry.data.toString("latin1");
         if (/\.exe|\.bat|\.cmd|\.ps1|\.vbs|\.scr|\.dll/i.test(data)) {
           threats.push("Documento Word contém objecto OLE com executável embebido");
         }
@@ -91,7 +90,7 @@ export async function sanitizeDocx(buffer: Buffer): Promise<SanitizeResult> {
 
       // 4. Check for external relationships (data exfiltration via template injection)
       if (name.endsWith(".rels")) {
-        const data = entry.getData().toString("utf-8");
+        const data = entry.data.toString("utf-8");
         // External targets that aren't standard Microsoft schemas
         const externalMatches = data.match(/Target="https?:\/\/[^"]*"/g) || [];
         for (const match of externalMatches) {
@@ -158,6 +157,7 @@ export async function sanitizeFile(buffer: Buffer, mimeType: string, filename: s
       return sanitizePdf(buffer);
 
     case "application/msword":
+      return { safe: false, threats: ["Documentos Word legados (.doc) não são aceites por segurança; use .docx ou PDF."], fileType: "Word" };
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
       return sanitizeDocx(buffer);
 

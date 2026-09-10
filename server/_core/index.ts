@@ -17,6 +17,7 @@ import { weeklyReminderHandler } from "../scheduled-reminders";
 import { deadlineReminderHandler } from "../scheduled-reminders";
 import { registerAutodeskRoutes } from "../autodesk";
 import { registerHealthRoutes } from "../health";
+import { registerDocumentLibraryRoutes } from "../document-library";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -26,6 +27,15 @@ function isPortAvailable(port: number): Promise<boolean> {
     });
     server.on("error", () => resolve(false));
   });
+}
+
+function isAllowedAutodeskOrigin(origin: string) {
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return ["autodesk.com", "autodesk.io"].some(domain => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
 }
 
 async function findAvailablePort(startPort: number = 3000): Promise<number> {
@@ -39,6 +49,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = express();
+  const cspScriptSources = process.env.NODE_ENV === "production" ? ["'self'"] : ["'self'", "'unsafe-inline'"];
   // A aplicação corre atrás de um único reverse proxy (Nginx/hosting gerido).
   // Permite ao rate limiter usar com segurança o endereço real do cliente.
   app.set("trust proxy", 1);
@@ -49,9 +60,23 @@ async function startServer() {
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
     originAgentCluster: false,
-    contentSecurityPolicy: false, // We set CSP manually below for ACC iframe support
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        objectSrc: ["'none'"],
+        scriptSrc: cspScriptSources,
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        fontSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https://api.manus.im"],
+        frameSrc: ["'self'", "https://www.youtube.com"],
+        frameAncestors: ["'self'", "https://*.autodesk.com", "https://*.autodesk.io", "https://acc.autodesk.com", "https://construction.autodesk.com"],
+        formAction: ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false, // Required for ACC iframe
-    frameguard: false, // We handle X-Frame-Options manually for ACC
+    frameguard: false, // frame-ancestors CSP limita o embedding a ACC
     referrerPolicy: { policy: "strict-origin-when-cross-origin" }, // Required for YouTube embeds (no-referrer blocks them)
   }));
 
@@ -63,12 +88,30 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
   });
+  const documentReadLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 120,
+    message: { error: "Demasiadas consultas a documentos. Tente novamente mais tarde." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  const documentWriteLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: "Demasiadas operações de documentação. Tente novamente mais tarde." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   // Apply rate limiting to auth-related tRPC mutations
   app.use("/api/trpc/auth.login", authLimiter);
   app.use("/api/trpc/auth.register", authLimiter);
   app.use("/api/trpc/auth.verify2FA", authLimiter);
   app.use("/api/trpc/auth.forgotPassword", authLimiter);
   app.use("/api/trpc/auth.resetPasswordWithToken", authLimiter);
+  app.use("/api/trpc/documentLibrary.create", documentWriteLimiter);
+  app.use("/api/trpc/documentLibrary.update", documentWriteLimiter);
+  app.use("/api/trpc/documentLibrary.delete", documentWriteLimiter);
+  app.use("/api/documentos", documentReadLimiter);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -76,16 +119,8 @@ async function startServer() {
 
   // ─── ACC Iframe Support: Allow embedding in Autodesk Construction Cloud ───
   app.use((req, res, next) => {
-    // Allow iframe embedding from Autodesk domains
-    res.setHeader("X-Frame-Options", "ALLOWALL");
-    res.removeHeader("X-Frame-Options");
-    // Content-Security-Policy: allow framing from Autodesk
-    res.setHeader(
-      "Content-Security-Policy",
-      "frame-ancestors 'self' https://*.autodesk.com https://*.autodesk.io https://acc.autodesk.com https://construction.autodesk.com"
-    );
     // Required for cookies in cross-origin iframes
-    if (req.headers.origin && (req.headers.origin.includes("autodesk.com") || req.headers.origin.includes("autodesk.io"))) {
+    if (req.headers.origin && isAllowedAutodeskOrigin(req.headers.origin)) {
       res.setHeader("Access-Control-Allow-Origin", req.headers.origin);
       res.setHeader("Access-Control-Allow-Credentials", "true");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
@@ -101,6 +136,7 @@ async function startServer() {
   registerApiDocs(app);
   registerAutodeskRoutes(app);
   registerHealthRoutes(app);
+  registerDocumentLibraryRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);

@@ -483,6 +483,32 @@ export const monitoringPlanAttachments = mysqlTable("monitoring_plan_attachments
 export type MonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferSelect;
 export type InsertMonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferInsert;
 
+// ─── Biblioteca Documental (PDF privado em storage externo) ───────────────────
+export const documentLibrary = mysqlTable("document_library", {
+  id: int("id").autoincrement().primaryKey(),
+  topic: mysqlEnum("topic", ["obrigacoes_ambientais", "certificacoes", "recomendacoes"]).notNull(),
+  subtopic: varchar("subtopic", { length: 100 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  language: varchar("language", { length: 50 }).notNull(),
+  description: text("description"),
+  fileKey: varchar("fileKey", { length: 500 }).notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 100 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft").notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  statusTopicIdx: index("document_library_status_topic_idx").on(table.status, table.topic),
+  topicSubtopicIdx: index("document_library_topic_subtopic_idx").on(table.topic, table.subtopic),
+  createdAtIdx: index("document_library_created_idx").on(table.createdAt),
+}));
+
+export type DocumentLibraryItem = typeof documentLibrary.$inferSelect;
+export type InsertDocumentLibraryItem = typeof documentLibrary.$inferInsert;
+
 // ─── Project Phases (Fases do Projeto - controlo por fase) ────────────────────
 export const projectPhases = mysqlTable("project_phases", {
   id: int("id").autoincrement().primaryKey(),

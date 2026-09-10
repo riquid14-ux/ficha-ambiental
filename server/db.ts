@@ -29,6 +29,8 @@ import {
   InsertMonitoringPlanAssignment,
   InsertMonitoringPlanUpdate,
   InsertMonitoringPlanAttachment,
+  documentLibrary,
+  InsertDocumentLibraryItem,
   projectPhases,
   projectPhaseUpdates,
   phaseMeasureUpdates,
@@ -1303,6 +1305,44 @@ export async function getMonitoringPlanAttachments(planId: number) {
   return db.select().from(monitoringPlanAttachments)
     .where(eq(monitoringPlanAttachments.planId, planId))
     .orderBy(desc(monitoringPlanAttachments.uploadedAt));
+}
+
+// ─── Biblioteca Documental ───────────────────────────────────────────────────
+export async function getDocumentLibraryItemById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(documentLibrary).where(eq(documentLibrary.id, id)).limit(1);
+  return result[0];
+}
+
+export async function listDocumentLibrary(includeUnpublished = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const query = db.select().from(documentLibrary);
+  const items = includeUnpublished
+    ? await query.orderBy(desc(documentLibrary.createdAt)).limit(100)
+    : await query.where(eq(documentLibrary.status, "published")).orderBy(desc(documentLibrary.createdAt)).limit(100);
+  return items;
+}
+
+export async function createDocumentLibraryItem(data: Omit<InsertDocumentLibraryItem, "id" | "createdAt" | "updatedAt">) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const result = await db.insert(documentLibrary).values(data);
+  return getDocumentLibraryItemById(result[0].insertId);
+}
+
+export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<InsertDocumentLibraryItem, "topic" | "subtopic" | "title" | "language" | "description" | "status" | "fileKey" | "filename" | "mimeType" | "fileSize">>) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(documentLibrary).set(data).where(eq(documentLibrary.id, id));
+  return getDocumentLibraryItemById(id);
+}
+
+export async function deleteDocumentLibraryItem(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.delete(documentLibrary).where(eq(documentLibrary.id, id));
 }
 
 export async function getMonitoringPlanOverview() {

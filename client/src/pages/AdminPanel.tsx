@@ -13,11 +13,12 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { toast } from "sonner";
-import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon, Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Settings2 } from "lucide-react";
+import { Building2, Users, Plus, FileUp, ClipboardList, ImageIcon, Info, Shield, FileCheck, Eye, HardHat, Mail, Trash2, UserPlus, FolderKanban, Pencil, XCircle, CheckCircle2, Calendar, Settings2, BookOpen } from "lucide-react";
 import { useLocation } from "wouter";
 import ImagesTab from "./AdminImagesTab";
 import { CompanyRelationshipMap } from "@/components/CompanyRelationshipMap";
 import { useProject } from "@/contexts/ProjectContext";
+import DocumentLibraryAdminTab from "./DocumentLibraryAdminTab";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
@@ -220,7 +221,7 @@ export default function AdminPanel() {
         </Card>
 
         <Tabs defaultValue="companies">
-          <TabsList>
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto whitespace-nowrap p-1">
             <TabsTrigger value="companies" className="gap-2">
               <Building2 className="w-4 h-4" /> Empresas
             </TabsTrigger>
@@ -229,6 +230,9 @@ export default function AdminPanel() {
             </TabsTrigger>
             <TabsTrigger value="images" className="gap-2">
               <ImageIcon className="w-4 h-4" /> Imagens
+            </TabsTrigger>
+            <TabsTrigger value="documentos" className="gap-2">
+              <BookOpen className="w-4 h-4" /> Documentação
             </TabsTrigger>
             <TabsTrigger value="pedidos" className="gap-2">
               🔑 Pedidos de Acesso
@@ -266,6 +270,9 @@ export default function AdminPanel() {
           </TabsContent>
           <TabsContent value="images" className="mt-4">
             <ImagesTab />
+          </TabsContent>
+          <TabsContent value="documentos" className="mt-4">
+            <DocumentLibraryAdminTab />
           </TabsContent>
           <TabsContent value="pedidos" className="mt-4"><PendingAccountsTab /></TabsContent>
           {user?.role === "admin" && <TabsContent value="pedidos-eep" className="mt-4"><EepRequestsAdminTab /></TabsContent>}

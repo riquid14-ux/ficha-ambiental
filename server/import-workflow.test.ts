@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
-import AdmZip from "adm-zip";
+import { ZipArchive } from "archiver";
 import { extractDocumentText } from "./image-extractor";
 
 const routerCode = fs.readFileSync(`${process.cwd()}/server/routers.ts`, "utf8");
@@ -11,6 +11,18 @@ const matrixCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Matriz.tsx
 const matrixStatusCode = fs.readFileSync(`${process.cwd()}/client/src/lib/matrix-status.ts`, "utf8");
 const dashboardCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Dashboard.tsx`, "utf8");
 const rdcdCode = fs.readFileSync(`${process.cwd()}/client/src/pages/RDCD.tsx`, "utf8");
+
+function createDocxFixture(xml: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    const archive = new ZipArchive({ zlib: { level: 0 } });
+    archive.on("data", (chunk: Buffer) => chunks.push(chunk));
+    archive.on("error", reject);
+    archive.on("end", () => resolve(Buffer.concat(chunks)));
+    archive.append(Buffer.from(xml), { name: "word/document.xml" });
+    void archive.finalize();
+  });
+}
 
 describe("Importação de fichas externas", () => {
   describe("Permissões e estados", () => {
@@ -119,12 +131,8 @@ describe("Importação de fichas externas", () => {
     });
 
     it("extrai texto de um DOCX real sem executar conteúdo do documento", async () => {
-      const zip = new AdmZip();
-      zip.addFile(
-        "word/document.xml",
-        Buffer.from('<?xml version="1.0"?><w:document xmlns:w="urn:test"><w:body><w:p><w:r><w:t>Medida M01 Conforme</w:t></w:r></w:p><w:p><w:r><w:t>Observação validada</w:t></w:r></w:p></w:body></w:document>')
-      );
-      const text = await extractDocumentText(zip.toBuffer(), "ficha.docx");
+      const docxBuffer = await createDocxFixture('<?xml version="1.0"?><w:document xmlns:w="urn:test"><w:body><w:p><w:r><w:t>Medida M01 Conforme</w:t></w:r></w:p><w:p><w:r><w:t>Observação validada</w:t></w:r></w:p></w:body></w:document>');
+      const text = await extractDocumentText(docxBuffer, "ficha.docx");
       expect(text).toContain("Medida M01 Conforme");
       expect(text).toContain("Observação validada");
       expect(text).not.toContain("<w:t>");

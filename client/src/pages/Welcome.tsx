@@ -50,6 +50,7 @@ function getFeatures(role: string, visiblePaths: string[]): FeatureCard[] {
     { icon: Recycle, title: "MIRR", description: "Registe e acompanhe os resíduos do projeto, incluindo e-GAR e exportação MIRR.", path: "/mirr" },
     { icon: Layers, title: "Fases de Exploração", description: "Submeta evidências anuais das medidas de exploração da DCAPE.", path: "/fases" },
     { icon: FileBarChart, title: "Certificações", description: "Acompanhe as certificações ambientais do projeto.", path: "/certificacoes" },
+    { icon: BookOpen, title: "Documentação", description: "Consulte obrigações ambientais, certificações e recomendações publicadas pela Administração.", path: "/documentacao" },
     { icon: FileBarChart, title: "RDCD", description: "Gere relatórios de demonstração de cumprimento da DCAPE.", path: "/rdcd" },
     { icon: Heart, title: "GAMMA", description: "Consulte candidaturas, avaliações e projetos vencedores do programa GAMMA.", path: "/gamma" },
     { icon: ClipboardList, title: "Planos", description: "Consulte planos de monitorização, responsáveis, atualizações e prazos de reporting.", path: "/planos" },

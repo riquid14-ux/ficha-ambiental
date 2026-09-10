@@ -29,13 +29,13 @@ describe("Roles Drill Tests", () => {
   describe("Sidebar Visibility", () => {
     it("should restrict EE to the modules visible in its menu", () => {
       expect(getVisibleNavigationPaths({ role: "ee", ...projectInput })).toEqual([
-        "/welcome", "/ficha", "/residuos", "/kpi", "/dashboard-parceiros", "/pedidos-eep",
+        "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao", "/dashboard-parceiros", "/pedidos-eep",
       ]);
     });
 
     it("should restrict RAA to Ficha, Resíduos and KPI", () => {
       expect(getVisibleNavigationPaths({ role: "raa", ...projectInput })).toEqual([
-        "/welcome", "/ficha", "/residuos", "/kpi",
+        "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 
@@ -53,7 +53,7 @@ describe("Roles Drill Tests", () => {
 
     it("should give Admin full access", () => {
       expect(getVisibleNavigationPaths({ role: "admin", ...projectInput })).toEqual([
-        "/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi",
+        "/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 

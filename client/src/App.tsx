@@ -31,6 +31,7 @@ import KPI from "./pages/KPI";
 import EepRequests from "./pages/EepRequests";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import Welcome from "./pages/Welcome";
+import DocumentLibrary from "./pages/DocumentLibrary";
 
 function Router() {
   return (
@@ -55,6 +56,7 @@ function Router() {
         <Route path="/dashboard-parceiros" component={PartnerDashboard} />
         <Route path="/certificacoes" component={Certifications} />
         <Route path="/gamma" component={Gamma} />
+        <Route path="/documentacao" component={DocumentLibrary} />
         <Route path="/ficha" component={WeeklyForm} />
         <Route path="/ficha/:id" component={WeeklyForm} />
         <Route path="/historico" component={SubmissionHistory} />

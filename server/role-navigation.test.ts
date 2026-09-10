@@ -6,13 +6,13 @@ describe("navegação visível por identidade", () => {
 
   it("mostra à EE apenas os cartões equivalentes ao menu autorizado", () => {
     expect(getVisibleNavigationPaths({ role: "ee", ...project })).toEqual([
-      "/welcome", "/ficha", "/residuos", "/kpi", "/dashboard-parceiros", "/pedidos-eep",
+      "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao", "/dashboard-parceiros", "/pedidos-eep",
     ]);
   });
 
   it("não anuncia calendário ou timeline à RAA quando não estão no menu", () => {
     expect(getVisibleNavigationPaths({ role: "raa", ...project })).toEqual([
-      "/welcome", "/ficha", "/residuos", "/kpi",
+      "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
     ]);
   });
 

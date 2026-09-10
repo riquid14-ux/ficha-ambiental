@@ -2004,6 +2004,9 @@ export const appRouter = router({
         language: z.string().trim().min(2).max(50),
         description: z.string().trim().max(2_000).nullable().optional(),
         status: z.enum(["draft", "published"]).default("draft"),
+        isProjectCentral: z.boolean().default(false),
+        isMandatoryRead: z.boolean().default(false),
+        centralOrder: z.number().int().min(0).max(999).default(0),
         filename: z.string().trim().min(1).max(255),
         mimeType: z.literal("application/pdf"),
         data: z.string().min(16).max(MAX_FILE_SIZE_B64),
@@ -2012,6 +2015,9 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         if (input.topic !== "certificacoes" && input.subtopic) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Os subtópicos são permitidos apenas em Certificações." });
+        }
+        if (input.isMandatoryRead && !input.isProjectCentral) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
         }
         const filename = getSafePdfFilename(input.filename);
         if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) {
@@ -2040,11 +2046,15 @@ export const appRouter = router({
           mimeType: input.mimeType,
           fileSize: buffer.length,
           status: input.status,
+          isProjectCentral: input.isProjectCentral ? 1 : 0,
+          isMandatoryRead: input.isMandatoryRead ? 1 : 0,
+          centralOrder: input.centralOrder,
           createdBy: ctx.user.id,
           createdByName: getUserDisplayName(ctx.user),
         });
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_created", "document_library", created?.id ?? null, null, JSON.stringify({
           topic: input.topic, subtopic: input.subtopic || null, title: input.title, language: input.language, status: input.status,
+          isProjectCentral: input.isProjectCentral, isMandatoryRead: input.isMandatoryRead, centralOrder: input.centralOrder,
         }));
         return created;
       }),
@@ -2057,10 +2067,13 @@ export const appRouter = router({
         language: z.string().trim().min(2).max(50).optional(),
         description: z.string().trim().max(2_000).nullable().optional(),
         status: z.enum(["draft", "published", "archived"]).optional(),
+        isProjectCentral: z.boolean().optional(),
+        isMandatoryRead: z.boolean().optional(),
+        centralOrder: z.number().int().min(0).max(999).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         assertAdminOnly(ctx.user);
-        const { id, ...data } = input;
+        const { id, isProjectCentral: centralInput, isMandatoryRead: mandatoryInput, ...data } = input;
         const existing = await db.getDocumentLibraryItemById(id);
         if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Documento não encontrado." });
         const effectiveTopic = data.topic ?? existing.topic;
@@ -2068,8 +2081,19 @@ export const appRouter = router({
         if (effectiveTopic !== "certificacoes" && effectiveSubtopic) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Os subtópicos são permitidos apenas em Certificações." });
         }
-        const updated = await db.updateDocumentLibraryItem(id, data);
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_updated", "document_library", id, JSON.stringify(existing), JSON.stringify(data));
+        const isProjectCentral = centralInput ?? existing.isProjectCentral === 1;
+        const isMandatoryRead = mandatoryInput ?? existing.isMandatoryRead === 1;
+        if (isMandatoryRead && !isProjectCentral) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
+        }
+        const updateData = {
+          ...data,
+          ...(centralInput === undefined ? {} : { isProjectCentral: centralInput ? 1 : 0 }),
+          ...(mandatoryInput === undefined ? {} : { isMandatoryRead: mandatoryInput ? 1 : 0 }),
+          ...(centralInput === false ? { isMandatoryRead: 0, centralOrder: 0 } : {}),
+        };
+        const updated = await db.updateDocumentLibraryItem(id, updateData);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "document_library_updated", "document_library", id, JSON.stringify(existing), JSON.stringify(updateData));
         return updated;
       }),
     delete: adminProcedure

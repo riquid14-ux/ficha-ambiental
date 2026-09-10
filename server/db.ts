@@ -1320,8 +1320,8 @@ export async function listDocumentLibrary(includeUnpublished = false) {
   if (!db) return [];
   const query = db.select().from(documentLibrary);
   const items = includeUnpublished
-    ? await query.orderBy(desc(documentLibrary.createdAt)).limit(100)
-    : await query.where(eq(documentLibrary.status, "published")).orderBy(desc(documentLibrary.createdAt)).limit(100);
+    ? await query.orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100)
+    : await query.where(eq(documentLibrary.status, "published")).orderBy(desc(documentLibrary.isProjectCentral), documentLibrary.centralOrder, desc(documentLibrary.createdAt)).limit(100);
   return items;
 }
 
@@ -1332,7 +1332,7 @@ export async function createDocumentLibraryItem(data: Omit<InsertDocumentLibrary
   return getDocumentLibraryItemById(result[0].insertId);
 }
 
-export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<InsertDocumentLibraryItem, "topic" | "subtopic" | "title" | "language" | "description" | "status" | "fileKey" | "filename" | "mimeType" | "fileSize">>) {
+export async function updateDocumentLibraryItem(id: number, data: Partial<Pick<InsertDocumentLibraryItem, "topic" | "subtopic" | "title" | "language" | "description" | "status" | "isProjectCentral" | "isMandatoryRead" | "centralOrder" | "fileKey" | "filename" | "mimeType" | "fileSize">>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(documentLibrary).set(data).where(eq(documentLibrary.id, id));

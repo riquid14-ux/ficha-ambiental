@@ -5,6 +5,10 @@ import { canReadDocumentLibrary, registerDocumentLibraryRoutes } from "./documen
 import { sdk } from "./_core/sdk";
 import type { TrpcContext } from "./_core/context";
 import { readFileSync } from "node:fs";
+import { getDocumentLibraryView } from "../client/src/lib/document-library-view";
+import { DocumentLibraryReadOnlyContent, type LibraryItem } from "../client/src/pages/DocumentLibrary";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 function callerFor(role: string) {
   const ctx: TrpcContext = {
@@ -87,6 +91,65 @@ describe("Biblioteca documental — acesso por perfil", () => {
     expect(listSpy).toHaveBeenCalledWith(false);
   });
 
+  it("apresenta a mesma Central obrigatória em modo apenas de consulta a EE e PM", () => {
+    const centralDocument = { id: 8282, isProjectCentral: 1, isMandatoryRead: 1 };
+    for (const role of ["ee", "pm"] as const) {
+      const view = getDocumentLibraryView(role, [centralDocument]);
+      expect(view.canRead).toBe(true);
+      expect(view.showManagementControls).toBe(false);
+      expect(view.centralDocuments).toEqual([centralDocument]);
+    }
+    const librarySource = readFileSync(new URL("../client/src/pages/DocumentLibrary.tsx", import.meta.url), "utf8");
+    expect(librarySource).toContain("getDocumentLibraryView(role, documents)");
+  });
+
+  it("renderiza a Central obrigatória para EE e PM sem ações administrativas", () => {
+    const centralDocument: LibraryItem = {
+      id: 8282,
+      topic: "obrigacoes_ambientais",
+      subtopic: null,
+      title: "DCAPE — documento-base obrigatório",
+      language: "Português (Portugal)",
+      description: "Regras ambientais aplicáveis ao projeto.",
+      filename: "dcape.pdf",
+      fileSize: 2048,
+      status: "published",
+      isProjectCentral: 1,
+      isMandatoryRead: 1,
+      createdByName: "Start Campus",
+      createdAt: new Date(),
+    };
+    for (const role of ["ee", "pm"] as const) {
+      const markup = renderToStaticMarkup(createElement(DocumentLibraryReadOnlyContent, { role, documents: [centralDocument] }));
+      expect(markup).toContain("Central de Documentos do Projeto");
+      expect(markup).toContain("DCAPE — documento-base obrigatório");
+      expect(markup).toContain("Obrigatório");
+      expect(markup).not.toContain("Criar documento");
+      expect(markup).not.toContain("Editar documento");
+      expect(markup).not.toContain("Arquivar documento");
+      expect(markup).not.toContain("Eliminar documento");
+    }
+  });
+
+  it("devolve documentos centrais publicados aos cinco perfis autorizados sem expor a chave de storage", async () => {
+    const centralDocument = {
+      id: 8282,
+      title: "DCAPE — documento-base",
+      status: "published",
+      isProjectCentral: 1,
+      isMandatoryRead: 1,
+      centralOrder: 0,
+      fileKey: "document-library/interno/dcape.pdf",
+    } as any;
+    vi.spyOn(db, "listDocumentLibrary").mockResolvedValue([centralDocument]);
+    for (const role of ["admin", "dono_obra", "pm", "raa", "ee"]) {
+      const items = await callerFor(role).documentLibrary.list();
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({ id: 8282, isProjectCentral: 1, isMandatoryRead: 1 });
+      expect(items[0]).not.toHaveProperty("fileKey");
+    }
+  });
+
   it("autoriza a rota privada de PDF para Dono de Obra, PM e RAA antes de obter o ficheiro", async () => {
     const route = capturePdfRoute();
     const documentSpy = vi.spyOn(db, "getDocumentLibraryItemById").mockResolvedValue({
@@ -147,10 +210,51 @@ describe("Biblioteca documental — acesso por perfil", () => {
     expect(uploadSpy).not.toHaveBeenCalled();
   });
 
+  it("impede que a leitura obrigatória seja marcada fora da Central de Documentos", async () => {
+    const createSpy = vi.spyOn(db, "createDocumentLibraryItem");
+    await expect(callerFor("admin").documentLibrary.create({
+      topic: "obrigacoes_ambientais",
+      title: "DCAPE de referência",
+      language: "Português (Portugal)",
+      filename: "dcape.pdf",
+      mimeType: "application/pdf",
+      data: Buffer.from("%PDF-1.4\nconteúdo de teste\n%%EOF").toString("base64"),
+      status: "published",
+      isProjectCentral: false,
+      isMandatoryRead: true,
+      centralOrder: 0,
+    })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos." });
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it("impede tornar obrigatória a leitura de um documento já existente fora da Central", async () => {
+    vi.spyOn(db, "getDocumentLibraryItemById").mockResolvedValue({
+      id: 8182, topic: "obrigacoes_ambientais", subtopic: null, isProjectCentral: 0, isMandatoryRead: 0,
+    } as any);
+    await expect(callerFor("admin").documentLibrary.update({ id: 8182, isMandatoryRead: true })).rejects.toMatchObject({
+      code: "BAD_REQUEST", message: "A leitura obrigatória requer destaque na Central de Documentos.",
+    });
+  });
+
+  it("apresenta a Central de Documentos e a configuração explícita de título, descrição, língua e PDF", () => {
+    const librarySource = readFileSync(new URL("../client/src/pages/DocumentLibrary.tsx", import.meta.url), "utf8");
+    const adminSource = readFileSync(new URL("../client/src/pages/DocumentLibraryAdminTab.tsx", import.meta.url), "utf8");
+    expect(librarySource).toContain("Central de Documentos do Projeto");
+    expect(librarySource).toContain("DCAPE, PGA e outros documentos-base");
+    expect(librarySource).toContain("publicada pela Start Campus");
+    expect(librarySource).toContain("item.isProjectCentral !== 1");
+    expect(adminSource).toContain("Configuração da Documentação");
+    expect(adminSource).toContain("Título do documento");
+    expect(adminSource).toContain("Descrição de consulta");
+    expect(adminSource).toContain("Língua de redacção");
+    expect(adminSource).toContain("PDF (máx. 10 MB)");
+    expect(adminSource).toContain("Destacar na Central de Documentos do Projeto");
+  });
+
   it("limita a consulta persistente para proteger a resposta da API", () => {
     const source = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
-    expect(source).toContain('query.orderBy(desc(documentLibrary.createdAt)).limit(100)');
-    expect(source).toContain('query.where(eq(documentLibrary.status, "published")).orderBy(desc(documentLibrary.createdAt)).limit(100)');
+    expect(source).toContain("desc(documentLibrary.isProjectCentral)");
+    expect(source.match(/\.limit\(100\)/g)).toHaveLength(2);
   });
 
   it("revoga o registo documental sem escrever a chave privada de storage na auditoria", () => {

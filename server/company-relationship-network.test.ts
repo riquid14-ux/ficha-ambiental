@@ -34,4 +34,9 @@ describe("mapa de empresas por projecto", () => {
     const source = readFileSync(resolve(process.cwd(), "client/src/pages/AdminPanel.tsx"), "utf8");
     expect(source).toContain("activeProjectId={activeProject?.id}");
   });
+
+  it("apresenta entidades PM como PM e não como Observador", () => {
+    const source = readFileSync(resolve(process.cwd(), "client/src/components/CompanyRelationshipMap.tsx"), "utf8");
+    expect(source).toContain('if (companyType === "pm") return "PM";');
+  });
 });

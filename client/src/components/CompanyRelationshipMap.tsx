@@ -17,6 +17,7 @@ const typeLabel = (companyType: string) => {
   if (companyType === "ee_partner") return "EEP";
   if (companyType === "dono_obra") return "Dono de Obra";
   if (companyType === "raa") return "RAA";
+  if (companyType === "pm") return "PM";
   return "Observador";
 };
 

@@ -496,12 +496,16 @@ export const documentLibrary = mysqlTable("document_library", {
   mimeType: varchar("mimeType", { length: 100 }).notNull(),
   fileSize: int("fileSize").notNull(),
   status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft").notNull(),
+  isProjectCentral: int("isProjectCentral").default(0).notNull(),
+  isMandatoryRead: int("isMandatoryRead").default(0).notNull(),
+  centralOrder: int("centralOrder").default(0).notNull(),
   createdBy: int("createdBy").notNull(),
   createdByName: varchar("createdByName", { length: 255 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   statusTopicIdx: index("document_library_status_topic_idx").on(table.status, table.topic),
+  centralIdx: index("document_library_central_idx").on(table.status, table.isProjectCentral, table.centralOrder),
   topicSubtopicIdx: index("document_library_topic_subtopic_idx").on(table.topic, table.subtopic),
   createdAtIdx: index("document_library_created_idx").on(table.createdAt),
 }));

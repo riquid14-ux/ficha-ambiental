@@ -81,7 +81,9 @@ async function assertProjectAccess(user: any, projectId: number) {
 }
 
 type ProjectModule = "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi";
+type PmAccessModule = ProjectModule | "planos" | "documentacao";
 const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi"];
+const DEFAULT_PM_ACCESS_MODULES: PmAccessModule[] = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"];
 
 function getEnabledProjectModules(project: any): ProjectModule[] {
   if (typeof project?.enabledModules !== "string") return DEFAULT_PROJECT_MODULES;
@@ -101,6 +103,32 @@ async function assertProjectModuleAccess(user: any, projectId: number, module: P
   if (!getEnabledProjectModules(project).includes(module)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Este módulo não está activo no projecto seleccionado." });
   }
+  await assertPmModuleAccess(user, projectId, module);
+  return project;
+}
+
+function parsePmAccessModules(value: unknown): PmAccessModule[] {
+  if (typeof value !== "string" || !value.trim()) return DEFAULT_PM_ACCESS_MODULES;
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed) && parsed.every(module => DEFAULT_PM_ACCESS_MODULES.includes(module))) return parsed as PmAccessModule[];
+  } catch {
+    // Mantém o acesso total dos PM existentes até o administrador guardar uma configuração válida.
+  }
+  return DEFAULT_PM_ACCESS_MODULES;
+}
+
+async function assertPmModuleAccess(user: any, projectId: number, module: PmAccessModule) {
+  if (user.role !== "pm") return;
+  const assignment = (await db.getUserProjects(user.id)).find((item: any) => item.projectId === projectId);
+  if (!assignment || !parsePmAccessModules(assignment.accessModules).includes(module)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Este módulo não está autorizado para o PM no projecto seleccionado." });
+  }
+}
+
+async function assertProjectFeatureAccess(user: any, projectId: number, module: PmAccessModule) {
+  const project = await assertProjectAccess(user, projectId);
+  await assertPmModuleAccess(user, projectId, module);
   return project;
 }
 
@@ -136,7 +164,7 @@ async function getActivePartnerProfile(user: any, module?: PartnerModule) {
 
 async function assertPartnerProjectModuleAccess(user: any, projectId: number, module: PartnerModule) {
   if (user.role !== "ee_partner") {
-    await assertProjectAccess(user, projectId);
+    await assertProjectModuleAccess(user, projectId, module === "waste" ? "residuos" : "kpi");
     return null;
   }
   const profile = await getActivePartnerProfile(user, module);
@@ -192,44 +220,55 @@ async function resolveKpiContribution(user: any, database: any, projectId: numbe
   return { companyId: requestedCompanyId, parentCompanyId: (partner as any)[0]?.[0]?.parentCompanyId || requestedCompanyId, sourceType: (partner as any)[0]?.[0] ? "ee_partner" as const : "ee" as const };
 }
 
-async function writeKpiSubmission(params: { user: any; database: any; projectId: number; weekNumber: number; weekYear: number; contribution: { companyId: number; parentCompanyId: number | null; sourceType: "ee" | "ee_partner" }; values: KpiValueInput[]; mode: KpiWriteMode; }) {
+async function writeKpiSubmission(params: { user: any; database: any; projectId: number; weekNumber: number; weekYear: number; contribution: { companyId: number; parentCompanyId: number | null; sourceType: "ee" | "ee_partner" }; values: KpiValueInput[]; mode: KpiWriteMode; completeWeekSnapshot?: boolean; }) {
   const { user, database, projectId, weekNumber, weekYear, contribution, mode } = params;
+  const suppliedMetricIds = params.values.map(row => Number(row.metricId));
+  if (suppliedMetricIds.some(metricId => !Number.isInteger(metricId) || metricId < 1) || new Set(suppliedMetricIds).size !== suppliedMetricIds.length) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Cada métrica KPI só pode ser indicada uma vez." });
+  }
   const valuesByMetric = new Map<number, string>();
   for (const row of params.values) { const value = String(row.value ?? "").trim(); if (value) valuesByMetric.set(Number(row.metricId), value); }
   if (valuesByMetric.size === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Preencha pelo menos um valor KPI." });
-  if (valuesByMetric.size > 100) throw new TRPCError({ code: "BAD_REQUEST", message: "O limite é de 100 métricas por submissão." });
-  const metricIds = Array.from(valuesByMetric.keys());
-  const metricsResult = await database.execute(sql`SELECT id FROM kpi_metrics WHERE active = 1 AND inputType = 'manual' AND id IN (${sql.join(metricIds.map(id => sql`${id}`), sql`,`)})`);
-  if (((metricsResult as any)[0] || []).length !== metricIds.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro inclui uma métrica KPI inactiva ou inexistente." });
-  const existingRows = await database.execute(sql`SELECT id, userId, parentCompanyId, sourceType, status FROM kpi_submissions WHERE projectId = ${projectId} AND companyId = ${contribution.companyId} AND weekNumber = ${weekNumber} AND weekYear = ${weekYear} LIMIT 1`);
-  const existing = (existingRows as any)[0]?.[0] as any;
+  if (suppliedMetricIds.length > 100) throw new TRPCError({ code: "BAD_REQUEST", message: "O limite é de 100 métricas por submissão." });
+  const metricsResult = await database.execute(sql`SELECT id FROM kpi_metrics WHERE active = 1 AND inputType = 'manual'`);
+  const activeMetricIds: number[] = ((metricsResult as any)[0] || []).map((metric: any) => Number(metric.id));
+  const activeMetricSet = new Set(activeMetricIds);
+  if (suppliedMetricIds.some(metricId => !activeMetricSet.has(metricId))) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro inclui uma métrica KPI inactiva ou inexistente." });
+  if (params.completeWeekSnapshot && (suppliedMetricIds.length !== activeMetricIds.length || activeMetricIds.some(metricId => !suppliedMetricIds.includes(metricId)))) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O registo manual deve incluir todos os KPI activos da semana." });
+  }
   const actorName = getUserDisplayName(user);
   const action = mode === "draft" || mode === "import_draft" ? "draft_saved" : mode === "correct" ? "corrected" : mode === "import_submit" ? "imported" : "submitted";
   const finalStatus = mode === "draft" || mode === "import_draft" ? "draft" : contribution.sourceType === "ee_partner" ? "partial" : "submitted";
-  let submissionId: number;
-  let previousValues: any[] = [];
-  if (existing) {
-    const isOriginalAuthor = Number(existing.userId) === Number(user.id);
-    const isParentEe = user.role === "ee" && Number(existing.parentCompanyId) === Number(user.companyId) && existing.sourceType === "ee_partner";
-    if (!isOriginalAuthor && !isParentEe && !isAdminOrDono(user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Só o autor pode editar este KPI; a EE pode corrigir contributos das suas EEP." });
-    if ((mode === "draft" || mode === "import_draft") && existing.status !== "draft") throw new TRPCError({ code: "CONFLICT", message: "Esta semana já foi submetida. Use a correção auditável para alterar os valores." });
-    if (mode === "correct" && existing.status === "draft") throw new TRPCError({ code: "BAD_REQUEST", message: "Este registo ainda é um rascunho; guarde-o ou submeta-o normalmente." });
-    submissionId = Number(existing.id);
-    const previousRows = await database.execute(sql`SELECT metricId, value FROM kpi_values WHERE submissionId = ${submissionId}`);
-    previousValues = (previousRows as any)[0] || [];
-    await database.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
-    const preserveAuthor = mode === "correct" && !isOriginalAuthor;
-    await database.execute(sql`UPDATE kpi_submissions SET userId = ${preserveAuthor ? existing.userId : user.id}, parentCompanyId = ${contribution.parentCompanyId}, sourceType = ${contribution.sourceType}, status = ${finalStatus}, updatedAt = NOW() WHERE id = ${submissionId}`);
-  } else {
-    const result = await database.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status) VALUES (${projectId}, ${contribution.companyId}, ${contribution.parentCompanyId}, ${contribution.sourceType}, ${user.id}, ${weekNumber}, ${weekYear}, ${finalStatus})`);
-    submissionId = Number((result as any)[0].insertId);
-  }
-  for (const [metricId, value] of Array.from(valuesByMetric.entries())) await database.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${metricId}, ${value})`);
-  const currentValues = Array.from(valuesByMetric.entries()).map(([metricId, value]) => ({ metricId, value }));
-  const summary = action === "corrected" ? `${actorName} corrigiu os KPI da semana ${weekNumber}/${weekYear}.` : action === "draft_saved" ? `${actorName} guardou um rascunho da semana ${weekNumber}/${weekYear}.` : action === "imported" ? `${actorName} importou KPI da semana ${weekNumber}/${weekYear}.` : `${actorName} submeteu KPI da semana ${weekNumber}/${weekYear}.`;
-  await database.execute(sql`INSERT INTO kpi_submission_changes (submissionId, action, actorId, actorName, summary, changedValues) VALUES (${submissionId}, ${action}, ${user.id}, ${actorName}, ${summary}, ${JSON.stringify({ previous: previousValues, current: currentValues })})`);
-  await db.insertAuditLog(user.id, actorName, `kpi_submission_${action}`, "kpi_submissions", submissionId, null, JSON.stringify({ projectId, companyId: contribution.companyId, weekNumber, weekYear, values: currentValues.length }));
-  return { submissionId, status: finalStatus, sourceType: contribution.sourceType, action };
+  const result = await database.transaction(async (tx: any) => {
+    const existingRows = await tx.execute(sql`SELECT id, userId, parentCompanyId, sourceType, status FROM kpi_submissions WHERE projectId = ${projectId} AND companyId = ${contribution.companyId} AND weekNumber = ${weekNumber} AND weekYear = ${weekYear} LIMIT 1`);
+    const existing = (existingRows as any)[0]?.[0] as any;
+    let submissionId: number;
+    let previousValues: any[] = [];
+    if (existing) {
+      const isOriginalAuthor = Number(existing.userId) === Number(user.id);
+      const isParentEe = user.role === "ee" && Number(existing.parentCompanyId) === Number(user.companyId) && existing.sourceType === "ee_partner";
+      if (!isOriginalAuthor && !isParentEe && !isAdminOrDono(user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Só o autor pode editar este KPI; a EE pode corrigir contributos das suas EEP." });
+      if ((mode === "draft" || mode === "import_draft") && existing.status !== "draft") throw new TRPCError({ code: "CONFLICT", message: "Esta semana já foi submetida. Use a correção auditável para alterar os valores." });
+      if (mode === "correct" && existing.status === "draft") throw new TRPCError({ code: "BAD_REQUEST", message: "Este registo ainda é um rascunho; guarde-o ou submeta-o normalmente." });
+      submissionId = Number(existing.id);
+      const previousRows = await tx.execute(sql`SELECT metricId, value FROM kpi_values WHERE submissionId = ${submissionId}`);
+      previousValues = (previousRows as any)[0] || [];
+      await tx.execute(sql`DELETE FROM kpi_values WHERE submissionId = ${submissionId}`);
+      const preserveAuthor = mode === "correct" && !isOriginalAuthor;
+      await tx.execute(sql`UPDATE kpi_submissions SET userId = ${preserveAuthor ? existing.userId : user.id}, parentCompanyId = ${contribution.parentCompanyId}, sourceType = ${contribution.sourceType}, status = ${finalStatus}, updatedAt = NOW() WHERE id = ${submissionId}`);
+    } else {
+      const inserted = await tx.execute(sql`INSERT INTO kpi_submissions (projectId, companyId, parentCompanyId, sourceType, userId, weekNumber, weekYear, status) VALUES (${projectId}, ${contribution.companyId}, ${contribution.parentCompanyId}, ${contribution.sourceType}, ${user.id}, ${weekNumber}, ${weekYear}, ${finalStatus})`);
+      submissionId = Number((inserted as any)[0].insertId);
+    }
+    for (const [metricId, value] of Array.from(valuesByMetric.entries())) await tx.execute(sql`INSERT INTO kpi_values (submissionId, metricId, value) VALUES (${submissionId}, ${metricId}, ${value})`);
+    const currentValues = Array.from(valuesByMetric.entries()).map(([metricId, value]) => ({ metricId, value }));
+    const summary = action === "corrected" ? `${actorName} corrigiu os KPI da semana ${weekNumber}/${weekYear}.` : action === "draft_saved" ? `${actorName} guardou um retrato completo dos KPI da semana ${weekNumber}/${weekYear}.` : action === "imported" ? `${actorName} importou KPI da semana ${weekNumber}/${weekYear}.` : `${actorName} submeteu KPI da semana ${weekNumber}/${weekYear}.`;
+    await tx.execute(sql`INSERT INTO kpi_submission_changes (submissionId, action, actorId, actorName, summary, changedValues) VALUES (${submissionId}, ${action}, ${user.id}, ${actorName}, ${summary}, ${JSON.stringify({ previous: previousValues, current: currentValues, completeWeekSnapshot: !!params.completeWeekSnapshot })})`);
+    return { submissionId, currentValueCount: currentValues.length };
+  });
+  await db.insertAuditLog(user.id, actorName, `kpi_submission_${action}`, "kpi_submissions", result.submissionId, null, JSON.stringify({ projectId, companyId: contribution.companyId, weekNumber, weekYear, values: result.currentValueCount, completeWeekSnapshot: !!params.completeWeekSnapshot }));
+  return { submissionId: result.submissionId, status: finalStatus, sourceType: contribution.sourceType, action };
 }
 
 async function archiveKpiSubmissionWhenFinal(projectId: number, contribution: { companyId: number; parentCompanyId: number | null; sourceType: "ee" | "ee_partner" }, weekNumber: number, weekYear: number, submissionId: number, values: KpiValueInput[], userId: number) {
@@ -322,7 +361,8 @@ export const appRouter = router({
   phaseEvidence: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number(), measureId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         return await db.getPhaseEvidence(input.projectId, input.measureId);
       }),
 
@@ -2070,7 +2110,7 @@ export const appRouter = router({
       if (!isAdmin && !projectId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar a documentação." });
       }
-      if (projectId) await assertProjectAccess(ctx.user, projectId);
+      if (projectId) await assertProjectFeatureAccess(ctx.user, projectId, "documentacao");
       const documents = await db.listDocumentLibrary(isAdmin && !projectId, projectId);
       return documents.map(({ fileKey, projectIds, ...document }) => isAdmin ? { ...document, projectIds } : document);
     }),
@@ -2280,8 +2320,9 @@ export const appRouter = router({
         return allProjects;
       }
       if (role === "pm") {
-        const assigned = new Set((await db.getUserProjects(ctx.user.id)).map(item => item.projectId));
-        return allProjects.filter(project => assigned.has(project.id));
+        const assignments = await db.getUserProjects(ctx.user.id);
+        const assigned = new Map(assignments.map(item => [item.projectId, item.accessModules]));
+        return allProjects.filter(project => assigned.has(project.id)).map(project => ({ ...project, pmAccessModules: assigned.get(project.id) ?? null }));
       }
       if (role === "ee_partner") {
         const profile = await getActivePartnerProfile(ctx.user);
@@ -2395,6 +2436,23 @@ export const appRouter = router({
       .input(z.object({ userId: z.number(), projectIds: z.array(z.number()) }))
       .mutation(async ({ input }) => {
         await db.setUserProjects(input.userId, input.projectIds);
+        return { success: true };
+      }),
+    setPmAccessModules: adminProcedure
+      .input(z.object({
+        userId: z.number().int().positive(),
+        accessByProject: z.array(z.object({
+          projectId: z.number().int().positive(),
+          modules: z.array(z.enum(["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"])).min(1),
+        })).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await db.getUserById(input.userId);
+        if (!user || user.role !== "pm") throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um utilizador com o papel PM." });
+        const assignedProjects = new Set((await db.getUserProjects(user.id)).map(assignment => assignment.projectId));
+        if (input.accessByProject.some(item => !assignedProjects.has(item.projectId))) throw new TRPCError({ code: "FORBIDDEN", message: "O PM só pode receber permissões nos projectos que lhe estão atribuídos." });
+        await db.setUserProjectAccessModules(user.id, input.accessByProject.map(item => ({ projectId: item.projectId, accessModules: JSON.stringify(Array.from(new Set(item.modules))) })));
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "pm_project_access_configured", "project_users", user.id, null, JSON.stringify({ userId: user.id, accessByProject: input.accessByProject }));
         return { success: true };
       }),
     // Set company projects (replace all assignments for a company)
@@ -2644,7 +2702,11 @@ export const appRouter = router({
   monitoringPlans: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number().optional() }).optional())
-      .query(async () => db.getMonitoringPlanOverview()),
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "pm" && !input?.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar os planos." });
+        if (input?.projectId) await assertProjectFeatureAccess(ctx.user, input.projectId, "planos");
+        return db.getMonitoringPlanOverview();
+      }),
 
     responsibleCandidates: protectedProcedure
       .input(z.object({ projectId: z.number().optional() }).optional())
@@ -2765,12 +2827,17 @@ export const appRouter = router({
     addUpdate: protectedProcedure
       .input(z.object({
         planId: z.number(),
+        projectId: z.number().int().positive().optional(),
         status: z.enum(["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]),
         updateText: z.string().trim().min(3).max(5000),
       }))
       .mutation(async ({ ctx, input }) => {
         const plan = await db.getMonitoringPlanById(input.planId);
         if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+        if (ctx.user.role === "pm") {
+          if (!input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para actualizar um plano." });
+          await assertProjectFeatureAccess(ctx.user, input.projectId, "planos");
+        }
         if (!canUpdatePlanProgress(ctx.user, plan)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o responsável, a RAA, Admin ou Dono de Obra podem actualizar este plano." });
         }
@@ -2797,7 +2864,11 @@ export const appRouter = router({
 
     history: protectedProcedure
       .input(z.object({ planId: z.number(), projectId: z.number().optional() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "pm") {
+          if (!input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar o histórico do plano." });
+          await assertProjectFeatureAccess(ctx.user, input.projectId, "planos");
+        }
         return {
           updates: await db.getMonitoringPlanUpdates(input.planId),
           attachments: await db.getMonitoringPlanAttachments(input.planId),
@@ -2815,6 +2886,10 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const plan = await db.getMonitoringPlanById(input.planId);
         if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+        if (ctx.user.role === "pm") {
+          if (!input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para anexar a um plano." });
+          await assertProjectFeatureAccess(ctx.user, input.projectId, "planos");
+        }
         if (!canUpdatePlanProgress(ctx.user, plan)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para anexar ficheiros a este plano." });
         }
@@ -2854,6 +2929,10 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const plan = await db.getMonitoringPlanById(input.planId);
         if (!plan) throw new TRPCError({ code: "NOT_FOUND" });
+        if (ctx.user.role === "pm") {
+          if (!input.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para confirmar uma entrega." });
+          await assertProjectFeatureAccess(ctx.user, input.projectId, "planos");
+        }
         if (!canUpdatePlanProgress(ctx.user, plan)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para confirmar esta entrega." });
         }
@@ -2979,7 +3058,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const phase = await db.getProjectPhaseById(input.phaseId);
         if (!phase) throw new TRPCError({ code: "NOT_FOUND", message: "Fase não encontrada." });
-        await assertProjectAccess(ctx.user, phase.projectId);
+        await assertProjectModuleAccess(ctx.user, phase.projectId, "timeline");
         if (!canUpdatePlanProgress(ctx.user, phase)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o responsável, a RAA, Admin ou Dono de Obra podem actualizar esta fase." });
         }
@@ -3007,7 +3086,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const phase = await db.getProjectPhaseById(input.phaseId);
         if (!phase) throw new TRPCError({ code: "NOT_FOUND", message: "Fase não encontrada." });
-        await assertProjectAccess(ctx.user, phase.projectId);
+        await assertProjectModuleAccess(ctx.user, phase.projectId, "timeline");
         return db.getProjectPhaseUpdates(phase.id);
       }),
     updateSettings: protectedProcedure
@@ -3147,7 +3226,7 @@ export const appRouter = router({
         updateText: z.string().trim().min(3).max(5000),
       }))
       .mutation(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         const measure = await db.getMeasureById(input.measureId);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
         const tracking = await db.getPhaseMeasureStatus(input.projectId, input.measureId);
@@ -3177,7 +3256,7 @@ export const appRouter = router({
     updateHistory: protectedProcedure
       .input(z.object({ projectId: z.number(), measureId: z.number() }))
       .query(async ({ ctx, input }) => {
-        await assertProjectAccess(ctx.user, input.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         const measure = await db.getMeasureById(input.measureId);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
         return await db.getPhaseMeasureUpdates(input.projectId, input.measureId);
@@ -3260,7 +3339,9 @@ export const appRouter = router({
   calendarEvents: router({
     list: protectedProcedure
       .input(z.object({ projectId: z.number().optional() }).optional())
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role === "pm" && !input?.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar o calendário." });
+        if (input?.projectId) await assertProjectModuleAccess(ctx.user, input.projectId, "calendar");
         return await db.getCalendarEvents(input?.projectId);
       }),
 
@@ -3665,31 +3746,31 @@ export const appRouter = router({
       const rows = await database.execute(q);
       return (rows as any)[0] || [];
     }),
-    saveDraft: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+    saveDraft: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100), completeWeekSnapshot: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
       if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para guardar rascunhos KPI." });
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
-      return writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "draft" });
+      return writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "draft", completeWeekSnapshot: input.completeWeekSnapshot });
     }),
-    submit: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+    submit: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100), completeWeekSnapshot: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
       if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "ee" && ctx.user.role !== "ee_partner") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas a EE, as EEP autorizadas ou a administração podem submeter KPI." });
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
-      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "submit" });
+      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "submit", completeWeekSnapshot: input.completeWeekSnapshot });
       await archiveKpiSubmissionWhenFinal(input.projectId, contribution, input.weekNumber, input.weekYear, result.submissionId, input.values, ctx.user.id);
       return { success: true, ...result };
     }),
-    correct: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100) })).mutation(async ({ ctx, input }) => {
+    correct: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekNumber: z.number().int().min(1).max(53), weekYear: z.number().int().min(2020).max(2100), values: z.array(z.object({ metricId: z.number().int().positive(), value: z.string().max(255) })).max(100), completeWeekSnapshot: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const contribution = await resolveKpiContribution(ctx.user, database, input.projectId, input.companyId);
-      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "correct" });
+      const result = await writeKpiSubmission({ user: ctx.user, database, projectId: input.projectId, weekNumber: input.weekNumber, weekYear: input.weekYear, contribution, values: input.values, mode: "correct", completeWeekSnapshot: input.completeWeekSnapshot });
       await archiveKpiSubmissionWhenFinal(input.projectId, contribution, input.weekNumber, input.weekYear, result.submissionId, input.values, ctx.user.id);
       return result;
     }),
-    importExcel: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), mode: z.enum(["draft", "submit"]).default("draft"), filename: z.string().min(1).max(255), data: z.string().min(20).max(15 * 1024 * 1024) })).mutation(async ({ ctx, input }) => {
+    importExcel: partnerAllowedProcedure.input(z.object({ projectId: z.number().int().positive(), companyId: z.number().int().positive(), weekYear: z.number().int().min(2020).max(2100), mode: z.enum(["draft", "submit"]).default("draft"), filename: z.string().min(1).max(255), data: z.string().min(20).max(15 * 1024 * 1024) })).mutation(async ({ ctx, input }) => {
       if (!/\.xlsx$/i.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Importe apenas ficheiros Excel (.xlsx) gerados pelo modelo KPI." });
       await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
       const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -3699,14 +3780,41 @@ export const appRouter = router({
       const worksheet = workbook.getWorksheet("Importar KPI") || workbook.worksheets[0];
       if (!worksheet || worksheet.rowCount > 5001) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel está vazio ou excede 5 000 linhas." });
       const grouped = new Map<string, { weekNumber: number; weekYear: number; values: KpiValueInput[] }>();
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
-        const [, yearRaw, weekRaw, metricIdRaw, _metricName, _unit, valueRaw] = row.values as any[];
-        if ([yearRaw, weekRaw, metricIdRaw, valueRaw].every(value => value === undefined || value === null || value === "")) return;
-        const weekYear = Number(yearRaw); const weekNumber = Number(weekRaw); const metricId = Number(metricIdRaw); const value = String(valueRaw ?? "").trim();
-        if (!Number.isInteger(weekYear) || weekYear < 2020 || weekYear > 2100 || !Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 53 || !Number.isInteger(metricId) || metricId < 1 || !value || value.length > 255) throw new TRPCError({ code: "BAD_REQUEST", message: `Linha ${rowNumber}: confirme Ano, Semana, ID da métrica e Valor.` });
+      const addValue = (weekYear: number, weekNumber: number, metricId: number, valueRaw: unknown, rowNumber: number) => {
+        const value = String(valueRaw ?? "").trim();
+        if (!value) return;
+        if (!Number.isInteger(weekYear) || weekYear < 2020 || weekYear > 2100 || !Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 53 || !Number.isInteger(metricId) || metricId < 1 || value.length > 255) throw new TRPCError({ code: "BAD_REQUEST", message: `Linha ${rowNumber}: confirme o ID da métrica e o valor da semana.` });
         const key = `${weekYear}-${weekNumber}`; const group = grouped.get(key) || { weekNumber, weekYear, values: [] }; group.values.push({ metricId, value }); grouped.set(key, group);
+      };
+      let headerRowNumber = 0;
+      let headerValues: string[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (headerRowNumber || rowNumber > 10) return;
+        const values = (row.values as any[]).slice(1).map(value => String(value ?? "").trim());
+        if (values.some(value => value.toLowerCase() === "id da métrica")) { headerRowNumber = rowNumber; headerValues = values; }
       });
+      const metricIdColumn = headerValues.findIndex(value => value.toLowerCase() === "id da métrica") + 1;
+      const weekColumns = headerValues.map((header, index) => {
+        const match = /^semana\s*(\d{1,2})$/i.exec(header) || /^s(\d{1,2})$/i.exec(header);
+        return match ? { column: index + 1, weekNumber: Number(match[1]) } : null;
+      }).filter((value): value is { column: number; weekNumber: number } => value !== null);
+      if (headerRowNumber && metricIdColumn && weekColumns.length > 0) {
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber <= headerRowNumber) return;
+          const metricId = Number(row.getCell(metricIdColumn).value);
+          const hasValue = weekColumns.some(({ column }) => { const value = row.getCell(column).value; return value !== undefined && value !== null && String(value).trim() !== ""; });
+          if (!hasValue) return;
+          if (!Number.isInteger(metricId) || metricId < 1) throw new TRPCError({ code: "BAD_REQUEST", message: `Linha ${rowNumber}: confirme o ID da métrica.` });
+          for (const { column, weekNumber } of weekColumns) addValue(input.weekYear, weekNumber, metricId, row.getCell(column).value, rowNumber);
+        });
+      } else {
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const [, yearRaw, weekRaw, metricIdRaw, _metricName, _unit, valueRaw] = row.values as any[];
+          if ([yearRaw, weekRaw, metricIdRaw, valueRaw].every(value => value === undefined || value === null || value === "")) return;
+          addValue(Number(yearRaw), Number(weekRaw), Number(metricIdRaw), valueRaw, rowNumber);
+        });
+      }
       if (!grouped.size) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel não contém valores KPI para importar." });
       if (grouped.size > 53) throw new TRPCError({ code: "BAD_REQUEST", message: "O limite de importação é 53 semanas de cada vez." });
       const results = [];

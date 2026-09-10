@@ -345,6 +345,7 @@ export const projectUsers = mysqlTable("project_users", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
   userId: int("userId").notNull(),
+  accessModules: varchar("accessModules", { length: 1000 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

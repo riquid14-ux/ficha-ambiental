@@ -8,6 +8,7 @@ interface Project {
   name: string;
   description: string | null;
   enabledModules: string;
+  pmAccessModules?: string | null;
   active: number;
 }
 

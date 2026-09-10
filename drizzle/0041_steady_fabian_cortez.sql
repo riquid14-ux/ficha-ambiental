@@ -1,0 +1,1 @@
+ALTER TABLE `project_users` ADD `accessModules` varchar(1000);

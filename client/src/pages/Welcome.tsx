@@ -82,6 +82,7 @@ export default function Welcome() {
     isAllProjects,
     isOperationOnly: isNest,
     enabledModules: activeProject?.enabledModules,
+    pmAccessModules: activeProject?.pmAccessModules,
     partnerAccess,
   });
   const features = getFeatures(userRole, visiblePaths);

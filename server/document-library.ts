@@ -10,13 +10,25 @@ export function canReadDocumentLibrary(user: { role?: string } | null | undefine
   return Boolean(user?.role && DOCUMENT_LIBRARY_READER_ROLES.has(user.role));
 }
 
+const PM_DOCUMENT_MODULES = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"];
+
+function pmCanReadDocuments(assignment: any) {
+  if (!assignment?.accessModules) return true;
+  try {
+    const modules = JSON.parse(assignment.accessModules);
+    return Array.isArray(modules) && modules.every(value => PM_DOCUMENT_MODULES.includes(value)) && modules.includes("documentacao");
+  } catch {
+    return true;
+  }
+}
+
 async function userCanAccessProject(user: { id: number; role: string; companyId?: number | null }, projectId: number) {
   const project = await db.getProjectById(projectId);
   if (!project) return false;
   if (user.role === "admin" || user.role === "dono_obra") return true;
 
   const userProjects = await db.getUserProjects(user.id);
-  if (user.role === "pm") return userProjects.some((item: any) => item.projectId === projectId);
+  if (user.role === "pm") return userProjects.some((item: any) => item.projectId === projectId && pmCanReadDocuments(item));
 
   const companyProjects = user.companyId ? await db.getProjectsForCompany(user.companyId) : [];
   return userProjects.some((item: any) => item.projectId === projectId)

@@ -20,6 +20,14 @@ describe("navegação visível por identidade", () => {
     expect(getVisibleNavigationPaths({ role: "pm", ...project })).toContain("/planos");
   });
 
+  it("respeita os módulos configurados para o PM dentro de cada projeto", () => {
+    const paths = getVisibleNavigationPaths({ role: "pm", ...project, pmAccessModules: JSON.stringify(["dashboard", "kpi"]) });
+    expect(paths).toEqual(["/welcome", "/dashboard", "/kpi"]);
+    expect(paths).not.toContain("/planos");
+    expect(paths).not.toContain("/timeline");
+    expect(paths).not.toContain("/documentacao");
+  });
+
   it("limita a EEP aos módulos KPI e resíduos autorizados", () => {
     expect(getVisibleNavigationPaths({ role: "ee_partner", ...project, partnerAccess: { allowKpi: true, allowWaste: false } }))
       .toEqual(["/kpi"]);

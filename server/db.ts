@@ -875,12 +875,26 @@ export async function setCompanyProjects(companyId: number, projectIds: number[]
 export async function setUserProjects(userId: number, projectIds: number[]) {
   const db = await getDb();
   if (!db) return;
-  // Remove all existing assignments for this user
-  await db.delete(projectUsers).where(eq(projectUsers.userId, userId));
-  // Add new assignments
-  if (projectIds.length > 0) {
-    await db.insert(projectUsers).values(projectIds.map(projectId => ({ projectId, userId })));
-  }
+  await db.transaction(async tx => {
+    const currentAssignments = await tx.select().from(projectUsers).where(eq(projectUsers.userId, userId));
+    const accessByProject = new Map(currentAssignments.map(assignment => [assignment.projectId, assignment.accessModules]));
+    await tx.delete(projectUsers).where(eq(projectUsers.userId, userId));
+    if (projectIds.length > 0) {
+      await tx.insert(projectUsers).values(projectIds.map(projectId => ({ projectId, userId, accessModules: accessByProject.get(projectId) ?? null })));
+    }
+  });
+}
+
+export async function setUserProjectAccessModules(userId: number, accessByProject: Array<{ projectId: number; accessModules: string | null }>) {
+  const database = await getDb();
+  if (!database) throw new Error("DB not available");
+  await database.transaction(async tx => {
+    for (const item of accessByProject) {
+      await tx.update(projectUsers)
+        .set({ accessModules: item.accessModules })
+        .where(and(eq(projectUsers.userId, userId), eq(projectUsers.projectId, item.projectId)));
+    }
+  });
 }
 
 // ─── EE Partner access profiles ──────────────────────────────────────────────

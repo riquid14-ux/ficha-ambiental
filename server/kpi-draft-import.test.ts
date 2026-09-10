@@ -15,6 +15,8 @@ describe("KPI — rascunhos, correções e Excel", () => {
     expect(router).toContain('mode === "correct"');
     expect(router).toContain("actorName");
     expect(router).toContain("changedValues");
+    expect(router).toContain("completeWeekSnapshot");
+    expect(router).toContain("database.transaction");
   });
 
   it("mantém rascunhos fora de dashboards e permite retomar uma semana específica", () => {
@@ -22,15 +24,17 @@ describe("KPI — rascunhos, correções e Excel", () => {
     expect(router).toContain("draft: partnerAllowedProcedure");
     expect(router).toContain("saveDraft: partnerAllowedProcedure");
     expect(page).toContain("Rascunho retomado");
-    expect(page).toContain("Guardar rascunho");
+    expect(page).toContain("Guardar todos os KPI da semana");
   });
 
   it("usa um modelo Excel limitado, com colunas de semana e métrica, e valida a importação no servidor", () => {
     expect(page).toContain('workbook.addWorksheet("Importar KPI")');
-    expect(page).toContain('{ name: "Ano" }');
-    expect(page).toContain('{ name: "Semana" }');
-    expect(page).toContain('{ name: "ID da métrica" }');
+    expect(page).toContain('"ID da métrica"');
+    expect(page).toContain('`Semana ${week}`');
+    expect(page).toContain("preencha apenas as colunas Semana");
     expect(router).toContain("importExcel: partnerAllowedProcedure");
+    expect(router).toContain("weekYear: z.number().int().min(2020).max(2100)");
+    expect(router).toContain("weekColumns.length > 0");
     expect(router).toContain("worksheet.rowCount > 5001");
     expect(router).toContain("O limite de importação é 53 semanas de cada vez.");
     expect(router).toContain("inputType = 'manual'");

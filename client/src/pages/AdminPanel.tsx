@@ -48,6 +48,30 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   rejected: "destructive",
 };
 
+const PM_MODULE_OPTIONS = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "planos", label: "Planos" },
+  { id: "calendar", label: "Calendário" },
+  { id: "timeline", label: "Timeline e Fases" },
+  { id: "ficha", label: "Fichas semanais" },
+  { id: "residuos", label: "Resíduos" },
+  { id: "kpi", label: "KPI" },
+  { id: "documentacao", label: "Documentação" },
+] as const;
+
+const DEFAULT_PM_MODULE_IDS = PM_MODULE_OPTIONS.map(module => module.id);
+
+function parsePmModuleIds(value?: string | null) {
+  if (!value) return DEFAULT_PM_MODULE_IDS;
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed) && parsed.every(module => DEFAULT_PM_MODULE_IDS.includes(module))) return parsed as string[];
+  } catch {
+    // Os PM existentes mantêm acesso completo até o administrador guardar a configuração.
+  }
+  return DEFAULT_PM_MODULE_IDS;
+}
+
 type CompanyPeriodRecord = {
   id: number;
   shortName: string;
@@ -812,6 +836,11 @@ function UsersTab() {
     active: boolean;
     projectIds: number[];
   } | null>(null);
+  const [pmConfig, setPmConfig] = useState<{
+    userId: number;
+    name: string;
+    accessByProject: Array<{ projectId: number; modules: string[] }>;
+  } | null>(null);
   const userProjectsMap = useMemo(() => {
     const map = new Map<number, number[]>();
     for (const assignment of userAssignmentsQuery.data || []) {
@@ -821,6 +850,9 @@ function UsersTab() {
     }
     return map;
   }, [userAssignmentsQuery.data]);
+  const pmModulesByUserProject = useMemo(() => new Map(
+    (userAssignmentsQuery.data || []).map(assignment => [`${assignment.userId}-${assignment.projectId}`, assignment.accessModules || null]),
+  ), [userAssignmentsQuery.data]);
   const scopedProjectId = isAllProjects ? null : activeProject?.id ?? null;
   const scopedCompanyIds = useMemo(() => new Set(
     scopedProjectId === null ? [] : (companyAssignmentsQuery.data || [])
@@ -899,6 +931,14 @@ function UsersTab() {
     },
     onError: error => toast.error(error.message),
   });
+  const configurePmAccessMutation = trpc.projects.setPmAccessModules.useMutation({
+    onSuccess: async () => {
+      toast.success("Acesso do PM actualizado");
+      setPmConfig(null);
+      await utils.projects.allUserAssignments.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const createInviteMutation = trpc.invitations.create.useMutation({
     onSuccess: () => {
@@ -948,6 +988,7 @@ function UsersTab() {
       .map(item => item.projectId),
   );
   const partnerSelectableProjects = (projectsQuery.data ?? []).filter(project => parentProjectIds.has(project.id));
+  const pmUsers = scopedUsers.filter((candidate: any) => candidate.role === "pm");
 
   return (
     <div className="space-y-6">
@@ -1073,6 +1114,50 @@ function UsersTab() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Card className="border-sky-200 bg-sky-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><Users className="size-4 text-sky-700" />PM — Gestão de Projeto</CardTitle>
+          <p className="text-xs text-muted-foreground">O PM consulta o processo completo nos projetos atribuídos. A Administração pode restringir módulos por projeto sem lhe atribuir poderes de aprovação ou administração.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {pmUsers.map((pm: any) => {
+            const projectIds = userProjectsMap.get(pm.id) || [];
+            return <div key={pm.id} className="flex flex-col gap-3 rounded-lg border bg-background p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium">{pm.name || pm.email}</p>
+                <p className="text-xs text-muted-foreground">Consulta de dashboards, fichas, indicadores, resíduos, planos, documentação e acompanhamento, dentro do âmbito configurado.</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {projectIds.map(projectId => {
+                    const project = projectsQuery.data?.find(item => item.id === projectId);
+                    const modules = parsePmModuleIds(pmModulesByUserProject.get(`${pm.id}-${projectId}`));
+                    return project ? <Badge key={projectId} variant="outline">{project.code} · {modules.length === DEFAULT_PM_MODULE_IDS.length ? "processo completo" : `${modules.length} módulos`}</Badge> : null;
+                  })}
+                  {projectIds.length === 0 && <Badge variant="secondary">Sem projetos atribuídos</Badge>}
+                </div>
+              </div>
+              <Button type="button" variant="outline" size="sm" disabled={projectIds.length === 0} onClick={() => setPmConfig({ userId: pm.id, name: pm.name || pm.email || "PM", accessByProject: projectIds.map(projectId => ({ projectId, modules: parsePmModuleIds(pmModulesByUserProject.get(`${pm.id}-${projectId}`)) })) })}>
+                <Settings2 className="mr-2 size-4" />Configurar acesso
+              </Button>
+            </div>;
+          })}
+          {!usersQuery.isLoading && pmUsers.length === 0 && <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Não existem PM no âmbito atual.</p>}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!pmConfig} onOpenChange={open => !open && setPmConfig(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Configurar acesso do PM</DialogTitle></DialogHeader>
+          {pmConfig && <div className="space-y-5">
+            <div className="rounded-lg bg-muted/50 p-3"><p className="font-medium">{pmConfig.name}</p><p className="text-xs text-muted-foreground">A seleção controla a consulta por módulo em cada projeto. A aprovação de fichas e a administração mantêm-se separadas e não são atribuídas ao PM.</p></div>
+            {pmConfig.accessByProject.map(access => {
+              const project = projectsQuery.data?.find(item => item.id === access.projectId);
+              return <section key={access.projectId} className="rounded-lg border p-4"><div className="mb-3"><p className="font-medium">{project?.code || `Projeto ${access.projectId}`}</p><p className="text-xs text-muted-foreground">Selecione os módulos de consulta deste projeto.</p></div><div className="grid gap-2 sm:grid-cols-2">{PM_MODULE_OPTIONS.map(module => <label key={module.id} className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm"><input type="checkbox" checked={access.modules.includes(module.id)} onChange={event => setPmConfig(current => current ? { ...current, accessByProject: current.accessByProject.map(item => item.projectId !== access.projectId ? item : { ...item, modules: event.target.checked ? [...item.modules, module.id] : item.modules.filter(id => id !== module.id) }) } : current)} />{module.label}</label>)}</div></section>;
+            })}
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setPmConfig(null)}>Cancelar</Button><Button disabled={configurePmAccessMutation.isPending || pmConfig.accessByProject.some(item => item.modules.length === 0)} onClick={() => configurePmAccessMutation.mutate({ userId: pmConfig.userId, accessByProject: pmConfig.accessByProject as any })}>{configurePmAccessMutation.isPending ? "A guardar..." : "Guardar acesso"}</Button></div>
+          </div>}
         </DialogContent>
       </Dialog>
 

@@ -106,7 +106,8 @@ describe("Acompanhamento por medida — permissões e isolamento", () => {
   it("valida acesso ao projecto em leitura, configuração, histórico e mutações", () => {
     const measureRouter = routerSource.slice(routerSource.indexOf("phaseMeasures: router"), routerSource.indexOf("calendarEvents: router"));
     const accessHelper = routerSource.slice(routerSource.indexOf("async function assertProjectAccess"), routerSource.indexOf("async function getAccessibleProjectIds"));
-    expect((measureRouter.match(/assertProjectAccess/g) || []).length).toBeGreaterThanOrEqual(7);
+    expect((measureRouter.match(/assertProjectModuleAccess/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((measureRouter.match(/assertProjectAccess/g) || []).length).toBeGreaterThanOrEqual(5);
     expect(accessHelper).not.toContain('project.code === "SIN01"');
   });
 

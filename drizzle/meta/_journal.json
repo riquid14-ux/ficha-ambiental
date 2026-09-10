@@ -288,6 +288,13 @@
       "when": 1789039778028,
       "tag": "0040_white_pixie",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1789045416438,
+      "tag": "0041_steady_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

@@ -67,7 +67,8 @@ describe("Acompanhamento das fases — permissões", () => {
 
   it("valida acesso ao projecto em todas as operações", () => {
     const phaseRouter = routerSource.slice(routerSource.indexOf("projectPhases: router"), routerSource.indexOf("phaseMeasures: router"));
-    expect((phaseRouter.match(/assertProjectAccess/g) || []).length).toBeGreaterThanOrEqual(4);
+    expect((phaseRouter.match(/assertProjectModuleAccess/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((phaseRouter.match(/assertProjectAccess/g) || []).length).toBeGreaterThanOrEqual(2);
   });
 
   it("reserva a leitura multi-projecto listAll a Admin e Dono de Obra", () => {

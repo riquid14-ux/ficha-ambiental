@@ -37,12 +37,12 @@ describe("KPI — métricas configuráveis e relatórios por período", () => {
     expect(routerSource).toContain('ks.weekNumber <= ${input.endWeek}');
   });
 
-  it("oferece um modelo de Viaturas em obra e exporta um relatório com resumo e detalhe semanal", () => {
+  it("oferece um modelo de Viaturas em obra e exporta um relatório com resumo e semanas em colunas", () => {
     expect(pageSource).toContain('Pré-preencher: Viaturas em obra');
     expect(pageSource).toContain('Viaturas em obra');
     expect(pageSource).toContain('Período de análise e relatório');
     expect(pageSource).toContain('Resumo KPI');
-    expect(pageSource).toContain('Detalhe semanal');
+    expect(pageSource).toContain('Semana ${week}');
     expect(pageSource).toContain('Relatorio_KPI_');
   });
 });

@@ -158,20 +158,21 @@ export default function KPI() {
     setIsFormDirty(false);
   }, [currentSubmissionQuery.data, currentSubmissionQuery.isLoading, effectiveCompanyId, formWeek, formYear]);
 
-  const getFormPayload = () => Object.entries(formValues).filter(([, value]) => value.trim() !== "").map(([metricId, value]) => ({ metricId: Number(metricId), value }));
+  const getFormPayload = () => manualMetrics.map((metric: any) => ({ metricId: metric.id, value: String(formValues[metric.id] || "") }));
+  const hasAnyFormValue = () => getFormPayload().some(({ value }) => value.trim() !== "");
   const saveDraft = (silent = false) => {
     if (!effectiveCompanyId || !projectId) return;
     const values = getFormPayload();
-    if (!values.length) return;
+    if (!hasAnyFormValue()) return;
     setDraftStatus("saving");
     setIsFormDirty(false);
-    saveDraftMutation.mutate({ projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values }, { onError: error => { setDraftStatus("idle"); if (!silent) toast.error(error.message); } });
+    saveDraftMutation.mutate({ projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values, completeWeekSnapshot: true }, { onError: error => { setDraftStatus("idle"); if (!silent) toast.error(error.message); } });
   };
   const handleSubmit = () => {
     if (!effectiveCompanyId || !projectId) { toast.error("Verifique a empresa selecionada e o projeto."); return; }
     const values = getFormPayload();
-    if (values.length === 0) { toast.error("Preencha pelo menos um campo."); return; }
-    const input = { projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values };
+    if (!hasAnyFormValue()) { toast.error("Preencha pelo menos um campo."); return; }
+    const input = { projectId, companyId: effectiveCompanyId, weekNumber: Number(formWeek), weekYear: Number(formYear), values, completeWeekSnapshot: true };
     if (currentSubmissionQuery.data && (currentSubmissionQuery.data as any).status !== "draft") correctMutation.mutate(input);
     else submitMutation.mutate(input);
   };
@@ -188,12 +189,13 @@ export default function KPI() {
     import("exceljs").then(async (ExcelJS) => {
       const workbook = new ExcelJS.Workbook(); workbook.creator = "Plataforma de Gestão Ambiental — Start Campus";
       const sheet = workbook.addWorksheet("Importar KPI");
-      sheet.columns = [{ width: 12 }, { width: 12 }, { width: 15 }, { width: 42 }, { width: 14 }, { width: 18 }];
-      sheet.mergeCells("A1:F1"); sheet.getCell("A1").value = "MODELO DE IMPORTAÇÃO KPI"; sheet.getCell("A1").font = { bold: true, size: 15, color: { argb: "FFFFFFFF" } }; sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } };
-      sheet.mergeCells("A2:F2"); sheet.getCell("A2").value = `Projeto: ${activeProject?.code || "—"} — preencha apenas a coluna Valor. Não altere Ano, Semana ou ID da métrica.`; sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
-      const rows: Array<Array<string | number>> = [];
-      for (let week = Number(reportStartWeek); week <= Number(reportEndWeek); week += 1) for (const metric of manualMetrics) rows.push([selectedYear, week, metric.id, metric.name, metric.unit, ""]);
-      sheet.addTable({ name: "ImportarKPI", ref: "A4", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: [{ name: "Ano" }, { name: "Semana" }, { name: "ID da métrica" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Valor" }], rows });
+      const weeks = Array.from({ length: Number(reportEndWeek) - Number(reportStartWeek) + 1 }, (_, index) => Number(reportStartWeek) + index);
+      const headers = ["ID da métrica", "Métrica", "Unidade", ...weeks.map(week => `Semana ${week}`)];
+      sheet.columns = [{ width: 15 }, { width: 42 }, { width: 14 }, ...weeks.map(() => ({ width: 15 }))];
+      sheet.mergeCells(1, 1, 1, headers.length); sheet.getCell("A1").value = "MODELO DE IMPORTAÇÃO KPI"; sheet.getCell("A1").font = { bold: true, size: 15, color: { argb: "FFFFFFFF" } }; sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } };
+      sheet.mergeCells(2, 1, 2, headers.length); sheet.getCell("A2").value = `Projeto: ${activeProject?.code || "—"} · Ano: ${selectedYear} — preencha apenas as colunas Semana. Não altere o ID da métrica.`; sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+      const rows = manualMetrics.map((metric: any) => [metric.id, metric.name, metric.unit, ...weeks.map(() => "")]);
+      sheet.addTable({ name: "ImportarKPI", ref: "A4", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: headers.map(name => ({ name })), rows });
       sheet.views = [{ state: "frozen", ySplit: 4 }];
       const buffer = await workbook.xlsx.writeBuffer(); const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `Modelo_Importacao_KPI_${activeProject?.code}_S${reportStartWeek}-S${reportEndWeek}_${selectedYear}.xlsx`; anchor.click(); URL.revokeObjectURL(url);
     }).catch(() => toast.error("Não foi possível gerar o modelo Excel."));
@@ -203,7 +205,7 @@ export default function KPI() {
     if (!file || !effectiveCompanyId) return;
     if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 10 * 1024 * 1024) return toast.error("Importe um ficheiro .xlsx até 10 MB.");
     const reader = new FileReader();
-    reader.onload = () => { const dataUrl = String(reader.result || ""); const data = dataUrl.split(",")[1]; if (!data) return toast.error("Não foi possível ler o ficheiro Excel."); importExcelMutation.mutate({ projectId, companyId: effectiveCompanyId, mode: importMode, filename: file.name, data }); };
+    reader.onload = () => { const dataUrl = String(reader.result || ""); const data = dataUrl.split(",")[1]; if (!data) return toast.error("Não foi possível ler o ficheiro Excel."); importExcelMutation.mutate({ projectId, companyId: effectiveCompanyId, weekYear: selectedYear, mode: importMode, filename: file.name, data }); };
     reader.readAsDataURL(file);
   };
 
@@ -235,12 +237,27 @@ export default function KPI() {
       const metricRows = metrics.map((metric: any) => ({ category: CAT_LABELS[metric.category] || metric.category, name: metric.name, unit: metric.unit, total: Number((totals[metric.id] || 0).toFixed(2)), weeks: new Set(allValues.filter((value: any) => value.metricId === metric.id).map((value: any) => `${value.weekYear}-${value.weekNumber}`)).size }));
       ws.addTable({ name: "ResumoKPI", ref: "A5", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: [{ name: "Categoria" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Total" }, { name: "Semanas com dados" }], rows: metricRows.map(row => [row.category, row.name, row.unit, row.total, row.weeks]) });
       ws.views = [{ state: "frozen", ySplit: 5 }];
-      const detail = wb.addWorksheet("Detalhe semanal");
-      detail.columns = [{ width: 12 }, { width: 14 }, { width: 26 }, { width: 22 }, { width: 42 }, { width: 14 }, { width: 16 }];
-      detail.mergeCells("A1:G1"); detail.getCell("A1").value = `DETALHE SEMANAL — ${activeProject?.code || "Projecto"} — ${reportPeriodLabel}`;
+      const detail = wb.addWorksheet("Dados semanais");
+      const reportWeeks = Array.from({ length: Number(reportEndWeek) - Number(reportStartWeek) + 1 }, (_, index) => Number(reportStartWeek) + index);
+      const detailHeaders = ["Entidade", "Categoria", "Métrica", "Unidade", ...reportWeeks.map(week => `Semana ${week}`)];
+      detail.columns = [{ width: 26 }, { width: 22 }, { width: 42 }, { width: 14 }, ...reportWeeks.map(() => ({ width: 15 }))];
+      detail.mergeCells(1, 1, 1, detailHeaders.length); detail.getCell("A1").value = `DADOS SEMANAIS — ${activeProject?.code || "Projecto"} — ${reportPeriodLabel}`;
       detail.getCell("A1").font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } }; detail.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
-      const detailRows = allValues.map((value: any) => { const metric = metrics.find((item: any) => item.id === value.metricId); return [value.weekYear, `S${value.weekNumber}`, value.companyName || "—", CAT_LABELS[metric?.category] || metric?.category || "—", metric?.name || `Métrica ${value.metricId}`, metric?.unit || "—", Number(value.value) || 0]; }).sort((a: any[], b: any[]) => Number(a[0]) - Number(b[0]) || Number(String(a[1]).slice(1)) - Number(String(b[1]).slice(1)) || String(a[3]).localeCompare(String(b[3]), "pt"));
-      if (detailRows.length) detail.addTable({ name: "DetalheKPI", ref: "A3", headerRow: true, style: { theme: "TableStyleMedium2", showRowStripes: true }, columns: [{ name: "Ano" }, { name: "Semana" }, { name: "Entidade" }, { name: "Categoria" }, { name: "Métrica" }, { name: "Unidade" }, { name: "Valor" }], rows: detailRows });
+      const weeklyValues = new Map<string, Record<number, number>>();
+      const detailMetadata = new Map<string, { companyName: string; metric: any }>();
+      for (const value of allValues) {
+        const metric = metrics.find((item: any) => item.id === value.metricId);
+        const key = `${value.companyId}-${value.metricId}`;
+        const values = weeklyValues.get(key) || {};
+        values[value.weekNumber] = (values[value.weekNumber] || 0) + (Number(value.value) || 0);
+        weeklyValues.set(key, values);
+        detailMetadata.set(key, { companyName: value.companyName || "—", metric });
+      }
+      const detailRows = Array.from(weeklyValues.entries()).map(([key, values]) => {
+        const metadata = detailMetadata.get(key)!;
+        return [metadata.companyName, CAT_LABELS[metadata.metric?.category] || metadata.metric?.category || "—", metadata.metric?.name || `Métrica ${key.split("-")[1]}`, metadata.metric?.unit || "—", ...reportWeeks.map(week => values[week] ?? "")];
+      }).sort((a: any[], b: any[]) => String(a[0]).localeCompare(String(b[0]), "pt") || String(a[1]).localeCompare(String(b[1]), "pt") || String(a[2]).localeCompare(String(b[2]), "pt"));
+      if (detailRows.length) detail.addTable({ name: "DadosSemanaKPI", ref: "A3", headerRow: true, style: { theme: "TableStyleMedium2", showRowStripes: true }, columns: detailHeaders.map(name => ({ name })), rows: detailRows });
       else detail.getCell("A3").value = "Não existem valores KPI submetidos no período seleccionado.";
       detail.views = [{ state: "frozen", ySplit: 3 }];
       const buffer = await wb.xlsx.writeBuffer();
@@ -426,7 +443,7 @@ export default function KPI() {
                 <div className="mt-4 flex flex-wrap justify-between gap-2">
                   <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>{t("← Anterior")}</Button>
                   <div className="flex flex-wrap gap-2">
-                    {(existingSubmission?.status === "draft" || !existingSubmission) && <Button variant="outline" onClick={() => saveDraft()} disabled={saveDraftMutation.isPending || Object.keys(formValues).length === 0}><Save className="mr-2 h-4 w-4" />{draftStatus === "saving" ? "A guardar..." : draftStatus === "saved" ? "Rascunho guardado" : "Guardar rascunho"}</Button>}
+                    {(existingSubmission?.status === "draft" || !existingSubmission) && <Button variant="outline" onClick={() => saveDraft()} disabled={saveDraftMutation.isPending || !hasAnyFormValue()}><Save className="mr-2 h-4 w-4" />{draftStatus === "saving" ? "A guardar semana..." : draftStatus === "saved" ? "Semana guardada" : "Guardar todos os KPI da semana"}</Button>}
                     {formStep < categories.length - 1 ? (
                       <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
                     ) : (

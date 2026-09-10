@@ -70,12 +70,25 @@ function writePdfFooter(doc: any) {
   doc.fillColor("#111827");
 }
 
-async function canExportProjectPdf(user: any, projectId: number) {
+const PM_PDF_MODULES = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"];
+
+function pmHasPdfModule(assignment: any, module: "planos" | "timeline") {
+  if (!assignment?.accessModules) return true;
+  try {
+    const modules = JSON.parse(assignment.accessModules);
+    return Array.isArray(modules) && modules.every(value => PM_PDF_MODULES.includes(value)) && modules.includes(module);
+  } catch {
+    return true;
+  }
+}
+
+async function canExportProjectPdf(user: any, projectId: number, module?: "planos" | "timeline") {
   if (user.role === "admin" || user.role === "dono_obra") return true;
   const [userProjects, companyProjects] = await Promise.all([
     db.getUserProjects(user.id),
     user.companyId ? db.getProjectsForCompany(user.companyId) : Promise.resolve([]),
   ]);
+  if (user.role === "pm") return userProjects.some((item: any) => item.projectId === projectId && (!module || pmHasPdfModule(item, module)));
   return userProjects.some((item: any) => item.projectId === projectId) || companyProjects.some((item: any) => item.projectId === projectId);
 }
 
@@ -158,7 +171,7 @@ export function registerPdfRoutes(app: Express) {
       if (!user) return res.status(401).json({ error: "Não autorizado" });
       const projectId = Number(req.params.projectId);
       if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
-      if (!await canExportProjectPdf(user, projectId)) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
+      if (!await canExportProjectPdf(user, projectId, "timeline")) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
       const project = await db.getProjectById(projectId);
       if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
       const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getAllSections(), db.getAllMeasures(), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
@@ -219,7 +232,7 @@ export function registerPdfRoutes(app: Express) {
       if (!user) return res.status(401).json({ error: "Não autorizado" });
       const projectId = Number(req.params.projectId);
       if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
-      if (!await canExportProjectPdf(user, projectId)) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
+      if (!await canExportProjectPdf(user, projectId, "planos")) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
       const project = await db.getProjectById(projectId);
       if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
       const plans = await db.getMonitoringPlans(projectId);

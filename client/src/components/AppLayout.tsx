@@ -194,6 +194,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       isAllProjects,
       isOperationOnly,
       enabledModules: activeProject?.enabledModules,
+      pmAccessModules: activeProject?.pmAccessModules,
       partnerAccess,
     });
     if (isAllProjects) {
@@ -208,6 +209,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     isAllProjects,
     isOperationOnly,
     enabledModules: activeProject?.enabledModules,
+    pmAccessModules: activeProject?.pmAccessModules,
     partnerAccess,
   });
   const allItems = [

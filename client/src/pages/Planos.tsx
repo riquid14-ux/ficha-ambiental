@@ -189,7 +189,7 @@ export default function Planos() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [newPlan, setNewPlan] = useState({ planNumber: "", name: "", category: "programa_monitorizacao" as const, periodicity: "", notes: "" });
 
-  const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery();
+  const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery(activeProject?.id ? { projectId: activeProject.id } : undefined, { enabled: Boolean(activeProject?.id) });
   const utils = trpc.useUtils();
   const createMutation = trpc.monitoringPlans.create.useMutation({
     onSuccess: async () => {
@@ -336,7 +336,7 @@ export default function Planos() {
           </CardContent></Card>
           {filteredPlans.length === 0 ? (
             <Card><CardContent className="p-10 text-center"><FileText className="mx-auto h-10 w-10 text-muted-foreground" /><p className="mt-3 font-medium">Ainda não existem planos para este contexto.</p></CardContent></Card>
-          ) : filteredPlans.map((plan: any) => <PlanCard key={plan.id} plan={plan} user={user} />)}
+          ) : filteredPlans.map((plan: any) => <PlanCard key={plan.id} plan={plan} user={user} projectId={activeProject?.id} />)}
         </div>
       </div>
     </AppLayout>
@@ -348,7 +348,7 @@ function StatCard({ label, value, icon, tone = "default" }: { label: string; val
   return <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-xl p-2.5 ${toneClass}`}>{icon}</div><div><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div></CardContent></Card>;
 }
 
-function PlanCard({ plan, user }: { plan: any; user: any }) {
+function PlanCard({ plan, user, projectId }: { plan: any; user: any; projectId?: number }) {
   const utils = trpc.useUtils();
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -366,7 +366,7 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
   const isOverdue = plan.nextReportingDate && plan.nextReportingDate < Date.now();
 
   const { data: candidates = [] } = trpc.monitoringPlans.responsibleCandidates.useQuery(undefined, { enabled: Boolean(expanded && isAdminOrDono) });
-  const { data: history } = trpc.monitoringPlans.history.useQuery({ planId: plan.id }, { enabled: showHistory });
+  const { data: history } = trpc.monitoringPlans.history.useQuery({ planId: plan.id, projectId }, { enabled: showHistory && Boolean(projectId) });
   const refresh = async () => {
     await Promise.all([utils.monitoringPlans.list.invalidate(), utils.calendarEvents.list.invalidate()]);
   };
@@ -379,7 +379,8 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) return toast.error("O ficheiro excede o limite de 10MB.");
     const fileBase64 = await fileToBase64(file);
-    uploadMutation.mutate({ planId: plan.id, filename: file.name, mimeType: file.type || "application/octet-stream", fileBase64 });
+    if (!projectId) return toast.error("Seleccione um projeto individual.");
+    uploadMutation.mutate({ planId: plan.id, projectId, filename: file.name, mimeType: file.type || "application/octet-stream", fileBase64 });
   }
 
   return (
@@ -436,7 +437,7 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
                   <div><h4 className="font-semibold">Novo status update</h4><p className="text-xs text-muted-foreground">O texto, autor e data ficam guardados no histórico.</p></div>
                   <Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
                   <Textarea value={updateText} onChange={event => setUpdateText(event.target.value)} placeholder="Descreva o progresso, constrangimentos e próximos passos..." rows={5} />
-                  <Button className="w-full" disabled={updateText.trim().length < 3 || updateMutation.isPending} onClick={() => updateMutation.mutate({ planId: plan.id, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button>
+                  <Button className="w-full" disabled={!projectId || updateText.trim().length < 3 || updateMutation.isPending} onClick={() => projectId && updateMutation.mutate({ planId: plan.id, projectId, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button>
                 </div>
               )}
             </div>
@@ -451,7 +452,7 @@ function PlanCard({ plan, user }: { plan: any; user: any }) {
               </div>
             )}
 
-            {plan.submissionStatus === "submitted" && canUpdate && <Button className="mt-4" variant="outline" onClick={() => confirmMutation.mutate({ planId: plan.id })} disabled={confirmMutation.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar entrega à entidade competente</Button>}
+            {plan.submissionStatus === "submitted" && canUpdate && <Button className="mt-4" variant="outline" onClick={() => projectId && confirmMutation.mutate({ planId: plan.id, projectId })} disabled={!projectId || confirmMutation.isPending}><CheckCircle2 className="mr-2 h-4 w-4" />Confirmar entrega à entidade competente</Button>}
           </div>
         )}
       </CardContent>

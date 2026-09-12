@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const mocks = vi.hoisted(() => ({ createInvoice: vi.fn(), refetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ createInvoice: vi.fn(), refetch: vi.fn(), reconciliation: [] as any[] }));
 
 vi.mock("@/contexts/ProjectContext", () => ({ useProject: () => ({ activeProject: { id: 60001, code: "SIN01", name: "NEST" }, isAllProjects: false }) }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { role: "admin" } }) }));
@@ -22,7 +22,7 @@ vi.mock("@/lib/trpc", () => {
         overview: { useQuery: () => query({ readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" } }) },
         imports: { useQuery: () => query([]) },
         invoices: { useQuery: () => query([]) },
-        reconciliation: { useQuery: () => query([]) },
+        reconciliation: { useQuery: () => query(mocks.reconciliation) },
         scenarios: { useQuery: () => query([]) },
         importDailyReport: { useMutation: () => mutation() },
         importInvoicesExcel: { useMutation: () => mutation() },
@@ -38,6 +38,7 @@ vi.mock("@/lib/trpc", () => {
 import Operation from "../client/src/pages/Operation";
 
 beforeAll(() => { Object.defineProperty(window, "matchMedia", { value: () => ({ matches: false, addListener: vi.fn(), removeListener: vi.fn(), addEventListener: vi.fn(), removeEventListener: vi.fn() }) }); });
+afterEach(() => { cleanup(); mocks.reconciliation = []; });
 
 describe("Operação — formulário manual de faturas", () => {
   it("submete Eletricidade usando o código normalizado aceite pelo servidor", async () => {
@@ -52,5 +53,18 @@ describe("Operação — formulário manual de faturas", () => {
     await user.type(screen.getByLabelText("Custo total (EUR)"), "123.45");
     await user.click(screen.getByRole("button", { name: "Guardar fatura" }));
     expect(mocks.createInvoice).toHaveBeenCalledWith(expect.objectContaining({ projectId: 60001, invoiceType: "electricidade", quantity: 100, unit: "kWh", totalCost: 123.45 }));
+  });
+
+  it("apresenta na interface os estados conforme e incompleta devolvidos pela reconciliação autorizada", async () => {
+    mocks.reconciliation = [
+      { invoiceType: "eletricidade", periodStart: "2026-09-01", periodEnd: "2026-09-30", billed: 100, measured: 104, unit: "kWh", variance: 0.04, status: "conforme" },
+      { invoiceType: "agua_potavel", periodStart: "2026-09-01", periodEnd: "2026-09-30", billed: 12, measured: null, unit: "m³", variance: null, status: "incompleta" },
+    ];
+    const user = userEvent.setup();
+    render(createElement(Operation));
+    await user.click(screen.getByRole("tab", { name: /Faturas e reconciliação/i }));
+    expect(screen.getByText("Conforme")).toBeTruthy();
+    expect(screen.getByText("Incompleta")).toBeTruthy();
+    expect(screen.getByText("Sem medição")).toBeTruthy();
   });
 });

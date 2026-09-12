@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { buildOperationScenario, calculateOperationEnvironmentalMetrics, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
+import { buildOperationReconciliationEntry, buildOperationScenario, calculateOperationEnvironmentalMetrics, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
 
 const formula = (result: number | string) => ({ formula: "TEST", result });
 
@@ -61,6 +61,13 @@ describe("Operação — importação e cenários", () => {
 
   it("expõe a cobertura de dados sem integrar leituras inválidas na percentagem válida", () => {
     expect(summarizeOperationQuality([{ dataQuality: "valid" }, { dataQuality: "warning" }, { dataQuality: "invalid" }, { dataQuality: "valid" }])).toEqual({ total: 4, valid: 2, warnings: 1, invalid: 1, coveragePercent: 50 });
+  });
+
+  it("distingue ausência de leituras, conformidade e desvio na reconciliação de faturas", () => {
+    const invoice = { invoiceType: "eletricidade", quantity: "100", unit: "kWh", periodStart: "2026-09-01", periodEnd: "2026-09-30" };
+    expect(buildOperationReconciliationEntry(invoice, null)).toMatchObject({ measured: null, variance: null, status: "incompleta" });
+    expect(buildOperationReconciliationEntry(invoice, 104)).toMatchObject({ variance: 0.04, status: "conforme" });
+    expect(buildOperationReconciliationEntry(invoice, 120)).toMatchObject({ variance: 0.2, status: "desvio" });
   });
 
   it("calcula carbono, CUE e limites apenas com fatores e valores explicitamente configurados", () => {

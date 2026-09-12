@@ -87,3 +87,9 @@ O PDF da fase **Exploração** do SIN01 foi gerado pela interface, inspecionado 
 ## Encerramento da validação QA de resíduos
 
 A confirmação nativa do browser para eliminar e-GAR foi substituída por um diálogo acessível da aplicação, que apresenta o identificador, o carácter irreversível da ação e a auditoria associada. A regressão verifica a ausência de `confirm()` e a atualização do Waste Map depois da eliminação; a compilação e os testes de resíduos passaram. A validação QA foi encerrada sem criar mais registos: a verificação final devolveu **0 e-GAR QA remanescentes**.
+
+## Validações de contrato sem repetição QA
+
+Para evitar novo ciclo de criação e remoção de dados transitórios, a reconciliação de faturas foi validada através do procedimento autorizado real: leituras dentro de ±5% devolvem **conforme** e a ausência de leituras válidas devolve **incompleta**, em vez de um falso desvio. O procedimento real de eliminação de e-GAR foi igualmente coberto para a entidade autora dentro das 48 horas, confirmando a remoção e a auditoria, e para a recusa após 48 horas. Estas regressões não criam dados persistentes nem recorrem ao browser.
+
+As duas apresentações críticas também foram cobertas em ambiente de interface: a aba **Faturas e reconciliação** mostra explicitamente os estados **Conforme**, **Incompleta** e **Sem medição** devolvidos pelo contrato autorizado; o diálogo de e-GAR apresenta a confirmação acessível, recebe a decisão de eliminação e atualiza tanto a lista como a consulta do **Waste Map**. Estes testes usam dados simulados em memória e não criam registos QA persistentes.

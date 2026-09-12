@@ -269,6 +269,29 @@ export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricC
   };
 }
 
+type OperationReconciliationInvoice = {
+  invoiceType: string;
+  quantity: number | string;
+  unit: string;
+  periodStart: string;
+  periodEnd: string;
+};
+
+export function buildOperationReconciliationEntry(invoice: OperationReconciliationInvoice, measured: number | null) {
+  const billed = Number(invoice.quantity);
+  const variance = measured !== null && billed > 0 ? (measured - billed) / billed : null;
+  return {
+    invoiceType: invoice.invoiceType,
+    periodStart: invoice.periodStart,
+    periodEnd: invoice.periodEnd,
+    billed,
+    unit: invoice.unit,
+    measured,
+    variance,
+    status: measured === null ? "incompleta" : Math.abs(variance || 0) <= 0.05 ? "conforme" : "desvio",
+  };
+}
+
 function parseReportDate(value: unknown) {
   if (value && typeof value === "object" && "result" in value) return parseReportDate((value as { result: unknown }).result);
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -4502,11 +4525,10 @@ export const appRouter = router({
         for (const invoice of invoices) {
           const code = metricByInvoice[invoice.invoiceType];
           const from = Date.parse(`${invoice.periodStart}T00:00:00Z`); const until = Date.parse(`${invoice.periodEnd}T23:59:59Z`);
-          const measuredResult = code ? await database.execute(sql`SELECT COALESCE(SUM(CAST(value AS DECIMAL(20,6))), 0) AS measured FROM operation_readings WHERE projectId = ${input.projectId} AND metricCode = ${code} AND measuredAt >= ${from} AND measuredAt <= ${until} AND dataQuality != 'invalid'`) : null;
-          const measured = measuredResult ? Number((measuredResult as any)[0]?.[0]?.measured || 0) : null;
-          const billed = Number(invoice.quantity);
-          const variance = measured !== null && billed > 0 ? (measured - billed) / billed : null;
-          entries.push({ invoiceType: invoice.invoiceType, periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, billed, unit: invoice.unit, measured, variance, status: measured === null ? "incompleta" : Math.abs(variance || 0) <= 0.05 ? "conforme" : "desvio" });
+          const measuredResult = code ? await database.execute(sql`SELECT COUNT(*) AS samples, SUM(CAST(value AS DECIMAL(20,6))) AS measured FROM operation_readings WHERE projectId = ${input.projectId} AND metricCode = ${code} AND measuredAt >= ${from} AND measuredAt <= ${until} AND dataQuality != 'invalid'`) : null;
+          const aggregate = measuredResult ? (measuredResult as any)[0]?.[0] : null;
+          const measured = aggregate && Number(aggregate.samples || 0) > 0 ? Number(aggregate.measured) : null;
+          entries.push(buildOperationReconciliationEntry(invoice, measured));
         }
         return entries;
       }),

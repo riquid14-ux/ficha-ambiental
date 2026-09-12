@@ -80,10 +80,10 @@ async function assertProjectAccess(user: any, projectId: number) {
   return project;
 }
 
-type ProjectModule = "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi";
+type ProjectModule = "dashboard" | "calendar" | "timeline" | "ficha" | "residuos" | "kpi" | "operacao";
 type PmAccessModule = ProjectModule | "planos" | "documentacao";
-const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi"];
-const DEFAULT_PM_ACCESS_MODULES: PmAccessModule[] = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"];
+const DEFAULT_PROJECT_MODULES: ProjectModule[] = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi", "operacao"];
+const DEFAULT_PM_ACCESS_MODULES: PmAccessModule[] = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "operacao", "documentacao"];
 
 function getEnabledProjectModules(project: any): ProjectModule[] {
   if (typeof project?.enabledModules !== "string") return DEFAULT_PROJECT_MODULES;
@@ -181,6 +181,293 @@ function canUpdatePlanProgress(user: any, assignment: any) {
 
 function getUserDisplayName(user: any) {
   return user.fullName || user.name || user.email || `Utilizador ${user.id}`;
+}
+
+const OPERATION_PROJECT_CODE = "SIN01";
+const OPERATION_WRITE_ROLES = new Set(["admin", "dono_obra", "pm"]);
+
+async function assertOperationAccess(user: any, projectId: number, write = false) {
+  const project = await assertProjectFeatureAccess(user, projectId, "operacao");
+  if (project.code !== OPERATION_PROJECT_CODE) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "A Operação está disponível apenas para o SIN01/NEST." });
+  }
+  if (write && !OPERATION_WRITE_ROLES.has(user.role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para alterar dados de Operação." });
+  }
+  return project;
+}
+
+function parseOperationNumber(value: unknown): number | null {
+  if (value && typeof value === "object" && "result" in value) return parseOperationNumber((value as { result: unknown }).result);
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const cleaned = raw.replace(/[^0-9,.-]/g, "");
+  if (!cleaned || cleaned === "-" || cleaned === ".") return null;
+  const normalized = cleaned.includes(",") && cleaned.includes(".")
+    ? cleaned.replace(/,/g, "")
+    : cleaned.replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function summarizeOperationQuality(readings: Array<{ dataQuality: string }>) {
+  const total = readings.length;
+  const valid = readings.filter(row => row.dataQuality === "valid").length;
+  const warnings = readings.filter(row => row.dataQuality === "warning").length;
+  const invalid = readings.filter(row => row.dataQuality === "invalid").length;
+  return { total, valid, warnings, invalid, coveragePercent: total ? (valid / total) * 100 : null };
+}
+
+function parseReportDate(value: unknown) {
+  if (value && typeof value === "object" && "result" in value) return parseReportDate((value as { result: unknown }).result);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()));
+  }
+  const text = String(value ?? "");
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+    const isoDate = new Date(text);
+    if (!Number.isNaN(isoDate.getTime())) return new Date(Date.UTC(isoDate.getUTCFullYear(), isoDate.getUTCMonth(), isoDate.getUTCDate()));
+  }
+  const match = text.match(/(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/);
+  const months: Record<string, number> = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
+  if (!match || months[match[2].toLowerCase()] === undefined) return null;
+  return new Date(Date.UTC(Number(match[3]), months[match[2].toLowerCase()], Number(match[1])));
+}
+
+function dateKeyFromTimestamp(timestamp: number) {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function getWorksheetRowText(row: ExcelJS.Row) {
+  return Array.from({ length: row.cellCount }, (_, index) => row.getCell(index + 1).text).join(" ");
+}
+
+type OperationReadingInput = {
+  metricCode: string;
+  metricLabel: string;
+  category: "energia" | "agua" | "arrefecimento" | "carbono" | "conformidade" | "custo";
+  unit: string;
+  value: number;
+  measuredAt: number;
+  granularity: "quinze_minutos" | "diario" | "mensal" | "anual";
+  source: "bms_report" | "invoice" | "manual" | "calculated";
+  dataQuality: "valid" | "warning" | "invalid";
+  qualityNote?: string;
+};
+
+export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
+  const daily = workbook.getWorksheet("Daily Report (v2)") || workbook.worksheets.find(sheet => /daily\s+report/i.test(sheet.name));
+  if (!daily) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro não contém a folha 'Daily Report' necessária." });
+  const dateCell = daily.getRow(4).getCell(3).value;
+  const date = parseReportDate(dateCell) || parseReportDate(getWorksheetRowText(daily.getRow(4)));
+  if (!date) throw new TRPCError({ code: "BAD_REQUEST", message: "Não foi possível identificar a data do relatório operacional." });
+  const measuredAt = date.getTime();
+  const readings: OperationReadingInput[] = [];
+  const add = (metricCode: string, metricLabel: string, category: OperationReadingInput["category"], unit: string, value: number | null, source: OperationReadingInput["source"] = "bms_report", dataQuality: OperationReadingInput["dataQuality"] = "valid", qualityNote?: string, granularity: OperationReadingInput["granularity"] = "diario", at = measuredAt) => {
+    if (value === null || !Number.isFinite(value)) return;
+    readings.push({ metricCode, metricLabel, category, unit, value, measuredAt: at, source, dataQuality, qualityNote, granularity });
+  };
+  const findRow = (needle: string) => {
+    for (let index = 1; index <= daily.rowCount; index += 1) {
+      if (getWorksheetRowText(daily.getRow(index)).toLowerCase().includes(needle.toLowerCase())) return daily.getRow(index);
+    }
+    return undefined;
+  };
+  const headerRow = (() => {
+    for (let index = 1; index <= daily.rowCount; index += 1) {
+      const text = getWorksheetRowText(daily.getRow(index)).toLowerCase();
+      if (text.includes("site") && text.includes("it") && text.includes("esw")) return daily.getRow(index);
+    }
+    return undefined;
+  })();
+  const columnFor = (label: string) => {
+    if (!headerRow) return -1;
+    for (let index = 1; index <= headerRow.cellCount; index += 1) if (headerRow.getCell(index).text.trim().toLowerCase() === label.toLowerCase()) return index;
+    return -1;
+  };
+  const averagePower = findRow("Average Power");
+  const dailyEnergy = findRow("Total Daily Consumption");
+  const powerAt = (label: string) => {
+    const column = columnFor(label);
+    return column > 0 && averagePower ? parseOperationNumber(averagePower.getCell(column).value) : null;
+  };
+  const energyAt = (label: string) => {
+    const column = columnFor(label);
+    return column > 0 && dailyEnergy ? parseOperationNumber(dailyEnergy.getCell(column).value) : null;
+  };
+  const sitePower = powerAt("Site"); const itPower = powerAt("IT"); const eswPower = powerAt("ESW");
+  const siteEnergy = energyAt("Site"); const itEnergy = energyAt("IT"); const eswEnergy = energyAt("ESW");
+  add("site_power_avg_kw", "Potência média do site", "energia", "kW", sitePower);
+  add("it_power_avg_kw", "Carga TI média", "energia", "kW", itPower);
+  add("esw_power_avg_kw", "Potência média do sistema de água do mar", "arrefecimento", "kW", eswPower);
+  add("site_energy_kwh_daily", "Energia diária do site", "energia", "kWh", siteEnergy);
+  add("it_energy_kwh_daily", "Energia TI diária", "energia", "kWh", itEnergy);
+  add("esw_energy_kwh_daily", "Energia diária do sistema de água do mar", "arrefecimento", "kWh", eswEnergy);
+  add("pue", "PUE", "energia", "rácio", siteEnergy !== null && itEnergy !== null && itEnergy > 0 ? siteEnergy / itEnergy : null, "calculated", itEnergy && itEnergy > 0 ? "valid" : "invalid", itEnergy && itEnergy > 0 ? undefined : "Sem carga TI válida para calcular PUE.");
+  const reportedWue = findRow("Total Daily Consumption")?.getCell(13).value;
+  const reportedWueNumber = parseOperationNumber(reportedWue);
+  add("wue_reportado", "WUE reportado na origem", "agua", "L/kWh TI", reportedWueNumber, "bms_report", reportedWueNumber !== null && reportedWueNumber >= 0 ? "warning" : "invalid", reportedWueNumber !== null && reportedWueNumber < 0 ? "Valor negativo na origem; excluído de indicadores e exportações." : "WUE importado sem validação de balanço de água.");
+
+  const seawater = workbook.getWorksheet("Seawater_strings (v2)") || workbook.worksheets.find(sheet => /seawater/i.test(sheet.name));
+  if (seawater) {
+    let averageRow: ExcelJS.Row | undefined;
+    let labelsRow: ExcelJS.Row | undefined;
+    for (let index = 1; index <= Math.min(seawater.rowCount, 20); index += 1) {
+      const row = seawater.getRow(index);
+      const rowText = getWorksheetRowText(row);
+      if (/seawater\s+flow/i.test(rowText)) labelsRow = row;
+      if (/^\s*(avrg|average)\b/i.test(rowText)) averageRow = row;
+    }
+    const averageByLabel = (label: string) => {
+      if (!labelsRow || !averageRow) return null;
+      for (let index = 1; index <= labelsRow.cellCount; index += 1) {
+        if (labelsRow.getCell(index).text.trim().toLowerCase() === label.toLowerCase()) return parseOperationNumber(averageRow.getCell(index).value);
+      }
+      return null;
+    };
+    const seawaterTemp = averageByLabel("Seawater Temperature (ºC)");
+    const outdoorTemp = averageByLabel("Air Temperature");
+    const pcwSupply = averageByLabel("PCW Supply Temperature");
+    const pcwReturn = averageByLabel("PCW Return Temperature");
+    const seawaterReturn = averageByLabel("Seawater Return Temperature");
+    const windSpeed = averageByLabel("Wind Speed (Km/h)");
+    const seawaterFlow = averageByLabel("Seawater Flow (L/s)");
+    add("seawater_intake_temp_c", "Temperatura média da água do mar na captação", "arrefecimento", "°C", seawaterTemp);
+    add("outdoor_temp_avg_c", "Temperatura exterior média", "arrefecimento", "°C", outdoorTemp);
+    add("pcw_supply_temp_c", "Temperatura média de fornecimento PCW", "arrefecimento", "°C", pcwSupply);
+    add("pcw_return_temp_c", "Temperatura média de retorno PCW", "arrefecimento", "°C", pcwReturn);
+    add("seawater_return_temp_c", "Temperatura média de descarga ao mar", "conformidade", "°C", seawaterReturn);
+    add("seawater_flow_lps", "Caudal médio de captação", "arrefecimento", "L/s", seawaterFlow);
+    add("seawater_delta_t_k", "ΔT água do mar", "arrefecimento", "K", seawaterReturn !== null && seawaterTemp !== null ? seawaterReturn - seawaterTemp : null, "calculated");
+    add("pcw_delta_t_k", "ΔT circuito PCW", "arrefecimento", "K", pcwReturn !== null && pcwSupply !== null ? pcwReturn - pcwSupply : null, "calculated");
+    add("heat_exchanger_approach_k", "Approach do permutador de titânio", "arrefecimento", "K", pcwSupply !== null && seawaterTemp !== null ? pcwSupply - seawaterTemp : null, "calculated");
+    let thermalLoad: number | null = null;
+    for (let index = 1; index <= seawater.rowCount; index += 1) {
+      if (/thermal\s+load/i.test(getWorksheetRowText(seawater.getRow(index)))) {
+        for (let next = index; next <= Math.min(seawater.rowCount, index + 4); next += 1) {
+          const candidates = Array.from({ length: seawater.getRow(next).cellCount }, (_, cell) => parseOperationNumber(seawater.getRow(next).getCell(cell + 1).value)).filter((value): value is number => value !== null);
+          if (candidates.length) { thermalLoad = candidates[candidates.length - 1]; break; }
+        }
+      }
+      if (thermalLoad !== null) break;
+    }
+    add("seawater_thermal_load_kw", "Carga térmica rejeitada ao mar", "arrefecimento", "kW térmicos", thermalLoad);
+    add("seawater_pumping_cop", "COP de bombagem do circuito de mar", "arrefecimento", "kWh térmico/kWh elétrico", thermalLoad !== null && eswPower !== null && eswPower > 0 ? thermalLoad / eswPower : null, "calculated", eswPower && eswPower > 0 ? "valid" : "invalid", eswPower && eswPower > 0 ? undefined : "Sem potência ESW válida para calcular COP.");
+  }
+  const organizer = workbook.getWorksheet("EBO_Data organizer") || workbook.worksheets.find(sheet => /ebo.*organizer/i.test(sheet.name));
+  if (organizer) {
+    const header = organizer.getRow(1);
+    const column = (names: string[]) => {
+      for (let index = 1; index <= header.cellCount; index += 1) if (names.includes(header.getCell(index).text.trim().toLowerCase())) return index;
+      return -1;
+    };
+    const timestampColumn = column(["time stamp", "timestamp"]);
+    const rawMetrics = [
+      { code: "outdoor_temp_15m_c", label: "Temperatura exterior", category: "arrefecimento" as const, unit: "°C", headers: ["temp exterior"] },
+      { code: "seawater_intake_15m_c", label: "Temperatura da água do mar na captação", category: "arrefecimento" as const, unit: "°C", headers: ["sw_tmp"] },
+      { code: "seawater_flow_15m_lps", label: "Caudal de água do mar", category: "arrefecimento" as const, unit: "L/s", headers: ["sw_flow"] },
+      { code: "pcw_supply_15m_c", label: "Fornecimento PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_sp1"] },
+      { code: "pcw_return_15m_c", label: "Retorno PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_ret1"] },
+    ];
+    if (timestampColumn > 0) {
+      for (let rowIndex = 2; rowIndex <= Math.min(organizer.rowCount, 4000); rowIndex += 1) {
+        const row = organizer.getRow(rowIndex); const timeText = row.getCell(timestampColumn).text;
+        const match = timeText.match(/(\d{1,2}):(\d{2})/); if (!match) continue;
+        const at = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), Number(match[1]), Number(match[2]));
+        for (const metric of rawMetrics) {
+          const metricColumn = column(metric.headers); const value = metricColumn > 0 ? parseOperationNumber(row.getCell(metricColumn).value) : null;
+          add(metric.code, metric.label, metric.category, metric.unit, value, "bms_report", "valid", undefined, "quinze_minutos", at);
+        }
+      }
+    }
+  }
+  if (!readings.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O relatório não contém leituras operacionais reconhecíveis." });
+  const invalid = readings.filter(reading => reading.dataQuality === "invalid").length;
+  return { measuredDate: dateKeyFromTimestamp(measuredAt), readings, qualityStatus: invalid ? "warning" as const : "valid" as const, qualityNotes: invalid ? `${invalid} leitura(s) importada(s) como inválida(s) e excluída(s) dos indicadores.` : null };
+}
+
+export function buildOperationScenario(assumptions: {
+  tiEnergyKwh: number; baselinePue: number; baselineWaterM3: number; baselineMaintenanceEur: number; electricityPriceEurKwh: number; waterPriceEurM3: number; carbonFactorKgKwh: number; targetPue: number; targetWueLkwh: number; maintenanceEur: number; systemMix: Record<string, number>;
+}) {
+  const baselineSiteEnergyKwh = assumptions.tiEnergyKwh * assumptions.baselinePue;
+  const projectedSiteEnergyKwh = assumptions.tiEnergyKwh * assumptions.targetPue;
+  const projectedWaterM3 = assumptions.tiEnergyKwh * assumptions.targetWueLkwh / 1000;
+  const baselineCarbonKg = baselineSiteEnergyKwh * assumptions.carbonFactorKgKwh;
+  const projectedCarbonKg = projectedSiteEnergyKwh * assumptions.carbonFactorKgKwh;
+  const baselineCostEur = baselineSiteEnergyKwh * assumptions.electricityPriceEurKwh + assumptions.baselineWaterM3 * assumptions.waterPriceEurM3 + assumptions.baselineMaintenanceEur;
+  const projectedCostEur = projectedSiteEnergyKwh * assumptions.electricityPriceEurKwh + projectedWaterM3 * assumptions.waterPriceEurM3 + assumptions.maintenanceEur;
+  return { baselineSiteEnergyKwh, projectedSiteEnergyKwh, energyDeltaKwh: projectedSiteEnergyKwh - baselineSiteEnergyKwh, projectedWaterM3, waterDeltaM3: projectedWaterM3 - assumptions.baselineWaterM3, baselineCarbonKg, projectedCarbonKg, carbonDeltaKg: projectedCarbonKg - baselineCarbonKg, baselineCostEur, projectedCostEur, costDeltaEur: projectedCostEur - baselineCostEur, pueDelta: assumptions.targetPue - assumptions.baselinePue, systemMix: assumptions.systemMix, formulaVersion: "operacao-v1" };
+}
+
+type OperationInvoiceType = "eletricidade" | "agua_potavel" | "agua_industrial" | "hvo" | "gasoleo" | "outro";
+type OperationInvoiceImport = { invoiceType: OperationInvoiceType; supplier: string | null; invoiceNumber: string | null; periodStart: string; periodEnd: string; quantity: number; unit: string; totalCost: number | null; notes: string | null; rowNumber: number };
+
+function normalizeInvoiceHeader(value: unknown) {
+  return String(value ?? "").trim().toLocaleLowerCase("pt-PT").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function normalizeInvoiceType(value: unknown): OperationInvoiceType | null {
+  const normalized = normalizeInvoiceHeader(value).replace(/ /g, "_");
+  const aliases: Record<string, OperationInvoiceType> = {
+    eletricidade: "eletricidade", electricity: "eletricidade", energia: "eletricidade",
+    agua_potavel: "agua_potavel", agua: "agua_potavel", potable_water: "agua_potavel",
+    agua_industrial: "agua_industrial", industrial_water: "agua_industrial",
+    hvo: "hvo", gasoleo: "gasoleo", diesel: "gasoleo", outro: "outro",
+  };
+  return aliases[normalized] || null;
+}
+
+export function parseOperationInvoicesWorkbook(workbook: ExcelJS.Workbook) {
+  const sheet = workbook.getWorksheet("Faturas Operação") || workbook.worksheets.find(candidate => /faturas?|invoices?/i.test(candidate.name));
+  if (!sheet) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro não contém a folha 'Faturas Operação'." });
+  if (sheet.rowCount > 2001) throw new TRPCError({ code: "BAD_REQUEST", message: "A importação de faturas está limitada a 2 000 linhas." });
+  const headerPositions = new Map<string, number>();
+  const headerAliases: Record<string, string[]> = {
+    invoiceType: ["tipo", "tipo de fatura", "tipo fatura"],
+    supplier: ["fornecedor"],
+    invoiceNumber: ["n da fatura", "numero da fatura", "fatura", "invoice number"],
+    periodStart: ["inicio", "inicio do periodo", "periodo inicio"],
+    periodEnd: ["fim", "fim do periodo", "periodo fim"],
+    quantity: ["quantidade", "consumo"],
+    unit: ["unidade"],
+    totalCost: ["custo total eur", "custo total", "valor eur", "valor"],
+    notes: ["notas", "observacoes"],
+  };
+  const headers = sheet.getRow(1);
+  for (let column = 1; column <= headers.cellCount; column += 1) {
+    const header = normalizeInvoiceHeader(headers.getCell(column).text || headers.getCell(column).value);
+    for (const [field, aliases] of Object.entries(headerAliases)) if (aliases.includes(header)) headerPositions.set(field, column);
+  }
+  for (const required of ["invoiceType", "periodStart", "periodEnd", "quantity", "unit"]) {
+    if (!headerPositions.has(required)) throw new TRPCError({ code: "BAD_REQUEST", message: `Falta a coluna obrigatória '${required === "invoiceType" ? "Tipo" : required === "periodStart" ? "Início" : required === "periodEnd" ? "Fim" : required === "quantity" ? "Quantidade" : "Unidade"}'.` });
+  }
+  const cellValue = (row: ExcelJS.Row, field: string) => headerPositions.has(field) ? row.getCell(headerPositions.get(field)!).value : null;
+  const rows: OperationInvoiceImport[] = [];
+  const errors: string[] = [];
+  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const typeCell = cellValue(row, "invoiceType");
+    const quantityCell = cellValue(row, "quantity");
+    if (!String(typeCell ?? "").trim() && parseOperationNumber(quantityCell) === null) continue;
+    const invoiceType = normalizeInvoiceType(typeCell);
+    const start = parseReportDate(cellValue(row, "periodStart"));
+    const end = parseReportDate(cellValue(row, "periodEnd"));
+    const quantity = parseOperationNumber(quantityCell);
+    const unit = String(cellValue(row, "unit") ?? "").trim();
+    const totalCostValue = headerPositions.has("totalCost") ? parseOperationNumber(cellValue(row, "totalCost")) : null;
+    if (!invoiceType || !start || !end || quantity === null || quantity < 0 || !unit) {
+      errors.push(`Linha ${rowNumber}: indique Tipo, Início, Fim, Quantidade não negativa e Unidade válidos.`);
+      continue;
+    }
+    const periodStart = dateKeyFromTimestamp(start.getTime());
+    const periodEnd = dateKeyFromTimestamp(end.getTime());
+    if (periodEnd < periodStart) { errors.push(`Linha ${rowNumber}: o fim do período é anterior ao início.`); continue; }
+    rows.push({ invoiceType, supplier: String(cellValue(row, "supplier") ?? "").trim().slice(0, 255) || null, invoiceNumber: String(cellValue(row, "invoiceNumber") ?? "").trim().slice(0, 120) || null, periodStart, periodEnd, quantity, unit: unit.slice(0, 50), totalCost: totalCostValue === null || totalCostValue < 0 ? null : totalCostValue, notes: String(cellValue(row, "notes") ?? "").trim().slice(0, 5000) || null, rowNumber });
+  }
+  if (errors.length) throw new TRPCError({ code: "BAD_REQUEST", message: `${errors.slice(0, 5).join(" ")}${errors.length > 5 ? ` Mais ${errors.length - 5} linha(s) com erro.` : ""}` });
+  if (!rows.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Não foram encontradas faturas válidas para importar." });
+  return rows;
 }
 
 function getSafePdfFilename(value: string) {
@@ -3587,8 +3874,39 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && !ownsRecord) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Só pode eliminar registos da sua entidade." });
         }
+        if (!isAdminOrDono(ctx.user.role)) {
+          const createdAt = new Date(record.createdAt).getTime();
+          if (!Number.isFinite(createdAt) || Date.now() - createdAt > 48 * 60 * 60 * 1000) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "A e-GAR só pode ser eliminada pelo autor ou pela sua entidade nas primeiras 48 horas. A Administração pode eliminá-la posteriormente." });
+          }
+        }
         await db.deleteWasteEgar(input.id);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "waste_egar_delete", "waste_egars", input.id, JSON.stringify({ projectId: record.projectId, egarId: record.egarId, lerCode: record.lerCode, createdAt: record.createdAt }), null);
         return { success: true };
+      }),
+    wasteMap: partnerAllowedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), year: z.number().int().min(2020).max(2100), companyIds: z.array(z.number().int().positive()).max(100).optional() }))
+      .query(async ({ ctx, input }) => {
+        const profile = await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "waste");
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        let scopeSql = sql``;
+        if (ctx.user.role === "ee_partner") {
+          scopeSql = sql` AND e.companyId = ${ctx.user.companyId}`;
+        } else if (ctx.user.role === "ee") {
+          scopeSql = sql` AND (e.companyId = ${ctx.user.companyId} OR e.parentCompanyId = ${ctx.user.companyId})`;
+        } else if (input.companyIds?.length) {
+          scopeSql = sql` AND e.companyId IN (${sql.join(input.companyIds.map(id => sql`${id}`), sql`, `)})`;
+        }
+        const rows = await database.execute(sql`
+          SELECT e.lerCode, e.designation, e.month, e.year, e.companyId, COALESCE(c.shortName, c.name, 'Sem entidade') AS companyName,
+                 SUM(CAST(COALESCE(e.correctedQuantity, e.quantity) AS DECIMAL(20,6))) AS quantity
+          FROM waste_egars e
+          LEFT JOIN companies c ON c.id = e.companyId
+          WHERE e.projectId = ${input.projectId} AND e.year = ${input.year}${scopeSql}
+          GROUP BY e.lerCode, e.designation, e.month, e.year, e.companyId, c.shortName, c.name
+          ORDER BY e.lerCode ASC, e.month ASC, companyName ASC
+        `);
+        return ((rows as any)[0] || []).map((row: any) => ({ ...row, month: Number(row.month), year: Number(row.year), companyId: row.companyId === null ? null : Number(row.companyId), quantity: Number(row.quantity) }));
       }),
   }),
 
@@ -3915,6 +4233,213 @@ export const appRouter = router({
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         await database.delete(schema.kpiIncidents).where(eq(schema.kpiIncidents.id, input.id));
+        return { success: true };
+      }),
+  }),
+
+  // ─── Operação do edifício — SIN01 / NEST ─────────────────────────────────
+  operation: router({
+    overview: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
+        const start = input.startDate ? Date.parse(`${input.startDate}T00:00:00Z`) : 0;
+        const end = input.endDate ? Date.parse(`${input.endDate}T23:59:59Z`) : Date.now() + 86_400_000;
+        const result = await database.execute(sql`
+          SELECT metricCode, metricLabel, category, unit, value, measuredAt, granularity, source, dataQuality, qualityNote
+          FROM operation_readings
+          WHERE projectId = ${input.projectId} AND measuredAt >= ${start} AND measuredAt <= ${end}
+          ORDER BY measuredAt ASC, metricCode ASC
+          LIMIT 12000
+        `);
+        const readings = ((result as any)[0] || []).map((row: any) => ({ ...row, measuredAt: Number(row.measuredAt), value: Number(row.value) }));
+        const usable = readings.filter((row: any) => row.dataQuality !== "invalid");
+        const latest = new Map<string, any>();
+        for (const reading of usable) latest.set(reading.metricCode, reading);
+        const quality = summarizeOperationQuality(readings);
+        const invoiceSummaryResult = await database.execute(sql`
+          SELECT COUNT(*) AS invoiceCount, COALESCE(SUM(CAST(totalCost AS DECIMAL(20,6))), 0) AS totalCostEur
+          FROM operation_invoices
+          WHERE projectId = ${input.projectId} AND periodEnd >= ${input.startDate || "0000-01-01"} AND periodStart <= ${input.endDate || "9999-12-31"}
+        `);
+        const invoiceSummary = (invoiceSummaryResult as any)[0]?.[0] || {};
+        return { readings, latest: Object.fromEntries(latest), quality, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: "factor_pendente" as const } };
+      }),
+    imports: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT id, sourceFilename, sourceType, measuredDate, rowsImported, qualityStatus, qualityNotes, importedAt FROM operation_import_batches WHERE projectId = ${input.projectId} ORDER BY importedAt DESC LIMIT 50`);
+        return (result as any)[0] || [];
+      }),
+    importDailyReport: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), filename: z.string().min(1).max(255), mimeType: z.literal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), data: z.string().min(8) }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        if (!input.filename.toLowerCase().endsWith(".xlsx") || /[\\/\r\n\0]/.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Indique um relatório Excel (.xlsx) com um nome de ficheiro válido." });
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O conteúdo do relatório operacional é inválido." });
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 15 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O relatório operacional deve ter no máximo 15 MB." });
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "operation-daily-report");
+        if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
+        const workbook = new ExcelJS.Workbook();
+        try { await workbook.xlsx.load(buffer as any); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel não é válido." }); }
+        const extracted = extractOperationalReadings(workbook);
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+        const stored = await storagePut(`operation/${input.projectId}/reports/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.transaction(async (tx: any) => {
+          const [batch] = await tx.insert(schema.operationImportBatches).values({ projectId: input.projectId, sourceFilename: input.filename, sourceFileKey: stored.key, sourceFileUrl: stored.url, sourceType: "daily_report", measuredDate: extracted.measuredDate, rowsImported: extracted.readings.length, qualityStatus: extracted.qualityStatus, qualityNotes: extracted.qualityNotes, importedBy: ctx.user.id }).$returningId();
+          for (const reading of extracted.readings) {
+            await tx.execute(sql`
+              INSERT INTO operation_readings (projectId, batchId, metricCode, metricLabel, category, unit, value, measuredAt, granularity, source, dataQuality, qualityNote)
+              VALUES (${input.projectId}, ${batch.id}, ${reading.metricCode}, ${reading.metricLabel}, ${reading.category}, ${reading.unit}, ${String(reading.value)}, ${reading.measuredAt}, ${reading.granularity}, ${reading.source}, ${reading.dataQuality}, ${reading.qualityNote || null})
+              ON DUPLICATE KEY UPDATE batchId = VALUES(batchId), metricLabel = VALUES(metricLabel), category = VALUES(category), unit = VALUES(unit), value = VALUES(value), dataQuality = VALUES(dataQuality), qualityNote = VALUES(qualityNote)
+            `);
+          }
+          return batch;
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_report_import", "operation_import_batches", result.id, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, measuredDate: extracted.measuredDate, rowsImported: extracted.readings.length, qualityStatus: extracted.qualityStatus }));
+        return { batchId: result.id, measuredDate: extracted.measuredDate, rowsImported: extracted.readings.length, qualityStatus: extracted.qualityStatus, qualityNotes: extracted.qualityNotes };
+      }),
+    importInvoicesExcel: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), filename: z.string().min(1).max(255), mimeType: z.literal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), data: z.string().min(8) }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        if (!input.filename.toLowerCase().endsWith(".xlsx") || /[\\/\r\n\0]/.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Indique um ficheiro Excel (.xlsx) de faturas com nome válido." });
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O conteúdo do ficheiro de faturas é inválido." });
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro de faturas deve ter no máximo 10 MB." });
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "operation-invoices-import");
+        if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
+        const workbook = new ExcelJS.Workbook();
+        try { await workbook.xlsx.load(buffer as any); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel de faturas não é válido." }); }
+        const invoices = parseOperationInvoicesWorkbook(workbook);
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+        const stored = await storagePut(`operation/${input.projectId}/invoices-import/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.transaction(async (tx: any) => {
+          let created = 0; let skipped = 0;
+          for (const invoice of invoices) {
+            const existing = await tx.execute(sql`SELECT id FROM operation_invoices WHERE projectId = ${input.projectId} AND invoiceType = ${invoice.invoiceType} AND periodStart = ${invoice.periodStart} AND periodEnd = ${invoice.periodEnd} AND quantity = ${String(invoice.quantity)} AND unit = ${invoice.unit} AND COALESCE(invoiceNumber, '') = ${invoice.invoiceNumber || ""} LIMIT 1`);
+            if ((existing as any)[0]?.length) { skipped += 1; continue; }
+            await tx.insert(schema.operationInvoices).values({ projectId: input.projectId, invoiceType: invoice.invoiceType, supplier: invoice.supplier, invoiceNumber: invoice.invoiceNumber, periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, quantity: String(invoice.quantity), unit: invoice.unit, totalCost: invoice.totalCost === null ? null : String(invoice.totalCost), currency: "EUR", fileKey: stored.key, fileUrl: stored.url, filename: input.filename, mimeType: input.mimeType, notes: invoice.notes, createdBy: ctx.user.id });
+            created += 1;
+          }
+          return { created, skipped };
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_invoices_import", "operation_invoices", null, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, rowsRead: invoices.length, ...result }));
+        return { rowsRead: invoices.length, ...result };
+      }),
+    invoices: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const start = input.startDate || "0000-01-01"; const end = input.endDate || "9999-12-31";
+        const result = await database.execute(sql`SELECT id, invoiceType, supplier, invoiceNumber, periodStart, periodEnd, quantity, unit, totalCost, currency, filename, mimeType, reconciliationStatus, notes, createdAt FROM operation_invoices WHERE projectId = ${input.projectId} AND periodEnd >= ${start} AND periodStart <= ${end} ORDER BY periodEnd DESC, id DESC`);
+        return ((result as any)[0] || []).map((row: any) => ({ ...row, quantity: Number(row.quantity), totalCost: row.totalCost === null ? null : Number(row.totalCost) }));
+      }),
+    createInvoice: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(), invoiceType: z.enum(["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"]), supplier: z.string().max(255).optional(), invoiceNumber: z.string().max(120).optional(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), quantity: z.number().finite().min(0), unit: z.string().min(1).max(50), totalCost: z.number().finite().min(0).optional(), currency: z.string().min(3).max(8).default("EUR"), notes: z.string().max(5000).optional(), filename: z.string().max(255).optional(), mimeType: z.string().max(100).optional(), data: z.string().optional(),
+      }).superRefine((value, issue) => {
+        if ((value.filename || value.mimeType || value.data) && !(value.filename && value.mimeType && value.data)) issue.addIssue({ code: "custom", message: "O comprovativo de fatura deve incluir nome, tipo e conteúdo.", path: ["data"] });
+        if (value.periodEnd < value.periodStart) issue.addIssue({ code: "custom", message: "O fim do período não pode ser anterior ao início.", path: ["periodEnd"] });
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        let file: { key: string; url: string; filename: string; mimeType: string } | null = null;
+        if (input.data && input.filename && input.mimeType) {
+          const allowed = new Set(["application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv"]);
+          if (!allowed.has(input.mimeType) || /[\\/\r\n\0]/.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "O comprovativo deve ser PDF, Excel ou CSV com nome válido." });
+          if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O comprovativo de fatura é inválido." });
+          const buffer = Buffer.from(input.data, "base64");
+          if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O comprovativo deve ter no máximo 10 MB." });
+          const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+          await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "operation-invoice");
+          if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
+          const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+          const stored = await storagePut(`operation/${input.projectId}/invoices/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
+          file = { ...stored, filename: input.filename, mimeType: input.mimeType };
+        }
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [created] = await database.insert(schema.operationInvoices).values({ projectId: input.projectId, invoiceType: input.invoiceType, supplier: input.supplier?.trim() || null, invoiceNumber: input.invoiceNumber?.trim() || null, periodStart: input.periodStart, periodEnd: input.periodEnd, quantity: String(input.quantity), unit: input.unit.trim(), totalCost: input.totalCost === undefined ? null : String(input.totalCost), currency: input.currency.trim().toUpperCase(), fileKey: file?.key || null, fileUrl: file?.url || null, filename: file?.filename || null, mimeType: file?.mimeType || null, notes: input.notes?.trim() || null, createdBy: ctx.user.id }).$returningId();
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_invoice_create", "operation_invoices", created.id, null, JSON.stringify({ projectId: input.projectId, invoiceType: input.invoiceType, periodStart: input.periodStart, periodEnd: input.periodEnd, quantity: input.quantity, unit: input.unit, totalCost: input.totalCost }));
+        return { id: created.id };
+      }),
+    invoiceDownload: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), invoiceId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT fileKey, filename FROM operation_invoices WHERE id = ${input.invoiceId} AND projectId = ${input.projectId} LIMIT 1`);
+        const invoice = (result as any)[0]?.[0];
+        if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Fatura não encontrada." });
+        if (!invoice.fileKey) throw new TRPCError({ code: "NOT_FOUND", message: "Esta fatura não tem comprovativo guardado." });
+        return { ...(await storageGet(invoice.fileKey)), filename: invoice.filename };
+      }),
+    reconciliation: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const start = input.startDate || "0000-01-01"; const end = input.endDate || "9999-12-31";
+        const invoicesResult = await database.execute(sql`SELECT invoiceType, quantity, unit, periodStart, periodEnd FROM operation_invoices WHERE projectId = ${input.projectId} AND periodEnd >= ${start} AND periodStart <= ${end}`);
+        const invoices = (invoicesResult as any)[0] || [];
+        const metricByInvoice: Record<string, string> = { eletricidade: "site_energy_kwh_daily", agua_potavel: "water_potable_m3_daily", agua_industrial: "water_industrial_m3_daily", hvo: "hvo_l_daily", gasoleo: "diesel_l_daily" };
+        const entries = [];
+        for (const invoice of invoices) {
+          const code = metricByInvoice[invoice.invoiceType];
+          const from = Date.parse(`${invoice.periodStart}T00:00:00Z`); const until = Date.parse(`${invoice.periodEnd}T23:59:59Z`);
+          const measuredResult = code ? await database.execute(sql`SELECT COALESCE(SUM(CAST(value AS DECIMAL(20,6))), 0) AS measured FROM operation_readings WHERE projectId = ${input.projectId} AND metricCode = ${code} AND measuredAt >= ${from} AND measuredAt <= ${until} AND dataQuality != 'invalid'`) : null;
+          const measured = measuredResult ? Number((measuredResult as any)[0]?.[0]?.measured || 0) : null;
+          const billed = Number(invoice.quantity);
+          const variance = measured !== null && billed > 0 ? (measured - billed) / billed : null;
+          entries.push({ invoiceType: invoice.invoiceType, periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, billed, unit: invoice.unit, measured, variance, status: measured === null ? "incompleta" : Math.abs(variance || 0) <= 0.05 ? "conforme" : "desvio" });
+        }
+        return entries;
+      }),
+    scenarios: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT id, name, coolingStrategy, assumptionsJson, resultJson, baselineStart, baselineEnd, createdBy, createdAt, updatedAt FROM operation_scenarios WHERE projectId = ${input.projectId} ORDER BY updatedAt DESC, id DESC`);
+        return ((result as any)[0] || []).map((row: any) => ({ ...row, assumptions: JSON.parse(row.assumptionsJson), results: JSON.parse(row.resultJson) }));
+      }),
+    createScenario: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), name: z.string().trim().min(3).max(255), coolingStrategy: z.enum(["agua_mar", "chiller", "hibrido_adiabatico", "torres_evaporativas", "outro"]), baselineStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), baselineEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), assumptions: z.object({ tiEnergyKwh: z.number().positive(), baselinePue: z.number().positive(), baselineWaterM3: z.number().min(0), baselineMaintenanceEur: z.number().min(0), electricityPriceEurKwh: z.number().min(0), waterPriceEurM3: z.number().min(0), carbonFactorKgKwh: z.number().min(0), targetPue: z.number().positive(), targetWueLkwh: z.number().min(0), maintenanceEur: z.number().min(0), systemMix: z.record(z.string(), z.number().min(0).max(100)) }).superRefine((value, issue) => { if (Object.values(value.systemMix).reduce((sum, item) => sum + item, 0) > 100.001) issue.addIssue({ code: "custom", message: "A mistura de sistemas não pode ultrapassar 100%." }); }) }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        if (input.baselineStart && input.baselineEnd && input.baselineEnd < input.baselineStart) throw new TRPCError({ code: "BAD_REQUEST", message: "O período-base do cenário é inválido." });
+        const results = buildOperationScenario(input.assumptions);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [created] = await database.insert(schema.operationScenarios).values({ projectId: input.projectId, name: input.name, coolingStrategy: input.coolingStrategy, assumptionsJson: JSON.stringify(input.assumptions), resultJson: JSON.stringify(results), baselineStart: input.baselineStart || null, baselineEnd: input.baselineEnd || null, createdBy: ctx.user.id }).$returningId();
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_scenario_create", "operation_scenarios", created.id, null, JSON.stringify({ projectId: input.projectId, name: input.name, coolingStrategy: input.coolingStrategy, formulaVersion: results.formulaVersion }));
+        return { id: created.id, results };
+      }),
+    deleteScenario: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT createdBy FROM operation_scenarios WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        const scenario = (result as any)[0]?.[0];
+        if (!scenario) throw new TRPCError({ code: "NOT_FOUND", message: "Cenário não encontrado." });
+        if (!isAdminOrDono(ctx.user.role) && Number(scenario.createdBy) !== Number(ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Só o autor ou a Administração pode remover o cenário." });
+        await database.execute(sql`DELETE FROM operation_scenarios WHERE id = ${input.id} AND projectId = ${input.projectId}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_scenario_delete", "operation_scenarios", input.id, null, JSON.stringify({ projectId: input.projectId }));
         return { success: true };
       }),
   }),

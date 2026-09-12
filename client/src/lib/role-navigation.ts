@@ -10,7 +10,7 @@ type NavigationInput = {
 };
 
 const GLOBAL_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/rdcd", "/gamma"];
-const OPERATION_ROUTES = ["/welcome", "/dashboard", "/calendario", "/mirr", "/fases", "/certificacoes", "/documentacao"];
+const OPERATION_ROUTES = ["/welcome", "/dashboard", "/operacao", "/planos", "/calendario", "/mirr", "/fases", "/certificacoes", "/documentacao"];
 const STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"];
 const OPERATION_ROLE_ROUTES: Record<string, string[]> = {
   admin: OPERATION_ROUTES,
@@ -38,6 +38,9 @@ const PM_MODULE_ROUTES: Record<string, string> = {
   "/ficha": "ficha",
   "/residuos": "residuos",
   "/kpi": "kpi",
+  "/operacao": "operacao",
+  "/mirr": "residuos",
+  "/fases": "timeline",
   "/documentacao": "documentacao",
 };
 
@@ -68,7 +71,7 @@ export function getVisibleNavigationPaths(input: NavigationInput) {
     : (PROJECT_ROLE_ROUTES[role] || PROJECT_ROLE_ROUTES.user);
   if (isOperationOnly) {
     const permittedOperationRoutes = OPERATION_ROLE_ROUTES[role] || ["/welcome"];
-    return OPERATION_ROUTES.filter(path => permittedOperationRoutes.includes(path) && isProjectRouteEnabled(enabledModules, path));
+    return OPERATION_ROUTES.filter(path => permittedOperationRoutes.includes(path) && isProjectRouteEnabled(enabledModules, path) && (role !== "pm" || path === "/welcome" || parsePmAccessModules(pmAccessModules).includes(PM_MODULE_ROUTES[path] || "dashboard")));
   }
   return STANDARD_PROJECT_MENU_ROUTES
     .filter(path => permitted.includes(path) && isProjectRouteEnabled(enabledModules, path))

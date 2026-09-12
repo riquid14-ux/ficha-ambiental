@@ -68,6 +68,7 @@ export default function MIRR() {
   const [newSubProject, setNewSubProject] = useState("");
   const projectId = activeProject?.id;
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedWasteMapCompanies, setSelectedWasteMapCompanies] = useState<number[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [lerCodes, setLerCodes] = useState(DEFAULT_LER_CODES);
@@ -92,6 +93,10 @@ export default function MIRR() {
     { projectId: projectId || 0, year: selectedYear, subProjectId: subProject === "all" ? undefined : Number(subProject) },
     { enabled: !!projectId }
   );
+  const wasteMapQuery = trpc.wasteEgars.wasteMap.useQuery(
+    { projectId: projectId || 0, year: selectedYear, companyIds: selectedWasteMapCompanies.length ? selectedWasteMapCompanies : undefined },
+    { enabled: !!projectId }
+  );
 
   const createMutation = trpc.wasteEgars.create.useMutation({
     onSuccess: () => { refetch(); setShowAddForm(false); setNewEgar({ date: "", egarId: "", egarLink: "", operatorTransport: "", operatorTransportAPA: "", operatorReception: "", operatorReceptionAPA: "", lerCode: "", designation: "", quantity: "", correctedQuantity: "", destination: "recycled", month: new Date().getMonth() + 1, year: new Date().getFullYear() }); toast.success("e-GAR registada com sucesso"); },
@@ -113,6 +118,11 @@ export default function MIRR() {
   const isAdmin = user?.role === "admin";
   const canContribute = isAdminOrDono || user?.role === "ee" || isPartner;
   const canManageSubprojects = isAdminOrDono || user?.role === "ee";
+  const wasteMapCompanies = useMemo(() => {
+    const entries = new Map<number, string>();
+    for (const row of wasteMapQuery.data || []) if (row.companyId) entries.set(row.companyId, row.companyName || `Entidade ${row.companyId}`);
+    return Array.from(entries.entries()).sort((a, b) => a[1].localeCompare(b[1], "pt"));
+  }, [wasteMapQuery.data]);
 
   const monthlySummary = useMemo(() => {
     if (!egars) return [];
@@ -175,6 +185,37 @@ export default function MIRR() {
     toast.success("Excel MIRR exportado");
   }
 
+  async function handleExportWasteMap() {
+    const rows = wasteMapQuery.data || [];
+    if (!rows.length) { toast.error("Não existem dados de resíduos para o âmbito selecionado."); return; }
+    const byLer = new Map<string, { designation: string; months: Record<number, number>; total: number }>();
+    for (const row of rows as any[]) {
+      const entry: { designation: string; months: Record<number, number>; total: number } = byLer.get(row.lerCode) || { designation: row.designation || "—", months: {}, total: 0 };
+      const month = Number(row.month);
+      entry.months[month] = (entry.months[month] || 0) + Number(row.quantity || 0);
+      entry.total += Number(row.quantity || 0);
+      byLer.set(row.lerCode, entry);
+    }
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Plataforma de Gestão Ambiental — Start Campus";
+    const ws = wb.addWorksheet("Waste Map LER x Mês");
+    ws.mergeCells("A1:O1"); ws.getCell("A1").value = `WASTE MAP — ${activeProject?.code || "Projeto"} — ${selectedYear}`;
+    ws.getCell("A1").font = { bold: true, size: 15, color: { argb: "FFFFFFFF" } }; ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF047857" } };
+    ws.mergeCells("A2:O2"); ws.getCell("A2").value = selectedWasteMapCompanies.length ? `Entidades selecionadas: ${selectedWasteMapCompanies.length}` : "Âmbito: todas as entidades autorizadas";
+    const headers = ["Código LER", "Designação", ...MONTHS_PT.map(month => `${month} (${selectedYear})`), "Total (t)"];
+    ws.addTable({ name: "WasteMapPorMes", ref: "A4", headerRow: true, style: { theme: "TableStyleMedium4", showRowStripes: true }, columns: headers.map(name => ({ name })), rows: Array.from(byLer.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([code, row]) => [code, row.designation, ...Array.from({ length: 12 }, (_, index) => Number((row.months[index + 1] || 0).toFixed(3)) || ""), Number(row.total.toFixed(3))]) });
+    ws.columns = [{ width: 16 }, { width: 42 }, ...Array.from({ length: 13 }, () => ({ width: 14 }))];
+    ws.views = [{ state: "frozen", ySplit: 4, xSplit: 2 }];
+    const detail = wb.addWorksheet("Detalhe por Entidade");
+    detail.addTable({ name: "WasteMapDetalhe", ref: "A1", headerRow: true, style: { theme: "TableStyleMedium2", showRowStripes: true }, columns: ["Entidade", "Código LER", "Designação", "Mês", "Quantidade (t)"].map(name => ({ name })), rows: rows.map((row: any) => [row.companyName || "—", row.lerCode, row.designation || "—", MONTHS_PT[Number(row.month) - 1], Number(Number(row.quantity || 0).toFixed(3))]) });
+    detail.columns = [{ width: 26 }, { width: 16 }, { width: 42 }, { width: 16 }, { width: 18 }];
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `Waste_Map_${activeProject?.code || "Projeto"}_${selectedYear}.xlsx`; anchor.click(); URL.revokeObjectURL(url);
+    toast.success("Waste Map exportado com sucesso.");
+  }
+
   function handleCreate() {
     if (!projectId || !newEgar.lerCode || !newEgar.quantity) { toast.error(t("Preencha Código LER e Quantidade")); return; }
     if (!isMIRRPage && subProject === "all") { toast.error("Seleccione o subprojecto desta e-GAR."); return; }
@@ -233,6 +274,7 @@ export default function MIRR() {
               {isAdmin && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
             </>}
             <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!egars || egars.length === 0}><Download className="w-4 h-4 mr-1" /> {t("Exportar Excel MIRR")}</Button>
+            <Button variant="outline" size="sm" onClick={handleExportWasteMap} disabled={wasteMapQuery.isLoading || !(wasteMapQuery.data || []).length}><Download className="w-4 h-4 mr-1" /> Exportar Waste Map</Button>
           </div>
         </div>
 
@@ -246,6 +288,16 @@ export default function MIRR() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-emerald-100 bg-emerald-50/40">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div><p className="text-sm font-semibold text-emerald-950">Waste Map por código LER e mês</p><p className="text-xs text-emerald-800">Escolha uma, várias ou todas as entidades autorizadas. A exportação apresenta as toneladas por código LER em cada mês.</p></div>
+              {selectedWasteMapCompanies.length > 0 && <Button size="sm" variant="outline" onClick={() => setSelectedWasteMapCompanies([])}>Todas as entidades</Button>}
+            </div>
+            {wasteMapCompanies.length > 0 ? <div className="mt-3 flex flex-wrap gap-2">{wasteMapCompanies.map(([companyId, companyName]) => { const selected = selectedWasteMapCompanies.includes(companyId); return <Button key={companyId} size="sm" variant={selected ? "default" : "outline"} onClick={() => setSelectedWasteMapCompanies(current => selected ? current.filter(id => id !== companyId) : [...current, companyId])}>{companyName}</Button>; })}</div> : <p className="mt-3 text-xs text-muted-foreground">Sem entidades com e-GAR no período selecionado.</p>}
+          </CardContent>
+        </Card>
 
         {/* Settings Panel */}
         {showSettings && (
@@ -417,7 +469,7 @@ export default function MIRR() {
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("Qtd (t)")}</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("Operadores")}</th>
                     <th className="py-2 px-2 font-medium text-muted-foreground">{t("Destino")}</th>
-                    {isAdminOrDono && <th className="py-2 px-2"></th>}
+                    {canContribute && <th className="py-2 px-2"></th>}
                   </tr></thead>
                   <tbody>
                     {egars.map((e: any) => {
@@ -433,7 +485,7 @@ export default function MIRR() {
                           <td className="py-2 px-2 font-medium">{e.correctedQuantity ? <><span className="text-green-700">{e.correctedQuantity}</span> <span className="text-[10px] text-muted-foreground line-through">{e.quantity}</span></> : e.quantity}</td>
                           <td className="py-2 px-2 text-xs">{e.operator || "—"}</td>
                           <td className="py-2 px-2"><Badge variant={e.destination === "recycled" ? "default" : e.destination === "landfill" ? "destructive" : "secondary"} className="text-[10px]">{dest?.label || e.destination}</Badge></td>
-                          {canContribute && <td className="py-2 px-2"><button onClick={() => deleteMutation.mutate({ id: e.id })} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button></td>}
+                          {canContribute && <td className="py-2 px-2">{(() => { const ownsRecord = e.createdBy === user?.id || (user?.companyId && e.companyId === user.companyId); const withinWindow = new Date(e.createdAt).getTime() + 48 * 60 * 60 * 1000 > Date.now(); const canDelete = isAdminOrDono || (ownsRecord && withinWindow); return canDelete ? <button title={isAdminOrDono ? "Eliminar e-GAR" : "Eliminar até 48 horas após o registo"} onClick={() => { if (confirm("Eliminar esta e-GAR? Esta ação ficará registada em auditoria.")) deleteMutation.mutate({ id: e.id }); }} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button> : <span className="text-[10px] text-muted-foreground">48 h expiradas</span>; })()}</td>}
                         </tr>
                       );
                     })}

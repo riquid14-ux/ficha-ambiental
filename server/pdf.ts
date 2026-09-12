@@ -175,6 +175,10 @@ export function registerPdfRoutes(app: Express) {
       const project = await db.getProjectById(projectId);
       if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
       const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getAllSections(), db.getAllMeasures(), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
+      const requestedPhaseId = req.query.phaseId === undefined ? null : Number(req.query.phaseId);
+      if (requestedPhaseId !== null && (!Number.isInteger(requestedPhaseId) || requestedPhaseId < 1)) return res.status(400).json({ error: "Fase inválida" });
+      const renderedPhases = requestedPhaseId === null ? phases.filter((phase: any) => !phase.hidden) : phases.filter((phase: any) => phase.id === requestedPhaseId && !phase.hidden);
+      if (requestedPhaseId !== null && renderedPhases.length !== 1) return res.status(404).json({ error: "Fase não encontrada no projeto selecionado" });
       const statusMap = new Map(statuses.map((status: any) => [status.measureId, status]));
       const evidenceByMeasure = new Map<number, any[]>();
       for (const item of evidence) {
@@ -185,10 +189,10 @@ export function registerPdfRoutes(app: Express) {
       const doc = new PDFDocument({ size: "A4", margin: 44 });
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Cache-Control", "private, no-store");
-      res.setHeader("Content-Disposition", `attachment; filename="Fases_${project.code}.pdf"`);
+      res.setHeader("Content-Disposition", `attachment; filename="${requestedPhaseId === null ? "Fases" : "Fase"}_${project.code}${requestedPhaseId === null ? "" : `_${requestedPhaseId}`}.pdf"`);
       doc.pipe(res);
-      writePdfHeader(doc, "RELATÓRIO DE FASES", "Estado, responsáveis, suporte e atualizações dos pontos de acompanhamento", project);
-      for (const phase of phases.filter((phase: any) => !phase.hidden)) {
+      writePdfHeader(doc, requestedPhaseId === null ? "RELATÓRIO DE FASES" : "RELATÓRIO DE FASE", requestedPhaseId === null ? "Estado, responsáveis, suporte e atualizações dos pontos de acompanhamento" : "Estado, responsáveis, suporte, atualizações e evidências da fase selecionada", project);
+      for (const phase of renderedPhases) {
         if (doc.y > 630) doc.addPage();
         const sectionPhase = resolveTimelineSectionPhase(phase);
         const phaseSections = sections.filter((section: any) => section.phase === sectionPhase);

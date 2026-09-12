@@ -50,6 +50,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 
 const PM_MODULE_OPTIONS = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "operacao", label: "Operação" },
   { id: "planos", label: "Planos" },
   { id: "calendar", label: "Calendário" },
   { id: "timeline", label: "Timeline e Fases" },

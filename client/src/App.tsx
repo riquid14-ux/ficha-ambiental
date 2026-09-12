@@ -28,6 +28,7 @@ import CalendarioControl from "./pages/CalendarioControl";
 import RDCD from "./pages/RDCD";
 import MIRR from "./pages/MIRR";
 import KPI from "./pages/KPI";
+import Operation from "./pages/Operation";
 import EepRequests from "./pages/EepRequests";
 import PartnerDashboard from "./pages/PartnerDashboard";
 import Welcome from "./pages/Welcome";
@@ -52,6 +53,7 @@ function Router() {
         <Route path="/mirr" component={MIRR} />
         <Route path="/residuos" component={MIRR} />
         <Route path="/kpi" component={KPI} />
+        <Route path="/operacao" component={Operation} />
         <Route path="/pedidos-eep" component={EepRequests} />
         <Route path="/dashboard-parceiros" component={PartnerDashboard} />
         <Route path="/certificacoes" component={Certifications} />

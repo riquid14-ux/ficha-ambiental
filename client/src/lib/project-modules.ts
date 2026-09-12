@@ -1,4 +1,4 @@
-export const DEFAULT_PROJECT_MODULES = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi"] as const;
+export const DEFAULT_PROJECT_MODULES = ["dashboard", "calendar", "timeline", "ficha", "residuos", "kpi", "operacao"] as const;
 
 const routeModule: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -7,6 +7,7 @@ const routeModule: Record<string, string> = {
   "/ficha": "ficha",
   "/residuos": "residuos",
   "/kpi": "kpi",
+  "/operacao": "operacao",
 };
 
 export function parseProjectModules(raw?: string | null): string[] {

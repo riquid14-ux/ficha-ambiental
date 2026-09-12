@@ -123,6 +123,7 @@ export default function PhaseMeasures(props: any) {
   const currentPhaseSections = phaseData[activePhase] || [];
   const currentPhaseSection = currentPhaseSections[0]?.section;
   const currentPhaseInfo = ALL_PHASES.find(p => p.key === activePhase);
+  const currentProjectPhase = (projectPhasesQuery.data || []).find((phase: any) => phase.phaseKey === activePhase || phase.phaseName === activePhase || phase.phaseName === currentPhaseInfo?.label);
 
   // Group evidence by measure
   const evidenceByMeasure = useMemo(() => {
@@ -244,6 +245,7 @@ export default function PhaseMeasures(props: any) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {currentProjectPhase && <Button size="sm" variant="outline" onClick={() => window.open(`/api/pdf/fases/${projectId}?phaseId=${currentProjectPhase.id}`, "_blank", "noopener,noreferrer")}><Download className="w-4 h-4 mr-1" /> PDF desta fase</Button>}
                 {isAdminOrDono && (
                   <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
                     <DialogTrigger asChild>

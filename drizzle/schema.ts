@@ -859,6 +859,97 @@ export const kpiIncidents = mysqlTable("kpi_incidents", {
 });
 export type KpiIncident = typeof kpiIncidents.$inferSelect;
 
+// ─── Operação do edifício (NEST / SIN01) ─────────────────────────────────────
+// Dados operacionais medidos, faturas e cenários são deliberadamente separados.
+// Assim, previsões não podem ser agregadas a valores efetivamente importados.
+export const operationImportBatches = mysqlTable("operation_import_batches", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  sourceFilename: varchar("sourceFilename", { length: 255 }).notNull(),
+  sourceFileKey: varchar("sourceFileKey", { length: 500 }).notNull(),
+  sourceFileUrl: text("sourceFileUrl").notNull(),
+  sourceType: mysqlEnum("sourceType", ["daily_report", "bms_extract", "manual_import"]).default("daily_report").notNull(),
+  measuredDate: varchar("measuredDate", { length: 10 }),
+  rowsImported: int("rowsImported").default(0).notNull(),
+  qualityStatus: mysqlEnum("qualityStatus", ["valid", "warning", "invalid"]).default("valid").notNull(),
+  qualityNotes: text("qualityNotes"),
+  importedBy: int("importedBy").notNull(),
+  importedAt: timestamp("importedAt").defaultNow().notNull(),
+}, (table) => ({
+  projectDateIdx: index("operation_import_batches_project_date_idx").on(table.projectId, table.measuredDate),
+}));
+export type OperationImportBatch = typeof operationImportBatches.$inferSelect;
+export type InsertOperationImportBatch = typeof operationImportBatches.$inferInsert;
+
+export const operationReadings = mysqlTable("operation_readings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  batchId: int("batchId"),
+  metricCode: varchar("metricCode", { length: 100 }).notNull(),
+  metricLabel: varchar("metricLabel", { length: 255 }).notNull(),
+  category: mysqlEnum("category", ["energia", "agua", "arrefecimento", "carbono", "conformidade", "custo"]).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  value: varchar("value", { length: 80 }).notNull(),
+  measuredAt: bigint("measuredAt", { mode: "number" }).notNull(),
+  granularity: mysqlEnum("granularity", ["quinze_minutos", "diario", "mensal", "anual"]).default("diario").notNull(),
+  source: mysqlEnum("source", ["bms_report", "invoice", "manual", "calculated"]).default("bms_report").notNull(),
+  dataQuality: mysqlEnum("dataQuality", ["valid", "warning", "invalid"]).default("valid").notNull(),
+  qualityNote: varchar("qualityNote", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  projectMetricDateIdx: index("operation_readings_project_metric_date_idx").on(table.projectId, table.metricCode, table.measuredAt),
+  batchIdx: index("operation_readings_batch_idx").on(table.batchId),
+  uniqueReading: uniqueIndex("operation_readings_unique").on(table.projectId, table.metricCode, table.measuredAt, table.granularity, table.source),
+}));
+export type OperationReading = typeof operationReadings.$inferSelect;
+export type InsertOperationReading = typeof operationReadings.$inferInsert;
+
+export const operationInvoices = mysqlTable("operation_invoices", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  invoiceType: mysqlEnum("invoiceType", ["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"]).notNull(),
+  supplier: varchar("supplier", { length: 255 }),
+  invoiceNumber: varchar("invoiceNumber", { length: 120 }),
+  periodStart: varchar("periodStart", { length: 10 }).notNull(),
+  periodEnd: varchar("periodEnd", { length: 10 }).notNull(),
+  quantity: varchar("quantity", { length: 80 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  totalCost: varchar("totalCost", { length: 80 }),
+  currency: varchar("currency", { length: 8 }).default("EUR").notNull(),
+  fileKey: varchar("fileKey", { length: 500 }),
+  fileUrl: text("fileUrl"),
+  filename: varchar("filename", { length: 255 }),
+  mimeType: varchar("mimeType", { length: 100 }),
+  reconciliationStatus: mysqlEnum("reconciliationStatus", ["por_reconciliar", "conforme", "desvio", "incompleta"]).default("por_reconciliar").notNull(),
+  notes: text("notes"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectPeriodIdx: index("operation_invoices_project_period_idx").on(table.projectId, table.periodStart, table.periodEnd),
+  projectTypeIdx: index("operation_invoices_project_type_idx").on(table.projectId, table.invoiceType),
+}));
+export type OperationInvoice = typeof operationInvoices.$inferSelect;
+export type InsertOperationInvoice = typeof operationInvoices.$inferInsert;
+
+export const operationScenarios = mysqlTable("operation_scenarios", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  coolingStrategy: mysqlEnum("coolingStrategy", ["agua_mar", "chiller", "hibrido_adiabatico", "torres_evaporativas", "outro"]).notNull(),
+  assumptionsJson: text("assumptionsJson").notNull(),
+  resultJson: text("resultJson").notNull(),
+  baselineStart: varchar("baselineStart", { length: 10 }),
+  baselineEnd: varchar("baselineEnd", { length: 10 }),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectCreatedIdx: index("operation_scenarios_project_created_idx").on(table.projectId, table.createdAt),
+}));
+export type OperationScenario = typeof operationScenarios.$inferSelect;
+export type InsertOperationScenario = typeof operationScenarios.$inferInsert;
+
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {
   id: int("id").primaryKey().autoincrement(),

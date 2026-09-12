@@ -48,7 +48,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle, Home, Bell } from "lucide-react";
+import { Recycle, Home, Bell, Gauge } from "lucide-react";
 import { isProjectRouteEnabled } from "@/lib/project-modules";
 import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 
@@ -72,6 +72,8 @@ const projectMenuItems = [
 const operationProjectMenuItems = [
   { icon: Home, label: "Bem-vindo", path: "/welcome" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Gauge, label: "Operação", path: "/operacao" },
+  { icon: FileText, label: "Planos", path: "/planos" },
   { icon: CalendarDays, label: "Calendário", path: "/calendario" },
   { icon: Recycle, label: "MIRR", path: "/mirr" },
   { icon: Layers, label: "Fases", path: "/fases" },
@@ -223,6 +225,10 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   // in the new menu, redirect to Dashboard to avoid orphan pages
   useEffect(() => {
     if (location === "/" || location === "/login" || location === "/perfil" || location === "/admin") return;
+    // A abertura direta de uma rota pode ocorrer antes de o contexto restaurar o
+    // projeto ativo. Nesse intervalo, não existe informação suficiente para
+    // decidir se a página é autorizada e um redirecionamento destruiria o URL.
+    if (!isAllProjects && !activeProject) return;
     // Don't redirect if menu items haven't loaded yet or are empty
     if (allItems.length === 0) return;
     if (location === "/welcome" && userRole === "ee_partner") {
@@ -235,7 +241,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     if (!isCurrentRouteValid) {
       setLocation(userRole === "ee_partner" ? allItems[0].path : "/welcome");
     }
-  }, [isAllProjects, activeProject?.id, isOperationOnly, location, userRole, partnerAccess?.allowKpi, partnerAccess?.allowWaste]);
+  }, [isAllProjects, activeProject?.id, isOperationOnly, location, userRole, partnerAccess?.allowKpi, partnerAccess?.allowWaste, activeProject]);
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);

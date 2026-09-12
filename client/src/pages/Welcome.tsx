@@ -48,6 +48,7 @@ function getFeatures(role: string, visiblePaths: string[]): FeatureCard[] {
     { icon: BarChart3, title: "Dashboard Parceiros", description: "Acompanhe os contributos KPI e resíduos da sua EE e das EEP autorizadas.", path: "/dashboard-parceiros" },
     { icon: ClipboardList, title: "Pedidos EEP", description: "Submeta pedidos de criação e acesso para Entidades Executantes Parceiras.", path: "/pedidos-eep" },
     { icon: Recycle, title: "MIRR", description: "Registe e acompanhe os resíduos do projeto, incluindo e-GAR e exportação MIRR.", path: "/mirr" },
+    { icon: BarChart3, title: "Operação", description: "Analise consumos, eficiência, água do mar, faturas e cenários de desempenho do edifício NEST.", path: "/operacao" },
     { icon: Layers, title: "Fases de Exploração", description: "Submeta evidências anuais das medidas de exploração da DCAPE.", path: "/fases" },
     { icon: FileBarChart, title: "Certificações", description: "Acompanhe as certificações ambientais do projeto.", path: "/certificacoes" },
     { icon: BookOpen, title: "Documentação", description: "Consulte obrigações ambientais, certificações e recomendações publicadas pela Administração.", path: "/documentacao" },
@@ -161,7 +162,7 @@ export default function Welcome() {
                 {isAllProjects
                   ? t("Visão consolidada de todos os projetos Start Campus.")
                   : isNest
-                  ? t("Projeto em fase de operação: entregáveis ambientais anuais, resíduos e certificações.")
+                  ? t("Projeto em fase de operação: desempenho do edifício, entregáveis ambientais, resíduos e certificações.")
                   : t("Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.")
                 }
               </p>

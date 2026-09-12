@@ -244,6 +244,7 @@ function operationSettingNumber(settings: OperationSettingsValues | null | undef
 
 export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricCode: string; value: number; dataQuality: string }>, settings: OperationSettingsValues | null | undefined) {
   const usable = readings.filter(reading => reading.dataQuality !== "invalid" && Number.isFinite(reading.value));
+  const configurationMode = settings?.configurationMode === "illustrative" ? "illustrative" : "approved";
   const sum = (code: string) => usable.filter(reading => reading.metricCode === code).reduce((total, reading) => total + reading.value, 0);
   const latest = new Map<string, number>();
   for (const reading of usable) latest.set(reading.metricCode, reading.value);
@@ -258,13 +259,14 @@ export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricC
     { id: "seawater_flow_min", label: "Caudal mínimo de captação", value: latest.get("seawater_flow_lps") ?? null, limit: operationSettingNumber(settings, "minSeawaterFlowLps"), direction: "min" as const, unit: "L/s" },
     { id: "seawater_flow_max", label: "Caudal máximo de captação", value: latest.get("seawater_flow_lps") ?? null, limit: operationSettingNumber(settings, "maxSeawaterFlowLps"), direction: "max" as const, unit: "L/s" },
     { id: "seawater_delta_t", label: "ΔT água do mar", value: latest.get("seawater_delta_t_k") ?? null, limit: operationSettingNumber(settings, "maxSeawaterDeltaTK"), direction: "max" as const, unit: "K" },
-  ].map(check => ({ ...check, status: check.limit === null ? "por_configurar" : check.value === null ? "sem_leitura" : (check.direction === "max" ? check.value <= check.limit : check.value >= check.limit) ? "conforme" : "desvio" }));
+  ].map(check => ({ ...check, status: check.limit === null ? "por_configurar" : check.value === null ? "sem_leitura" : configurationMode === "illustrative" ? "demonstracao" : (check.direction === "max" ? check.value <= check.limit : check.value >= check.limit) ? "conforme" : "desvio" }));
   return {
     electricityKwh,
     itEnergyKwh,
     electricityCarbonKg,
     cueKgKwh,
-    carbonStatus: electricityFactor === null ? "factor_pendente" : itEnergyKwh > 0 ? "calculado" : "sem_energia_ti",
+    configurationMode,
+    carbonStatus: electricityFactor === null ? "factor_pendente" : configurationMode === "illustrative" ? "demonstracao" : itEnergyKwh > 0 ? "calculado" : "sem_energia_ti",
     thresholdChecks,
   };
 }
@@ -306,6 +308,18 @@ function parseReportDate(value: unknown) {
   const months: Record<string, number> = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
   if (!match || months[match[2].toLowerCase()] === undefined) return null;
   return new Date(Date.UTC(Number(match[3]), months[match[2].toLowerCase()], Number(match[1])));
+}
+
+function parseReportTimestamp(value: unknown) {
+  if (value && typeof value === "object" && "result" in value) return parseReportTimestamp((value as { result: unknown }).result);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return new Date(value.getTime());
+  const text = String(value ?? "").trim();
+  const numeric = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (numeric) return new Date(Date.UTC(Number(numeric[3]), Number(numeric[2]) - 1, Number(numeric[1]), Number(numeric[4]), Number(numeric[5]), Number(numeric[6] || 0)));
+  const date = parseReportDate(text);
+  if (!date) return null;
+  const time = text.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), Number(time?.[1] || 0), Number(time?.[2] || 0), Number(time?.[3] || 0)));
 }
 
 function dateKeyFromTimestamp(timestamp: number) {
@@ -428,6 +442,27 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
     add("seawater_thermal_load_kw", "Carga térmica rejeitada ao mar", "arrefecimento", "kW térmicos", thermalLoad);
     add("seawater_pumping_cop", "COP de bombagem do circuito de mar", "arrefecimento", "kWh térmico/kWh elétrico", thermalLoad !== null && eswPower !== null && eswPower > 0 ? thermalLoad / eswPower : null, "calculated", eswPower && eswPower > 0 ? "valid" : "invalid", eswPower && eswPower > 0 ? undefined : "Sem potência ESW válida para calcular COP.");
   }
+  const auxiliary = workbook.getWorksheet("AUX") || workbook.worksheets.find(sheet => /^aux$/i.test(sheet.name));
+  if (auxiliary) {
+    const header = auxiliary.getRow(1);
+    const column = (names: string[], last = false) => {
+      const matches: number[] = [];
+      for (let index = 1; index <= header.cellCount; index += 1) if (names.includes(header.getCell(index).text.trim().toLowerCase())) matches.push(index);
+      return matches.length ? matches[last ? matches.length - 1 : 0] : -1;
+    };
+    const timestampColumn = column(["time", "time stamp", "timestamp"]);
+    const wueColumn = column(["wue"], true);
+    if (timestampColumn > 0 && wueColumn > 0) {
+      for (let rowIndex = 2; rowIndex <= Math.min(auxiliary.rowCount, 4000); rowIndex += 1) {
+        const row = auxiliary.getRow(rowIndex);
+        const timestamp = parseReportTimestamp(row.getCell(timestampColumn).value) || parseReportTimestamp(row.getCell(timestampColumn).text);
+        const value = parseOperationNumber(row.getCell(wueColumn).value);
+        if (!timestamp || value === null) continue;
+        const invalid = value < 0;
+        add("wue_15m", "WUE de quinze minutos", "agua", "L/kWh TI", value, "bms_report", invalid ? "invalid" : "valid", invalid ? "WUE negativo na origem; excluído das correlações." : undefined, "quinze_minutos", timestamp.getTime());
+      }
+    }
+  }
   const organizer = workbook.getWorksheet("EBO_Data organizer") || workbook.worksheets.find(sheet => /ebo.*organizer/i.test(sheet.name));
   if (organizer) {
     const header = organizer.getRow(1);
@@ -440,6 +475,8 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
       { code: "outdoor_temp_15m_c", label: "Temperatura exterior", category: "arrefecimento" as const, unit: "°C", headers: ["temp exterior"] },
       { code: "seawater_intake_15m_c", label: "Temperatura da água do mar na captação", category: "arrefecimento" as const, unit: "°C", headers: ["sw_tmp"] },
       { code: "seawater_flow_15m_lps", label: "Caudal de água do mar", category: "arrefecimento" as const, unit: "L/s", headers: ["sw_flow"] },
+      { code: "cooling_cycles_15m", label: "Ciclos de arrefecimento", category: "arrefecimento" as const, unit: "ciclos", headers: ["total_fc"] },
+      { code: "wue_15m", label: "WUE de quinze minutos", category: "agua" as const, unit: "L/kWh TI", headers: ["wue"] },
       { code: "pcw_supply_15m_c", label: "Fornecimento PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_sp1"] },
       { code: "pcw_return_15m_c", label: "Retorno PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_ret1"] },
     ];
@@ -450,7 +487,8 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
         const at = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), Number(match[1]), Number(match[2]));
         for (const metric of rawMetrics) {
           const metricColumn = column(metric.headers); const value = metricColumn > 0 ? parseOperationNumber(row.getCell(metricColumn).value) : null;
-          add(metric.code, metric.label, metric.category, metric.unit, value, "bms_report", "valid", undefined, "quinze_minutos", at);
+          const isInvalidWue = metric.code === "wue_15m" && value !== null && value < 0;
+          add(metric.code, metric.label, metric.category, metric.unit, value, "bms_report", isInvalidWue ? "invalid" : "valid", isInvalidWue ? "WUE negativo na origem; excluído das correlações." : undefined, "quinze_minutos", at);
         }
         const dataHallColumns = ["artic", "warhol", "blue"].map(name => column([name])).filter(index => index > 0);
         const itPower = dataHallColumns.reduce((total, index) => total + (parseOperationNumber(row.getCell(index).value) || 0), 0);
@@ -4349,7 +4387,7 @@ export const appRouter = router({
           WHERE projectId = ${input.projectId} AND periodEnd >= ${input.startDate || "0000-01-01"} AND periodStart <= ${input.endDate || "9999-12-31"}
         `);
         const invoiceSummary = (invoiceSummaryResult as any)[0]?.[0] || {};
-        const settingsResult = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const settingsResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         const settings = (settingsResult as any)[0]?.[0] || null;
         const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
         return { readings, latest: Object.fromEntries(latest), quality, settings, environmental, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
@@ -4359,12 +4397,13 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const result = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         return (result as any)[0]?.[0] || null;
       }),
     updateSettings: protectedProcedure
       .input(z.object({
         projectId: z.number().int().positive(),
+        configurationMode: z.enum(["illustrative", "approved"]),
         electricityCarbonFactorKgKwh: z.number().finite().min(0).max(10).nullable(),
         waterPotableCarbonFactorKgM3: z.number().finite().min(0).max(100).nullable(),
         waterIndustrialCarbonFactorKgM3: z.number().finite().min(0).max(100).nullable(),
@@ -4380,12 +4419,12 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const previousResult = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const previousResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         const previous = (previousResult as any)[0]?.[0] || null;
         await database.execute(sql`
-          INSERT INTO operation_settings (projectId, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedBy)
-          VALUES (${input.projectId}, ${input.electricityCarbonFactorKgKwh === null ? null : String(input.electricityCarbonFactorKgKwh)}, ${input.waterPotableCarbonFactorKgM3 === null ? null : String(input.waterPotableCarbonFactorKgM3)}, ${input.waterIndustrialCarbonFactorKgM3 === null ? null : String(input.waterIndustrialCarbonFactorKgM3)}, ${input.maxPue === null ? null : String(input.maxPue)}, ${input.maxSeawaterReturnTempC === null ? null : String(input.maxSeawaterReturnTempC)}, ${input.minSeawaterFlowLps === null ? null : String(input.minSeawaterFlowLps)}, ${input.maxSeawaterFlowLps === null ? null : String(input.maxSeawaterFlowLps)}, ${input.maxSeawaterDeltaTK === null ? null : String(input.maxSeawaterDeltaTK)}, ${ctx.user.id})
-          ON DUPLICATE KEY UPDATE electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), updatedBy = VALUES(updatedBy)
+          INSERT INTO operation_settings (projectId, configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedBy)
+          VALUES (${input.projectId}, ${input.configurationMode}, ${input.electricityCarbonFactorKgKwh === null ? null : String(input.electricityCarbonFactorKgKwh)}, ${input.waterPotableCarbonFactorKgM3 === null ? null : String(input.waterPotableCarbonFactorKgM3)}, ${input.waterIndustrialCarbonFactorKgM3 === null ? null : String(input.waterIndustrialCarbonFactorKgM3)}, ${input.maxPue === null ? null : String(input.maxPue)}, ${input.maxSeawaterReturnTempC === null ? null : String(input.maxSeawaterReturnTempC)}, ${input.minSeawaterFlowLps === null ? null : String(input.minSeawaterFlowLps)}, ${input.maxSeawaterFlowLps === null ? null : String(input.maxSeawaterFlowLps)}, ${input.maxSeawaterDeltaTK === null ? null : String(input.maxSeawaterDeltaTK)}, ${ctx.user.id})
+          ON DUPLICATE KEY UPDATE configurationMode = VALUES(configurationMode), electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), updatedBy = VALUES(updatedBy)
         `);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_settings_update", "operation_settings", input.projectId, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined }));
         return { success: true };

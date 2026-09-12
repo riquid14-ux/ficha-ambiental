@@ -1,0 +1,1 @@
+ALTER TABLE `operation_settings` ADD `configurationMode` varchar(20) DEFAULT 'approved' NOT NULL;

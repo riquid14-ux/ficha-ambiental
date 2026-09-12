@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateOperationReadings } from "../client/src/lib/operation-time-series";
+import { aggregateOperationReadings, pairOperationReadings } from "../client/src/lib/operation-time-series";
 
 const at = (value: string) => new Date(value).getTime();
 
@@ -34,5 +34,29 @@ describe("Operação — agrupamento temporal", () => {
     const yearly = aggregateOperationReadings(readings, "ano");
     expect(yearly).toHaveLength(1);
     expect(yearly[0].siteEnergy).toBe(300);
+  });
+
+  it("emparelha apenas séries válidas com o mesmo instante e granularidade", () => {
+    const pairs = pairOperationReadings([
+      { metricCode: "cooling_cycles_15m", value: 2, measuredAt: at("2026-09-01T10:00:00Z"), granularity: "quinze_minutos", dataQuality: "valid" },
+      { metricCode: "wue_15m", value: 1.1, measuredAt: at("2026-09-01T10:00:00Z"), granularity: "quinze_minutos", dataQuality: "valid" },
+      { metricCode: "cooling_cycles_15m", value: 3, measuredAt: at("2026-09-01T10:15:00Z"), granularity: "quinze_minutos", dataQuality: "valid" },
+      { metricCode: "wue_15m", value: -0.2, measuredAt: at("2026-09-01T10:15:00Z"), granularity: "quinze_minutos", dataQuality: "invalid" },
+      { metricCode: "wue_15m", value: 1.4, measuredAt: at("2026-09-01T11:00:00Z"), granularity: "diario", dataQuality: "valid" },
+    ], "cooling_cycles_15m", "wue_15m", "quinze_minutos");
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]).toMatchObject({ x: 2, y: 1.1 });
+  });
+
+  it("produz pares COP–caudal apenas para leituras diárias do mesmo período", () => {
+    const pairs = pairOperationReadings([
+      { metricCode: "seawater_flow_lps", value: 110, measuredAt: at("2026-09-10T00:00:00Z"), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "seawater_pumping_cop", value: 21, measuredAt: at("2026-09-10T00:00:00Z"), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "seawater_flow_lps", value: 115, measuredAt: at("2026-09-11T00:00:00Z"), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "seawater_pumping_cop", value: 22, measuredAt: at("2026-09-11T00:00:00Z"), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "seawater_flow_lps", value: 120, measuredAt: at("2026-09-12T00:00:00Z"), granularity: "diario", dataQuality: "invalid" },
+      { metricCode: "seawater_pumping_cop", value: 23, measuredAt: at("2026-09-12T00:00:00Z"), granularity: "diario", dataQuality: "valid" },
+    ], "seawater_flow_lps", "seawater_pumping_cop", "diario");
+    expect(pairs).toEqual([expect.objectContaining({ x: 110, y: 21 }), expect.objectContaining({ x: 115, y: 22 })]);
   });
 });

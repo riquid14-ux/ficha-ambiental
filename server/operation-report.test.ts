@@ -17,9 +17,13 @@ function createDailyReportWorkbook() {
   seawater.getCell("R12").value = "Seawater Avg. Thermal Load";
   seawater.getCell("R14").value = formula(2623.21);
   const organizer = workbook.addWorksheet("EBO_Data organizer");
-  organizer.getRow(1).values = ["Time stamp", "SW_tmp", "Site", "Artic", "Warhol", "BLUE", "SW_flow"];
-  organizer.getRow(2).values = ["11/09/2026 00:00:00", 16.2, 13.3, 9000, 2000, 60, 112];
-  organizer.getRow(3).values = ["11/09/2026 00:15:00", 16.3, 13.44, 9100, 2050, 70, 114];
+  organizer.getRow(1).values = ["Time stamp", "SW_tmp", "Site", "Artic", "Warhol", "BLUE", "SW_flow", "Total_FC"];
+  organizer.getRow(2).values = ["11/09/2026 00:00:00", 16.2, 13.3, 9000, 2000, 60, 112, 3];
+  organizer.getRow(3).values = ["11/09/2026 00:15:00", 16.3, 13.44, 9100, 2050, 70, 114, 4];
+  const auxiliary = workbook.addWorksheet("AUX");
+  auxiliary.getRow(1).values = ["Time", "WUE"];
+  auxiliary.getRow(2).values = ["11/09/2026 00:00:00", 1.1];
+  auxiliary.getRow(3).values = ["11/09/2026 00:15:00", 1.2];
   return workbook;
 }
 
@@ -41,6 +45,8 @@ describe("Operação — importação e cenários", () => {
     expect(firstQuarterHour.find(reading => reading.metricCode === "it_power_15m_kw")).toMatchObject({ value: 11060, dataQuality: "valid" });
     expect(firstQuarterHour.find(reading => reading.metricCode === "site_power_15m_kw")?.value).toBeCloseTo(13300, 6);
     expect(firstQuarterHour.find(reading => reading.metricCode === "pue_15m")?.value).toBeCloseTo(13300 / 11060, 6);
+    expect(firstQuarterHour.find(reading => reading.metricCode === "cooling_cycles_15m")).toMatchObject({ value: 3, dataQuality: "valid" });
+    expect(firstQuarterHour.find(reading => reading.metricCode === "wue_15m")).toMatchObject({ value: 1.1, dataQuality: "valid" });
   });
 
   it("mantém os cenários separados e calcula energia, água, carbono e custo a partir dos pressupostos", () => {
@@ -83,5 +89,15 @@ describe("Operação — importação e cenários", () => {
     expect(metrics.thresholdChecks.find(check => check.id === "seawater_return_temp")?.status).toBe("conforme");
     expect(metrics.thresholdChecks.find(check => check.id === "seawater_flow_min")?.status).toBe("desvio");
     expect(calculateOperationEnvironmentalMetrics([], null).carbonStatus).toBe("factor_pendente");
+  });
+
+  it("mantém carbono e limites como demonstração quando os valores são ilustrativos", () => {
+    const metrics = calculateOperationEnvironmentalMetrics([
+      { metricCode: "site_energy_kwh_daily", value: 1200, dataQuality: "valid" },
+      { metricCode: "it_energy_kwh_daily", value: 1000, dataQuality: "valid" },
+      { metricCode: "pue", value: 1.3, dataQuality: "valid" },
+    ], { configurationMode: "illustrative", electricityCarbonFactorKgKwh: "0.25", maxPue: "1.25" });
+    expect(metrics).toMatchObject({ configurationMode: "illustrative", electricityCarbonKg: 300, cueKgKwh: 0.3, carbonStatus: "demonstracao" });
+    expect(metrics.thresholdChecks.find(check => check.id === "pue")?.status).toBe("demonstracao");
   });
 });

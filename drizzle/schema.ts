@@ -957,6 +957,7 @@ export type InsertOperationScenario = typeof operationScenarios.$inferInsert;
 export const operationSettings = mysqlTable("operation_settings", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),
+  configurationMode: varchar("configurationMode", { length: 20 }).notNull().default("approved"),
   electricityCarbonFactorKgKwh: varchar("electricityCarbonFactorKgKwh", { length: 80 }),
   waterPotableCarbonFactorKgM3: varchar("waterPotableCarbonFactorKgM3", { length: 80 }),
   waterIndustrialCarbonFactorKgM3: varchar("waterIndustrialCarbonFactorKgM3", { length: 80 }),

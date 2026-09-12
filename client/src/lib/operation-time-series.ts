@@ -27,3 +27,19 @@ export function aggregateOperationReadings(readings: OperationReading[], groupin
   }
   return Array.from(byPeriod.values()).sort((left, right) => left.at - right.at);
 }
+
+export function pairOperationReadings(readings: OperationReading[], xMetricCode: string, yMetricCode: string, granularity: string) {
+  const byTimestamp = new Map<number, Record<string, number>>();
+  for (const reading of readings) {
+    if (reading.granularity !== granularity || reading.dataQuality === "invalid" || !Number.isFinite(Number(reading.value))) continue;
+    if (reading.metricCode !== xMetricCode && reading.metricCode !== yMetricCode) continue;
+    const at = Number(reading.measuredAt);
+    const row = byTimestamp.get(at) || {};
+    row[reading.metricCode] = Number(reading.value);
+    byTimestamp.set(at, row);
+  }
+  return Array.from(byTimestamp.entries())
+    .filter(([, row]) => Number.isFinite(row[xMetricCode]) && Number.isFinite(row[yMetricCode]))
+    .sort(([left], [right]) => left - right)
+    .map(([at, row]) => ({ at, x: row[xMetricCode], y: row[yMetricCode], label: new Date(at).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) }));
+}

@@ -51,3 +51,39 @@ O registo manual de fatura foi repetido no formulário da interface. Com o tipo 
 ## Fecho técnico desta evolução
 
 A verificação final voltou a concluir a compilação TypeScript, a regressão automatizada, a construção de produção, a auditoria de dependências e a verificação de diferenças. Permanecem deliberadamente fora de cálculo real apenas os fatores de emissão e limites de licença que exigem parâmetros aprovados pela Administração, assim como correlações que dependem de mais histórico operacional válido. Estes limites estão assinalados na interface para impedir que previsões ou suposições sejam apresentadas como valores medidos.
+
+## Configuração ambiental aprovada
+
+A Administração do SIN01 inclui agora a aba **Operação**, destinada a guardar fatores de emissão de eletricidade e água, PUE máximo, limites de temperatura de descarga, caudais de captação e ΔT da água do mar. A configuração começa vazia e só é persistida por administrador, com registo de auditoria. Sem fatores ou limites aprovados, o dashboard mostra explicitamente carbono, CUE e conformidade **em validação**; não cria conversões implícitas. Quando os parâmetros forem preenchidos, os cálculos e verificações são feitos no servidor e a exportação inclui carbono, CUE e o respetivo estado.
+
+O relatório diário contém também séries de quinze minutos. A extração passou a importar PUE calculado, carga TI, potência do site, temperatura de captação e caudal nessa granularidade, permitindo filtro horário e correlações PUE–temperatura/PUE–carga. As leituras do primeiro carregamento anterior à melhoria permanecem agregadas; o mesmo relatório será reimportado pelo fluxo normal para materializar estas novas séries sem duplicar métricas já existentes.
+
+Durante a primeira reimportação foi identificada uma diferença de unidade na coluna `Site` do organizador operacional: a origem usa MW, enquanto a carga TI é fornecida em kW. A conversão explícita MW → kW foi aplicada antes do cálculo de PUE de quinze minutos e coberta por regressão; o relatório será reimportado uma única vez após a correção para substituir os pontos instantâneos com a unidade correta.
+
+A persistência da primeira série foi confirmada por consulta: existem 96 pontos de quinze minutos para carga TI, PUE, temperatura de captação e caudal. Antes da conversão, a potência do site aparecia entre 13,96 e 17,66, confirmando que os MW não tinham sido convertidos para kW e justificando a substituição controlada do mesmo relatório.
+
+A escrita do relatório é idempotente pela chave de projeto, métrica, instante, granularidade e origem. Assim, a reimportação posterior à correção substitui os 96 pontos existentes, mantendo os dados diários e o histórico de importação sem criar uma série paralela.
+
+A reimportação final do relatório de 11 de setembro concluiu com **787 leituras importadas**. A vista de desempenho passou a apresentar as duas correlações PUE–temperatura de captação e PUE–carga TI numa escala de PUE coerente, em vez da escala milésima observada antes da conversão. A confirmação numérica da série persistida será feita antes do fecho da validação.
+
+A confirmação de persistência mostrou PUE entre **1,1835** e **1,4265**, potência do site entre **13 962,88** e **17 655,01 kW** e carga TI entre **11 689,14** e **12 418,46 kW**. A interface passou também a aceitar e aplicar o agrupamento **Hora**, apresentando potência média de site e TI por hora sem reutilizar ou relabelar energia diária.
+
+## Resíduos — validação QA controlada
+
+Como não existiam e-GAR no SIN01 para a validação, foi registada pela interface uma e-GAR QA temporária, sem dados pessoais, com LER 150101, quantidade 1,250 t e destino de reciclagem. O MIRR atualizou os totais, o gráfico mensal, a lista de registos e a seleção de entidade **SC** no Waste Map. A exportação e a eliminação dentro do período autorizado são verificadas antes da limpeza transaccional deste registo.
+
+O ficheiro `Waste_Map_SIN01_2026.xlsx` foi inspecionado: contém as folhas **Waste Map LER x Mês** e **Detalhe por Entidade**, com LER 150101, 1,250 t em setembro e o detalhe da entidade SC. Após a inspeção, o ficheiro foi removido e a e-GAR QA foi eliminada transaccionalmente, sem registos remanescentes na base de dados. A regra de 48 horas e a exclusão de IDs `QA-TEMP-` do arquivo externo são cobertas por regressão; esta última garante que validações futuras são integralmente reversíveis.
+
+Uma segunda e-GAR QA foi criada depois da proteção de arquivo estar ativa. O registo do servidor confirmou explicitamente que o identificador `QA-TEMP-EGAR-ARQUIVO-20260912` foi mantido **fora do arquivo externo**. O registo e a respetiva auditoria foram removidos transaccionalmente de seguida; a consulta final devolveu zero registos QA remanescentes.
+
+A validação foi reforçada com uma regressão de integração sobre o procedimento real `wasteEgars.create`: para IDs `QA-TEMP-*`, a criação é concluída sem chamar `archiveDocument`; para um ID operacional normal, a chamada de arquivo é efetuada. Assim, a proteção QA está coberta pelo mesmo fluxo que a interface utiliza, e não apenas por um helper isolado.
+
+Como prova adicional reproduzível, o procedimento devolve `archiveStatus: excluido_qa` quando o ID é temporário e `archiveStatus: arquivado` para uma e-GAR operacional normal. A regressão de integração confirma ambos os resultados e verifica a invocação — ou ausência dela — do arquivo externo simulado.
+
+## PDF de fase específica
+
+O PDF da fase **Exploração** do SIN01 foi gerado pela interface, inspecionado e removido de seguida. A primeira inspeção revelou que o cabeçalho usava valores antigos da fase (0% / Não iniciado), apesar de as medidas apresentarem 1/15 concluída. O relatório foi corrigido para calcular a percentagem e o estado diretamente a partir das medidas atuais. A exportação repetida confirmou **Fase de Exploração · 7%**, **Estado: Em curso**, **Pontos concluídos: 1/15**, medidas EX-1 a EX-15, responsáveis, suporte e atualizações — sem incluir a fase Desativação.
+
+## Encerramento da validação QA de resíduos
+
+A confirmação nativa do browser para eliminar e-GAR foi substituída por um diálogo acessível da aplicação, que apresenta o identificador, o carácter irreversível da ação e a auditoria associada. A regressão verifica a ausência de `confirm()` e a atualização do Waste Map depois da eliminação; a compilação e os testes de resíduos passaram. A validação QA foi encerrada sem criar mais registos: a verificação final devolveu **0 e-GAR QA remanescentes**.

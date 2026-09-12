@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { buildOperationScenario, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
+import { buildOperationScenario, calculateOperationEnvironmentalMetrics, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
 
 const formula = (result: number | string) => ({ formula: "TEST", result });
 
@@ -16,6 +16,10 @@ function createDailyReportWorkbook() {
   seawater.getRow(9).values = ["Avrg", formula(16.12), formula(16.12), formula(21.58), formula(21.58), formula(18.72), formula(18.72), formula(18.72), formula(26.81), formula(26.81), formula(26.81), formula(22.02), formula(22.02), formula(22.02), formula(11.16), formula(11.16), formula(11.16), formula(111.52), formula(111.52), formula(111.52)];
   seawater.getCell("R12").value = "Seawater Avg. Thermal Load";
   seawater.getCell("R14").value = formula(2623.21);
+  const organizer = workbook.addWorksheet("EBO_Data organizer");
+  organizer.getRow(1).values = ["Time stamp", "SW_tmp", "Site", "Artic", "Warhol", "BLUE", "SW_flow"];
+  organizer.getRow(2).values = ["11/09/2026 00:00:00", 16.2, 13.3, 9000, 2000, 60, 112];
+  organizer.getRow(3).values = ["11/09/2026 00:15:00", 16.3, 13.44, 9100, 2050, 70, 114];
   return workbook;
 }
 
@@ -29,6 +33,14 @@ describe("Operação — importação e cenários", () => {
     expect(byCode.get("seawater_pumping_cop")?.value).toBeCloseTo(22.68, 2);
     expect(byCode.get("wue_reportado")).toMatchObject({ value: -286.54, dataQuality: "invalid" });
     expect(extracted.qualityStatus).toBe("warning");
+  });
+
+  it("importa séries de quinze minutos com carga TI e PUE calculados a partir das colunas reais", () => {
+    const extracted = extractOperationalReadings(createDailyReportWorkbook());
+    const firstQuarterHour = extracted.readings.filter(reading => reading.granularity === "quinze_minutos" && reading.measuredAt === Date.UTC(2026, 8, 11, 0, 0));
+    expect(firstQuarterHour.find(reading => reading.metricCode === "it_power_15m_kw")).toMatchObject({ value: 11060, dataQuality: "valid" });
+    expect(firstQuarterHour.find(reading => reading.metricCode === "site_power_15m_kw")?.value).toBeCloseTo(13300, 6);
+    expect(firstQuarterHour.find(reading => reading.metricCode === "pue_15m")?.value).toBeCloseTo(13300 / 11060, 6);
   });
 
   it("mantém os cenários separados e calcula energia, água, carbono e custo a partir dos pressupostos", () => {
@@ -49,5 +61,20 @@ describe("Operação — importação e cenários", () => {
 
   it("expõe a cobertura de dados sem integrar leituras inválidas na percentagem válida", () => {
     expect(summarizeOperationQuality([{ dataQuality: "valid" }, { dataQuality: "warning" }, { dataQuality: "invalid" }, { dataQuality: "valid" }])).toEqual({ total: 4, valid: 2, warnings: 1, invalid: 1, coveragePercent: 50 });
+  });
+
+  it("calcula carbono, CUE e limites apenas com fatores e valores explicitamente configurados", () => {
+    const metrics = calculateOperationEnvironmentalMetrics([
+      { metricCode: "site_energy_kwh_daily", value: 1200, dataQuality: "valid" },
+      { metricCode: "it_energy_kwh_daily", value: 1000, dataQuality: "valid" },
+      { metricCode: "pue", value: 1.2, dataQuality: "valid" },
+      { metricCode: "seawater_return_temp_c", value: 24, dataQuality: "valid" },
+      { metricCode: "seawater_flow_lps", value: 95, dataQuality: "valid" },
+    ], { electricityCarbonFactorKgKwh: "0.4", maxPue: "1.15", maxSeawaterReturnTempC: "25", minSeawaterFlowLps: "100", maxSeawaterFlowLps: "130" });
+    expect(metrics).toMatchObject({ electricityCarbonKg: 480, cueKgKwh: 0.48, carbonStatus: "calculado" });
+    expect(metrics.thresholdChecks.find(check => check.id === "pue")?.status).toBe("desvio");
+    expect(metrics.thresholdChecks.find(check => check.id === "seawater_return_temp")?.status).toBe("conforme");
+    expect(metrics.thresholdChecks.find(check => check.id === "seawater_flow_min")?.status).toBe("desvio");
+    expect(calculateOperationEnvironmentalMetrics([], null).carbonStatus).toBe("factor_pendente");
   });
 });

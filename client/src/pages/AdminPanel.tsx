@@ -19,6 +19,7 @@ import ImagesTab from "./AdminImagesTab";
 import { CompanyRelationshipMap } from "@/components/CompanyRelationshipMap";
 import { useProject } from "@/contexts/ProjectContext";
 import DocumentLibraryAdminTab from "./DocumentLibraryAdminTab";
+import OperationSettingsAdmin from "./OperationSettingsAdmin";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
@@ -162,6 +163,7 @@ function AuditLogTab() {
 export default function AdminPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { activeProject } = useProject();
   const [, setLocation] = useLocation();
 
   if (user?.role !== "admin") {
@@ -270,6 +272,11 @@ export default function AdminPanel() {
             <TabsTrigger value="melhorias" className="gap-2">
               💡 Melhorias
             </TabsTrigger>
+            {activeProject?.code === "SIN01" && (
+              <TabsTrigger value="operacao" className="gap-2">
+                <Settings2 className="w-4 h-4" /> Operação
+              </TabsTrigger>
+            )}
             {user?.role === "admin" && (
               <TabsTrigger value="auditoria" className="gap-2">
                 📋 Auditoria
@@ -304,6 +311,7 @@ export default function AdminPanel() {
           <TabsContent value="melhorias" className="mt-4">
             <MelhoriasTab />
           </TabsContent>
+          {activeProject?.code === "SIN01" && <TabsContent value="operacao" className="mt-4"><OperationSettingsAdmin /></TabsContent>}
           {user?.role === "admin" && (
             <TabsContent value="email" className="mt-4">
               <EmailConfigTab />

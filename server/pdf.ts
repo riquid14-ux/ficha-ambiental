@@ -46,6 +46,19 @@ export function resolveTimelineSectionPhase(phase: any) {
   return TIMELINE_PHASE_ALIASES[phase.phaseKey] || TIMELINE_PHASE_ALIASES[phase.phaseName] || phase.phaseKey || phase.phaseName;
 }
 
+export function summarizePhaseMeasures(phaseMeasures: any[], statusMap: Map<number, any>) {
+  const total = phaseMeasures.length;
+  const statuses = phaseMeasures.map((measure) => statusMap.get(measure.id)?.trackingStatus || statusMap.get(measure.id)?.status || "nao_iniciado");
+  const completed = statuses.filter((status) => status === "concluido").length;
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const trackingStatus = completed === total && total > 0
+    ? "concluido"
+    : statuses.some((status) => status !== "nao_iniciado")
+      ? "em_curso"
+      : "nao_iniciado";
+  return { total, completed, percentage, trackingStatus };
+}
+
 export function formatMonitoringPlanSubmissionStatus(status?: string | null) {
   const labels: Record<string, string> = {
     pending: "Pendente",
@@ -198,10 +211,10 @@ export function registerPdfRoutes(app: Express) {
         const phaseSections = sections.filter((section: any) => section.phase === sectionPhase);
         const sectionIds = new Set(phaseSections.map((section: any) => section.id));
         const phaseMeasures = measures.filter((measure: any) => sectionIds.has(measure.sectionId));
-        const completed = phaseMeasures.filter((measure: any) => statusMap.get(measure.id)?.status === "concluido").length;
-        doc.fontSize(12).font("Helvetica-Bold").fillColor("#047857").text(`${phase.phaseName} · ${phase.progress ?? Math.round((completed / Math.max(phaseMeasures.length, 1)) * 100)}%`);
-        doc.fontSize(8).font("Helvetica").fillColor("#334155").text(`Estado: ${TRACKING_STATUS_LABELS[phase.trackingStatus] || phase.trackingStatus} | Responsável: ${phase.ownerName || "Por definir"} | Suporte: ${phase.supportName || "—"}`);
-        doc.text(`Período: ${formatPdfDate(phase.startDate)} a ${formatPdfDate(phase.endDate)} | Pontos concluídos: ${completed}/${phaseMeasures.length}`);
+        const summary = summarizePhaseMeasures(phaseMeasures, statusMap);
+        doc.fontSize(12).font("Helvetica-Bold").fillColor("#047857").text(`${phase.phaseName} · ${summary.percentage}%`);
+        doc.fontSize(8).font("Helvetica").fillColor("#334155").text(`Estado: ${TRACKING_STATUS_LABELS[summary.trackingStatus]} | Responsável: ${phase.ownerName || "Por definir"} | Suporte: ${phase.supportName || "—"}`);
+        doc.text(`Período: ${formatPdfDate(phase.startDate)} a ${formatPdfDate(phase.endDate)} | Pontos concluídos: ${summary.completed}/${summary.total}`);
         const phaseUpdates = await db.getProjectPhaseUpdates(phase.id);
         if (phaseUpdates[0]) doc.fontSize(8).font("Helvetica-Oblique").fillColor("#475569").text(`Última atualização: ${phaseUpdates[0].updateText} — ${phaseUpdates[0].createdByName}, ${formatPdfDate(phaseUpdates[0].createdAt)}`);
         doc.moveDown(0.45);

@@ -55,6 +55,21 @@ function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
 }
 
+export function shouldArchiveWasteEgar(egarId?: string | null) {
+  return !egarId?.startsWith("QA-TEMP-");
+}
+
+export async function archiveWasteEgarIfRequired(egarId: string | null | undefined, archive: () => Promise<void>) {
+  if (!shouldArchiveWasteEgar(egarId)) return false;
+  await archive();
+  return true;
+}
+
+export function isWithinWasteEgarDeletionWindow(createdAt: string | Date | number, now = Date.now()) {
+  const createdAtMs = new Date(createdAt).getTime();
+  return Number.isFinite(createdAtMs) && now - createdAtMs <= 48 * 60 * 60 * 1000;
+}
+
 function assertAdminOnly(user: { role: string }) {
   if (user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem gerir empresas, utilizadores, funções e convites." });
 }
@@ -219,6 +234,41 @@ export function summarizeOperationQuality(readings: Array<{ dataQuality: string 
   return { total, valid, warnings, invalid, coveragePercent: total ? (valid / total) * 100 : null };
 }
 
+type OperationSettingsValues = Record<string, string | number | null | undefined>;
+function operationSettingNumber(settings: OperationSettingsValues | null | undefined, key: string) {
+  const value = settings?.[key];
+  if (value === null || value === undefined || (typeof value === "string" && !value.trim())) return null;
+  const parsed = typeof value === "number" ? value : Number(String(value ?? ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricCode: string; value: number; dataQuality: string }>, settings: OperationSettingsValues | null | undefined) {
+  const usable = readings.filter(reading => reading.dataQuality !== "invalid" && Number.isFinite(reading.value));
+  const sum = (code: string) => usable.filter(reading => reading.metricCode === code).reduce((total, reading) => total + reading.value, 0);
+  const latest = new Map<string, number>();
+  for (const reading of usable) latest.set(reading.metricCode, reading.value);
+  const electricityKwh = sum("site_energy_kwh_daily");
+  const itEnergyKwh = sum("it_energy_kwh_daily");
+  const electricityFactor = operationSettingNumber(settings, "electricityCarbonFactorKgKwh");
+  const electricityCarbonKg = electricityFactor === null ? null : electricityKwh * electricityFactor;
+  const cueKgKwh = electricityCarbonKg !== null && itEnergyKwh > 0 ? electricityCarbonKg / itEnergyKwh : null;
+  const thresholdChecks = [
+    { id: "pue", label: "PUE", value: latest.get("pue") ?? null, limit: operationSettingNumber(settings, "maxPue"), direction: "max" as const, unit: "rácio" },
+    { id: "seawater_return_temp", label: "Temperatura de descarga", value: latest.get("seawater_return_temp_c") ?? null, limit: operationSettingNumber(settings, "maxSeawaterReturnTempC"), direction: "max" as const, unit: "°C" },
+    { id: "seawater_flow_min", label: "Caudal mínimo de captação", value: latest.get("seawater_flow_lps") ?? null, limit: operationSettingNumber(settings, "minSeawaterFlowLps"), direction: "min" as const, unit: "L/s" },
+    { id: "seawater_flow_max", label: "Caudal máximo de captação", value: latest.get("seawater_flow_lps") ?? null, limit: operationSettingNumber(settings, "maxSeawaterFlowLps"), direction: "max" as const, unit: "L/s" },
+    { id: "seawater_delta_t", label: "ΔT água do mar", value: latest.get("seawater_delta_t_k") ?? null, limit: operationSettingNumber(settings, "maxSeawaterDeltaTK"), direction: "max" as const, unit: "K" },
+  ].map(check => ({ ...check, status: check.limit === null ? "por_configurar" : check.value === null ? "sem_leitura" : (check.direction === "max" ? check.value <= check.limit : check.value >= check.limit) ? "conforme" : "desvio" }));
+  return {
+    electricityKwh,
+    itEnergyKwh,
+    electricityCarbonKg,
+    cueKgKwh,
+    carbonStatus: electricityFactor === null ? "factor_pendente" : itEnergyKwh > 0 ? "calculado" : "sem_energia_ti",
+    thresholdChecks,
+  };
+}
+
 function parseReportDate(value: unknown) {
   if (value && typeof value === "object" && "result" in value) return parseReportDate((value as { result: unknown }).result);
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -379,6 +429,14 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
           const metricColumn = column(metric.headers); const value = metricColumn > 0 ? parseOperationNumber(row.getCell(metricColumn).value) : null;
           add(metric.code, metric.label, metric.category, metric.unit, value, "bms_report", "valid", undefined, "quinze_minutos", at);
         }
+        const dataHallColumns = ["artic", "warhol", "blue"].map(name => column([name])).filter(index => index > 0);
+        const itPower = dataHallColumns.reduce((total, index) => total + (parseOperationNumber(row.getCell(index).value) || 0), 0);
+        const siteColumn = column(["site"]);
+        const sitePowerMw = siteColumn > 0 ? parseOperationNumber(row.getCell(siteColumn).value) : null;
+        const sitePowerKw = sitePowerMw === null ? null : sitePowerMw * 1000;
+        add("it_power_15m_kw", "Carga TI", "energia", "kW", itPower > 0 ? itPower : null, "calculated", itPower > 0 ? "valid" : "invalid", itPower > 0 ? "Soma Artic, Warhol e Blue." : "Sem carga TI válida.", "quinze_minutos", at);
+        add("site_power_15m_kw", "Potência do site", "energia", "kW", sitePowerKw, "bms_report", sitePowerKw !== null ? "valid" : "invalid", sitePowerKw !== null ? "Origem em MW convertida para kW." : "Sem potência do site válida.", "quinze_minutos", at);
+        add("pue_15m", "PUE de quinze minutos", "energia", "rácio", sitePowerKw !== null && itPower > 0 ? sitePowerKw / itPower : null, "calculated", sitePowerKw !== null && itPower > 0 ? "valid" : "invalid", sitePowerKw !== null && itPower > 0 ? "Potência do site (MW convertidos para kW) / soma Artic, Warhol e Blue." : "Sem potência válida para calcular PUE.", "quinze_minutos", at);
       }
     }
   }
@@ -3854,15 +3912,19 @@ export const appRouter = router({
           destination: input.destination ?? "recycled",
           createdBy: ctx.user.id,
         });
-        // Archive waste eGAR to external storage
-        try {
-          const { archiveDocument } = await import("./archive-provider");
-          const project = await db.getProjectById(input.projectId);
-          await archiveDocument("residuo", project?.code || "UNKNOWN", input.year, {
-            ...input, id: result.id, createdBy: ctx.user.id,
-          }, { month: input.month, year: input.year, lerCode: input.lerCode });
-        } catch (e) { console.warn("Waste archive failed (non-fatal):", e); }
-        return result;
+        // Registos QA existem apenas para validação transitória e não podem sair do
+        // âmbito transacional da aplicação. Os restantes resíduos são arquivados.
+        const archivedExternally = await archiveWasteEgarIfRequired(input.egarId, async () => {
+          try {
+            const { archiveDocument } = await import("./archive-provider");
+            const project = await db.getProjectById(input.projectId);
+            await archiveDocument("residuo", project?.code || "UNKNOWN", input.year, {
+              ...input, id: result.id, createdBy: ctx.user.id,
+            }, { month: input.month, year: input.year, lerCode: input.lerCode });
+          } catch (e) { console.warn("Waste archive failed (non-fatal):", e); }
+        });
+        if (!shouldArchiveWasteEgar(input.egarId)) console.info("[Waste] QA e-GAR mantida fora do arquivo externo", { projectId: input.projectId, egarId: input.egarId });
+        return { ...result, archiveStatus: archivedExternally ? "arquivado" : "excluido_qa" };
       }),
     delete: partnerAllowedProcedure
       .input(z.object({ id: z.number() }))
@@ -3875,8 +3937,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Só pode eliminar registos da sua entidade." });
         }
         if (!isAdminOrDono(ctx.user.role)) {
-          const createdAt = new Date(record.createdAt).getTime();
-          if (!Number.isFinite(createdAt) || Date.now() - createdAt > 48 * 60 * 60 * 1000) {
+          if (!isWithinWasteEgarDeletionWindow(record.createdAt)) {
             throw new TRPCError({ code: "FORBIDDEN", message: "A e-GAR só pode ser eliminada pelo autor ou pela sua entidade nas primeiras 48 horas. A Administração pode eliminá-la posteriormente." });
           }
         }
@@ -4265,7 +4326,46 @@ export const appRouter = router({
           WHERE projectId = ${input.projectId} AND periodEnd >= ${input.startDate || "0000-01-01"} AND periodStart <= ${input.endDate || "9999-12-31"}
         `);
         const invoiceSummary = (invoiceSummaryResult as any)[0]?.[0] || {};
-        return { readings, latest: Object.fromEntries(latest), quality, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: "factor_pendente" as const } };
+        const settingsResult = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const settings = (settingsResult as any)[0]?.[0] || null;
+        const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
+        return { readings, latest: Object.fromEntries(latest), quality, settings, environmental, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
+      }),
+    settings: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        return (result as any)[0]?.[0] || null;
+      }),
+    updateSettings: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        electricityCarbonFactorKgKwh: z.number().finite().min(0).max(10).nullable(),
+        waterPotableCarbonFactorKgM3: z.number().finite().min(0).max(100).nullable(),
+        waterIndustrialCarbonFactorKgM3: z.number().finite().min(0).max(100).nullable(),
+        maxPue: z.number().finite().positive().max(10).nullable(),
+        maxSeawaterReturnTempC: z.number().finite().min(-20).max(100).nullable(),
+        minSeawaterFlowLps: z.number().finite().min(0).max(100000).nullable(),
+        maxSeawaterFlowLps: z.number().finite().min(0).max(100000).nullable(),
+        maxSeawaterDeltaTK: z.number().finite().min(0).max(100).nullable(),
+      }).superRefine((value, issue) => {
+        if (value.minSeawaterFlowLps !== null && value.maxSeawaterFlowLps !== null && value.minSeawaterFlowLps > value.maxSeawaterFlowLps) issue.addIssue({ code: "custom", message: "O caudal mínimo não pode exceder o máximo.", path: ["minSeawaterFlowLps"] });
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const previousResult = await database.execute(sql`SELECT electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const previous = (previousResult as any)[0]?.[0] || null;
+        await database.execute(sql`
+          INSERT INTO operation_settings (projectId, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedBy)
+          VALUES (${input.projectId}, ${input.electricityCarbonFactorKgKwh === null ? null : String(input.electricityCarbonFactorKgKwh)}, ${input.waterPotableCarbonFactorKgM3 === null ? null : String(input.waterPotableCarbonFactorKgM3)}, ${input.waterIndustrialCarbonFactorKgM3 === null ? null : String(input.waterIndustrialCarbonFactorKgM3)}, ${input.maxPue === null ? null : String(input.maxPue)}, ${input.maxSeawaterReturnTempC === null ? null : String(input.maxSeawaterReturnTempC)}, ${input.minSeawaterFlowLps === null ? null : String(input.minSeawaterFlowLps)}, ${input.maxSeawaterFlowLps === null ? null : String(input.maxSeawaterFlowLps)}, ${input.maxSeawaterDeltaTK === null ? null : String(input.maxSeawaterDeltaTK)}, ${ctx.user.id})
+          ON DUPLICATE KEY UPDATE electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), updatedBy = VALUES(updatedBy)
+        `);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_settings_update", "operation_settings", input.projectId, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined }));
+        return { success: true };
       }),
     imports: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))

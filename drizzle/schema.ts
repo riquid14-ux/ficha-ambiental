@@ -950,6 +950,29 @@ export const operationScenarios = mysqlTable("operation_scenarios", {
 export type OperationScenario = typeof operationScenarios.$inferSelect;
 export type InsertOperationScenario = typeof operationScenarios.$inferInsert;
 
+// Configuração aprovada pela Administração para converter leituras medidas em
+// indicadores ambientais e avaliar limites de licença. Todos os campos são
+// opcionais para impedir cálculos por suposição quando ainda não existe valor
+// formalmente validado para o projeto.
+export const operationSettings = mysqlTable("operation_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  electricityCarbonFactorKgKwh: varchar("electricityCarbonFactorKgKwh", { length: 80 }),
+  waterPotableCarbonFactorKgM3: varchar("waterPotableCarbonFactorKgM3", { length: 80 }),
+  waterIndustrialCarbonFactorKgM3: varchar("waterIndustrialCarbonFactorKgM3", { length: 80 }),
+  maxPue: varchar("maxPue", { length: 80 }),
+  maxSeawaterReturnTempC: varchar("maxSeawaterReturnTempC", { length: 80 }),
+  minSeawaterFlowLps: varchar("minSeawaterFlowLps", { length: 80 }),
+  maxSeawaterFlowLps: varchar("maxSeawaterFlowLps", { length: 80 }),
+  maxSeawaterDeltaTK: varchar("maxSeawaterDeltaTK", { length: 80 }),
+  updatedBy: int("updatedBy").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectUnique: uniqueIndex("operation_settings_project_unique").on(table.projectId),
+}));
+export type OperationSettings = typeof operationSettings.$inferSelect;
+export type InsertOperationSettings = typeof operationSettings.$inferInsert;
+
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {
   id: int("id").primaryKey().autoincrement(),

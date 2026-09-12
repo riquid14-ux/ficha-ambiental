@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { formatMonitoringPlanSubmissionStatus, formatPhaseEvidenceLines, resolveTimelineSectionPhase } from "./pdf";
+import { formatMonitoringPlanSubmissionStatus, formatPhaseEvidenceLines, resolveTimelineSectionPhase, summarizePhaseMeasures } from "./pdf";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -42,6 +42,14 @@ describe("Âmbito de projeto — documentação, mapa e relatórios", () => {
     expect(resolveTimelineSectionPhase({ phaseKey: "previas_licenciamento", phaseName: "Previamente ao Licenciamento" })).toBe("Prévias Licenciamento");
     expect(resolveTimelineSectionPhase({ phaseKey: "desativacao", phaseName: "Desativação" })).toBe("Desativação (Pós-Exploração)");
     expect(resolveTimelineSectionPhase({ phaseKey: "Execução da Obra", phaseName: "Construção" })).toBe("Execução da Obra");
+  });
+
+  it("calcula o progresso e o estado da fase a partir das medidas atuais", () => {
+    const summary = summarizePhaseMeasures(
+      [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 }, { id: 8 }, { id: 9 }, { id: 10 }, { id: 11 }, { id: 12 }, { id: 13 }, { id: 14 }, { id: 15 }],
+      new Map([[1, { trackingStatus: "em_curso" }], [4, { trackingStatus: "concluido" }]]),
+    );
+    expect(summary).toEqual({ total: 15, completed: 1, percentage: 7, trackingStatus: "em_curso" });
   });
 
   it("exporta os estados de entrega de Planos em português", () => {

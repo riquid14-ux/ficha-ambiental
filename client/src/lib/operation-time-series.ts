@@ -2,7 +2,7 @@ export type OperationGrouping = "hora" | "dia" | "semana" | "mes" | "ano";
 
 type OperationReading = { metricCode: string; value: number; measuredAt: number; granularity: string; dataQuality: string };
 
-const AVERAGE_FIELDS: Record<string, string> = { pue: "pue", seawater_intake_temp_c: "seawaterTemperature", seawater_return_temp_c: "seawaterReturn", seawater_flow_lps: "seawaterFlow", seawater_pumping_cop: "cop" };
+const AVERAGE_FIELDS: Record<string, string> = { pue: "pue", pue_15m: "pue", seawater_intake_temp_c: "seawaterTemperature", seawater_intake_15m_c: "seawaterTemperature", seawater_return_temp_c: "seawaterReturn", seawater_flow_lps: "seawaterFlow", seawater_flow_15m_lps: "seawaterFlow", seawater_pumping_cop: "cop", site_power_15m_kw: "sitePower", it_power_15m_kw: "itPower" };
 const TOTAL_FIELDS: Record<string, string> = { site_energy_kwh_daily: "siteEnergy", it_energy_kwh_daily: "itEnergy", esw_energy_kwh_daily: "eswEnergy" };
 
 function getPeriod(date: Date, grouping: OperationGrouping) {
@@ -14,7 +14,7 @@ function getPeriod(date: Date, grouping: OperationGrouping) {
 }
 
 export function aggregateOperationReadings(readings: OperationReading[], grouping: OperationGrouping) {
-  const requiredGranularity = grouping === "hora" ? "horario" : "diario";
+  const requiredGranularity = grouping === "hora" ? "quinze_minutos" : "diario";
   const byPeriod = new Map<string, any>();
   for (const reading of readings.filter(item => item.granularity === requiredGranularity && item.dataQuality !== "invalid")) {
     const period = getPeriod(new Date(Number(reading.measuredAt)), grouping);

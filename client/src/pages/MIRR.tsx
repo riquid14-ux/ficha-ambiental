@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Download, Upload, Recycle, Settings, X } from "lucide-react";
 import ExcelJS from "exceljs";
@@ -71,6 +72,7 @@ export default function MIRR() {
   const [selectedWasteMapCompanies, setSelectedWasteMapCompanies] = useState<number[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [egarPendingDelete, setEgarPendingDelete] = useState<{ id: number; label: string } | null>(null);
   const [lerCodes, setLerCodes] = useState(DEFAULT_LER_CODES);
   const [destinations, setDestinations] = useState(DEFAULT_DESTINATIONS);
   const [newLer, setNewLer] = useState({ code: "", name: "", hazardous: false });
@@ -99,11 +101,12 @@ export default function MIRR() {
   );
 
   const createMutation = trpc.wasteEgars.create.useMutation({
-    onSuccess: () => { refetch(); setShowAddForm(false); setNewEgar({ date: "", egarId: "", egarLink: "", operatorTransport: "", operatorTransportAPA: "", operatorReception: "", operatorReceptionAPA: "", lerCode: "", designation: "", quantity: "", correctedQuantity: "", destination: "recycled", month: new Date().getMonth() + 1, year: new Date().getFullYear() }); toast.success("e-GAR registada com sucesso"); },
+    onSuccess: () => { refetch(); wasteMapQuery.refetch(); setShowAddForm(false); setNewEgar({ date: "", egarId: "", egarLink: "", operatorTransport: "", operatorTransportAPA: "", operatorReception: "", operatorReceptionAPA: "", lerCode: "", designation: "", quantity: "", correctedQuantity: "", destination: "recycled", month: new Date().getMonth() + 1, year: new Date().getFullYear() }); toast.success("e-GAR registada com sucesso"); },
     onError: (e: any) => toast.error(e.message),
   });
   const deleteMutation = trpc.wasteEgars.delete.useMutation({
-    onSuccess: () => { refetch(); toast.success("e-GAR eliminada"); },
+    onSuccess: () => { refetch(); wasteMapQuery.refetch(); setEgarPendingDelete(null); toast.success("e-GAR eliminada"); },
+    onError: (error: any) => toast.error(error.message),
   });
   const createSubprojectMutation = trpc.wasteEgars.createSubproject.useMutation({
     onSuccess: async () => {
@@ -123,6 +126,7 @@ export default function MIRR() {
     for (const row of wasteMapQuery.data || []) if (row.companyId) entries.set(row.companyId, row.companyName || `Entidade ${row.companyId}`);
     return Array.from(entries.entries()).sort((a, b) => a[1].localeCompare(b[1], "pt"));
   }, [wasteMapQuery.data]);
+  const hasUnassignedWasteMapRows = useMemo(() => (wasteMapQuery.data || []).some((row: any) => !row.companyId), [wasteMapQuery.data]);
 
   const monthlySummary = useMemo(() => {
     if (!egars) return [];
@@ -295,7 +299,7 @@ export default function MIRR() {
               <div><p className="text-sm font-semibold text-emerald-950">Waste Map por código LER e mês</p><p className="text-xs text-emerald-800">Escolha uma, várias ou todas as entidades autorizadas. A exportação apresenta as toneladas por código LER em cada mês.</p></div>
               {selectedWasteMapCompanies.length > 0 && <Button size="sm" variant="outline" onClick={() => setSelectedWasteMapCompanies([])}>Todas as entidades</Button>}
             </div>
-            {wasteMapCompanies.length > 0 ? <div className="mt-3 flex flex-wrap gap-2">{wasteMapCompanies.map(([companyId, companyName]) => { const selected = selectedWasteMapCompanies.includes(companyId); return <Button key={companyId} size="sm" variant={selected ? "default" : "outline"} onClick={() => setSelectedWasteMapCompanies(current => selected ? current.filter(id => id !== companyId) : [...current, companyId])}>{companyName}</Button>; })}</div> : <p className="mt-3 text-xs text-muted-foreground">Sem entidades com e-GAR no período selecionado.</p>}
+            {wasteMapCompanies.length > 0 || hasUnassignedWasteMapRows ? <div className="mt-3 flex flex-wrap gap-2">{wasteMapCompanies.map(([companyId, companyName]) => { const selected = selectedWasteMapCompanies.includes(companyId); return <Button key={companyId} size="sm" variant={selected ? "default" : "outline"} onClick={() => setSelectedWasteMapCompanies(current => selected ? current.filter(id => id !== companyId) : [...current, companyId])}>{companyName}</Button>; })}{hasUnassignedWasteMapRows && <Badge variant="outline">Sem entidade atribuída · Administração</Badge>}</div> : <p className="mt-3 text-xs text-muted-foreground">Sem entidades com e-GAR no período selecionado.</p>}
           </CardContent>
         </Card>
 
@@ -485,7 +489,7 @@ export default function MIRR() {
                           <td className="py-2 px-2 font-medium">{e.correctedQuantity ? <><span className="text-green-700">{e.correctedQuantity}</span> <span className="text-[10px] text-muted-foreground line-through">{e.quantity}</span></> : e.quantity}</td>
                           <td className="py-2 px-2 text-xs">{e.operator || "—"}</td>
                           <td className="py-2 px-2"><Badge variant={e.destination === "recycled" ? "default" : e.destination === "landfill" ? "destructive" : "secondary"} className="text-[10px]">{dest?.label || e.destination}</Badge></td>
-                          {canContribute && <td className="py-2 px-2">{(() => { const ownsRecord = e.createdBy === user?.id || (user?.companyId && e.companyId === user.companyId); const withinWindow = new Date(e.createdAt).getTime() + 48 * 60 * 60 * 1000 > Date.now(); const canDelete = isAdminOrDono || (ownsRecord && withinWindow); return canDelete ? <button title={isAdminOrDono ? "Eliminar e-GAR" : "Eliminar até 48 horas após o registo"} onClick={() => { if (confirm("Eliminar esta e-GAR? Esta ação ficará registada em auditoria.")) deleteMutation.mutate({ id: e.id }); }} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button> : <span className="text-[10px] text-muted-foreground">48 h expiradas</span>; })()}</td>}
+                          {canContribute && <td className="py-2 px-2">{(() => { const ownsRecord = e.createdBy === user?.id || (user?.companyId && e.companyId === user.companyId); const withinWindow = new Date(e.createdAt).getTime() + 48 * 60 * 60 * 1000 > Date.now(); const canDelete = isAdminOrDono || (ownsRecord && withinWindow); return canDelete ? <button title={isAdminOrDono ? "Eliminar e-GAR" : "Eliminar até 48 horas após o registo"} onClick={() => setEgarPendingDelete({ id: e.id, label: e.egarId || `e-GAR #${e.id}` })} className="text-red-500 hover:text-red-700"><Trash2 className="w-3.5 h-3.5" /></button> : <span className="text-[10px] text-muted-foreground">48 h expiradas</span>; })()}</td>}
                         </tr>
                       );
                     })}
@@ -495,6 +499,22 @@ export default function MIRR() {
             )}
           </CardContent>
         </Card>
+        <AlertDialog open={!!egarPendingDelete} onOpenChange={(open) => !open && setEgarPendingDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar e-GAR?</AlertDialogTitle>
+              <AlertDialogDescription>
+                A e-GAR <strong>{egarPendingDelete?.label}</strong> será eliminada. Esta ação fica registada em auditoria e não pode ser revertida.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleteMutation.isPending} onClick={() => egarPendingDelete && deleteMutation.mutate({ id: egarPendingDelete.id })}>
+                {deleteMutation.isPending ? "A eliminar…" : "Eliminar e-GAR"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );

@@ -271,6 +271,69 @@ export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricC
   };
 }
 
+type OperationForecastReading = { metricCode: string; value: number; measuredAt: number; dataQuality: string };
+
+function buildDailyAverageSeries(readings: OperationForecastReading[], metricCode: string) {
+  const valuesByDay = new Map<string, number[]>();
+  for (const reading of readings) {
+    if (reading.metricCode !== metricCode || reading.dataQuality === "invalid" || !Number.isFinite(reading.value)) continue;
+    const date = new Date(reading.measuredAt).toISOString().slice(0, 10);
+    const values = valuesByDay.get(date) || [];
+    values.push(Number(reading.value));
+    valuesByDay.set(date, values);
+  }
+  return Array.from(valuesByDay.entries())
+    .map(([date, values]) => ({ date, value: values.reduce((total, value) => total + value, 0) / values.length }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function buildOperationTrendForecast(readings: OperationForecastReading[], settings: OperationSettingsValues | null | undefined) {
+  const minimumDays = 7;
+  const horizonDays = Math.min(730, Math.max(7, Math.trunc(operationSettingNumber(settings, "forecastHorizonDays") || 30)));
+  const buildMetricForecast = (metricCode: string, label: string, unit: string, multiplier = 1) => {
+    const history = buildDailyAverageSeries(readings, metricCode).map(point => ({ ...point, value: point.value * multiplier }));
+    if (history.length < minimumDays) return { metricCode, label, unit, status: "histórico_insuficiente" as const, observations: history.length, history, forecast: [] as Array<{ date: string; value: number }> };
+    const n = history.length;
+    const meanX = (n - 1) / 2;
+    const meanY = history.reduce((total, point) => total + point.value, 0) / n;
+    const denominator = history.reduce((total, _, index) => total + (index - meanX) ** 2, 0);
+    const slope = denominator ? history.reduce((total, point, index) => total + (index - meanX) * (point.value - meanY), 0) / denominator : 0;
+    const intercept = meanY - slope * meanX;
+    const lastDate = new Date(`${history[history.length - 1].date}T00:00:00Z`);
+    const forecast = Array.from({ length: horizonDays }, (_, index) => {
+      const date = new Date(lastDate.getTime() + (index + 1) * 86_400_000).toISOString().slice(0, 10);
+      return { date, value: Math.max(0, intercept + slope * (n + index)) };
+    });
+    return { metricCode, label, unit, status: "disponível" as const, observations: history.length, history, forecast, method: "tendência_linear" as const };
+  };
+  const electricityPrice = operationSettingNumber(settings, "electricityPriceEurKwh");
+  return {
+    minimumDays,
+    horizonDays,
+    configurationMode: settings?.configurationMode === "illustrative" ? "illustrative" : "approved",
+    pue: buildMetricForecast("pue", "PUE", "rácio"),
+    wue: buildMetricForecast("wue_calculated_daily", "WUE", "L/kWh TI"),
+    cost: electricityPrice === null
+      ? { metricCode: "site_energy_kwh_daily", label: "Custo de energia", unit: "€", status: "preço_pendente" as const, observations: 0, history: [], forecast: [] as Array<{ date: string; value: number }> }
+      : buildMetricForecast("site_energy_kwh_daily", "Custo de energia", "€", electricityPrice),
+  };
+}
+
+export function buildCalculatedWueReadings(readings: Array<{ metricCode: string; metricLabel?: string; category?: string; unit?: string; value: number; measuredAt: number; granularity: string; source?: string; dataQuality: string }>) {
+  const dailyWater = new Map<number, number>();
+  const dailyItEnergy = new Map<number, number>();
+  for (const reading of readings) {
+    if (reading.dataQuality === "invalid" || !Number.isFinite(reading.value)) continue;
+    if (reading.metricCode === "water_consumption_m3_daily" && reading.granularity === "diario") dailyWater.set(Number(reading.measuredAt), Number(reading.value));
+    if (reading.metricCode === "it_energy_kwh_daily" && reading.granularity === "diario") dailyItEnergy.set(Number(reading.measuredAt), Number(reading.value));
+  }
+  return Array.from(dailyWater.entries()).flatMap(([measuredAt, waterM3]) => {
+    const itEnergy = dailyItEnergy.get(measuredAt);
+    if (!Number.isFinite(itEnergy) || !itEnergy || waterM3 < 0) return [];
+    return [{ metricCode: "wue_calculated_daily", metricLabel: "WUE calculado", category: "agua", unit: "L/kWh TI", value: (waterM3 * 1000) / itEnergy, measuredAt, granularity: "diario", source: "calculated", dataQuality: "valid", qualityNote: "Calculado a partir de consumo diário de água registado e energia TI medida." }];
+  });
+}
+
 type OperationReconciliationInvoice = {
   invoiceType: string;
   quantity: number | string;
@@ -4376,7 +4439,8 @@ export const appRouter = router({
           ORDER BY measuredAt ASC, metricCode ASC
           LIMIT 12000
         `);
-        const readings = ((result as any)[0] || []).map((row: any) => ({ ...row, measuredAt: Number(row.measuredAt), value: Number(row.value) }));
+        const rawReadings = ((result as any)[0] || []).map((row: any) => ({ ...row, measuredAt: Number(row.measuredAt), value: Number(row.value) }));
+        const readings = [...rawReadings, ...buildCalculatedWueReadings(rawReadings)];
         const usable = readings.filter((row: any) => row.dataQuality !== "invalid");
         const latest = new Map<string, any>();
         for (const reading of usable) latest.set(reading.metricCode, reading);
@@ -4387,17 +4451,18 @@ export const appRouter = router({
           WHERE projectId = ${input.projectId} AND periodEnd >= ${input.startDate || "0000-01-01"} AND periodStart <= ${input.endDate || "9999-12-31"}
         `);
         const invoiceSummary = (invoiceSummaryResult as any)[0]?.[0] || {};
-        const settingsResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const settingsResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         const settings = (settingsResult as any)[0]?.[0] || null;
         const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
-        return { readings, latest: Object.fromEntries(latest), quality, settings, environmental, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
+        const forecast = buildOperationTrendForecast(readings, settings);
+        return { readings, latest: Object.fromEntries(latest), quality, settings, environmental, forecast, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
       }),
     settings: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const result = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         return (result as any)[0]?.[0] || null;
       }),
     updateSettings: protectedProcedure
@@ -4412,6 +4477,13 @@ export const appRouter = router({
         minSeawaterFlowLps: z.number().finite().min(0).max(100000).nullable(),
         maxSeawaterFlowLps: z.number().finite().min(0).max(100000).nullable(),
         maxSeawaterDeltaTK: z.number().finite().min(0).max(100).nullable(),
+        electricityPriceEurKwh: z.number().finite().min(0).max(100).nullable(),
+        waterPriceEurM3: z.number().finite().min(0).max(10000).nullable(),
+        annualMaintenanceBudgetEur: z.number().finite().min(0).max(100_000_000).nullable(),
+        targetPue: z.number().finite().positive().max(10).nullable(),
+        targetWueLkwh: z.number().finite().min(0).max(10000).nullable(),
+        forecastHorizonDays: z.number().int().min(7).max(730).nullable(),
+        coolingStrategyBaseline: z.enum(["agua_mar", "chiller", "hibrido_adiabatico", "torres_evaporativas", "outro"]).nullable(),
       }).superRefine((value, issue) => {
         if (value.minSeawaterFlowLps !== null && value.maxSeawaterFlowLps !== null && value.minSeawaterFlowLps > value.maxSeawaterFlowLps) issue.addIssue({ code: "custom", message: "O caudal mínimo não pode exceder o máximo.", path: ["minSeawaterFlowLps"] });
       }))
@@ -4419,12 +4491,12 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const previousResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const previousResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         const previous = (previousResult as any)[0]?.[0] || null;
         await database.execute(sql`
-          INSERT INTO operation_settings (projectId, configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, updatedBy)
-          VALUES (${input.projectId}, ${input.configurationMode}, ${input.electricityCarbonFactorKgKwh === null ? null : String(input.electricityCarbonFactorKgKwh)}, ${input.waterPotableCarbonFactorKgM3 === null ? null : String(input.waterPotableCarbonFactorKgM3)}, ${input.waterIndustrialCarbonFactorKgM3 === null ? null : String(input.waterIndustrialCarbonFactorKgM3)}, ${input.maxPue === null ? null : String(input.maxPue)}, ${input.maxSeawaterReturnTempC === null ? null : String(input.maxSeawaterReturnTempC)}, ${input.minSeawaterFlowLps === null ? null : String(input.minSeawaterFlowLps)}, ${input.maxSeawaterFlowLps === null ? null : String(input.maxSeawaterFlowLps)}, ${input.maxSeawaterDeltaTK === null ? null : String(input.maxSeawaterDeltaTK)}, ${ctx.user.id})
-          ON DUPLICATE KEY UPDATE configurationMode = VALUES(configurationMode), electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), updatedBy = VALUES(updatedBy)
+          INSERT INTO operation_settings (projectId, configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, updatedBy)
+          VALUES (${input.projectId}, ${input.configurationMode}, ${input.electricityCarbonFactorKgKwh === null ? null : String(input.electricityCarbonFactorKgKwh)}, ${input.waterPotableCarbonFactorKgM3 === null ? null : String(input.waterPotableCarbonFactorKgM3)}, ${input.waterIndustrialCarbonFactorKgM3 === null ? null : String(input.waterIndustrialCarbonFactorKgM3)}, ${input.maxPue === null ? null : String(input.maxPue)}, ${input.maxSeawaterReturnTempC === null ? null : String(input.maxSeawaterReturnTempC)}, ${input.minSeawaterFlowLps === null ? null : String(input.minSeawaterFlowLps)}, ${input.maxSeawaterFlowLps === null ? null : String(input.maxSeawaterFlowLps)}, ${input.maxSeawaterDeltaTK === null ? null : String(input.maxSeawaterDeltaTK)}, ${input.electricityPriceEurKwh === null ? null : String(input.electricityPriceEurKwh)}, ${input.waterPriceEurM3 === null ? null : String(input.waterPriceEurM3)}, ${input.annualMaintenanceBudgetEur === null ? null : String(input.annualMaintenanceBudgetEur)}, ${input.targetPue === null ? null : String(input.targetPue)}, ${input.targetWueLkwh === null ? null : String(input.targetWueLkwh)}, ${input.forecastHorizonDays}, ${input.coolingStrategyBaseline}, ${ctx.user.id})
+          ON DUPLICATE KEY UPDATE configurationMode = VALUES(configurationMode), electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), electricityPriceEurKwh = VALUES(electricityPriceEurKwh), waterPriceEurM3 = VALUES(waterPriceEurM3), annualMaintenanceBudgetEur = VALUES(annualMaintenanceBudgetEur), targetPue = VALUES(targetPue), targetWueLkwh = VALUES(targetWueLkwh), forecastHorizonDays = VALUES(forecastHorizonDays), coolingStrategyBaseline = VALUES(coolingStrategyBaseline), updatedBy = VALUES(updatedBy)
         `);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_settings_update", "operation_settings", input.projectId, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined }));
         return { success: true };
@@ -4437,6 +4509,21 @@ export const appRouter = router({
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const result = await database.execute(sql`SELECT id, sourceFilename, sourceType, measuredDate, rowsImported, qualityStatus, qualityNotes, importedAt FROM operation_import_batches WHERE projectId = ${input.projectId} ORDER BY importedAt DESC LIMIT 50`);
         return (result as any)[0] || [];
+      }),
+    createWaterReading: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), waterM3: z.number().finite().min(0).max(1_000_000), note: z.string().max(500).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId, true);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
+        const measuredAt = Date.parse(`${input.date}T00:00:00Z`);
+        await database.execute(sql`
+          INSERT INTO operation_readings (projectId, batchId, metricCode, metricLabel, category, unit, value, measuredAt, granularity, source, dataQuality, qualityNote)
+          VALUES (${input.projectId}, NULL, 'water_consumption_m3_daily', 'Consumo diário de água', 'agua', 'm³', ${String(input.waterM3)}, ${measuredAt}, 'diario', 'manual', 'valid', ${input.note || 'Leitura manual auditável de consumo diário de água.'})
+          ON DUPLICATE KEY UPDATE value = VALUES(value), dataQuality = VALUES(dataQuality), qualityNote = VALUES(qualityNote)
+        `);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_water_reading_upsert", "operation_reading", input.projectId, null, JSON.stringify({ date: input.date, waterM3: input.waterM3, source: "manual" }));
+        return { success: true, measuredAt };
       }),
     importDailyReport: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), filename: z.string().min(1).max(255), mimeType: z.literal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), data: z.string().min(8) }))

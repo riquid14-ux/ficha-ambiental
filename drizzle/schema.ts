@@ -966,6 +966,13 @@ export const operationSettings = mysqlTable("operation_settings", {
   minSeawaterFlowLps: varchar("minSeawaterFlowLps", { length: 80 }),
   maxSeawaterFlowLps: varchar("maxSeawaterFlowLps", { length: 80 }),
   maxSeawaterDeltaTK: varchar("maxSeawaterDeltaTK", { length: 80 }),
+  electricityPriceEurKwh: varchar("electricityPriceEurKwh", { length: 80 }),
+  waterPriceEurM3: varchar("waterPriceEurM3", { length: 80 }),
+  annualMaintenanceBudgetEur: varchar("annualMaintenanceBudgetEur", { length: 80 }),
+  targetPue: varchar("targetPue", { length: 80 }),
+  targetWueLkwh: varchar("targetWueLkwh", { length: 80 }),
+  forecastHorizonDays: int("forecastHorizonDays"),
+  coolingStrategyBaseline: varchar("coolingStrategyBaseline", { length: 40 }),
   updatedBy: int("updatedBy").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({

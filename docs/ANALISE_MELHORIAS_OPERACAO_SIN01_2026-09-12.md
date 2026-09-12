@@ -105,3 +105,21 @@ As correlações de PUE com carga TI e temperatura de água do mar já usam as l
 O importador passou a reconhecer, com data e hora, os ciclos de arrefecimento (`Total_FC`) e o WUE da folha `AUX`, preservando a granularidade de quinze minutos e excluindo WUE negativo da origem. A interface apresenta as áreas de **WUE versus ciclos de arrefecimento** e **COP versus caudal de captação**, mas exige pelo menos dois pares válidos antes de desenhar uma curva. A validação visual do único relatório carregado confirmou a sinalização correta: o WUE de origem permanece inválido e existe apenas um par diário COP–caudal, pelo que o dashboard não sugere uma correlação que os dados ainda não suportam.
 
 As regressões cobrem a extração de WUE e ciclos, o emparelhamento por instante e granularidade, e a passagem de dois pares válidos a cada gráfico. Em particular, o dataset COP–caudal é testado com dois dias válidos e uma terceira leitura inválida, que é corretamente excluída. Assim, a interface só recebe pontos de origem válida e com período coincidente.
+
+## Cockpit premium NEST/SIN01
+
+A Operação foi redesenhada como um cockpit de decisão. O topo reúne PUE, WUE, COP do circuito de água do mar, carga TI e custo do período com um **gémeo digital do edifício**: Rede → Hall TI → Circuito de água do mar. O painel executivo seguinte torna visíveis eficiência TI, uso de água, ΔT/caudal, carbono/CUE e confiança do dado, sem apresentar demonstrações como conformidade.
+
+O gráfico **WUE versus PUE** passou a ocupar uma posição central. Quando existe água medida no mesmo dia da energia TI, desenha pares medidos; quando ainda não existe, apresenta apenas a projeção configurável de demonstração, identificada explicitamente. O registo diário de água é auditável e fica no estado contextual do gráfico. Custos, metas, previsão e estratégia-base são administrados no painel Operação do SIN01.
+
+## Faturas, cenários e Administração premium
+
+A área de faturas foi organizada como **Centro de reconciliação**, mostrando fontes no período, custo com evidência, comparações sem desvio e casos a analisar antes da tabela detalhada. O utilizador pode descarregar um modelo, importar lote ou abrir o registo individual sem confundir estes fluxos com indicadores medidos.
+
+As Definições de Operação são agora um centro de controlo por módulos: Eficiência, Água do mar, Custos e previsão e Sistema-base. As duas modalidades — Demonstração ilustrativa e Valores aprovados — ficam visíveis no topo. A aba **Previsões e cenários** é apresentada como Laboratório de decisão e mantém PUE, WUE, manutenção, energia, água, carbono, custos e mistura de arrefecimento separados do histórico medido.
+
+Na inspeção visual do SIN01, o cockpit apresentou o gémeo digital, os cartões executivos, o painel sustentável e a relação WUE versus PUE em modo de demonstração, com identificação explícita. A previsão automática mostra **0/3** tendências ativas porque existe apenas um dia válido no histórico, informando o mínimo de sete dias necessário e não fabricando uma tendência até que novos relatórios sejam importados.
+
+## Previsões automáticas e cenários manuais
+
+O servidor calcula tendências lineares de PUE, WUE e custo apenas após reunir pelo menos sete dias medidos da métrica correspondente. O horizonte vem das Definições de Operação, está limitado para impedir projeções excessivas e apresenta linhas medidas e previstas separadas. O custo requer, adicionalmente, um preço de eletricidade configurado; em modo ilustrativo, esse preço continua identificado como demonstração. A interface apresenta um estado vazio explícito quando ainda não existe histórico suficiente e mantém o **Laboratório de decisão** separado para cenários manuais auditáveis.

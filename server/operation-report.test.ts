@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { buildOperationReconciliationEntry, buildOperationScenario, calculateOperationEnvironmentalMetrics, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
+import { buildCalculatedWueReadings, buildOperationReconciliationEntry, buildOperationScenario, buildOperationTrendForecast, calculateOperationEnvironmentalMetrics, extractOperationalReadings, parseOperationInvoicesWorkbook, summarizeOperationQuality } from "./routers";
 
 const formula = (result: number | string) => ({ formula: "TEST", result });
 
@@ -53,6 +53,25 @@ describe("Operação — importação e cenários", () => {
     const scenario = buildOperationScenario({ tiEnergyKwh: 1000, baselinePue: 1.2, baselineWaterM3: 20, baselineMaintenanceEur: 50, electricityPriceEurKwh: 0.2, waterPriceEurM3: 2, carbonFactorKgKwh: 0.4, targetPue: 1.1, targetWueLkwh: 10, maintenanceEur: 40, systemMix: { agua_mar: 60, chiller: 40 } });
     expect(scenario).toMatchObject({ formulaVersion: "operacao-v1", energyDeltaKwh: -100, waterDeltaM3: -10, carbonDeltaKg: -40, systemMix: { agua_mar: 60, chiller: 40 } });
     expect(scenario.costDeltaEur).toBeCloseTo(-50, 5);
+  });
+
+  it("só produz previsão quando existem pelo menos sete dias medidos e mantém o preço separado das leituras", () => {
+    const readings = Array.from({ length: 7 }, (_, index) => ({ metricCode: "pue", value: 1.2 + index * 0.01, measuredAt: Date.parse(`2026-09-${String(index + 1).padStart(2, "0")}T00:00:00Z`), dataQuality: "valid" }));
+    const withHistory = buildOperationTrendForecast(readings, { configurationMode: "approved", forecastHorizonDays: 14, electricityPriceEurKwh: 0.2 });
+    expect(withHistory.pue.status).toBe("disponível");
+    expect(withHistory.pue.forecast).toHaveLength(14);
+    expect(withHistory.wue.status).toBe("histórico_insuficiente");
+    const insufficient = buildOperationTrendForecast(readings.slice(0, 6), { forecastHorizonDays: 14 });
+    expect(insufficient.pue.status).toBe("histórico_insuficiente");
+  });
+
+  it("calcula WUE apenas quando consumo de água e energia TI válidos existem na mesma data", () => {
+    const calculated = buildCalculatedWueReadings([
+      { metricCode: "water_consumption_m3_daily", value: 12, measuredAt: Date.UTC(2026, 8, 11), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "it_energy_kwh_daily", value: 2400, measuredAt: Date.UTC(2026, 8, 11), granularity: "diario", dataQuality: "valid" },
+      { metricCode: "water_consumption_m3_daily", value: 8, measuredAt: Date.UTC(2026, 8, 12), granularity: "diario", dataQuality: "valid" },
+    ]);
+    expect(calculated).toEqual([expect.objectContaining({ metricCode: "wue_calculated_daily", value: 5, measuredAt: Date.UTC(2026, 8, 11), source: "calculated", dataQuality: "valid" })]);
   });
 
   it("importa faturas de uma folha estruturada e recusa períodos incoerentes", () => {

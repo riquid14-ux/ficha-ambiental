@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const mocks = vi.hoisted(() => ({ createInvoice: vi.fn(), refetch: vi.fn(), reconciliation: [] as any[], overview: { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" } } as any }));
+const mocks = vi.hoisted(() => ({ createInvoice: vi.fn(), createWaterReading: vi.fn(), refetch: vi.fn(), reconciliation: [] as any[], overview: { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" } } as any }));
 
 vi.mock("@/contexts/ProjectContext", () => ({ useProject: () => ({ activeProject: { id: 60001, code: "SIN01", name: "NEST" }, isAllProjects: false }) }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: { role: "admin" } }) }));
@@ -28,6 +28,7 @@ vi.mock("@/lib/trpc", () => {
         importDailyReport: { useMutation: () => mutation() },
         importInvoicesExcel: { useMutation: () => mutation() },
         createInvoice: { useMutation: () => mutation(mocks.createInvoice) },
+        createWaterReading: { useMutation: () => mutation(mocks.createWaterReading) },
         createScenario: { useMutation: () => mutation() },
         deleteScenario: { useMutation: () => mutation() },
         invoiceDownload: { useQuery: () => query(undefined) },
@@ -52,7 +53,7 @@ describe("Operação — formulário manual de faturas", () => {
     await user.type(screen.getByLabelText("N.º da fatura"), "QA-UI-1");
     await user.type(screen.getByLabelText("Quantidade"), "100");
     await user.type(screen.getByLabelText("Custo total (EUR)"), "123.45");
-    await user.click(screen.getByRole("button", { name: "Guardar fatura" }));
+    await user.click(screen.getByRole("button", { name: "Guardar fonte financeira" }));
     expect(mocks.createInvoice).toHaveBeenCalledWith(expect.objectContaining({ projectId: 60001, invoiceType: "electricidade", quantity: 100, unit: "kWh", totalCost: 123.45 }));
   });
 
@@ -69,7 +70,7 @@ describe("Operação — formulário manual de faturas", () => {
     expect(screen.getByText("Sem medição")).toBeTruthy();
   });
 
-  it("apresenta as correlações WUE–ciclos e COP–caudal quando existem pares válidos", () => {
+  it("apresenta as correlações WUE–ciclos e COP–caudal quando existem pares válidos", async () => {
     mocks.overview = {
       readings: [
         { metricCode: "cooling_cycles_15m", metricLabel: "Ciclos de arrefecimento", value: 2, measuredAt: Date.UTC(2026, 8, 11, 0, 0), granularity: "quinze_minutos", dataQuality: "valid" },
@@ -82,10 +83,41 @@ describe("Operação — formulário manual de faturas", () => {
         { metricCode: "seawater_pumping_cop", metricLabel: "COP de bombagem", value: 22, measuredAt: Date.UTC(2026, 8, 11), granularity: "diario", dataQuality: "valid" },
       ], latest: {}, quality: { total: 8, valid: 8, invalid: 0, coveragePercent: 100 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" },
     };
+    const user = userEvent.setup();
     render(createElement(Operation));
+    await user.click(screen.getByRole("tab", { name: "Desempenho" }));
     expect(screen.getByText("WUE versus ciclos de arrefecimento")).toBeTruthy();
     expect(screen.getByText("COP versus caudal de captação")).toBeTruthy();
     expect(screen.getByTestId("scatter-#059669").textContent).toBe("2");
     expect(screen.getByTestId("scatter-#0284c7").textContent).toBe("2");
+  });
+
+  it("apresenta o cockpit premium com a análise WUE versus PUE e a visão do edifício", () => {
+    mocks.overview = { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" }, environmental: { configurationMode: "illustrative", carbonStatus: "demonstracao", thresholdChecks: [] } };
+    render(createElement(Operation));
+    expect(screen.getByText("Cockpit de sustentabilidade e desempenho do edifício.")).toBeTruthy();
+    expect(screen.getByText("Gémeo digital do edifício")).toBeTruthy();
+    expect(screen.getByText("WUE versus PUE")).toBeTruthy();
+    expect(screen.getByText("Relação central de sustentabilidade")).toBeTruthy();
+  });
+
+  it("separa a previsão automática indisponível do laboratório de cenários", async () => {
+    const user = userEvent.setup();
+    mocks.overview = { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" }, forecast: { minimumDays: 7, horizonDays: 30, pue: { status: "histórico_insuficiente" }, wue: { status: "histórico_insuficiente" }, cost: { status: "preço_pendente" } } };
+    render(createElement(Operation));
+    await user.click(screen.getByRole("tab", { name: /Previsões e cenários/i }));
+    expect(screen.getByText("Previsão automática ainda em preparação")).toBeTruthy();
+    expect(screen.getByText("Laboratório de decisão")).toBeTruthy();
+  });
+
+  it("regista consumo diário de água pelo cockpit para alimentar WUE com origem auditável", async () => {
+    const user = userEvent.setup();
+    mocks.createWaterReading.mockClear();
+    render(createElement(Operation));
+    await user.click(screen.getByRole("button", { name: /Registar água medida/i }));
+    await user.clear(screen.getByLabelText("Consumo (m³)"));
+    await user.type(screen.getByLabelText("Consumo (m³)"), "12.5");
+    await user.click(screen.getByRole("button", { name: "Atualizar WUE" }));
+    expect(mocks.createWaterReading).toHaveBeenCalledWith(expect.objectContaining({ projectId: 60001, waterM3: 12.5 }));
   });
 });

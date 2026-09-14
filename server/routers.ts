@@ -315,7 +315,7 @@ const infrastructurePointInput = z.object({
 const OPERATION_PROJECT_CODE = "SIN01";
 const OPERATION_WRITE_ROLES = new Set(["admin", "dono_obra", "pm"]);
 
-async function assertOperationAccess(user: any, projectId: number, write = false) {
+export async function assertOperationAccess(user: any, projectId: number, write = false) {
   const project = await assertProjectFeatureAccess(user, projectId, "operacao");
   if (project.code !== OPERATION_PROJECT_CODE) {
     throw new TRPCError({ code: "FORBIDDEN", message: "A Operação está disponível apenas para o SIN01/NEST." });

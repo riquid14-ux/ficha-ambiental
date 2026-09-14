@@ -31,7 +31,6 @@ export type InfrastructurePoint = {
 };
 type MapCoordinate = { xPercent: number; yPercent: number };
 
-const DRONE_IMAGE_URL = "/manus-storage/nest-infraestrutura-drone-source_b1083e17.webp";
 const DEFAULT_FUTURE_AREA: MapCoordinate[] = [{ xPercent: 0, yPercent: 76 }, { xPercent: 64, yPercent: 51 }, { xPercent: 70, yPercent: 62 }, { xPercent: 82, yPercent: 76 }, { xPercent: 70, yPercent: 100 }, { xPercent: 0, yPercent: 100 }];
 const REFERENCE_POINTS: InfrastructurePoint[] = [
   ...[[41, 37], [46, 30], [50, 41], [69, 55], [72, 51], [72, 55], [75, 54], [78, 55], [80, 55], [80, 60], [82, 55], [87, 56], [88, 60], [97, 34]].map(([xPercent, yPercent], index) => ({ id: `reference-marker-${index + 1}`, title: `Ponto de infraestrutura ${String(index + 1).padStart(2, "0")}`, subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent, yPercent, description: "Marcador amarelo de referência. Configure o título, dados, gráfico, documentos e nota técnica na Administração.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação aprovada; confirme a infraestrutura em campo.", isFuture: false, sortOrder: (index + 1) * 10 })),
@@ -69,7 +68,7 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
   const [draftMarkers, setDraftMarkers] = useState<Array<{ id: number; xPercent: number; yPercent: number }>>([]);
   const [draftFutureArea, setDraftFutureArea] = useState<MapCoordinate[]>([...(futureArea?.length ? futureArea : DEFAULT_FUTURE_AREA)]);
   const [dragTarget, setDragTarget] = useState<{ kind: "marker"; id: number } | { kind: "future"; index: number } | null>(null);
-  const [droneImageUrl, setDroneImageUrl] = useState(DRONE_IMAGE_URL);
+  const [droneImageUrl, setDroneImageUrl] = useState(() => `/api/operacao/media/nest-drone?projectId=${projectId}`);
   const [photoUnavailable, setPhotoUnavailable] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const usingReference = points.length === 0;
@@ -89,6 +88,11 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
       setDraftFutureArea([...(futureArea?.length ? futureArea : DEFAULT_FUTURE_AREA)]);
     }
   }, [adjusting, futureArea, points]);
+
+  useEffect(() => {
+    setPhotoUnavailable(false);
+    setDroneImageUrl(`/api/operacao/media/nest-drone?projectId=${projectId}`);
+  }, [projectId]);
 
   const beginAdjustment = () => {
     if (photoUnavailable) { toast.error("Ajuste indisponível enquanto a fotografia não carregar. Atualize a página e tente novamente."); return; }
@@ -128,9 +132,8 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
       {canConfigure && <div className="flex flex-wrap gap-2">{adjusting ? <><Button variant="outline" className="border-slate-300" onClick={() => { setAdjusting(false); setDragTarget(null); }} disabled={layoutMutation.isPending}>Cancelar ajuste</Button><Button className="bg-teal-700 hover:bg-teal-800" onClick={saveAdjustment} disabled={layoutMutation.isPending || !draftMarkers.length}>{layoutMutation.isPending ? "A guardar..." : "Guardar posições"}</Button></> : <><Button variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100" onClick={beginAdjustment} disabled={photoUnavailable}>Ajustar no mapa</Button><Button variant="outline" className="border-slate-300" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />Definir infraestrutura</Button></>}</div>}
     </div>
     <div ref={stageRef} onPointerMove={updateDragging} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={`relative min-h-[520px] overflow-hidden bg-slate-950 ${adjusting ? "touch-none select-none" : ""}`}>
-        <img src={droneImageUrl} alt="Vista aérea de drone do NEST e infraestruturas envolventes" onLoad={() => setPhotoUnavailable(false)} onError={() => { if (droneImageUrl === DRONE_IMAGE_URL) setDroneImageUrl(`${DRONE_IMAGE_URL}?retry=${Date.now()}`); else setPhotoUnavailable(true); }} className="absolute inset-0 size-full object-cover opacity-95" />
+        <img src={droneImageUrl} alt="Vista aérea de drone do NEST e infraestruturas envolventes" onLoad={() => setPhotoUnavailable(false)} onError={() => setPhotoUnavailable(true)} className="absolute inset-0 size-full object-cover opacity-95" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/10" />
-        {photoUnavailable && <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/90 p-6 text-center text-white"><div><p className="font-semibold">Fotografia temporariamente indisponível</p><p className="mt-1 text-sm text-slate-300">O ajuste foi bloqueado para evitar posicionamentos sem a referência visual. Atualize a página e tente novamente.</p></div></div>}
         <div style={{ clipPath: futureAreaClip(draftFutureArea) }} className="absolute inset-0 border border-fuchsia-950/80 bg-fuchsia-800/70 shadow-[inset_0_0_80px_rgba(112,26,117,0.4)]">
           <div className="absolute inset-0 opacity-35 [background-image:repeating-linear-gradient(135deg,rgba(255,255,255,0.2)_0_1px,transparent_1px_11px)]" />
           <span className="absolute left-[11%] top-[80%] rounded-full border border-fuchsia-100/80 bg-slate-950/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100 shadow-lg">Edifícios futuros · planeamento</span>

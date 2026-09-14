@@ -18,6 +18,7 @@ import { deadlineReminderHandler } from "../scheduled-reminders";
 import { registerAutodeskRoutes } from "../autodesk";
 import { registerHealthRoutes } from "../health";
 import { registerDocumentLibraryRoutes } from "../document-library";
+import { registerOperationMediaRoutes } from "../operation-media";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -137,6 +138,7 @@ async function startServer() {
   registerAutodeskRoutes(app);
   registerHealthRoutes(app);
   registerDocumentLibraryRoutes(app);
+  registerOperationMediaRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);

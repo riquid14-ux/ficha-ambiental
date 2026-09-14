@@ -59,12 +59,14 @@ describe("Infraestrutura estática da Operação", () => {
     expect(unsafe).toMatchObject({ cardLayout: "standard", cardAccent: "teal", cardImageUrl: null });
   });
 
-  it("reabre temporariamente o modo de afinação para pontos, área e etiquetas", () => {
+  it("fecha o modo temporário de afinação e mantém a configuração normal dos cartões", () => {
     const dashboard = readFileSync(path.resolve(process.cwd(), "client/src/components/InfrastructureDashboard.tsx"), "utf8");
-    expect(dashboard).toContain("Ajustar no mapa");
-    expect(dashboard).toContain("Arrastar etiqueta de edifícios futuros");
-    expect(dashboard).toContain("Arrastar instrução do mapa");
+    const router = readFileSync(path.resolve(process.cwd(), "server/routers.ts"), "utf8");
+    expect(dashboard).not.toContain("Ajustar no mapa");
+    expect(dashboard).not.toContain("Arrastar etiqueta de edifícios futuros");
+    expect(dashboard).not.toContain("Arrastar instrução do mapa");
     expect(dashboard).toContain("Definir infraestrutura");
+    expect(router).not.toContain("updateInfrastructureMapLayout:");
   });
 
   it("extrai uma fonte Excel simples em séries limitadas para o gráfico do cartão", () => {

@@ -4690,27 +4690,6 @@ export const appRouter = router({
         const result = await database.execute(sql`SELECT infrastructureFutureAreaJson, infrastructureMapLabelsJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         return { futureArea: parseInfrastructureFutureArea((result as any)[0]?.[0]?.infrastructureFutureAreaJson), labels: parseInfrastructureMapLabels((result as any)[0]?.[0]?.infrastructureMapLabelsJson) };
       }),
-    updateInfrastructureMapLayout: protectedProcedure
-      .input(z.object({ projectId: z.number().int().positive(), markers: z.array(z.object({ id: z.number().int().positive(), ...infrastructureMapCoordinate.shape })).min(1).max(50), futureArea: z.array(infrastructureMapCoordinate).min(3).max(8), labels: z.object({ futureArea: infrastructureMapCoordinate, guidance: infrastructureMapCoordinate }) }).superRefine((input, issue) => {
-        if (new Set(input.markers.map(marker => marker.id)).size !== input.markers.length) issue.addIssue({ code: "custom", message: "Cada marcador só pode aparecer uma vez.", path: ["markers"] });
-      }))
-      .mutation(async ({ ctx, input }) => {
-        assertAdminOnly(ctx.user);
-        await assertOperationAccess(ctx.user, input.projectId);
-        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.transaction(async (tx: any) => {
-          const existingResult = await tx.execute(sql`SELECT id, xPercent, yPercent FROM operation_infrastructure_points WHERE projectId = ${input.projectId} AND isFuture = false ORDER BY id ASC`);
-          const existing = (existingResult as any)[0] || [];
-          const existingIds = new Set(existing.map((item: any) => Number(item.id)));
-          if (input.markers.some(marker => !existingIds.has(marker.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Um ou mais marcadores não pertencem a este projeto." });
-          const previousSettings = await tx.execute(sql`SELECT infrastructureFutureAreaJson, infrastructureMapLabelsJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
-          for (const marker of input.markers) await tx.execute(sql`UPDATE operation_infrastructure_points SET xPercent = ${marker.xPercent}, yPercent = ${marker.yPercent}, updatedBy = ${ctx.user.id} WHERE id = ${marker.id} AND projectId = ${input.projectId}`);
-          await tx.execute(sql`INSERT INTO operation_settings (projectId, infrastructureFutureAreaJson, infrastructureMapLabelsJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(input.futureArea)}, ${JSON.stringify(input.labels)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE infrastructureFutureAreaJson = VALUES(infrastructureFutureAreaJson), infrastructureMapLabelsJson = VALUES(infrastructureMapLabelsJson), updatedBy = VALUES(updatedBy)`);
-          return { previousMarkers: existing, previousFutureArea: (previousSettings as any)[0]?.[0]?.infrastructureFutureAreaJson || null, previousLabels: (previousSettings as any)[0]?.[0]?.infrastructureMapLabelsJson || null };
-        });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_map_layout_update", "operation_infrastructure", input.projectId, JSON.stringify({ markers: result.previousMarkers, futureArea: result.previousFutureArea, labels: result.previousLabels }), JSON.stringify({ markers: input.markers, futureArea: input.futureArea, labels: input.labels }));
-        return { success: true };
-      }),
     seedInfrastructurePoints: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {

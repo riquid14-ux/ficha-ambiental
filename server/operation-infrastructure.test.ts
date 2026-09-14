@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { INFRASTRUCTURE_REFERENCE_POINTS, parseInfrastructurePoint } from "./routers";
 
 describe("Infraestrutura estática da Operação", () => {
-  it("inclui pontos de energia, Hall TI, água do mar e um ponto de planeamento futuro", () => {
-    expect(INFRASTRUCTURE_REFERENCE_POINTS.some(point => point.systemType === "energia")).toBe(true);
-    expect(INFRASTRUCTURE_REFERENCE_POINTS.some(point => point.systemType === "hall_ti")).toBe(true);
-    expect(INFRASTRUCTURE_REFERENCE_POINTS.some(point => point.systemType === "agua_mar")).toBe(true);
-    expect(INFRASTRUCTURE_REFERENCE_POINTS.some(point => point.isFuture && point.status === "planeamento")).toBe(true);
+  it("inclui os marcadores amarelos configuráveis e a área separada de edifícios futuros", () => {
+    const markers = INFRASTRUCTURE_REFERENCE_POINTS.filter(point => !point.isFuture);
+    expect(markers.length).toBeGreaterThanOrEqual(14);
+    expect(markers.every(point => point.status === "a_validar" && point.systemType === "infraestrutura")).toBe(true);
+    expect(INFRASTRUCTURE_REFERENCE_POINTS.some(point => point.isFuture && point.status === "planeamento" && point.title === "Edifícios futuros")).toBe(true);
   });
 
   it("mantém o cartão resiliente quando as métricas persistidas não forem JSON válido", () => {

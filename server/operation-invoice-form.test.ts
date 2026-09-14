@@ -101,17 +101,25 @@ describe("Operação — formulário manual de faturas", () => {
     expect(screen.getByText("WUE versus PUE")).toBeTruthy();
     expect(screen.getByText("Relação central de sustentabilidade")).toBeTruthy();
     expect(screen.getByText("Infraestrutura do NEST")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Definições de Operação/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Fontes e cálculos/i })).toBeTruthy();
   });
 
   it("abre um cartão de infraestrutura de referência sem criar dados persistentes", async () => {
     const user = userEvent.setup();
     render(createElement(Operation));
-    await user.click(screen.getByRole("button", { name: /Abrir informação de Hall TI/i }));
+    await user.click(screen.getByRole("button", { name: /Abrir informação de Ponto de infraestrutura 01/i }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeTruthy();
-    expect(within(dialog).getByText("Carga computacional")).toBeTruthy();
+    expect(within(dialog).getByText("A identificar")).toBeTruthy();
     expect(within(dialog).getByText("Nota técnica")).toBeTruthy();
+  });
+
+  it("leva Simular futuro diretamente ao separador de previsões e cenários", async () => {
+    const user = userEvent.setup();
+    render(createElement(Operation));
+    await user.click(screen.getByRole("button", { name: /Simular futuro/i }));
+    expect(screen.getByRole("tab", { name: /Previsões e cenários/i }).getAttribute("data-state")).toBe("active");
+    expect(screen.getByText("Laboratório de decisão")).toBeTruthy();
   });
 
   it("separa a previsão automática indisponível do laboratório de cenários", async () => {

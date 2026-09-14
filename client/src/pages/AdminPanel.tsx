@@ -164,7 +164,13 @@ export default function AdminPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const requestedAdminTab = new URLSearchParams(window.location.search).get("tab");
+  const [activeTab, setActiveTab] = useState("companies");
+
+  useEffect(() => {
+    if (requestedAdminTab === "operacao" && activeProject?.code === "SIN01") setActiveTab("operacao");
+  }, [requestedAdminTab, activeProject?.code, location]);
 
   if (user?.role !== "admin") {
     return (
@@ -247,7 +253,7 @@ export default function AdminPanel() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="companies">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto whitespace-nowrap p-1">
             <TabsTrigger value="companies" className="gap-2">
               <Building2 className="w-4 h-4" /> Empresas

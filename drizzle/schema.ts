@@ -974,6 +974,7 @@ export const operationSettings = mysqlTable("operation_settings", {
   forecastHorizonDays: int("forecastHorizonDays"),
   coolingStrategyBaseline: varchar("coolingStrategyBaseline", { length: 40 }),
   infrastructureFutureAreaJson: text("infrastructureFutureAreaJson"),
+  infrastructureMapLabelsJson: text("infrastructureMapLabelsJson"),
   operationImportMappingJson: text("operationImportMappingJson"),
   updatedBy: int("updatedBy").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

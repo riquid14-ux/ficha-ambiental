@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import ExcelJS from "exceljs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { DEFAULT_INFRASTRUCTURE_FUTURE_AREA, extractInfrastructureChart, INFRASTRUCTURE_REFERENCE_POINTS, parseInfrastructureFutureArea, parseInfrastructurePoint } from "./routers";
+import { DEFAULT_INFRASTRUCTURE_FUTURE_AREA, extractInfrastructureChart, INFRASTRUCTURE_REFERENCE_POINTS, parseInfrastructureFutureArea, parseInfrastructureMapLabels, parseInfrastructurePoint } from "./routers";
 
 describe("Infraestrutura estática da Operação", () => {
   it("inclui os marcadores amarelos configuráveis e a área separada de edifícios futuros", () => {
@@ -59,9 +59,11 @@ describe("Infraestrutura estática da Operação", () => {
     expect(unsafe).toMatchObject({ cardLayout: "standard", cardAccent: "teal", cardImageUrl: null });
   });
 
-  it("fecha o modo temporário de arrasto e mantém apenas a entrada administrativa normal", () => {
+  it("reabre temporariamente o modo de afinação para pontos, área e etiquetas", () => {
     const dashboard = readFileSync(path.resolve(process.cwd(), "client/src/components/InfrastructureDashboard.tsx"), "utf8");
-    expect(dashboard).not.toContain("Ajustar no mapa");
+    expect(dashboard).toContain("Ajustar no mapa");
+    expect(dashboard).toContain("Arrastar etiqueta de edifícios futuros");
+    expect(dashboard).toContain("Arrastar instrução do mapa");
     expect(dashboard).toContain("Definir infraestrutura");
   });
 
@@ -80,5 +82,10 @@ describe("Infraestrutura estática da Operação", () => {
   it("aceita apenas vértices inteiros válidos para a área futura ajustável", () => {
     expect(parseInfrastructureFutureArea(JSON.stringify([{ xPercent: 0, yPercent: 70 }, { xPercent: 50, yPercent: 45 }, { xPercent: 100, yPercent: 100 }]))).toEqual([{ xPercent: 0, yPercent: 70 }, { xPercent: 50, yPercent: 45 }, { xPercent: 100, yPercent: 100 }]);
     expect(parseInfrastructureFutureArea(JSON.stringify([{ xPercent: -1, yPercent: 20 }, { xPercent: 50, yPercent: 45 }, { xPercent: 100, yPercent: 100 }]))).toEqual(DEFAULT_INFRASTRUCTURE_FUTURE_AREA);
+  });
+
+  it("aceita etiquetas de mapa inteiras e repõe posições seguras quando a configuração é inválida", () => {
+    expect(parseInfrastructureMapLabels(JSON.stringify({ futureArea: { xPercent: 11, yPercent: 86 }, guidance: { xPercent: 52, yPercent: 14 } }))).toEqual({ futureArea: { xPercent: 11, yPercent: 86 }, guidance: { xPercent: 52, yPercent: 14 } });
+    expect(parseInfrastructureMapLabels(JSON.stringify({ futureArea: { xPercent: 11.5, yPercent: 86 }, guidance: { xPercent: 52, yPercent: 14 } }))).toEqual({ futureArea: { xPercent: 12, yPercent: 86 }, guidance: { xPercent: 50, yPercent: 12 } });
   });
 });

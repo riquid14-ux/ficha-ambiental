@@ -258,6 +258,20 @@ export function parseInfrastructureFutureArea(value: unknown) {
   } catch { return DEFAULT_INFRASTRUCTURE_FUTURE_AREA; }
 }
 
+const DEFAULT_INFRASTRUCTURE_MAP_LABELS = {
+  futureArea: { xPercent: 12, yPercent: 86 },
+  guidance: { xPercent: 50, yPercent: 12 },
+};
+
+export function parseInfrastructureMapLabels(value: unknown) {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    const isCoordinate = (item: any) => Number.isInteger(item?.xPercent) && Number.isInteger(item?.yPercent) && item.xPercent >= 0 && item.xPercent <= 100 && item.yPercent >= 0 && item.yPercent <= 100;
+    if (isCoordinate(parsed?.futureArea) && isCoordinate(parsed?.guidance)) return { futureArea: parsed.futureArea, guidance: parsed.guidance };
+  } catch { /* Usa a posição de referência quando a configuração histórica é inválida. */ }
+  return DEFAULT_INFRASTRUCTURE_MAP_LABELS;
+}
+
 const infrastructureTechnicalDatum = z.object({ label: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(160), unit: z.string().trim().max(40) });
 const infrastructureInvoiceTypes = ["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"] as const;
 const infrastructureMapCoordinate = z.object({ xPercent: z.number().int().min(0).max(100), yPercent: z.number().int().min(0).max(100) });
@@ -4673,11 +4687,11 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT infrastructureFutureAreaJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
-        return { futureArea: parseInfrastructureFutureArea((result as any)[0]?.[0]?.infrastructureFutureAreaJson) };
+        const result = await database.execute(sql`SELECT infrastructureFutureAreaJson, infrastructureMapLabelsJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        return { futureArea: parseInfrastructureFutureArea((result as any)[0]?.[0]?.infrastructureFutureAreaJson), labels: parseInfrastructureMapLabels((result as any)[0]?.[0]?.infrastructureMapLabelsJson) };
       }),
     updateInfrastructureMapLayout: protectedProcedure
-      .input(z.object({ projectId: z.number().int().positive(), markers: z.array(z.object({ id: z.number().int().positive(), ...infrastructureMapCoordinate.shape })).min(1).max(50), futureArea: z.array(infrastructureMapCoordinate).min(3).max(8) }).superRefine((input, issue) => {
+      .input(z.object({ projectId: z.number().int().positive(), markers: z.array(z.object({ id: z.number().int().positive(), ...infrastructureMapCoordinate.shape })).min(1).max(50), futureArea: z.array(infrastructureMapCoordinate).min(3).max(8), labels: z.object({ futureArea: infrastructureMapCoordinate, guidance: infrastructureMapCoordinate }) }).superRefine((input, issue) => {
         if (new Set(input.markers.map(marker => marker.id)).size !== input.markers.length) issue.addIssue({ code: "custom", message: "Cada marcador só pode aparecer uma vez.", path: ["markers"] });
       }))
       .mutation(async ({ ctx, input }) => {
@@ -4689,12 +4703,12 @@ export const appRouter = router({
           const existing = (existingResult as any)[0] || [];
           const existingIds = new Set(existing.map((item: any) => Number(item.id)));
           if (input.markers.some(marker => !existingIds.has(marker.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Um ou mais marcadores não pertencem a este projeto." });
-          const previousSettings = await tx.execute(sql`SELECT infrastructureFutureAreaJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+          const previousSettings = await tx.execute(sql`SELECT infrastructureFutureAreaJson, infrastructureMapLabelsJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
           for (const marker of input.markers) await tx.execute(sql`UPDATE operation_infrastructure_points SET xPercent = ${marker.xPercent}, yPercent = ${marker.yPercent}, updatedBy = ${ctx.user.id} WHERE id = ${marker.id} AND projectId = ${input.projectId}`);
-          await tx.execute(sql`INSERT INTO operation_settings (projectId, infrastructureFutureAreaJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(input.futureArea)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE infrastructureFutureAreaJson = VALUES(infrastructureFutureAreaJson), updatedBy = VALUES(updatedBy)`);
-          return { previousMarkers: existing, previousFutureArea: (previousSettings as any)[0]?.[0]?.infrastructureFutureAreaJson || null };
+          await tx.execute(sql`INSERT INTO operation_settings (projectId, infrastructureFutureAreaJson, infrastructureMapLabelsJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(input.futureArea)}, ${JSON.stringify(input.labels)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE infrastructureFutureAreaJson = VALUES(infrastructureFutureAreaJson), infrastructureMapLabelsJson = VALUES(infrastructureMapLabelsJson), updatedBy = VALUES(updatedBy)`);
+          return { previousMarkers: existing, previousFutureArea: (previousSettings as any)[0]?.[0]?.infrastructureFutureAreaJson || null, previousLabels: (previousSettings as any)[0]?.[0]?.infrastructureMapLabelsJson || null };
         });
-        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_map_layout_update", "operation_infrastructure", input.projectId, JSON.stringify({ markers: result.previousMarkers, futureArea: result.previousFutureArea }), JSON.stringify({ markers: input.markers, futureArea: input.futureArea }));
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_map_layout_update", "operation_infrastructure", input.projectId, JSON.stringify({ markers: result.previousMarkers, futureArea: result.previousFutureArea, labels: result.previousLabels }), JSON.stringify({ markers: input.markers, futureArea: input.futureArea, labels: input.labels }));
         return { success: true };
       }),
     seedInfrastructurePoints: protectedProcedure

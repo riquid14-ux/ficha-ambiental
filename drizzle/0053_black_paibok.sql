@@ -1,0 +1,1 @@
+ALTER TABLE `operation_settings` ADD `infrastructureMapLabelsJson` text;

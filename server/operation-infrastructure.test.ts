@@ -69,6 +69,16 @@ describe("Infraestrutura estática da Operação", () => {
     expect(router).not.toContain("updateInfrastructureMapLayout:");
   });
 
+  it("fornece um estúdio de composição com pré-visualização ao vivo de dados, imagem, gráfico e faturas", () => {
+    const editor = readFileSync(path.resolve(process.cwd(), "client/src/components/InfrastructureSettingsSection.tsx"), "utf8");
+    expect(editor).toContain("Pré-visualização ao vivo");
+    expect(editor).toContain("CardPreview");
+    expect(editor).toContain("Conteúdo do cartão");
+    expect(editor).toContain("Estilo e imagem");
+    expect(editor).toContain("Gráfico, faturas e documento");
+    expect(editor).toContain("<details");
+  });
+
   it("extrai uma fonte Excel simples em séries limitadas para o gráfico do cartão", () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Geradores");

@@ -41,3 +41,7 @@ Foi configurada a simbologia de leitura inicial: água nos pontos 01, 02, 03, 08
 ## Reposição controlada da área de edifícios futuros
 
 Em 14-09-2026, a geometria violeta persistida foi reposta à referência padrão do cockpit depois de uma alteração visual indevida. Esta reposição anulou somente o polígono de planeamento; os catorze marcadores, ícones, posições, conteúdos técnicos e associações mantiveram-se inalterados. O cockpit SIN01 voltou a apresentar a orientação superior numa única linha e sem o modo temporário de arrasto exposto.
+
+## Estúdio de composição de infraestrutura
+
+Em Administração → Operação → Infraestrutura, a seleção de um marcador abre agora um editor organizado em secções recolhíveis e uma pré-visualização fixa ao lado. Foi alterado temporariamente, sem gravação, o título de um ponto de referência; a pré-visualização refletiu o novo título imediatamente. A experiência de composição permanece local até ao clique explícito em **Guardar composição** e não altera telemetria, faturas ou cálculos de origem.

@@ -1,0 +1,1 @@
+ALTER TABLE `operation_infrastructure_points` ADD `cardImageKey` varchar(500);

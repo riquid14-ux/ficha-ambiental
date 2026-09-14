@@ -52,6 +52,19 @@ describe("Infraestrutura estática da Operação", () => {
     expect(point.chartData).toBeNull();
   });
 
+  it("aceita apenas formatos, destaques e imagens HTTPS seguros para a apresentação do cartão", () => {
+    const configured = parseInfrastructurePoint({ metricCodesJson: "[]", xPercent: "42", yPercent: "60", isFuture: 0, cardLayout: "wide", cardAccent: "violet", cardImageUrl: "https://files.startcampus.pt/gerador.webp" });
+    const unsafe = parseInfrastructurePoint({ metricCodesJson: "[]", xPercent: "42", yPercent: "60", isFuture: 0, cardLayout: "script", cardAccent: "<style>", cardImageUrl: "javascript:alert(1)" });
+    expect(configured).toMatchObject({ cardLayout: "wide", cardAccent: "violet", cardImageUrl: "https://files.startcampus.pt/gerador.webp" });
+    expect(unsafe).toMatchObject({ cardLayout: "standard", cardAccent: "teal", cardImageUrl: null });
+  });
+
+  it("fecha o modo temporário de arrasto e mantém apenas a entrada administrativa normal", () => {
+    const dashboard = readFileSync(path.resolve(process.cwd(), "client/src/components/InfrastructureDashboard.tsx"), "utf8");
+    expect(dashboard).not.toContain("Ajustar no mapa");
+    expect(dashboard).toContain("Definir infraestrutura");
+  });
+
   it("extrai uma fonte Excel simples em séries limitadas para o gráfico do cartão", () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Geradores");

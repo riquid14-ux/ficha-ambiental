@@ -49,6 +49,19 @@ describe("Operação — importação e cenários", () => {
     expect(firstQuarterHour.find(reading => reading.metricCode === "wue_15m")).toMatchObject({ value: 1.1, dataQuality: "valid" });
   });
 
+  it("aceita cabeçalhos BMS configurados pela Administração sem alterar as fórmulas ou as leituras já guardadas", () => {
+    const workbook = createDailyReportWorkbook();
+    const organizer = workbook.getWorksheet("EBO_Data organizer")!;
+    organizer.getRow(1).values = ["Marca temporal", "Temperatura mar", "Potência site MW", "Sala A", "Sala B", "Sala C", "Caudal mar", "Ciclos"];
+    const extracted = extractOperationalReadings(workbook, {
+      organizerTimestamp: ["marca temporal"], outdoorTemp: ["temperatura exterior"], seawaterTemp: ["temperatura mar"], seawaterFlow: ["caudal mar"], coolingCycles: ["ciclos"], wue: ["wue bms"], pcwSupply: ["pcw ida"], pcwReturn: ["pcw retorno"], hallPowerColumns: ["sala a", "sala b", "sala c"], sitePowerMw: ["potência site mw"],
+    });
+    const firstQuarterHour = extracted.readings.filter(reading => reading.granularity === "quinze_minutos" && reading.measuredAt === Date.UTC(2026, 8, 11, 0, 0));
+    expect(firstQuarterHour.find(reading => reading.metricCode === "it_power_15m_kw")).toMatchObject({ value: 11060, source: "calculated" });
+    expect(firstQuarterHour.find(reading => reading.metricCode === "site_power_15m_kw")?.value).toBeCloseTo(13300, 6);
+    expect(firstQuarterHour.find(reading => reading.metricCode === "pue_15m")?.value).toBeCloseTo(13300 / 11060, 6);
+  });
+
   it("mantém os cenários separados e calcula energia, água, carbono e custo a partir dos pressupostos", () => {
     const scenario = buildOperationScenario({ tiEnergyKwh: 1000, baselinePue: 1.2, baselineWaterM3: 20, baselineMaintenanceEur: 50, electricityPriceEurKwh: 0.2, waterPriceEurM3: 2, carbonFactorKgKwh: 0.4, targetPue: 1.1, targetWueLkwh: 10, maintenanceEur: 40, systemMix: { agua_mar: 60, chiller: 40 } });
     expect(scenario).toMatchObject({ formulaVersion: "operacao-v1", energyDeltaKwh: -100, waterDeltaM3: -10, carbonDeltaKg: -40, systemMix: { agua_mar: 60, chiller: 40 } });

@@ -974,6 +974,7 @@ export const operationSettings = mysqlTable("operation_settings", {
   forecastHorizonDays: int("forecastHorizonDays"),
   coolingStrategyBaseline: varchar("coolingStrategyBaseline", { length: 40 }),
   infrastructureFutureAreaJson: text("infrastructureFutureAreaJson"),
+  operationImportMappingJson: text("operationImportMappingJson"),
   updatedBy: int("updatedBy").notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
@@ -1006,6 +1007,10 @@ export const operationInfrastructurePoints = mysqlTable("operation_infrastructur
   chartFileKey: varchar("chartFileKey", { length: 500 }),
   chartFileUrl: varchar("chartFileUrl", { length: 1000 }),
   chartFileName: varchar("chartFileName", { length: 255 }),
+  cardLayout: varchar("cardLayout", { length: 32 }).notNull().default("standard"),
+  cardAccent: varchar("cardAccent", { length: 32 }).notNull().default("teal"),
+  cardImageKey: varchar("cardImageKey", { length: 500 }),
+  cardImageUrl: varchar("cardImageUrl", { length: 1000 }),
   isFuture: boolean("isFuture").default(false).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdBy: int("createdBy").notNull(),

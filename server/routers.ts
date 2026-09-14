@@ -243,7 +243,10 @@ export function parseInfrastructurePoint(row: any) {
     const parsed = JSON.parse(row.chartDataJson || "null");
     if (parsed && typeof parsed.label === "string" && Array.isArray(parsed.series) && Array.isArray(parsed.rows)) chartData = { label: parsed.label.slice(0, 100), series: parsed.series.filter((item: any) => typeof item?.key === "string" && typeof item?.label === "string").slice(0, 3).map((item: any) => ({ key: item.key.slice(0, 60), label: item.label.slice(0, 80) })), rows: parsed.rows.filter((item: any) => item && typeof item === "object").slice(0, 48) };
   } catch { /* Um gráfico inválido não pode impedir a leitura dos restantes dados. */ }
-  return { ...row, xPercent: Number(row.xPercent), yPercent: Number(row.yPercent), isFuture: Boolean(row.isFuture), metricCodes, technicalData, invoiceTypes, chartData };
+  const cardLayout = ["compact", "standard", "wide"].includes(row.cardLayout) ? row.cardLayout : "standard";
+  const cardAccent = ["teal", "blue", "violet", "amber", "slate"].includes(row.cardAccent) ? row.cardAccent : "teal";
+  const cardImageUrl = typeof row.cardImageUrl === "string" && /^https?:\/\//i.test(row.cardImageUrl) ? row.cardImageUrl.slice(0, 1000) : null;
+  return { ...row, xPercent: Number(row.xPercent), yPercent: Number(row.yPercent), isFuture: Boolean(row.isFuture), metricCodes, technicalData, invoiceTypes, chartData, cardLayout, cardAccent, cardImageUrl };
 }
 
 export function parseInfrastructureFutureArea(value: unknown) {
@@ -258,6 +261,8 @@ export function parseInfrastructureFutureArea(value: unknown) {
 const infrastructureTechnicalDatum = z.object({ label: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(160), unit: z.string().trim().max(40) });
 const infrastructureInvoiceTypes = ["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"] as const;
 const infrastructureMapCoordinate = z.object({ xPercent: z.number().int().min(0).max(100), yPercent: z.number().int().min(0).max(100) });
+const infrastructureCardLayouts = ["compact", "standard", "wide"] as const;
+const infrastructureCardAccents = ["teal", "blue", "violet", "amber", "slate"] as const;
 
 export function extractInfrastructureChart(workbook: ExcelJS.Workbook) {
   const sheet = workbook.worksheets.find(item => item.actualRowCount >= 2 && item.actualColumnCount >= 2);
@@ -308,6 +313,9 @@ const infrastructurePointInput = z.object({
   technicalNote: z.string().trim().max(5000).nullable().optional(),
   technicalData: z.array(infrastructureTechnicalDatum).max(16).default([]),
   invoiceTypes: z.array(z.enum(infrastructureInvoiceTypes)).max(6).default([]),
+  cardLayout: z.enum(infrastructureCardLayouts).default("standard"),
+  cardAccent: z.enum(infrastructureCardAccents).default("teal"),
+  cardImageUrl: z.string().url().max(1000).nullable().optional(),
   isFuture: z.boolean(),
   sortOrder: z.number().int().min(0).max(10_000),
 });
@@ -520,7 +528,31 @@ type OperationReadingInput = {
   qualityNote?: string;
 };
 
-export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
+const OPERATION_IMPORT_MAPPING_FIELDS = ["organizerTimestamp", "outdoorTemp", "seawaterTemp", "seawaterFlow", "coolingCycles", "wue", "pcwSupply", "pcwReturn", "hallPowerColumns", "sitePowerMw"] as const;
+type OperationImportMappingField = typeof OPERATION_IMPORT_MAPPING_FIELDS[number];
+export type OperationImportMapping = Record<OperationImportMappingField, string[]>;
+export const DEFAULT_OPERATION_IMPORT_MAPPING: OperationImportMapping = {
+  organizerTimestamp: ["time stamp", "timestamp"], outdoorTemp: ["temp exterior"], seawaterTemp: ["sw_tmp"], seawaterFlow: ["sw_flow"], coolingCycles: ["total_fc"], wue: ["wue"], pcwSupply: ["pcw_sp1"], pcwReturn: ["pcw_ret1"], hallPowerColumns: ["artic", "warhol", "blue"], sitePowerMw: ["site"],
+};
+const operationImportMappingInput = z.object(Object.fromEntries(OPERATION_IMPORT_MAPPING_FIELDS.map(field => [field, z.array(z.string().trim().min(1).max(80).regex(/^[^\r\n<>]{1,80}$/)).min(1).max(12)])) as Record<OperationImportMappingField, z.ZodArray<z.ZodString>>);
+export function parseOperationImportMapping(raw: unknown): OperationImportMapping {
+  const fallback = structuredClone(DEFAULT_OPERATION_IMPORT_MAPPING);
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!parsed || typeof parsed !== "object") return fallback;
+    for (const field of OPERATION_IMPORT_MAPPING_FIELDS) {
+      const aliases = (parsed as Record<string, unknown>)[field];
+      if (Array.isArray(aliases)) {
+        const clean = Array.from(new Set(aliases.filter((item): item is string => typeof item === "string" && /^[^\r\n<>]{1,80}$/.test(item.trim())).map(item => item.trim().toLowerCase()))).slice(0, 12);
+        if (clean.length) fallback[field] = clean;
+      }
+    }
+  } catch { /* Mantém mapeamento compatível se a configuração antiga for inválida. */ }
+  return fallback;
+}
+
+export function extractOperationalReadings(workbook: ExcelJS.Workbook, configuredMapping?: unknown) {
+  const importMapping = parseOperationImportMapping(configuredMapping);
   const daily = workbook.getWorksheet("Daily Report (v2)") || workbook.worksheets.find(sheet => /daily\s+report/i.test(sheet.name));
   if (!daily) throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro não contém a folha 'Daily Report' necessária." });
   const dateCell = daily.getRow(4).getCell(3).value;
@@ -647,15 +679,15 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
       for (let index = 1; index <= header.cellCount; index += 1) if (names.includes(header.getCell(index).text.trim().toLowerCase())) return index;
       return -1;
     };
-    const timestampColumn = column(["time stamp", "timestamp"]);
+    const timestampColumn = column(importMapping.organizerTimestamp);
     const rawMetrics = [
-      { code: "outdoor_temp_15m_c", label: "Temperatura exterior", category: "arrefecimento" as const, unit: "°C", headers: ["temp exterior"] },
-      { code: "seawater_intake_15m_c", label: "Temperatura da água do mar na captação", category: "arrefecimento" as const, unit: "°C", headers: ["sw_tmp"] },
-      { code: "seawater_flow_15m_lps", label: "Caudal de água do mar", category: "arrefecimento" as const, unit: "L/s", headers: ["sw_flow"] },
-      { code: "cooling_cycles_15m", label: "Ciclos de arrefecimento", category: "arrefecimento" as const, unit: "ciclos", headers: ["total_fc"] },
-      { code: "wue_15m", label: "WUE de quinze minutos", category: "agua" as const, unit: "L/kWh TI", headers: ["wue"] },
-      { code: "pcw_supply_15m_c", label: "Fornecimento PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_sp1"] },
-      { code: "pcw_return_15m_c", label: "Retorno PCW", category: "arrefecimento" as const, unit: "°C", headers: ["pcw_ret1"] },
+      { code: "outdoor_temp_15m_c", label: "Temperatura exterior", category: "arrefecimento" as const, unit: "°C", headers: importMapping.outdoorTemp },
+      { code: "seawater_intake_15m_c", label: "Temperatura da água do mar na captação", category: "arrefecimento" as const, unit: "°C", headers: importMapping.seawaterTemp },
+      { code: "seawater_flow_15m_lps", label: "Caudal de água do mar", category: "arrefecimento" as const, unit: "L/s", headers: importMapping.seawaterFlow },
+      { code: "cooling_cycles_15m", label: "Ciclos de arrefecimento", category: "arrefecimento" as const, unit: "ciclos", headers: importMapping.coolingCycles },
+      { code: "wue_15m", label: "WUE de quinze minutos", category: "agua" as const, unit: "L/kWh TI", headers: importMapping.wue },
+      { code: "pcw_supply_15m_c", label: "Fornecimento PCW", category: "arrefecimento" as const, unit: "°C", headers: importMapping.pcwSupply },
+      { code: "pcw_return_15m_c", label: "Retorno PCW", category: "arrefecimento" as const, unit: "°C", headers: importMapping.pcwReturn },
     ];
     if (timestampColumn > 0) {
       for (let rowIndex = 2; rowIndex <= Math.min(organizer.rowCount, 4000); rowIndex += 1) {
@@ -667,9 +699,9 @@ export function extractOperationalReadings(workbook: ExcelJS.Workbook) {
           const isInvalidWue = metric.code === "wue_15m" && value !== null && value < 0;
           add(metric.code, metric.label, metric.category, metric.unit, value, "bms_report", isInvalidWue ? "invalid" : "valid", isInvalidWue ? "WUE negativo na origem; excluído das correlações." : undefined, "quinze_minutos", at);
         }
-        const dataHallColumns = ["artic", "warhol", "blue"].map(name => column([name])).filter(index => index > 0);
+        const dataHallColumns = importMapping.hallPowerColumns.map(name => column([name])).filter(index => index > 0);
         const itPower = dataHallColumns.reduce((total, index) => total + (parseOperationNumber(row.getCell(index).value) || 0), 0);
-        const siteColumn = column(["site"]);
+        const siteColumn = column(importMapping.sitePowerMw);
         const sitePowerMw = siteColumn > 0 ? parseOperationNumber(row.getCell(siteColumn).value) : null;
         const sitePowerKw = sitePowerMw === null ? null : sitePowerMw * 1000;
         add("it_power_15m_kw", "Carga TI", "energia", "kW", itPower > 0 ? itPower : null, "calculated", itPower > 0 ? "valid" : "invalid", itPower > 0 ? "Soma Artic, Warhol e Blue." : "Sem carga TI válida.", "quinze_minutos", at);
@@ -4565,7 +4597,7 @@ export const appRouter = router({
           WHERE projectId = ${input.projectId} AND periodEnd >= ${input.startDate || "0000-01-01"} AND periodStart <= ${input.endDate || "9999-12-31"}
         `);
         const invoiceSummary = (invoiceSummaryResult as any)[0]?.[0] || {};
-        const settingsResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const settingsResult = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, operationImportMappingJson, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         const settings = (settingsResult as any)[0]?.[0] || null;
         const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
         const forecast = buildOperationTrendForecast(readings, settings);
@@ -4576,7 +4608,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const result = await database.execute(sql`SELECT configurationMode, electricityCarbonFactorKgKwh, waterPotableCarbonFactorKgM3, waterIndustrialCarbonFactorKgM3, maxPue, maxSeawaterReturnTempC, minSeawaterFlowLps, maxSeawaterFlowLps, maxSeawaterDeltaTK, electricityPriceEurKwh, waterPriceEurM3, annualMaintenanceBudgetEur, targetPue, targetWueLkwh, forecastHorizonDays, coolingStrategyBaseline, operationImportMappingJson, updatedAt FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
         return (result as any)[0]?.[0] || null;
       }),
     updateSettings: protectedProcedure
@@ -4615,12 +4647,25 @@ export const appRouter = router({
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_settings_update", "operation_settings", input.projectId, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined }));
         return { success: true };
       }),
+    updateImportMapping: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), mapping: operationImportMappingInput }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const previousResult = await database.execute(sql`SELECT operationImportMappingJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const previous = (previousResult as any)[0]?.[0]?.operationImportMappingJson || null;
+        const mapping = parseOperationImportMapping(input.mapping);
+        await database.execute(sql`INSERT INTO operation_settings (projectId, operationImportMappingJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(mapping)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE operationImportMappingJson = VALUES(operationImportMappingJson), updatedBy = VALUES(updatedBy)`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_import_mapping_update", "operation_settings", input.projectId, previous, JSON.stringify(mapping));
+        return { success: true, mapping };
+      }),
     infrastructurePoints: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT id, title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, isFuture, sortOrder, updatedAt FROM operation_infrastructure_points WHERE projectId = ${input.projectId} ORDER BY sortOrder ASC, id ASC`);
+        const result = await database.execute(sql`SELECT id, title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, cardLayout, cardAccent, cardImageKey, cardImageUrl, isFuture, sortOrder, updatedAt FROM operation_infrastructure_points WHERE projectId = ${input.projectId} ORDER BY sortOrder ASC, id ASC`);
         return ((result as any)[0] || []).map(parseInfrastructurePoint);
       }),
     infrastructureMapLayout: protectedProcedure
@@ -4716,11 +4761,11 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const previousResult = await database.execute(sql`SELECT title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, isFuture, sortOrder FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        const previousResult = await database.execute(sql`SELECT title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, cardLayout, cardAccent, cardImageUrl, isFuture, sortOrder FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
         const previous = (previousResult as any)[0]?.[0];
         if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
         await database.execute(sql`
-          UPDATE operation_infrastructure_points SET title = ${input.title}, subtitle = ${input.subtitle || null}, systemType = ${input.systemType}, status = ${input.status}, xPercent = ${input.xPercent}, yPercent = ${input.yPercent}, description = ${input.description || null}, metricCodesJson = ${JSON.stringify(Array.from(new Set(input.metricCodes)))}, chartMetricCode = ${input.chartMetricCode || null}, documentTitle = ${input.documentTitle || null}, documentUrl = ${input.documentUrl || null}, technicalNote = ${input.technicalNote || null}, technicalDataJson = ${JSON.stringify(input.technicalData)}, invoiceTypesJson = ${JSON.stringify(Array.from(new Set(input.invoiceTypes)))}, isFuture = ${input.isFuture}, sortOrder = ${input.sortOrder}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}
+          UPDATE operation_infrastructure_points SET title = ${input.title}, subtitle = ${input.subtitle || null}, systemType = ${input.systemType}, status = ${input.status}, xPercent = ${input.xPercent}, yPercent = ${input.yPercent}, description = ${input.description || null}, metricCodesJson = ${JSON.stringify(Array.from(new Set(input.metricCodes)))}, chartMetricCode = ${input.chartMetricCode || null}, documentTitle = ${input.documentTitle || null}, documentUrl = ${input.documentUrl || null}, technicalNote = ${input.technicalNote || null}, technicalDataJson = ${JSON.stringify(input.technicalData)}, invoiceTypesJson = ${JSON.stringify(Array.from(new Set(input.invoiceTypes)))}, cardLayout = ${input.cardLayout}, cardAccent = ${input.cardAccent}, cardImageUrl = ${input.cardImageUrl || null}, isFuture = ${input.isFuture}, sortOrder = ${input.sortOrder}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}
         `);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_update", "operation_infrastructure", input.id, JSON.stringify(previous), JSON.stringify({ ...input, projectId: undefined, documentUrl: input.documentUrl ? "configured" : null }));
         return { success: true };
@@ -4748,6 +4793,27 @@ export const appRouter = router({
         await database.execute(sql`UPDATE operation_infrastructure_points SET chartDataJson = ${JSON.stringify(chart)}, chartFileKey = ${stored.key}, chartFileUrl = ${stored.url}, chartFileName = ${input.filename}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}`);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_chart_upload", "operation_infrastructure", input.id, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, rows: chart.rows.length, series: chart.series.map(item => item.label) }));
         return { success: true, filename: input.filename, rows: chart.rows.length, series: chart.series.map(item => item.label) };
+      }),
+    uploadInfrastructureCardImage: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive(), filename: z.string().min(1).max(255), mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]), data: z.string().min(8) }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        if (!/\.(jpg|jpeg|png|webp)$/i.test(input.filename) || /[\\/\r\n\0]/.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Indique uma imagem JPG, PNG ou WebP com nome válido." });
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O conteúdo da imagem é inválido." });
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "A imagem do cartão deve ter no máximo 5 MB." });
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "operation-infrastructure-card-image");
+        if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Imagem rejeitada por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const exists = await database.execute(sql`SELECT id FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        if (!(exists as any)[0]?.[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
+        const extension = input.filename.split(".").pop()?.toLowerCase() || "webp";
+        const stored = await storagePut(`operation/${input.projectId}/infrastructure/${input.id}/card/${Date.now()}.${extension}`, buffer, input.mimeType);
+        await database.execute(sql`UPDATE operation_infrastructure_points SET cardImageKey = ${stored.key}, cardImageUrl = ${stored.url}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_card_image_upload", "operation_infrastructure", input.id, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, mimeType: input.mimeType }));
+        return { success: true, url: stored.url, filename: input.filename };
       }),
     deleteInfrastructurePoint: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive() }))
@@ -4799,11 +4865,12 @@ export const appRouter = router({
         if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
         const workbook = new ExcelJS.Workbook();
         try { await workbook.xlsx.load(buffer as any); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "O ficheiro Excel não é válido." }); }
-        const extracted = extractOperationalReadings(workbook);
-        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
-        const stored = await storagePut(`operation/${input.projectId}/reports/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const mappingResult = await database.execute(sql`SELECT operationImportMappingJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        const extracted = extractOperationalReadings(workbook, (mappingResult as any)[0]?.[0]?.operationImportMappingJson);
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+        const stored = await storagePut(`operation/${input.projectId}/reports/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
         const result = await database.transaction(async (tx: any) => {
           const [batch] = await tx.insert(schema.operationImportBatches).values({ projectId: input.projectId, sourceFilename: input.filename, sourceFileKey: stored.key, sourceFileUrl: stored.url, sourceType: "daily_report", measuredDate: extracted.measuredDate, rowsImported: extracted.readings.length, qualityStatus: extracted.qualityStatus, qualityNotes: extracted.qualityNotes, importedBy: ctx.user.id }).$returningId();
           for (const reading of extracted.readings) {

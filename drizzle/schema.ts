@@ -981,6 +981,36 @@ export const operationSettings = mysqlTable("operation_settings", {
 export type OperationSettings = typeof operationSettings.$inferSelect;
 export type InsertOperationSettings = typeof operationSettings.$inferInsert;
 
+// Pontos estáticos sobre a fotografia de infraestrutura do SIN01/NEST. Não são
+// dados geográficos nem um módulo de mapas; as coordenadas são percentagens da
+// imagem e cada ponto pode associar métricas, gráfico, documento e nota técnica.
+export const operationInfrastructurePoints = mysqlTable("operation_infrastructure_points", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  subtitle: varchar("subtitle", { length: 255 }),
+  systemType: varchar("systemType", { length: 80 }).notNull().default("infraestrutura"),
+  status: varchar("status", { length: 40 }).notNull().default("operacional"),
+  xPercent: int("xPercent").notNull(),
+  yPercent: int("yPercent").notNull(),
+  description: text("description"),
+  metricCodesJson: text("metricCodesJson").notNull(),
+  chartMetricCode: varchar("chartMetricCode", { length: 100 }),
+  documentTitle: varchar("documentTitle", { length: 255 }),
+  documentUrl: varchar("documentUrl", { length: 1000 }),
+  technicalNote: text("technicalNote"),
+  isFuture: boolean("isFuture").default(false).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdBy: int("createdBy").notNull(),
+  updatedBy: int("updatedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectOrderIdx: index("operation_infrastructure_points_project_order_idx").on(table.projectId, table.sortOrder),
+}));
+export type OperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferSelect;
+export type InsertOperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferInsert;
+
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {
   id: int("id").primaryKey().autoincrement(),

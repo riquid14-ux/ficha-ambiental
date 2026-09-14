@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mocks = vi.hoisted(() => ({ createInvoice: vi.fn(), createWaterReading: vi.fn(), refetch: vi.fn(), reconciliation: [] as any[], overview: { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" } } as any }));
@@ -25,6 +25,7 @@ vi.mock("@/lib/trpc", () => {
         invoices: { useQuery: () => query([]) },
         reconciliation: { useQuery: () => query(mocks.reconciliation) },
         scenarios: { useQuery: () => query([]) },
+        infrastructurePoints: { useQuery: () => query([]) },
         importDailyReport: { useMutation: () => mutation() },
         importInvoicesExcel: { useMutation: () => mutation() },
         createInvoice: { useMutation: () => mutation(mocks.createInvoice) },
@@ -99,6 +100,18 @@ describe("Operação — formulário manual de faturas", () => {
     expect(screen.getByText("Gémeo digital do edifício")).toBeTruthy();
     expect(screen.getByText("WUE versus PUE")).toBeTruthy();
     expect(screen.getByText("Relação central de sustentabilidade")).toBeTruthy();
+    expect(screen.getByText("Infraestrutura do NEST")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Definições de Operação/i })).toBeTruthy();
+  });
+
+  it("abre um cartão de infraestrutura de referência sem criar dados persistentes", async () => {
+    const user = userEvent.setup();
+    render(createElement(Operation));
+    await user.click(screen.getByRole("button", { name: /Abrir informação de Hall TI/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeTruthy();
+    expect(within(dialog).getByText("Carga computacional")).toBeTruthy();
+    expect(within(dialog).getByText("Nota técnica")).toBeTruthy();
   });
 
   it("separa a previsão automática indisponível do laboratório de cenários", async () => {

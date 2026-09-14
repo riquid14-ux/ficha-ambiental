@@ -120,6 +120,14 @@ As Definições de Operação são agora um centro de controlo por módulos: Efi
 
 Na inspeção visual do SIN01, o cockpit apresentou o gémeo digital, os cartões executivos, o painel sustentável e a relação WUE versus PUE em modo de demonstração, com identificação explícita. A previsão automática mostra **0/3** tendências ativas porque existe apenas um dia válido no histórico, informando o mínimo de sete dias necessário e não fabricando uma tendência até que novos relatórios sejam importados.
 
+## Infraestrutura visual estática NEST — implementação e validação
+
+O pedido não recupera o antigo módulo de mapas nem introduz navegação cartográfica. Foi implementado em **Operação** um **dashboard estático de infraestrutura**, assente numa fotografia de drone fixa do NEST. Cada bolinha abre um cartão contextual com título, descrição, métricas recentes, tendência simples, documento e nota técnica; o conteúdo de cada cartão é configurável pela Administração e não altera telemetria nem cálculos medidos.
+
+O PDF de referência foi reinterpretado para preservar a fotografia limpa, os pontos distribuídos pelas infraestruturas e os cartões associados. A zona antes vermelha passou a uma área violeta tracejada de **Planeamento futuro**, sem semântica de alerta, risco ou não conformidade. O cartão de expansão tem estado de planeamento e é explicitamente separado dos pontos operacionais.
+
+Na validação autenticada em SIN01 — NEST, um Administrador abriu o novo atalho com ícone de roldana **Definições de Operação**, acedeu ao Centro de controlo, abriu a aba **Infraestrutura** e aplicou o modelo auditável de seis pontos: captação de água do mar, circuito de água do mar, subestação e rede, Hall TI, edifício NEST e expansão futura. Ao regressar ao cockpit, o indicador de modelo de referência deixou de ser apresentado, confirmando que os pontos persistidos passaram a alimentar a fotografia. As regressões verificam o ponto futuro, a sanitização de códigos de métricas e a abertura do cartão Hall TI sem criar dados transitórios.
+
 ## Previsões automáticas e cenários manuais
 
 O servidor calcula tendências lineares de PUE, WUE e custo apenas após reunir pelo menos sete dias medidos da métrica correspondente. O horizonte vem das Definições de Operação, está limitado para impedir projeções excessivas e apresenta linhas medidas e previstas separadas. O custo requer, adicionalmente, um preço de eletricidade configurado; em modo ilustrativo, esse preço continua identificado como demonstração. A interface apresenta um estado vazio explícito quando ainda não existe histórico suficiente e mantém o **Laboratório de decisão** separado para cenários manuais auditáveis.

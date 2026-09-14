@@ -198,6 +198,47 @@ function getUserDisplayName(user: any) {
   return user.fullName || user.name || user.email || `Utilizador ${user.id}`;
 }
 
+const INFRASTRUCTURE_POINT_STATUSES = ["operacional", "planeamento", "manutencao", "a_validar"] as const;
+const INFRASTRUCTURE_SYSTEM_TYPES = ["energia", "hall_ti", "arrefecimento", "agua_mar", "infraestrutura", "futuro"] as const;
+
+export const INFRASTRUCTURE_REFERENCE_POINTS = [
+  { title: "Captação de água do mar", subtitle: "Ponto de captação", systemType: "agua_mar", status: "a_validar", xPercent: 27, yPercent: 31, description: "Infraestrutura de captação a confirmar pela equipa de Operação.", metricCodes: ["seawater_flow_lps", "seawater_intake_temp_c"], chartMetricCode: "seawater_flow_lps", technicalNote: "Modelo de referência baseado no conceito fornecido; ajuste a posição e os dados na Administração.", isFuture: false, sortOrder: 10 },
+  { title: "Circuito de água do mar", subtitle: "Arrefecimento", systemType: "arrefecimento", status: "a_validar", xPercent: 34, yPercent: 39, description: "Circuito térmico associado ao arrefecimento do edifício.", metricCodes: ["seawater_flow_lps", "seawater_delta_t_k", "seawater_return_temp_c"], chartMetricCode: "seawater_delta_t_k", technicalNote: "Ponto de referência configurável.", isFuture: false, sortOrder: 20 },
+  { title: "Subestação e rede", subtitle: "Energia", systemType: "energia", status: "a_validar", xPercent: 59, yPercent: 65, description: "Entrada de energia e infraestrutura elétrica de suporte.", metricCodes: ["site_power_kw", "site_energy_kwh_daily"], chartMetricCode: "site_power_kw", technicalNote: "Associe os códigos de medição efetivamente recebidos do BMS.", isFuture: false, sortOrder: 30 },
+  { title: "Hall TI", subtitle: "Carga computacional", systemType: "hall_ti", status: "a_validar", xPercent: 69, yPercent: 58, description: "Zona de carga TI e eficiência do edifício.", metricCodes: ["it_power_kw", "it_energy_kwh_daily", "pue"], chartMetricCode: "pue", technicalNote: "Use o cartão para acompanhar carga TI, PUE e qualidade de dados.", isFuture: false, sortOrder: 40 },
+  { title: "Edifício NEST", subtitle: "Operação integrada", systemType: "infraestrutura", status: "operacional", xPercent: 76, yPercent: 53, description: "Síntese operacional do edifício, com energia, água e eficiência.", metricCodes: ["pue", "wue", "cooling_cop"], chartMetricCode: "pue", technicalNote: "Configure métricas e documentação técnica no painel de Administração.", isFuture: false, sortOrder: 50 },
+  { title: "Expansão futura", subtitle: "Planeamento", systemType: "futuro", status: "planeamento", xPercent: 43, yPercent: 76, description: "Área reservada para planeamento futuro; não representa um alerta nem uma não conformidade.", metricCodes: [], chartMetricCode: null, technicalNote: "Defina o âmbito, dados e documentação quando existir informação aprovada.", isFuture: true, sortOrder: 60 },
+] as const;
+
+export function parseInfrastructurePoint(row: any) {
+  let metricCodes: string[] = [];
+  try {
+    const parsed = JSON.parse(row.metricCodesJson || "[]");
+    if (Array.isArray(parsed)) metricCodes = parsed.filter((item): item is string => typeof item === "string" && /^[a-z0-9_]{1,100}$/i.test(item)).slice(0, 10);
+  } catch {
+    // Um registo antigo ou corrompido não pode quebrar a visualização pública.
+  }
+  return { ...row, xPercent: Number(row.xPercent), yPercent: Number(row.yPercent), isFuture: Boolean(row.isFuture), metricCodes };
+}
+
+const infrastructurePointInput = z.object({
+  projectId: z.number().int().positive(),
+  title: z.string().trim().min(2).max(160),
+  subtitle: z.string().trim().max(255).nullable().optional(),
+  systemType: z.enum(INFRASTRUCTURE_SYSTEM_TYPES),
+  status: z.enum(INFRASTRUCTURE_POINT_STATUSES),
+  xPercent: z.number().int().min(0).max(100),
+  yPercent: z.number().int().min(0).max(100),
+  description: z.string().trim().max(5000).nullable().optional(),
+  metricCodes: z.array(z.string().regex(/^[a-z0-9_]{1,100}$/i)).max(10),
+  chartMetricCode: z.string().regex(/^[a-z0-9_]{1,100}$/i).nullable().optional(),
+  documentTitle: z.string().trim().max(255).nullable().optional(),
+  documentUrl: z.string().url().max(1000).nullable().optional(),
+  technicalNote: z.string().trim().max(5000).nullable().optional(),
+  isFuture: z.boolean(),
+  sortOrder: z.number().int().min(0).max(10_000),
+});
+
 const OPERATION_PROJECT_CODE = "SIN01";
 const OPERATION_WRITE_ROLES = new Set(["admin", "dono_obra", "pm"]);
 
@@ -4499,6 +4540,81 @@ export const appRouter = router({
           ON DUPLICATE KEY UPDATE configurationMode = VALUES(configurationMode), electricityCarbonFactorKgKwh = VALUES(electricityCarbonFactorKgKwh), waterPotableCarbonFactorKgM3 = VALUES(waterPotableCarbonFactorKgM3), waterIndustrialCarbonFactorKgM3 = VALUES(waterIndustrialCarbonFactorKgM3), maxPue = VALUES(maxPue), maxSeawaterReturnTempC = VALUES(maxSeawaterReturnTempC), minSeawaterFlowLps = VALUES(minSeawaterFlowLps), maxSeawaterFlowLps = VALUES(maxSeawaterFlowLps), maxSeawaterDeltaTK = VALUES(maxSeawaterDeltaTK), electricityPriceEurKwh = VALUES(electricityPriceEurKwh), waterPriceEurM3 = VALUES(waterPriceEurM3), annualMaintenanceBudgetEur = VALUES(annualMaintenanceBudgetEur), targetPue = VALUES(targetPue), targetWueLkwh = VALUES(targetWueLkwh), forecastHorizonDays = VALUES(forecastHorizonDays), coolingStrategyBaseline = VALUES(coolingStrategyBaseline), updatedBy = VALUES(updatedBy)
         `);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_settings_update", "operation_settings", input.projectId, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined }));
+        return { success: true };
+      }),
+    infrastructurePoints: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT id, title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, isFuture, sortOrder, updatedAt FROM operation_infrastructure_points WHERE projectId = ${input.projectId} ORDER BY sortOrder ASC, id ASC`);
+        return ((result as any)[0] || []).map(parseInfrastructurePoint);
+      }),
+    seedInfrastructurePoints: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const existing = await database.execute(sql`SELECT id FROM operation_infrastructure_points WHERE projectId = ${input.projectId} LIMIT 1`);
+        if ((existing as any)[0]?.length) throw new TRPCError({ code: "CONFLICT", message: "Já existe uma configuração de infraestrutura para este projeto." });
+        await database.insert(schema.operationInfrastructurePoints).values(INFRASTRUCTURE_REFERENCE_POINTS.map((point) => ({
+          projectId: input.projectId,
+          title: point.title,
+          subtitle: point.subtitle,
+          systemType: point.systemType,
+          status: point.status,
+          xPercent: point.xPercent,
+          yPercent: point.yPercent,
+          description: point.description,
+          metricCodesJson: JSON.stringify(point.metricCodes),
+          chartMetricCode: point.chartMetricCode,
+          technicalNote: point.technicalNote,
+          isFuture: point.isFuture,
+          sortOrder: point.sortOrder,
+          createdBy: ctx.user.id,
+          updatedBy: ctx.user.id,
+        })));
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_seed", "operation_infrastructure", input.projectId, null, JSON.stringify({ source: "reference_model", count: INFRASTRUCTURE_REFERENCE_POINTS.length }));
+        return { success: true, count: INFRASTRUCTURE_REFERENCE_POINTS.length };
+      }),
+    createInfrastructurePoint: protectedProcedure
+      .input(infrastructurePointInput)
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const payload = { ...input, metricCodesJson: JSON.stringify(Array.from(new Set(input.metricCodes))), updatedBy: ctx.user.id, createdBy: ctx.user.id };
+        const created = await database.insert(schema.operationInfrastructurePoints).values(payload as any);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_create", "operation_infrastructure", input.projectId, null, JSON.stringify({ ...input, documentUrl: input.documentUrl ? "configured" : null }));
+        return { success: true, id: Number((created as any)[0]?.insertId || 0) };
+      }),
+    updateInfrastructurePoint: protectedProcedure
+      .input(infrastructurePointInput.extend({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const previousResult = await database.execute(sql`SELECT title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, isFuture, sortOrder FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        const previous = (previousResult as any)[0]?.[0];
+        if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
+        await database.execute(sql`
+          UPDATE operation_infrastructure_points SET title = ${input.title}, subtitle = ${input.subtitle || null}, systemType = ${input.systemType}, status = ${input.status}, xPercent = ${input.xPercent}, yPercent = ${input.yPercent}, description = ${input.description || null}, metricCodesJson = ${JSON.stringify(Array.from(new Set(input.metricCodes)))}, chartMetricCode = ${input.chartMetricCode || null}, documentTitle = ${input.documentTitle || null}, documentUrl = ${input.documentUrl || null}, technicalNote = ${input.technicalNote || null}, isFuture = ${input.isFuture}, sortOrder = ${input.sortOrder}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}
+        `);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_update", "operation_infrastructure", input.id, JSON.stringify(previous), JSON.stringify({ ...input, projectId: undefined, documentUrl: input.documentUrl ? "configured" : null }));
+        return { success: true };
+      }),
+    deleteInfrastructurePoint: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const previousResult = await database.execute(sql`SELECT title FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        const previous = (previousResult as any)[0]?.[0];
+        if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
+        await database.execute(sql`DELETE FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_delete", "operation_infrastructure", input.id, JSON.stringify(previous), null);
         return { success: true };
       }),
     imports: protectedProcedure

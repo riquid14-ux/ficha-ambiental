@@ -25,7 +25,8 @@ describe("Infraestrutura estática da Operação", () => {
 
   it("mantém uma superfície com rácio fixo para que fotografia, marcadores e geometria se redimensionem juntos", () => {
     const dashboard = readFileSync(path.resolve(process.cwd(), "client/src/components/InfrastructureDashboard.tsx"), "utf8");
-    expect(dashboard).toContain("aspect-[3/1]");
+    expect(dashboard).toContain('aspectRatio: "3 / 1"');
+    expect(dashboard).toContain("minHeight: 0");
     expect(dashboard).toContain("object-cover object-center");
   });
 

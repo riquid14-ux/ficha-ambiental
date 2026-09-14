@@ -116,6 +116,14 @@ describe("Operação — formulário manual de faturas", () => {
     expect(within(dialog).getByText("Nota técnica")).toBeTruthy();
   });
 
+  it("mantém a fotografia e os marcadores na mesma superfície proporcional, sem altura mínima em janelas estreitas", () => {
+    render(createElement(Operation));
+    const photo = screen.getByAltText("Vista aérea de drone do NEST e infraestruturas envolventes");
+    const surface = photo.parentElement;
+    expect(surface?.style.aspectRatio).toBe("3 / 1");
+    expect(surface?.style.minHeight).toBe("0px");
+  });
+
   it("leva Simular futuro diretamente ao separador de previsões e cenários", async () => {
     const user = userEvent.setup();
     render(createElement(Operation));

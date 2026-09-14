@@ -69,6 +69,8 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
   const [draftMarkers, setDraftMarkers] = useState<Array<{ id: number; xPercent: number; yPercent: number }>>([]);
   const [draftFutureArea, setDraftFutureArea] = useState<MapCoordinate[]>([...(futureArea?.length ? futureArea : DEFAULT_FUTURE_AREA)]);
   const [dragTarget, setDragTarget] = useState<{ kind: "marker"; id: number } | { kind: "future"; index: number } | null>(null);
+  const [droneImageUrl, setDroneImageUrl] = useState(DRONE_IMAGE_URL);
+  const [photoUnavailable, setPhotoUnavailable] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const usingReference = points.length === 0;
   const visiblePoints = (usingReference ? REFERENCE_POINTS : points).slice().sort((a, b) => a.sortOrder - b.sortOrder);
@@ -89,6 +91,7 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
   }, [adjusting, futureArea, points]);
 
   const beginAdjustment = () => {
+    if (photoUnavailable) { toast.error("Ajuste indisponível enquanto a fotografia não carregar. Atualize a página e tente novamente."); return; }
     if (usingReference) { toast.error("Aplique primeiro a marcação de referência na Administração."); return; }
     setDraftMarkers(points.filter(point => !point.isFuture && typeof point.id === "number").map(point => ({ id: Number(point.id), xPercent: point.xPercent, yPercent: point.yPercent })));
     setDraftFutureArea([...(futureArea?.length ? futureArea : DEFAULT_FUTURE_AREA)]);
@@ -122,11 +125,12 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
   return <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
     <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-start gap-3"><span className="rounded-2xl bg-slate-950 p-3 text-white shadow-lg"><MapPin className="size-5" /></span><div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-950">Infraestrutura do NEST</p><Badge variant="outline" className="border-teal-200 bg-teal-50 text-teal-800">Dashboard estático</Badge>{usingReference && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Modelo de referência</Badge>}</div><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Clique num ponto para ligar o local à informação técnica, métricas, gráficos e documentação configurados pela Administração.</p></div></div>
-      {canConfigure && <div className="flex flex-wrap gap-2">{adjusting ? <><Button variant="outline" className="border-slate-300" onClick={() => { setAdjusting(false); setDragTarget(null); }} disabled={layoutMutation.isPending}>Cancelar ajuste</Button><Button className="bg-teal-700 hover:bg-teal-800" onClick={saveAdjustment} disabled={layoutMutation.isPending || !draftMarkers.length}>{layoutMutation.isPending ? "A guardar..." : "Guardar posições"}</Button></> : <><Button variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100" onClick={beginAdjustment}>Ajustar no mapa</Button><Button variant="outline" className="border-slate-300" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />Definir infraestrutura</Button></>}</div>}
+      {canConfigure && <div className="flex flex-wrap gap-2">{adjusting ? <><Button variant="outline" className="border-slate-300" onClick={() => { setAdjusting(false); setDragTarget(null); }} disabled={layoutMutation.isPending}>Cancelar ajuste</Button><Button className="bg-teal-700 hover:bg-teal-800" onClick={saveAdjustment} disabled={layoutMutation.isPending || !draftMarkers.length}>{layoutMutation.isPending ? "A guardar..." : "Guardar posições"}</Button></> : <><Button variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100" onClick={beginAdjustment} disabled={photoUnavailable}>Ajustar no mapa</Button><Button variant="outline" className="border-slate-300" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />Definir infraestrutura</Button></>}</div>}
     </div>
     <div ref={stageRef} onPointerMove={updateDragging} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={`relative min-h-[520px] overflow-hidden bg-slate-950 ${adjusting ? "touch-none select-none" : ""}`}>
-        <img src={DRONE_IMAGE_URL} alt="Vista aérea de drone do NEST e infraestruturas envolventes" className="absolute inset-0 size-full object-cover opacity-95" />
+        <img src={droneImageUrl} alt="Vista aérea de drone do NEST e infraestruturas envolventes" onLoad={() => setPhotoUnavailable(false)} onError={() => { if (droneImageUrl === DRONE_IMAGE_URL) setDroneImageUrl(`${DRONE_IMAGE_URL}?retry=${Date.now()}`); else setPhotoUnavailable(true); }} className="absolute inset-0 size-full object-cover opacity-95" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/10" />
+        {photoUnavailable && <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/90 p-6 text-center text-white"><div><p className="font-semibold">Fotografia temporariamente indisponível</p><p className="mt-1 text-sm text-slate-300">O ajuste foi bloqueado para evitar posicionamentos sem a referência visual. Atualize a página e tente novamente.</p></div></div>}
         <div style={{ clipPath: futureAreaClip(draftFutureArea) }} className="absolute inset-0 border border-fuchsia-950/80 bg-fuchsia-800/70 shadow-[inset_0_0_80px_rgba(112,26,117,0.4)]">
           <div className="absolute inset-0 opacity-35 [background-image:repeating-linear-gradient(135deg,rgba(255,255,255,0.2)_0_1px,transparent_1px_11px)]" />
           <span className="absolute left-[11%] top-[80%] rounded-full border border-fuchsia-100/80 bg-slate-950/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-fuchsia-100 shadow-lg">Edifícios futuros · planeamento</span>

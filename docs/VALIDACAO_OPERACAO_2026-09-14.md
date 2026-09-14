@@ -25,3 +25,5 @@ O editor passa a aceitar por ponto dados técnicos estruturados, tipos de fatura
 ## Modo temporário de afinação no mapa
 
 Para permitir a correção visual no próprio contexto da fotografia, foi disponibilizado ao Administrador o botão **Ajustar no mapa**. O modo apresenta cada marcador amarelo como elemento arrastável e seis vértices violeta para redesenhar a área de edifícios futuros. A gravação é única, auditada, limitada ao SIN01/NEST e mantém toda a informação de cada cartão; o cancelamento não persiste qualquer coordenada provisória.
+
+Após uma falha visual comunicada no domínio publicado, a entrega do ativo foi confirmada diretamente pelo navegador e pelo servidor como imagem WebP válida. O componente passou a efetuar uma nova tentativa com URL sem cache quando a primeira carga falhar; se a fotografia continuar indisponível, bloqueia explicitamente o ajuste para impedir uma gravação sem referência visual.

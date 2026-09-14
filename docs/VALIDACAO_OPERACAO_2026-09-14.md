@@ -27,3 +27,13 @@ O editor passa a aceitar por ponto dados técnicos estruturados, tipos de fatura
 Para permitir a correção visual no próprio contexto da fotografia, foi disponibilizado ao Administrador o botão **Ajustar no mapa**. O modo apresenta cada marcador amarelo como elemento arrastável e seis vértices violeta para redesenhar a área de edifícios futuros. A gravação é única, auditada, limitada ao SIN01/NEST e mantém toda a informação de cada cartão; o cancelamento não persiste qualquer coordenada provisória.
 
 Após uma falha visual comunicada no domínio publicado, a entrega do ativo foi confirmada diretamente pelo navegador e pelo servidor como imagem WebP válida. O componente passou a efetuar uma nova tentativa com URL sem cache quando a primeira carga falhar; se a fotografia continuar indisponível, bloqueia explicitamente o ajuste para impedir uma gravação sem referência visual.
+
+## Entrega interna da fotografia em produção
+
+Foi substituído o redirecionamento direto do armazenamento por uma rota interna protegida, `GET /api/operacao/media/nest-drone`, que valida a sessão e o âmbito de Operação do SIN01 antes de transmitir a imagem WebP. Depois de a implementação publicada terminar, a rota foi confirmada no domínio de produção com o identificador real do projeto (`60001`) e a página de Operação passou a referenciar essa rota no próprio dashboard.
+
+## Proporção e simbologia dos marcadores
+
+A superfície interativa foi limitada ao rácio visual `3:1`, igual ao enquadramento de decisão utilizado no cockpit. Desta forma, a imagem, os marcadores posicionados em percentagem e os vértices da área futura partilham a mesma superfície de referência e redimensionam-se de forma proporcional quando a janela muda de largura.
+
+Foi configurada a simbologia de leitura inicial: água nos pontos 01, 02, 03, 08 e 14; operação humana nos pontos 06 e 09; energia no ponto 04; arrefecimento nos pontos 05, 07 e 11; e salas de servidores nos pontos 10, 12 e 13. A atualização preservou as coordenadas, os conteúdos técnicos, os gráficos Excel e as ligações financeiras existentes, e ficou registada no trilho de auditoria.

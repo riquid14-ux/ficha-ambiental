@@ -11,11 +11,11 @@ import { CheckCircle2, FileSpreadsheet, Link2, MapPin, Pencil, Plus, RotateCcw, 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-const systemLabels: Record<string, string> = { energia: "Energia", hall_ti: "Hall TI", arrefecimento: "Arrefecimento", agua_mar: "Água do mar", infraestrutura: "Infraestrutura", futuro: "Planeamento futuro" };
+const systemLabels: Record<string, string> = { energia: "Energia", hall_ti: "Sala de servidores", arrefecimento: "Arrefecimento", agua_mar: "Água", pessoa: "Operação humana", infraestrutura: "Infraestrutura", futuro: "Planeamento futuro" };
 const statusLabels: Record<string, string> = { operacional: "Operacional", planeamento: "Planeamento", manutencao: "Manutenção", a_validar: "A validar" };
 
 type InvoiceType = "electricidade" | "agua_potavel" | "agua_industrial" | "hvo" | "gasoleo" | "outro";
-type PointDraft = { title: string; subtitle: string; systemType: "energia" | "hall_ti" | "arrefecimento" | "agua_mar" | "infraestrutura" | "futuro"; status: "operacional" | "planeamento" | "manutencao" | "a_validar"; xPercent: string; yPercent: string; description: string; metricCodesText: string; chartMetricCode: string; documentTitle: string; documentUrl: string; technicalNote: string; technicalDataText: string; invoiceTypes: InvoiceType[]; isFuture: boolean; sortOrder: string };
+type PointDraft = { title: string; subtitle: string; systemType: "energia" | "hall_ti" | "arrefecimento" | "agua_mar" | "pessoa" | "infraestrutura" | "futuro"; status: "operacional" | "planeamento" | "manutencao" | "a_validar"; xPercent: string; yPercent: string; description: string; metricCodesText: string; chartMetricCode: string; documentTitle: string; documentUrl: string; technicalNote: string; technicalDataText: string; invoiceTypes: InvoiceType[]; isFuture: boolean; sortOrder: string };
 const emptyDraft: PointDraft = { title: "", subtitle: "", systemType: "infraestrutura", status: "a_validar", xPercent: "50", yPercent: "50", description: "", metricCodesText: "", chartMetricCode: "", documentTitle: "", documentUrl: "", technicalNote: "", technicalDataText: "", invoiceTypes: [], isFuture: false, sortOrder: "100" };
 const invoiceLabels: Record<InvoiceType, string> = { electricidade: "Eletricidade", agua_potavel: "Água potável", agua_industrial: "Água industrial", hvo: "HVO", gasoleo: "Gasóleo", outro: "Outro" };
 

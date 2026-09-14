@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
-import { Activity, ArrowUpRight, Building2, FileText, Gauge, MapPin, Settings2, Sparkles, Waves, Zap } from "lucide-react";
+import { Activity, ArrowUpRight, Building2, Droplet, FileText, Gauge, MapPin, Server, Settings2, Sparkles, UserRound, Zap } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -37,10 +37,10 @@ const REFERENCE_POINTS: InfrastructurePoint[] = [
   { id: "reference-future", title: "Edifícios futuros", subtitle: "Planeamento", systemType: "futuro", status: "planeamento", xPercent: 15, yPercent: 75, description: "Área reservada para edifícios futuros. Não representa um alerta, risco ou não conformidade.", metricCodes: [], chartMetricCode: null, technicalNote: "Defina o âmbito quando existir informação aprovada.", isFuture: true, sortOrder: 150 },
 ];
 
-const TYPE_LABELS: Record<string, string> = { energia: "Energia", hall_ti: "Hall TI", arrefecimento: "Arrefecimento", agua_mar: "Água do mar", infraestrutura: "Infraestrutura", futuro: "Planeamento" };
+const TYPE_LABELS: Record<string, string> = { energia: "Energia", hall_ti: "Sala de servidores", arrefecimento: "Arrefecimento", agua_mar: "Água", pessoa: "Operação humana", infraestrutura: "Infraestrutura", futuro: "Planeamento" };
 const STATUS_LABELS: Record<string, string> = { operacional: "Operacional", planeamento: "Planeamento futuro", manutencao: "Manutenção", a_validar: "A validar" };
 const METRIC_LABELS: Record<string, string> = { pue: "PUE", wue: "WUE", wue_calculated_daily: "WUE", cooling_cop: "COP", seawater_flow_lps: "Caudal", seawater_intake_temp_c: "Captação", seawater_return_temp_c: "Descarga", seawater_delta_t_k: "ΔT", site_power_kw: "Potência do site", site_energy_kwh_daily: "Energia do site", it_power_kw: "Carga TI", it_energy_kwh_daily: "Energia TI" };
-const SYSTEM_ICONS: Record<string, typeof Zap> = { energia: Zap, hall_ti: Building2, arrefecimento: Activity, agua_mar: Waves, infraestrutura: Gauge, futuro: Sparkles };
+const SYSTEM_ICONS: Record<string, typeof Zap> = { energia: Zap, hall_ti: Server, arrefecimento: Activity, agua_mar: Droplet, pessoa: UserRound, infraestrutura: Gauge, futuro: Sparkles };
 const INVOICE_LABELS: Record<string, string> = { electricidade: "Eletricidade", agua_potavel: "Água potável", agua_industrial: "Água industrial", hvo: "HVO", gasoleo: "Gasóleo", outro: "Outro" };
 
 function metricValue(latest: Record<string, any>, code: string) {
@@ -131,8 +131,8 @@ export function InfrastructureDashboard({ projectId, points, futureArea, latest,
       <div className="flex items-start gap-3"><span className="rounded-2xl bg-slate-950 p-3 text-white shadow-lg"><MapPin className="size-5" /></span><div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-950">Infraestrutura do NEST</p><Badge variant="outline" className="border-teal-200 bg-teal-50 text-teal-800">Dashboard estático</Badge>{usingReference && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Modelo de referência</Badge>}</div><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Clique num ponto para ligar o local à informação técnica, métricas, gráficos e documentação configurados pela Administração.</p></div></div>
       {canConfigure && <div className="flex flex-wrap gap-2">{adjusting ? <><Button variant="outline" className="border-slate-300" onClick={() => { setAdjusting(false); setDragTarget(null); }} disabled={layoutMutation.isPending}>Cancelar ajuste</Button><Button className="bg-teal-700 hover:bg-teal-800" onClick={saveAdjustment} disabled={layoutMutation.isPending || !draftMarkers.length}>{layoutMutation.isPending ? "A guardar..." : "Guardar posições"}</Button></> : <><Button variant="outline" className="border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100" onClick={beginAdjustment} disabled={photoUnavailable}>Ajustar no mapa</Button><Button variant="outline" className="border-slate-300" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />Definir infraestrutura</Button></>}</div>}
     </div>
-    <div ref={stageRef} onPointerMove={updateDragging} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={`relative min-h-[520px] overflow-hidden bg-slate-950 ${adjusting ? "touch-none select-none" : ""}`}>
-        <img src={droneImageUrl} alt="Vista aérea de drone do NEST e infraestruturas envolventes" onLoad={() => setPhotoUnavailable(false)} onError={() => setPhotoUnavailable(true)} className="absolute inset-0 size-full object-cover opacity-95" />
+    <div ref={stageRef} onPointerMove={updateDragging} onPointerUp={finishDrag} onPointerCancel={finishDrag} className={`relative aspect-[3/1] min-h-[260px] overflow-hidden bg-slate-950 sm:min-h-0 ${adjusting ? "touch-none select-none" : ""}`}>
+        <img src={droneImageUrl} alt="Vista aérea de drone do NEST e infraestruturas envolventes" onLoad={() => setPhotoUnavailable(false)} onError={() => setPhotoUnavailable(true)} className="absolute inset-0 size-full object-cover object-center opacity-95" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-slate-950/10" />
         <div style={{ clipPath: futureAreaClip(draftFutureArea) }} className="absolute inset-0 border border-fuchsia-950/80 bg-fuchsia-800/70 shadow-[inset_0_0_80px_rgba(112,26,117,0.4)]">
           <div className="absolute inset-0 opacity-35 [background-image:repeating-linear-gradient(135deg,rgba(255,255,255,0.2)_0_1px,transparent_1px_11px)]" />

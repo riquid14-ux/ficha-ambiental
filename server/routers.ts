@@ -200,11 +200,12 @@ function getUserDisplayName(user: any) {
 
 const INFRASTRUCTURE_POINT_STATUSES = ["operacional", "planeamento", "manutencao", "a_validar"] as const;
 const INFRASTRUCTURE_SYSTEM_TYPES = ["energia", "hall_ti", "arrefecimento", "agua_mar", "infraestrutura", "futuro"] as const;
+export const DEFAULT_INFRASTRUCTURE_FUTURE_AREA = [{ xPercent: 0, yPercent: 76 }, { xPercent: 64, yPercent: 51 }, { xPercent: 70, yPercent: 62 }, { xPercent: 82, yPercent: 76 }, { xPercent: 70, yPercent: 100 }, { xPercent: 0, yPercent: 100 }] as const;
 
 export const INFRASTRUCTURE_REFERENCE_POINTS = [
-  { title: "Ponto de infraestrutura 01", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 41, yPercent: 37, description: "Marcador amarelo de referência. Configure o título, dados, gráfico, documentos e nota técnica na Administração.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação fornecida; confirme a infraestrutura em campo.", isFuture: false, sortOrder: 10 },
-  { title: "Ponto de infraestrutura 02", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 46, yPercent: 30, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação fornecida; pode ser reposicionada.", isFuture: false, sortOrder: 20 },
-  { title: "Ponto de infraestrutura 03", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 50, yPercent: 41, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação fornecida; pode ser reposicionada.", isFuture: false, sortOrder: 30 },
+  { title: "Ponto de infraestrutura 01", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 41, yPercent: 37, description: "Marcador amarelo de referência. Configure o título, dados, gráfico, documentos e nota técnica na Administração.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação aprovada; confirme a infraestrutura em campo.", isFuture: false, sortOrder: 10 },
+  { title: "Ponto de infraestrutura 02", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 46, yPercent: 30, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação aprovada; pode ser reposicionada.", isFuture: false, sortOrder: 20 },
+  { title: "Ponto de infraestrutura 03", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 50, yPercent: 41, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação aprovada; pode ser reposicionada.", isFuture: false, sortOrder: 30 },
   { title: "Ponto de infraestrutura 04", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 69, yPercent: 55, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 40 },
   { title: "Ponto de infraestrutura 05", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 72, yPercent: 51, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 50 },
   { title: "Ponto de infraestrutura 06", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 72, yPercent: 55, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 60 },
@@ -215,19 +216,80 @@ export const INFRASTRUCTURE_REFERENCE_POINTS = [
   { title: "Ponto de infraestrutura 11", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 82, yPercent: 55, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 110 },
   { title: "Ponto de infraestrutura 12", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 87, yPercent: 56, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 120 },
   { title: "Ponto de infraestrutura 13", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 88, yPercent: 60, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Confirme a infraestrutura e associe métricas só depois de validação técnica.", isFuture: false, sortOrder: 130 },
-  { title: "Ponto de infraestrutura 14", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 97, yPercent: 34, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação fornecida; pode ser reposicionada.", isFuture: false, sortOrder: 140 },
+  { title: "Ponto de infraestrutura 14", subtitle: "A identificar", systemType: "infraestrutura", status: "a_validar", xPercent: 97, yPercent: 34, description: "Marcador amarelo de referência. Configure o conteúdo técnico aprovado para este local.", metricCodes: [], chartMetricCode: null, technicalNote: "Posição inicial baseada na marcação aprovada; pode ser reposicionada.", isFuture: false, sortOrder: 140 },
   { title: "Edifícios futuros", subtitle: "Planeamento", systemType: "futuro", status: "planeamento", xPercent: 15, yPercent: 75, description: "Área reservada para edifícios futuros. Não representa um alerta, risco ou não conformidade.", metricCodes: [], chartMetricCode: null, technicalNote: "Defina o âmbito, dados e documentação apenas quando existir informação aprovada.", isFuture: true, sortOrder: 150 },
 ] as const;
 
 export function parseInfrastructurePoint(row: any) {
   let metricCodes: string[] = [];
+  let technicalData: Array<{ label: string; value: string; unit: string }> = [];
+  let invoiceTypes: string[] = [];
+  let chartData: { label: string; series: Array<{ key: string; label: string }>; rows: Array<Record<string, string | number>> } | null = null;
   try {
     const parsed = JSON.parse(row.metricCodesJson || "[]");
     if (Array.isArray(parsed)) metricCodes = parsed.filter((item): item is string => typeof item === "string" && /^[a-z0-9_]{1,100}$/i.test(item)).slice(0, 10);
   } catch {
     // Um registo antigo ou corrompido não pode quebrar a visualização pública.
   }
-  return { ...row, xPercent: Number(row.xPercent), yPercent: Number(row.yPercent), isFuture: Boolean(row.isFuture), metricCodes };
+  try {
+    const parsed = JSON.parse(row.technicalDataJson || "[]");
+    if (Array.isArray(parsed)) technicalData = parsed.filter((item): item is { label: string; value: string; unit: string } => typeof item?.label === "string" && typeof item?.value === "string" && typeof item?.unit === "string").map(item => ({ label: item.label.slice(0, 80), value: item.value.slice(0, 160), unit: item.unit.slice(0, 40) })).slice(0, 16);
+  } catch { /* Mantém o cartão funcional se metadados antigos forem inválidos. */ }
+  try {
+    const parsed = JSON.parse(row.invoiceTypesJson || "[]");
+    if (Array.isArray(parsed)) invoiceTypes = parsed.filter((item): item is string => ["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"].includes(item)).slice(0, 6);
+  } catch { /* Mantém o cartão funcional se a ligação financeira for inválida. */ }
+  try {
+    const parsed = JSON.parse(row.chartDataJson || "null");
+    if (parsed && typeof parsed.label === "string" && Array.isArray(parsed.series) && Array.isArray(parsed.rows)) chartData = { label: parsed.label.slice(0, 100), series: parsed.series.filter((item: any) => typeof item?.key === "string" && typeof item?.label === "string").slice(0, 3).map((item: any) => ({ key: item.key.slice(0, 60), label: item.label.slice(0, 80) })), rows: parsed.rows.filter((item: any) => item && typeof item === "object").slice(0, 48) };
+  } catch { /* Um gráfico inválido não pode impedir a leitura dos restantes dados. */ }
+  return { ...row, xPercent: Number(row.xPercent), yPercent: Number(row.yPercent), isFuture: Boolean(row.isFuture), metricCodes, technicalData, invoiceTypes, chartData };
+}
+
+export function parseInfrastructureFutureArea(value: unknown) {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!Array.isArray(parsed) || parsed.length < 3 || parsed.length > 8) return DEFAULT_INFRASTRUCTURE_FUTURE_AREA;
+    const points = parsed.filter((item): item is { xPercent: number; yPercent: number } => Number.isInteger(item?.xPercent) && Number.isInteger(item?.yPercent) && item.xPercent >= 0 && item.xPercent <= 100 && item.yPercent >= 0 && item.yPercent <= 100);
+    return points.length === parsed.length ? points : DEFAULT_INFRASTRUCTURE_FUTURE_AREA;
+  } catch { return DEFAULT_INFRASTRUCTURE_FUTURE_AREA; }
+}
+
+const infrastructureTechnicalDatum = z.object({ label: z.string().trim().min(1).max(80), value: z.string().trim().min(1).max(160), unit: z.string().trim().max(40) });
+const infrastructureInvoiceTypes = ["electricidade", "agua_potavel", "agua_industrial", "hvo", "gasoleo", "outro"] as const;
+const infrastructureMapCoordinate = z.object({ xPercent: z.number().int().min(0).max(100), yPercent: z.number().int().min(0).max(100) });
+
+export function extractInfrastructureChart(workbook: ExcelJS.Workbook) {
+  const sheet = workbook.worksheets.find(item => item.actualRowCount >= 2 && item.actualColumnCount >= 2);
+  if (!sheet) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel deve ter uma folha com cabeçalho e pelo menos uma linha de dados." });
+  const asText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
+  const asNumber = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const raw = asText(value).replace(/[^0-9,.-]/g, "");
+    const text = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+    const parsed = Number(text);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const headers = sheet.getRow(1).values as unknown[];
+  const labelColumn = headers.findIndex((value, index) => index > 0 && asText(value).length > 0);
+  if (labelColumn < 1) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel deve começar com uma coluna de rótulos." });
+  const numericColumns = headers.map((value, index) => ({ index, label: asText(value) })).filter(item => item.index > labelColumn && item.label).slice(0, 3);
+  if (!numericColumns.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel deve incluir pelo menos uma coluna numérica depois do rótulo." });
+  const rows: Array<Record<string, string | number>> = [];
+  for (let rowIndex = 2; rowIndex <= Math.min(sheet.actualRowCount, 49); rowIndex += 1) {
+    const row = sheet.getRow(rowIndex);
+    const label = asText(row.getCell(labelColumn).value);
+    if (!label) continue;
+    const item: Record<string, string | number> = { label: label.slice(0, 80) };
+    let hasValue = false;
+    for (const column of numericColumns) {
+      const value = asNumber(row.getCell(column.index).value);
+      if (value !== null) { item[`series_${column.index}`] = value; hasValue = true; }
+    }
+    if (hasValue) rows.push(item);
+  }
+  if (!rows.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Não foram encontrados valores numéricos válidos no Excel." });
+  return { label: asText(headers[labelColumn]).slice(0, 100), series: numericColumns.map(column => ({ key: `series_${column.index}`, label: column.label.slice(0, 80) })), rows };
 }
 
 const infrastructurePointInput = z.object({
@@ -244,6 +306,8 @@ const infrastructurePointInput = z.object({
   documentTitle: z.string().trim().max(255).nullable().optional(),
   documentUrl: z.string().url().max(1000).nullable().optional(),
   technicalNote: z.string().trim().max(5000).nullable().optional(),
+  technicalData: z.array(infrastructureTechnicalDatum).max(16).default([]),
+  invoiceTypes: z.array(z.enum(infrastructureInvoiceTypes)).max(6).default([]),
   isFuture: z.boolean(),
   sortOrder: z.number().int().min(0).max(10_000),
 });
@@ -4556,8 +4620,37 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const result = await database.execute(sql`SELECT id, title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, isFuture, sortOrder, updatedAt FROM operation_infrastructure_points WHERE projectId = ${input.projectId} ORDER BY sortOrder ASC, id ASC`);
+        const result = await database.execute(sql`SELECT id, title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, isFuture, sortOrder, updatedAt FROM operation_infrastructure_points WHERE projectId = ${input.projectId} ORDER BY sortOrder ASC, id ASC`);
         return ((result as any)[0] || []).map(parseInfrastructurePoint);
+      }),
+    infrastructureMapLayout: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT infrastructureFutureAreaJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+        return { futureArea: parseInfrastructureFutureArea((result as any)[0]?.[0]?.infrastructureFutureAreaJson) };
+      }),
+    updateInfrastructureMapLayout: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), markers: z.array(z.object({ id: z.number().int().positive(), ...infrastructureMapCoordinate.shape })).min(1).max(50), futureArea: z.array(infrastructureMapCoordinate).min(3).max(8) }).superRefine((input, issue) => {
+        if (new Set(input.markers.map(marker => marker.id)).size !== input.markers.length) issue.addIssue({ code: "custom", message: "Cada marcador só pode aparecer uma vez.", path: ["markers"] });
+      }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.transaction(async (tx: any) => {
+          const existingResult = await tx.execute(sql`SELECT id, xPercent, yPercent FROM operation_infrastructure_points WHERE projectId = ${input.projectId} AND isFuture = false ORDER BY id ASC`);
+          const existing = (existingResult as any)[0] || [];
+          const existingIds = new Set(existing.map((item: any) => Number(item.id)));
+          if (input.markers.some(marker => !existingIds.has(marker.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Um ou mais marcadores não pertencem a este projeto." });
+          const previousSettings = await tx.execute(sql`SELECT infrastructureFutureAreaJson FROM operation_settings WHERE projectId = ${input.projectId} LIMIT 1`);
+          for (const marker of input.markers) await tx.execute(sql`UPDATE operation_infrastructure_points SET xPercent = ${marker.xPercent}, yPercent = ${marker.yPercent}, updatedBy = ${ctx.user.id} WHERE id = ${marker.id} AND projectId = ${input.projectId}`);
+          await tx.execute(sql`INSERT INTO operation_settings (projectId, infrastructureFutureAreaJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(input.futureArea)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE infrastructureFutureAreaJson = VALUES(infrastructureFutureAreaJson), updatedBy = VALUES(updatedBy)`);
+          return { previousMarkers: existing, previousFutureArea: (previousSettings as any)[0]?.[0]?.infrastructureFutureAreaJson || null };
+        });
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_map_layout_update", "operation_infrastructure", input.projectId, JSON.stringify({ markers: result.previousMarkers, futureArea: result.previousFutureArea }), JSON.stringify({ markers: input.markers, futureArea: input.futureArea }));
+        return { success: true };
       }),
     seedInfrastructurePoints: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
@@ -4611,7 +4704,8 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const payload = { ...input, metricCodesJson: JSON.stringify(Array.from(new Set(input.metricCodes))), updatedBy: ctx.user.id, createdBy: ctx.user.id };
+        const { metricCodes, technicalData, invoiceTypes, ...point } = input;
+        const payload = { ...point, metricCodesJson: JSON.stringify(Array.from(new Set(metricCodes))), technicalDataJson: JSON.stringify(technicalData), invoiceTypesJson: JSON.stringify(Array.from(new Set(invoiceTypes))), updatedBy: ctx.user.id, createdBy: ctx.user.id };
         const created = await database.insert(schema.operationInfrastructurePoints).values(payload as any);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_create", "operation_infrastructure", input.projectId, null, JSON.stringify({ ...input, documentUrl: input.documentUrl ? "configured" : null }));
         return { success: true, id: Number((created as any)[0]?.insertId || 0) };
@@ -4622,14 +4716,38 @@ export const appRouter = router({
         assertAdminOnly(ctx.user);
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const previousResult = await database.execute(sql`SELECT title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, isFuture, sortOrder FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        const previousResult = await database.execute(sql`SELECT title, subtitle, systemType, status, xPercent, yPercent, description, metricCodesJson, chartMetricCode, documentTitle, documentUrl, technicalNote, technicalDataJson, invoiceTypesJson, chartDataJson, chartFileName, isFuture, sortOrder FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
         const previous = (previousResult as any)[0]?.[0];
         if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
         await database.execute(sql`
-          UPDATE operation_infrastructure_points SET title = ${input.title}, subtitle = ${input.subtitle || null}, systemType = ${input.systemType}, status = ${input.status}, xPercent = ${input.xPercent}, yPercent = ${input.yPercent}, description = ${input.description || null}, metricCodesJson = ${JSON.stringify(Array.from(new Set(input.metricCodes)))}, chartMetricCode = ${input.chartMetricCode || null}, documentTitle = ${input.documentTitle || null}, documentUrl = ${input.documentUrl || null}, technicalNote = ${input.technicalNote || null}, isFuture = ${input.isFuture}, sortOrder = ${input.sortOrder}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}
+          UPDATE operation_infrastructure_points SET title = ${input.title}, subtitle = ${input.subtitle || null}, systemType = ${input.systemType}, status = ${input.status}, xPercent = ${input.xPercent}, yPercent = ${input.yPercent}, description = ${input.description || null}, metricCodesJson = ${JSON.stringify(Array.from(new Set(input.metricCodes)))}, chartMetricCode = ${input.chartMetricCode || null}, documentTitle = ${input.documentTitle || null}, documentUrl = ${input.documentUrl || null}, technicalNote = ${input.technicalNote || null}, technicalDataJson = ${JSON.stringify(input.technicalData)}, invoiceTypesJson = ${JSON.stringify(Array.from(new Set(input.invoiceTypes)))}, isFuture = ${input.isFuture}, sortOrder = ${input.sortOrder}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}
         `);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_update", "operation_infrastructure", input.id, JSON.stringify(previous), JSON.stringify({ ...input, projectId: undefined, documentUrl: input.documentUrl ? "configured" : null }));
         return { success: true };
+      }),
+    uploadInfrastructureChart: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive(), filename: z.string().min(1).max(255), mimeType: z.literal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), data: z.string().min(8) }))
+      .mutation(async ({ ctx, input }) => {
+        assertAdminOnly(ctx.user);
+        await assertOperationAccess(ctx.user, input.projectId);
+        if (!input.filename.toLowerCase().endsWith(".xlsx") || /[\\/\r\n\0]/.test(input.filename)) throw new TRPCError({ code: "BAD_REQUEST", message: "Indique um Excel (.xlsx) com nome de ficheiro válido." });
+        if (!/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O conteúdo do Excel é inválido." });
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel do gráfico deve ter no máximo 5 MB." });
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "operation-infrastructure-chart");
+        if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: `Ficheiro rejeitado por segurança: ${sanitization.threats[0] || "ameaça não identificada"}.` });
+        const workbook = new ExcelJS.Workbook();
+        try { await workbook.xlsx.load(buffer as any); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "O Excel do gráfico não é válido." }); }
+        const chart = extractInfrastructureChart(workbook);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const existingResult = await database.execute(sql`SELECT chartFileName FROM operation_infrastructure_points WHERE id = ${input.id} AND projectId = ${input.projectId} LIMIT 1`);
+        if (!(existingResult as any)[0]?.[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Ponto de infraestrutura não encontrado." });
+        const safeFilename = input.filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 180);
+        const stored = await storagePut(`operation/${input.projectId}/infrastructure/${input.id}/${Date.now()}-${safeFilename}`, buffer, input.mimeType);
+        await database.execute(sql`UPDATE operation_infrastructure_points SET chartDataJson = ${JSON.stringify(chart)}, chartFileKey = ${stored.key}, chartFileUrl = ${stored.url}, chartFileName = ${input.filename}, updatedBy = ${ctx.user.id} WHERE id = ${input.id} AND projectId = ${input.projectId}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_infrastructure_chart_upload", "operation_infrastructure", input.id, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, rows: chart.rows.length, series: chart.series.map(item => item.label) }));
+        return { success: true, filename: input.filename, rows: chart.rows.length, series: chart.series.map(item => item.label) };
       }),
     deleteInfrastructurePoint: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive(), id: z.number().int().positive() }))

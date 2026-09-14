@@ -330,6 +330,27 @@
       "when": 1789379146677,
       "tag": "0046_dizzy_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1789382968640,
+      "tag": "0047_careless_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1789383051526,
+      "tag": "0048_steady_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1789383732969,
+      "tag": "0049_redundant_boom_boom",
+      "breakpoints": true
     }
   ]
 }

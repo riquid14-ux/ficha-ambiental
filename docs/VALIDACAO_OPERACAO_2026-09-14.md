@@ -37,3 +37,7 @@ Foi substituído o redirecionamento direto do armazenamento por uma rota interna
 A superfície interativa foi limitada ao rácio visual `3:1`, igual ao enquadramento de decisão utilizado no cockpit. Desta forma, a imagem, os marcadores posicionados em percentagem e os vértices da área futura partilham a mesma superfície de referência e redimensionam-se de forma proporcional quando a janela muda de largura.
 
 Foi configurada a simbologia de leitura inicial: água nos pontos 01, 02, 03, 08 e 14; operação humana nos pontos 06 e 09; energia no ponto 04; arrefecimento nos pontos 05, 07 e 11; e salas de servidores nos pontos 10, 12 e 13. A atualização preservou as coordenadas, os conteúdos técnicos, os gráficos Excel e as ligações financeiras existentes, e ficou registada no trilho de auditoria.
+
+## Reposição controlada da área de edifícios futuros
+
+Em 14-09-2026, a geometria violeta persistida foi reposta à referência padrão do cockpit depois de uma alteração visual indevida. Esta reposição anulou somente o polígono de planeamento; os catorze marcadores, ícones, posições, conteúdos técnicos e associações mantiveram-se inalterados. O cockpit SIN01 voltou a apresentar a orientação superior numa única linha e sem o modo temporário de arrasto exposto.

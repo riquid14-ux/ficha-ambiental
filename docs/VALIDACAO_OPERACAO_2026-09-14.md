@@ -9,3 +9,9 @@ O editor permite alterar, para cada marcador, título, subtítulo, sistema, esta
 No cockpit, foram confirmados os catorze marcadores amarelos persistidos e a camada **Edifícios futuros · planeamento**. O botão **Simular futuro** passou a selecionar imediatamente o separador **Previsões e cenários** e abrir o formulário de novo cenário, mantendo os cenários separados do histórico medido.
 
 Por fim, a roldana **Fontes e cálculos** foi confirmada com ligação direta a Administração > Operação > Fontes e cálculos. A secção distingue relatórios operacionais/BMS, água medida, faturas e parâmetros aprovados, e torna explícitas as regras atuais de WUE, CUE, previsão e limites. As fórmulas apresentadas refletem a lógica implementada e não permitem que parâmetros administrativos substituam leituras medidas.
+
+## Correção visual da fotografia
+
+A referência anterior da fotografia foi republicada no armazenamento web do projeto e a nova URL devolve `image/webp`. O dashboard foi simplificado para uma única área visual: a lista lateral longa de pontos foi removida, permanecendo apenas os marcadores interativos sobre a fotografia e uma instrução curta de utilização.
+
+Na sessão administrativa em SIN01 — NEST, a imagem foi apresentada corretamente com os catorze marcadores amarelos, a zona violeta de edifícios futuros e sem lista lateral. A interação mantém-se diretamente nos pontos sobre a fotografia.

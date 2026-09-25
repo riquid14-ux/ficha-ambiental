@@ -251,7 +251,7 @@ export default function Dashboard() {
 
         {/* Brand hero image */}
         <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-800 via-teal-700 to-slate-800">
-          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">{t("Plataforma de Gestão Ambiental — Start Campus")}</p>
           </div>

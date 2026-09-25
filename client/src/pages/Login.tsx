@@ -169,7 +169,7 @@ export default function Login() {
       </div>
       {/* Left panel - brand image (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative border-r border-border/50">
-        <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
+        <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-transparent flex flex-col justify-end p-10">
           <p className="stand-kicker text-emerald-200">Start Campus · Sines</p>
           <h2 className="mt-3 text-white text-4xl font-semibold tracking-[-0.05em]">STAND</h2>

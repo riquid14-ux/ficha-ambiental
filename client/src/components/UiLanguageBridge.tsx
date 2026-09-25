@@ -7,7 +7,11 @@ type TranslatableAttribute = typeof translatableAttributes[number];
 
 function translateLiteral(value: string, language: "pt" | "en") {
   if (language === "pt") return value;
-  return uiLiteralTranslations[value] || translations[value]?.en || value;
+  // JSX whitespace is often split across text nodes. The catalogue stores a
+  // compact representation, so consult that canonical key before leaving text
+  // in Portuguese in the English experience.
+  const compact = value.replace(/\s+/g, " ").trim();
+  return uiLiteralTranslations[value] || translations[value]?.en || uiLiteralTranslations[compact] || translations[compact]?.en || value;
 }
 
 /**

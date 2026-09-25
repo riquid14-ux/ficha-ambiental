@@ -14,9 +14,9 @@ export type StandPageHeaderProps = {
 };
 
 const toneClasses = {
-  standard: "from-card via-card to-emerald-50/70 dark:to-emerald-950/20",
-  operations: "from-slate-950 via-emerald-950 to-teal-950 text-white border-emerald-800/60",
-  governance: "from-card via-card to-sky-50/70 dark:to-sky-950/20",
+  standard: "border-border bg-card",
+  operations: "ops-surface",
+  governance: "border-border bg-card",
 };
 
 export function StandPageHeader({
@@ -31,8 +31,8 @@ export function StandPageHeader({
   const isOperations = tone === "operations";
 
   return (
-    <section className={`stand-page-header relative isolate overflow-hidden border bg-gradient-to-br ${toneClasses[tone]}`}>
-      <div className={`pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full blur-3xl ${isOperations ? "bg-emerald-400/20" : "bg-emerald-500/10"}`} />
+    <section className={`stand-page-header relative isolate overflow-hidden ${toneClasses[tone]}`}>
+      {!isOperations && <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary/55" />}
       <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 max-w-3xl">
           {eyebrow && <p className={`stand-kicker ${isOperations ? "text-emerald-200" : "text-primary"}`}>{eyebrow}</p>}

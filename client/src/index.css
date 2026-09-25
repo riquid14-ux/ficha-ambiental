@@ -195,3 +195,42 @@ main { animation: stand-rise 0.18s var(--ease-out); }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--muted-foreground) 55%, transparent); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+
+/* Premium STAND system — semantic status palette and mission-control surfaces. */
+:root {
+  --ops-success: oklch(0.58 0.13 165);
+  --ops-warning: oklch(0.68 0.15 75);
+  --ops-critical: oklch(0.58 0.19 25);
+  --ops-info: oklch(0.55 0.09 230);
+  --ops-bg: oklch(0.16 0.014 235);
+  --ops-bg-raised: oklch(0.205 0.016 235);
+  --ops-line: oklch(1 0 0 / 0.08);
+  --ops-glow: oklch(0.74 0.135 165 / 0.35);
+  --elevation-ops: 0 1px 0 var(--ops-line) inset, 0 20px 48px -12px oklch(0 0 0 / 0.55);
+}
+.dark {
+  --ops-success: oklch(0.72 0.14 155);
+  --ops-warning: oklch(0.76 0.15 75);
+  --ops-critical: oklch(0.7 0.17 25);
+  --ops-info: oklch(0.72 0.1 230);
+  --ops-bg: oklch(0.14 0.016 235);
+  --ops-bg-raised: oklch(0.19 0.018 235);
+  --ops-line: oklch(1 0 0 / 0.08);
+  --ops-glow: oklch(0.74 0.135 165 / 0.4);
+}
+.ops-surface { position: relative; isolation: isolate; overflow: hidden; border-radius: 1.5rem; background: var(--ops-bg); color: oklch(0.97 0.006 235); box-shadow: var(--elevation-ops); }
+.ops-surface::before { content: ""; position: absolute; inset: 0; z-index: -2; background-image: linear-gradient(var(--ops-line) 1px, transparent 1px), linear-gradient(90deg, var(--ops-line) 1px, transparent 1px); background-size: 28px 28px; mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 40%, transparent 85%); opacity: .6; }
+.ops-surface::after { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(circle at 85% 8%, oklch(0.74 0.135 165 / 0.22), transparent 42%), radial-gradient(circle at 8% 92%, oklch(0.55 0.09 230 / 0.18), transparent 46%); }
+.ops-hairline { border: 1px solid var(--ops-line); }
+.ops-chip { border: 1px solid var(--ops-line); background: oklch(1 0 0 / 0.06); backdrop-filter: blur(6px); border-radius: 0.75rem; }
+.ops-glow-dot { box-shadow: 0 0 0 3px oklch(0.74 0.135 165 / 0.14), 0 0 14px var(--ops-glow); }
+.ops-tabs { border: 1px solid color-mix(in oklch, var(--border) 88%, transparent); border-radius: 1rem; background: color-mix(in oklch, var(--surface-dashboard) 88%, transparent); }
+.ops-tabs [data-state="active"] { background: var(--primary) !important; color: var(--primary-foreground) !important; box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.18); }
+.data-figure { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1; letter-spacing: -0.02em; }
+.status-success { color: var(--ops-success); }.status-warning { color: var(--ops-warning); }.status-critical { color: var(--ops-critical); }.status-info { color: var(--ops-info); }
+.status-dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 999px; }
+.status-dot.success { background: var(--ops-success); box-shadow: 0 0 10px color-mix(in oklch, var(--ops-success) 70%, transparent); }.status-dot.warning { background: var(--ops-warning); box-shadow: 0 0 10px color-mix(in oklch, var(--ops-warning) 70%, transparent); }.status-dot.critical { background: var(--ops-critical); box-shadow: 0 0 10px color-mix(in oklch, var(--ops-critical) 70%, transparent); }.status-dot.info { background: var(--ops-info); box-shadow: 0 0 10px color-mix(in oklch, var(--ops-info) 70%, transparent); }
+.blueprint-grid { position: relative; }.blueprint-grid::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(var(--ops-line) 1px, transparent 1px), linear-gradient(90deg, var(--ops-line) 1px, transparent 1px); background-size: 22px 22px; opacity: 0.5; }
+.photo-grade { filter: saturate(0.92) contrast(1.05) brightness(0.97); }
+.photo-grade-frame { position: relative; overflow: hidden; }.photo-grade-frame::after { position: absolute; inset: 0; pointer-events: none; content: ""; background: linear-gradient(180deg, oklch(0.16 0.02 235 / 0) 55%, oklch(0.12 0.02 235 / 0.55) 100%), oklch(0.35 0.06 165 / 0.08); mix-blend-mode: multiply; }

@@ -1,4 +1,7 @@
 import AppLayout from "@/components/AppLayout";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandMetricCard } from "@/components/stand/StandMetricCard";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -273,92 +276,103 @@ export default function KPI() {
     });
   };
 
-  if (isAllProjects) return <AppLayout><div className="p-6 text-center text-muted-foreground">{t("Selecione um projeto individual para ver os KPI's.")}</div></AppLayout>;
+  if (isAllProjects) return <AppLayout><div className="mx-auto max-w-xl px-4 py-10"><Card className="rounded-2xl border-border/80 bg-card shadow-sm"><CardContent className="p-6 text-center text-sm leading-6 text-muted-foreground">{t("Selecione um projeto individual para ver os KPI's.")}</CardContent></Card></div></AppLayout>;
 
   // Current category for step form
   const currentCat = categories[formStep] || categories[0];
   const currentCatMetrics = manualMetrics.filter((m: any) => m.category === currentCat);
   const standardWaterMetrics = currentCat === "water" ? waterMetricGroups.operational : currentCatMetrics;
   const affluentWaterMetrics = currentCat === "water" ? waterMetricGroups.affluent : [];
-  const renderMetricCards = (metricList: any[]) => metricList.map((m: any) => (
-    <Card key={m.id} className={`transition-all ${formValues[m.id] ? "border-primary/40 bg-primary/5" : "hover:border-primary/20"}`}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium">{m.name}</p>
-          <Badge variant="outline" className="text-[10px]">{m.unit}</Badge>
-        </div>
-        <Input type="number" step="any" disabled={Boolean(currentSubmissionQuery.data && (currentSubmissionQuery.data as any).status !== "draft" && !editingSubmittedValues)} placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => { setFormValues({ ...formValues, [m.id]: e.target.value }); setIsFormDirty(true); }} className="text-lg h-10 font-mono" />
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{describeKpiValue(m, activeProject?.code, submittingCompanyName, formWeek, formYear)}</p>
-        {m.target && m.target !== "N/A" && <p className="text-[10px] text-muted-foreground mt-1">Meta: {m.target}</p>}
-      </CardContent>
-    </Card>
-  ));
+  const renderMetricCards = (metricList: any[]) => metricList.map((m: any) => {
+    const hasValue = Boolean(formValues[m.id]);
+    const isLocked = Boolean(currentSubmissionQuery.data && (currentSubmissionQuery.data as any).status !== "draft" && !editingSubmittedValues);
+    const descriptionId = `kpi-metric-${m.id}-description`;
+    return (
+      <Card key={m.id} className={`group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all duration-200 ${hasValue ? "border-primary/40 ring-1 ring-primary/10" : "border-border/80 hover:border-primary/30 hover:shadow-md"}`}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-5 text-foreground">{m.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{CAT_LABELS[m.category] || m.category}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {hasValue && <StandStatusBadge label="Preenchido" tone="success" />}
+              <Badge variant="outline" className="border-border bg-muted/40 px-2 py-1 text-xs font-semibold text-foreground">{m.unit}</Badge>
+            </div>
+          </div>
+          <Input aria-label={`Valor para ${m.name} em ${m.unit}`} aria-describedby={descriptionId} type="number" step="any" disabled={isLocked} placeholder={`Valor em ${m.unit}`} value={formValues[m.id] || ""} onChange={e => { setFormValues({ ...formValues, [m.id]: e.target.value }); setIsFormDirty(true); }} className="h-11 rounded-xl border-border bg-background px-3 font-mono text-lg font-semibold tabular-nums shadow-inner focus-visible:ring-primary" />
+          <p id={descriptionId} className="mt-3 text-xs leading-5 text-muted-foreground">{describeKpiValue(m, activeProject?.code, submittingCompanyName, formWeek, formYear)}</p>
+          {m.target && m.target !== "N/A" && <p className="mt-2 text-xs font-medium text-muted-foreground">Meta indicativa: <span className="text-foreground">{m.target}</span></p>}
+        </CardContent>
+      </Card>
+    );
+  });
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">KPI's</h1>
-            <p className="text-sm text-muted-foreground">Indicadores de sustentabilidade — {activeProject?.name}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportExcel}><Download className="w-4 h-4 mr-1" /> Exportar dados</Button>
-            <Button variant="outline" size="sm" onClick={downloadKpiImportTemplate}><FileSpreadsheet className="w-4 h-4 mr-1" /> Modelo Excel</Button>
-            <Select value={importMode} onValueChange={value => setImportMode(value as "draft" | "submit")}><SelectTrigger className="h-9 w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Importar rascunhos</SelectItem><SelectItem value="submit">Importar histórico</SelectItem></SelectContent></Select>
+        <StandPageHeader
+          eyebrow="CONTROLO DE DESEMPENHO"
+          title="KPI's"
+          description={`Indicadores de sustentabilidade — ${activeProject?.name || "—"}`}
+          context={activeProject?.code || activeProject?.name || "Projeto"}
+          tone="operations"
+          actions={<>
+            <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={handleExportExcel}><Download className="mr-1.5 h-4 w-4" /> Exportar dados</Button>
+            <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={downloadKpiImportTemplate}><FileSpreadsheet className="mr-1.5 h-4 w-4" /> Modelo Excel</Button>
+            <Select value={importMode} onValueChange={value => setImportMode(value as "draft" | "submit")}><SelectTrigger aria-label="Modo de importação" className="h-9 w-40 border-white/15 bg-white/10 text-xs text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="draft">Importar rascunhos</SelectItem><SelectItem value="submit">Importar histórico</SelectItem></SelectContent></Select>
             <input ref={importInputRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={event => importKpiExcel(event.target.files?.[0])} />
-            <Button variant="outline" size="sm" disabled={importExcelMutation.isPending || !effectiveCompanyId} onClick={() => importInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" /> {importExcelMutation.isPending ? "A importar..." : "Importar Excel"}</Button>
-            {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" /> {t("Definições")}</Button>}
-          </div>
-        </div>
+            <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" disabled={importExcelMutation.isPending || !effectiveCompanyId} onClick={() => importInputRef.current?.click()}><Upload className="mr-1.5 h-4 w-4" /> {importExcelMutation.isPending ? "A importar..." : "Importar Excel"}</Button>
+            {user?.role === "admin" && <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setShowSettings(!showSettings)}><Settings className="mr-1.5 h-4 w-4" /> {t("Definições")}</Button>}
+          </>}
+        />
 
-        <Card className="border-emerald-100 bg-emerald-50/40">
-          <CardContent className="flex flex-wrap items-end gap-3 p-4">
-            <div className="min-w-44"><p className="text-sm font-semibold text-emerald-950">Período de análise e relatório</p><p className="text-xs text-emerald-800">Os dashboards e a exportação usam exactamente este intervalo.</p></div>
-            <div><label className="mb-1 block text-xs font-medium">Ano</label><Select value={String(selectedYear)} onValueChange={value => setSelectedYear(Number(value))}><SelectTrigger className="h-9 w-24 bg-background"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select></div>
-            <div><label className="mb-1 block text-xs font-medium">Semana inicial</label><Select value={reportStartWeek} onValueChange={setReportStartWeek}><SelectTrigger className="h-9 w-28 bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
-            <div><label className="mb-1 block text-xs font-medium">Semana final</label><Select value={reportEndWeek} onValueChange={setReportEndWeek}><SelectTrigger className="h-9 w-28 bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
-            <Badge variant="outline" className="mb-1 h-9 border-emerald-300 bg-white px-3 text-emerald-900">{reportPeriodLabel}</Badge>
-          </CardContent>
-        </Card>
+        <section aria-labelledby="report-period-title" className="rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0 max-w-md"><p className="stand-kicker text-primary">ÂMBITO DO RELATÓRIO</p><h2 id="report-period-title" className="mt-1 text-base font-semibold text-foreground">Período de análise e relatório</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Os dashboards e a exportação usam exactamente este intervalo.</p></div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div><label htmlFor="kpi-report-year" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Ano</label><Select value={String(selectedYear)} onValueChange={value => setSelectedYear(Number(value))}><SelectTrigger id="kpi-report-year" className="h-10 w-24 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}</SelectContent></Select></div>
+              <div><label htmlFor="kpi-report-start-week" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Semana inicial</label><Select value={reportStartWeek} onValueChange={setReportStartWeek}><SelectTrigger id="kpi-report-start-week" className="h-10 w-32 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
+              <div><label htmlFor="kpi-report-end-week" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Semana final</label><Select value={reportEndWeek} onValueChange={setReportEndWeek}><SelectTrigger id="kpi-report-end-week" className="h-10 w-32 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>Semana {index + 1}</SelectItem>)}</SelectContent></Select></div>
+              <StandStatusBadge label={reportPeriodLabel} tone="info" />
+            </div>
+          </div>
+        </section>
 
         {isPartner && (
-          <Card className="border-emerald-200 bg-emerald-50/60">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-emerald-900">Contributo parcial de KPI</p>
-              <p className="mt-1 text-xs text-emerald-800/80">
-                Está a submeter em nome de {partnerAccessQuery.data?.companyName || "empresa parceira"}. A EE {partnerAccessQuery.data?.parentCompanyName || "principal"} verá estes valores na matriz consolidada.
-              </p>
-            </CardContent>
-          </Card>
+          <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.045] p-4 dark:bg-emerald-500/10" aria-label="Contributo parcial de KPI">
+            <div className="flex items-start gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white"><Users className="h-4 w-4" /></div><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-foreground">Contributo parcial de KPI</p><StandStatusBadge label="Empresa parceira" tone="success" /></div><p className="mt-1 text-xs leading-5 text-muted-foreground">Está a submeter em nome de {partnerAccessQuery.data?.companyName || "empresa parceira"}. A EE {partnerAccessQuery.data?.parentCompanyName || "principal"} verá estes valores na matriz consolidada.</p></div></div>
+          </section>
         )}
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Card className="border-l-4 border-l-red-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Incidentes Ambientais")}</p><p className="text-xl font-bold text-red-600">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p></CardContent></Card>
-          <Card className="border-l-4 border-l-blue-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Água Construção")}</p><p className="text-xl font-bold text-blue-600">{formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L</p></CardContent></Card>
-          <Card className="border-l-4 border-l-amber-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Combustível Total")}</p><p className="text-xl font-bold text-amber-600">{formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
-          <Card className="border-l-4 border-l-green-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("HVO")}</p><p className="text-xl font-bold text-green-600">{formatNumber(totals[findMetric("emissions", "HVO")?.id || 0] || 0)} KgCO2e</p></CardContent></Card>
-          <Card className="border-l-4 border-l-purple-500"><CardContent className="p-3"><p className="text-[10px] text-muted-foreground">{t("Eletricidade")}</p><p className="text-xl font-bold text-purple-600">{formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh</p></CardContent></Card>
-        </div>
+        <section aria-label="Resumo de indicadores" className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="stand-kicker text-primary">LEITURA EXECUTIVA</p><h2 className="mt-1 text-base font-semibold text-foreground">Indicadores-chave do período</h2></div><p className="text-xs text-muted-foreground">{reportPeriodLabel}</p></div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <StandMetricCard label={t("Incidentes Ambientais")} value={totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0} detail={reportPeriodLabel} icon={AlertTriangle} tone="danger" />
+            <StandMetricCard label={t("Água Construção")} value={`${formatNumber(totals[findMetric("water", "Água de Construção")?.id || 0] || 0)} L`} detail={reportPeriodLabel} icon={Droplets} tone="info" />
+            <StandMetricCard label={t("Combustível Total")} value={`${formatNumber(totals[findMetric("emissions", "Consumo Total")?.id || 0] || 0)} KgCO2e`} detail={reportPeriodLabel} icon={Fuel} tone="warning" />
+            <StandMetricCard label={t("HVO")} value={`${formatNumber(totals[findMetric("emissions", "HVO")?.id || 0] || 0)} KgCO2e`} detail={reportPeriodLabel} icon={Leaf} tone="success" />
+            <StandMetricCard label={t("Eletricidade")} value={`${formatNumber(totals[findMetric("energy", "Eletricidade")?.id || 0] || 0)} kWh`} detail={reportPeriodLabel} icon={Zap} tone="brand" />
+          </div>
+        </section>
 
         {/* Settings */}
         {showSettings && user?.role === "admin" && (
-          <Card className="border-amber-200 bg-amber-50/50">
-            <CardHeader className="pb-2"><CardTitle className="text-sm"><Settings className="mr-1 inline h-4 w-4" />Configuração de métricas KPI</CardTitle><p className="text-xs text-muted-foreground">Crie métricas manuais como viaturas em obra, defina unidade, categoria, meta e posição. Todas as alterações ficam auditadas.</p></CardHeader>
+          <Card className="overflow-hidden rounded-2xl border-amber-500/25 bg-card shadow-sm">
+            <CardHeader className="border-b border-amber-500/15 bg-amber-500/[0.055] pb-4"><div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-amber-950"><Settings className="h-4 w-4" /></span><CardTitle className="text-base">Configuração de métricas KPI</CardTitle></div><p className="pt-1 text-xs leading-5 text-muted-foreground">Crie métricas manuais como viaturas em obra, defina unidade, categoria, meta e posição. Todas as alterações ficam auditadas.</p></CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid gap-1 max-h-40 overflow-y-auto text-xs">
+              <div className="grid max-h-48 gap-1.5 overflow-y-auto rounded-xl border border-border/70 bg-muted/20 p-2 text-xs">
                 {metrics.map((m: any) => (
-                  <div key={m.id} className="flex items-center gap-2 p-1 rounded border bg-background">
-                    <span className="flex-1 truncate">{m.name}</span><Badge variant="outline" className="text-[9px]">{m.unit}</Badge>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setEditingMetric(m)}><Pencil className="w-3 h-3" /></Button>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-red-500" onClick={() => { if (confirm("Remover?")) deleteMetricMutation.mutate({ id: m.id }); }}><Trash2 className="w-3 h-3" /></Button>
+                  <div key={m.id} className="flex items-center gap-2 rounded-lg border border-border/70 bg-background px-2 py-1.5">
+                    <span className="flex-1 truncate font-medium">{m.name}</span><Badge variant="outline" className="text-xs">{m.unit}</Badge>
+                    <Button aria-label={`Editar ${m.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingMetric(m)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button aria-label={`Remover ${m.name}`} variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { if (confirm("Remover?")) deleteMetricMutation.mutate({ id: m.id }); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 ))}
               </div>
-              <div className="flex flex-wrap gap-2"><Button size="sm" onClick={() => openNewMetric()}><Plus className="mr-1 h-3 w-3" /> Nova métrica</Button><Button size="sm" variant="outline" onClick={() => openNewMetric({ name: "Viaturas em obra", unit: "N.º", category: "transport" })}><Car className="mr-1 h-3 w-3" /> Pré-preencher: Viaturas em obra</Button></div>
+              <div className="flex flex-wrap gap-2"><Button size="sm" className="min-h-9" onClick={() => openNewMetric()}><Plus className="mr-1.5 h-3.5 w-3.5" /> Nova métrica</Button><Button size="sm" variant="outline" className="min-h-9" onClick={() => openNewMetric({ name: "Viaturas em obra", unit: "N.º", category: "transport" })}><Car className="mr-1.5 h-3.5 w-3.5" /> Pré-preencher: Viaturas em obra</Button></div>
               {editingMetric && (
-                <div className="space-y-3 rounded-lg border bg-background p-4 shadow-sm">
+                <div className="space-y-3 rounded-xl border border-border/80 bg-background p-4 shadow-sm">
                   <div className="flex items-center justify-between"><p className="text-sm font-semibold">{editingMetric.id ? "Editar métrica" : "Nova métrica KPI"}</p><Badge variant="outline">{editingMetric.inputType === "calculated" ? "Calculada" : "Manual"}</Badge></div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                     <label className="space-y-1 text-xs font-medium">Nome da métrica<Input value={editingMetric.name} onChange={e => setEditingMetric({ ...editingMetric, name: e.target.value })} className="text-sm" /></label>
@@ -369,27 +383,29 @@ export default function KPI() {
                     <label className="space-y-1 text-xs font-medium">Ordem de apresentação<Input type="number" min="0" max="999" value={editingMetric.sortOrder ?? 0} onChange={e => setEditingMetric({ ...editingMetric, sortOrder: e.target.value })} className="text-sm" /></label>
                   </div>
                   {editingMetric.inputType === "calculated" && <div className="grid gap-3 rounded-md border border-amber-200 bg-amber-50/50 p-3 md:grid-cols-2 lg:grid-cols-4"><label className="space-y-1 text-xs font-medium">Fórmula<Select value={editingMetric.formulaType || ""} onValueChange={value => setEditingMetric({ ...editingMetric, formulaType: value })}><SelectTrigger className="bg-background text-sm"><SelectValue placeholder="Seleccione" /></SelectTrigger><SelectContent><SelectItem value="fuel_to_co2">Combustível para CO₂</SelectItem><SelectItem value="sum_co2">Soma de CO₂</SelectItem></SelectContent></Select></label>{editingMetric.formulaType === "fuel_to_co2" && <label className="space-y-1 text-xs font-medium">Métrica de origem<Select value={editingMetric.formulaSourceMetricId ? String(editingMetric.formulaSourceMetricId) : ""} onValueChange={value => setEditingMetric({ ...editingMetric, formulaSourceMetricId: Number(value) })}><SelectTrigger className="bg-background text-sm"><SelectValue placeholder="Seleccione" /></SelectTrigger><SelectContent>{manualMetrics.map((metric: any) => <SelectItem key={metric.id} value={String(metric.id)}>{metric.name}</SelectItem>)}</SelectContent></Select></label>}<label className="space-y-1 text-xs font-medium">PCI<Input value={editingMetric.pci || ""} onChange={e => setEditingMetric({ ...editingMetric, pci: e.target.value })} className="bg-background text-sm" /></label><label className="space-y-1 text-xs font-medium">Factor de emissão<Input value={editingMetric.emissionFactor || ""} onChange={e => setEditingMetric({ ...editingMetric, emissionFactor: e.target.value })} className="bg-background text-sm" /></label><label className="space-y-1 text-xs font-medium">Densidade<Input value={editingMetric.density || ""} onChange={e => setEditingMetric({ ...editingMetric, density: e.target.value })} className="bg-background text-sm" /></label></div>}
-                  <div className="flex gap-2"><Button size="sm" onClick={saveMetric} disabled={upsertMetricMutation.isPending}>{upsertMetricMutation.isPending ? "A guardar..." : "Guardar métrica"}</Button><Button size="sm" variant="outline" onClick={() => setEditingMetric(null)}>Cancelar</Button></div>
+                  <div className="flex gap-2"><Button size="sm" className="min-h-9" onClick={saveMetric} disabled={upsertMetricMutation.isPending}>{upsertMetricMutation.isPending ? "A guardar..." : "Guardar métrica"}</Button><Button size="sm" variant="outline" className="min-h-9" onClick={() => setEditingMetric(null)}>Cancelar</Button></div>
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="overview">{t("Matriz")}</TabsTrigger>
-            <TabsTrigger value="submit">{t("Submeter")}</TabsTrigger>
-            {isAdminOrDO && <TabsTrigger value="dashboard">{t("Dashboard")}</TabsTrigger>}
-            {user?.role === "admin" && <TabsTrigger value="metas">{t("Metas")}</TabsTrigger>}
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <div className="overflow-x-auto rounded-2xl border border-border/80 bg-card p-1.5 shadow-sm">
+            <TabsList className="h-auto min-w-max gap-1 bg-transparent p-0">
+            <TabsTrigger value="overview" className="min-h-9 rounded-xl px-4 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">{t("Matriz")}</TabsTrigger>
+            <TabsTrigger value="submit" className="min-h-9 rounded-xl px-4 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">{t("Submeter")}</TabsTrigger>
+            {isAdminOrDO && <TabsTrigger value="dashboard" className="min-h-9 rounded-xl px-4 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">{t("Dashboard")}</TabsTrigger>}
+            {user?.role === "admin" && <TabsTrigger value="metas" className="min-h-9 rounded-xl px-4 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">{t("Metas")}</TabsTrigger>}
+            </TabsList>
+          </div>
 
           {/* Matrix */}
           <TabsContent value="overview">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{t("Matriz de Submissão")}</CardTitle></CardHeader><CardContent>
+            <Card className="overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm"><CardHeader className="border-b border-border/70 bg-muted/20 pb-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="stand-kicker text-primary">COBERTURA DE REPORTE</p><CardTitle className="mt-1 text-base">{t("Matriz de Submissão")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">Acompanhe a entrega consolidada por empresa e semana de reporte.</p></div><StandStatusBadge label={`${matrixWeeks.length} semanas visíveis`} tone="info" /></div></CardHeader><CardContent className="p-0">
               {matrixQuery.isLoading ? <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground"><Activity className="size-4 animate-spin" />A carregar submissões consolidadas...</div> : matrixQuery.isError ? <p className="py-4 text-center text-sm text-destructive">Não foi possível carregar a matriz de submissões.</p> : matrixWeeks.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">{ t("Sem submissões.") }</p> : (
-                <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-2">{t("Empresa")}</th>{matrixWeeks.map(w => <th key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
-                  <tr key={id} className="border-b hover:bg-muted/30"><td className="p-2 font-medium">{name}</td>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-2 text-center">{s ? <CheckCircle className="w-4 h-4 text-green-500 mx-auto" /> : <XCircle className="w-4 h-4 text-red-300 mx-auto" />}</td>; })}</tr>
+                <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-xs"><caption className="sr-only">{t("Matriz de Submissão")}</caption><thead className="bg-muted/35"><tr className="border-b border-border/70"><th scope="col" className="p-3 text-left font-semibold text-muted-foreground">{t("Empresa")}</th>{matrixWeeks.map(w => <th scope="col" key={`${w.weekYear}-${w.weekNumber}`} className="p-3 text-center font-semibold text-muted-foreground">S{w.weekNumber}</th>)}</tr></thead><tbody>{matrixCompanies.map(([id, name]) => (
+                  <tr key={id} className="border-b border-border/60 transition-colors hover:bg-primary/[0.035]"><th scope="row" className="p-3 text-left font-semibold text-foreground">{name}</th>{matrixWeeks.map(w => { const s = matrixData.find((x: any) => x.companyId === id && x.weekNumber === w.weekNumber && x.weekYear === w.weekYear); return <td key={`${w.weekYear}-${w.weekNumber}`} className="p-3 text-center">{s ? <><CheckCircle aria-hidden className="mx-auto h-4 w-4 text-emerald-600" /><span className="sr-only">Submetido</span></> : <><XCircle aria-hidden className="mx-auto h-4 w-4 text-rose-300 dark:text-rose-500" /><span className="sr-only">Sem submissão</span></>}</td>; })}</tr>
                 ))}</tbody></table></div>
               )}
             </CardContent></Card>
@@ -397,21 +413,24 @@ export default function KPI() {
 
           {/* Submit - Card-based step form */}
           <TabsContent value="submit">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div><label className="text-xs text-muted-foreground block mb-1">{t("Semana")}</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
-                  <div><label className="text-xs text-muted-foreground block mb-1">Ano</label><Select value={formYear} onValueChange={setFormYear}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
-                  {editableCompanies.length > 1 && <div><label className="text-xs text-muted-foreground block mb-1">Contributo de</label><Select value={String(effectiveCompanyId)} onValueChange={value => setSelectedContributionCompanyId(Number(value))}><SelectTrigger className="min-w-48"><SelectValue /></SelectTrigger><SelectContent>{editableCompanies.map(company => <SelectItem key={company.id} value={String(company.id)}>{company.shortName}{company.sourceType === "ee_partner" ? " · EEP" : " · EE"}</SelectItem>)}</SelectContent></Select></div>}
+            <Card className="overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm">
+              <CardHeader className="border-b border-border/70 bg-muted/20 pb-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div><p className="stand-kicker text-primary">RECOLHA SEMANAL</p><CardTitle className="mt-1 text-base">Submeter indicadores</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">Seleccione o período e a entidade antes de preencher os indicadores por categoria.</p></div>
+                  <div className="flex flex-wrap items-end gap-3">
+                  <div><label htmlFor="kpi-submit-week" className="mb-1.5 block text-xs font-semibold text-muted-foreground">{t("Semana")}</label><Select value={formWeek} onValueChange={setFormWeek}><SelectTrigger id="kpi-submit-week" className="h-10 w-32 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 53 }, (_, i) => <SelectItem key={i + 1} value={String(i + 1)}>Semana {i + 1}</SelectItem>)}</SelectContent></Select></div>
+                  <div><label htmlFor="kpi-submit-year" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Ano</label><Select value={formYear} onValueChange={setFormYear}><SelectTrigger id="kpi-submit-year" className="h-10 w-24 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
+                  {editableCompanies.length > 1 && <div><label htmlFor="kpi-submit-company" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Contributo de</label><Select value={String(effectiveCompanyId)} onValueChange={value => setSelectedContributionCompanyId(Number(value))}><SelectTrigger id="kpi-submit-company" className="h-10 min-w-48 rounded-xl bg-background text-sm"><SelectValue /></SelectTrigger><SelectContent>{editableCompanies.map(company => <SelectItem key={company.id} value={String(company.id)}>{company.shortName}{company.sourceType === "ee_partner" ? " · EEP" : " · EE"}</SelectItem>)}</SelectContent></Select></div>}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 bg-muted/50 px-3 py-1.5 rounded">{t("Período:")} <strong>{weekPeriod}</strong></p>
-                {existingSubmission && <div className={`mt-3 rounded-md border px-3 py-2 text-xs ${existingSubmission.status === "draft" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-sky-200 bg-sky-50 text-sky-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{existingSubmission.status === "draft" ? "Rascunho retomado" : "KPI já submetido"} · {submittingCompanyName} · S{existingSubmission.weekNumber}/{existingSubmission.weekYear}</span>{existingSubmission.status !== "draft" && !editingSubmittedValues && <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingSubmittedValues(true)}><Pencil className="mr-1 h-3 w-3" />Corrigir valores</Button>}</div>{existingSubmission.changes?.[0] && <p className="mt-1 flex items-center gap-1"><History className="h-3 w-3" />{existingSubmission.changes[0].summary}</p>}{editingSubmittedValues && <p className="mt-1 font-medium">Está a corrigir uma submissão. A alteração ficará anotada com o seu nome e semana.</p>}</div>}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-3 py-2.5"><p className="text-xs text-muted-foreground">{t("Período:")} <strong className="font-semibold text-foreground">{weekPeriod}</strong></p><StandStatusBadge label={draftStatus === "saved" ? "Rascunho guardado" : draftStatus === "saving" ? "A guardar" : "Em edição"} tone={draftStatus === "saved" ? "success" : draftStatus === "saving" ? "warning" : "neutral"} /></div>
+                {existingSubmission && <div className="mt-3 rounded-xl border border-border/70 bg-background px-3 py-3 text-xs"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex flex-wrap items-center gap-2"><StandStatusBadge label={existingSubmission.status === "draft" ? "Rascunho retomado" : "KPI já submetido"} tone={existingSubmission.status === "draft" ? "warning" : "info"} /><span className="font-medium text-foreground">{submittingCompanyName} · S{existingSubmission.weekNumber}/{existingSubmission.weekYear}</span></div>{existingSubmission.status !== "draft" && !editingSubmittedValues && <Button size="sm" variant="outline" className="min-h-8" onClick={() => setEditingSubmittedValues(true)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Corrigir valores</Button>}</div>{existingSubmission.changes?.[0] && <p className="mt-2 flex items-center gap-1.5 leading-5 text-muted-foreground"><History className="h-3.5 w-3.5" />{existingSubmission.changes[0].summary}</p>}{editingSubmittedValues && <p className="mt-2 font-medium leading-5 text-foreground">Está a corrigir uma submissão. A alteração ficará anotada com o seu nome e semana.</p>}</div>}
               </CardHeader>
               <CardContent>
                 {/* Step navigation */}
-                <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+                <div className="flex gap-2 overflow-x-auto border-b border-border/70 pb-3">
                   {categories.map((cat, idx) => (
-                    <Button key={cat} size="sm" variant={formStep === idx ? "default" : "outline"} onClick={() => setFormStep(idx)} className="text-xs whitespace-nowrap">
+                    <Button key={cat} size="sm" variant={formStep === idx ? "default" : "outline"} onClick={() => setFormStep(idx)} className="min-h-9 whitespace-nowrap rounded-xl text-xs font-semibold">
                       {CAT_ICONS[cat]} {CAT_LABELS[cat] || cat}
                     </Button>
                   ))}
@@ -420,34 +439,34 @@ export default function KPI() {
                 {/* Current category cards */}
                 <div className="grid gap-3 md:grid-cols-2">{renderMetricCards(standardWaterMetrics)}</div>
                 {affluentWaterMetrics.length > 0 && (
-                  <section className="mt-6 rounded-xl border border-cyan-200 bg-cyan-50/50 p-4">
-                    <div className="mb-3 flex items-start gap-2"><Droplets className="mt-0.5 size-4 text-cyan-700" /><div><h3 className="text-sm font-semibold text-cyan-950">Águas Afluentes</h3><p className="text-xs text-cyan-900/80">Registe separadamente as águas residuais e operações associadas ao período seleccionado.</p></div></div>
+                  <section className="mt-6 rounded-2xl border border-sky-500/20 bg-sky-500/[0.045] p-4 dark:bg-sky-500/10">
+                    <div className="mb-3 flex items-start gap-2"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-600 text-white"><Droplets className="h-4 w-4" /></span><div><h3 className="text-sm font-semibold text-foreground">Águas Afluentes</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Registe separadamente as águas residuais e operações associadas ao período seleccionado.</p></div></div>
                     <div className="grid gap-3 md:grid-cols-2">{renderMetricCards(affluentWaterMetrics)}</div>
                   </section>
                 )}
 
                 {/* Calculated values preview */}
                 {formStep === categories.length - 1 && calculatedMetrics.length > 0 && (
-                  <div className="mt-4 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200">
-                    <p className="text-xs font-semibold text-emerald-700 mb-2">{t("Valores Calculados Automaticamente")}</p>
+                  <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.045] p-4 dark:bg-emerald-500/10">
+                    <div className="mb-2 flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-600 text-white"><Activity className="h-3.5 w-3.5" /></span><p className="text-xs font-semibold text-foreground">{t("Valores Calculados Automaticamente")}</p></div>
                     {calculatedMetrics.map((m: any) => {
                       let cv = 0;
                       if (m.formulaType === "fuel_to_co2" && m.formulaSourceMetricId) cv = (parseFloat(formValues[m.formulaSourceMetricId] || "0")) * (parseFloat(m.density) || 0) * (parseFloat(m.pci) || 0) * (parseFloat(m.emissionFactor) || 0) / 1000;
                       else if (m.formulaType === "sum_co2") { for (const cm of calculatedMetrics) { if (cm.formulaType === "fuel_to_co2" && cm.formulaSourceMetricId) cv += (parseFloat(formValues[cm.formulaSourceMetricId] || "0")) * (parseFloat(cm.density) || 0) * (parseFloat(cm.pci) || 0) * (parseFloat(cm.emissionFactor) || 0) / 1000; } }
-                      return <div key={m.id} className="flex justify-between text-sm py-1"><span>{m.name}</span><strong>{cv.toFixed(1)} {m.unit}</strong></div>;
+                      return <div key={m.id} className="flex items-center justify-between gap-3 border-t border-emerald-500/15 py-2 text-sm"><span className="text-muted-foreground">{m.name}</span><strong className="tabular-nums text-foreground">{cv.toFixed(1)} {m.unit}</strong></div>;
                     })}
                   </div>
                 )}
 
                 {/* Navigation + Submit */}
-                <div className="mt-4 flex flex-wrap justify-between gap-2">
-                  <Button variant="outline" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>{t("← Anterior")}</Button>
+                <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-border/70 pt-4">
+                  <Button variant="outline" className="min-h-10 rounded-xl" disabled={formStep === 0} onClick={() => setFormStep(formStep - 1)}>{t("← Anterior")}</Button>
                   <div className="flex flex-wrap gap-2">
-                    {(existingSubmission?.status === "draft" || !existingSubmission) && <Button variant="outline" onClick={() => saveDraft()} disabled={saveDraftMutation.isPending || !hasAnyFormValue()}><Save className="mr-2 h-4 w-4" />{draftStatus === "saving" ? "A guardar semana..." : draftStatus === "saved" ? "Semana guardada" : "Guardar todos os KPI da semana"}</Button>}
+                    {(existingSubmission?.status === "draft" || !existingSubmission) && <Button variant="outline" className="min-h-10 rounded-xl" onClick={() => saveDraft()} disabled={saveDraftMutation.isPending || !hasAnyFormValue()}><Save className="mr-2 h-4 w-4" />{draftStatus === "saving" ? "A guardar semana..." : draftStatus === "saved" ? "Semana guardada" : "Guardar todos os KPI da semana"}</Button>}
                     {formStep < categories.length - 1 ? (
-                      <Button onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
+                      <Button className="min-h-10 rounded-xl" onClick={() => setFormStep(formStep + 1)}>{t("Seguinte →")}</Button>
                     ) : (
-                      <Button onClick={handleSubmit} disabled={submitMutation.isPending || correctMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700"><Send className="w-4 h-4 mr-2" />{submitMutation.isPending || correctMutation.isPending ? "A guardar..." : existingSubmission && existingSubmission.status !== "draft" ? "Registar correção" : isPartner ? "Submeter contributo parcial" : "Submeter KPIs"}</Button>
+                      <Button onClick={handleSubmit} disabled={submitMutation.isPending || correctMutation.isPending} className="min-h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700"><Send className="mr-2 h-4 w-4" />{submitMutation.isPending || correctMutation.isPending ? "A guardar..." : existingSubmission && existingSubmission.status !== "draft" ? "Registar correção" : isPartner ? "Submeter contributo parcial" : "Submeter KPIs"}</Button>
                     )}
                   </div>
                 </div>
@@ -458,14 +477,14 @@ export default function KPI() {
           {/* Dashboard (16 charts) */}
           {isAdminOrDO && (
             <TabsContent value="dashboard" className="space-y-4">
-              <div className="mb-2 flex items-center gap-2"><span className="text-sm text-muted-foreground">Dashboards do período:</span><Badge variant="outline">{reportPeriodLabel}</Badge></div>
-              <div className="flex gap-1 mb-3 flex-wrap">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card px-4 py-3 shadow-sm"><div><p className="stand-kicker text-primary">ANÁLISE DE TENDÊNCIAS</p><p className="mt-1 text-sm font-semibold text-foreground">Dashboards do período</p></div><StandStatusBadge label={reportPeriodLabel} tone="info" /></div>
+              <div className="flex flex-wrap gap-2 border-b border-border/70 pb-3">
 
                   {[t("Energia & CO2"), t("Água"), t("Trabalhadores"), t("Incidentes")].map((p, i) => (
-                    <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="text-xs h-7">{p}</Button>
+                    <Button key={p} size="sm" variant={dashPage === i ? "default" : "outline"} onClick={() => setDashPage(i)} className="min-h-9 rounded-xl text-xs font-semibold">{p}</Button>
                   ))}
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
                 {dashPage === 0 && <>
                 <ChartCard title={t("Consumo Combustível (L)")}><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="fuel" fill="#f59e0b" /></BarChart></ChartCard>
                 <ChartCard title="Eletricidade (kWh)"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="energy" fill="#a855f7" stroke="#7c3aed" fillOpacity={0.3} /></AreaChart></ChartCard>
@@ -476,55 +495,55 @@ export default function KPI() {
                 <ChartCard title={t("Consumo Água (L)")}><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="water" fill="#3b82f6" /></BarChart></ChartCard>
                 <ChartCard title={t("Água Acumulada")}><AreaChart data={chartData.reduce((acc: any[], d: any, i: number) => { const prev = acc[i - 1]?.cumWater || 0; acc.push({ ...d, cumWater: prev + (d.water || 0) }); return acc; }, [])}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Area type="monotone" dataKey="cumWater" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} /></AreaChart></ChartCard>
                 <ChartCard title={t("Repartição por Tipo de Água")}><PieChart><Pie data={waterMetricGroups.operational.filter((m: any) => (totals[m.id] || 0) > 0).map((m: any) => ({ name: m.name.replace("Água ", "").replace("de ", ""), value: totals[m.id] || 0 }))} cx="50%" cy="50%" outerRadius={60} dataKey="value" label={({ name, percent }) => percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""}>{COLORS.map((c, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip /></PieChart></ChartCard>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-blue-50 to-sky-50"><Droplets className="w-8 h-8 text-blue-500 mb-2" /><p className="text-2xl font-bold text-blue-700">{formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))} L</p><p className="text-xs text-muted-foreground">{t("Total Água Consumida")}</p></Card>
-                {waterMetricGroups.affluent.length > 0 && <div className="md:col-span-2 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4"><div className="mb-3 flex items-center gap-2"><Droplets className="size-4 text-cyan-700" /><div><h3 className="text-sm font-semibold text-cyan-950">Águas Afluentes</h3><p className="text-xs text-cyan-900/80">Indicadores registados separadamente do consumo de água.</p></div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{waterMetricGroups.affluent.map((metric: any) => <div key={metric.id} className="rounded-lg border border-cyan-100 bg-white p-3"><p className="text-xs text-slate-600">{metric.name}</p><p className="mt-1 text-lg font-semibold text-cyan-800">{formatNumber(totals[metric.id] || 0)} <span className="text-xs font-medium">{metric.unit}</span></p></div>)}</div></div>}
+                <StandMetricCard label={t("Total Água Consumida")} value={`${formatNumber(Object.entries(totals).filter(([id]) => metrics.find((m: any) => m.id === Number(id) && m.category === "water")).reduce((s, [, v]) => s + v, 0))} L`} detail={reportPeriodLabel} icon={Droplets} tone="info" />
+                {waterMetricGroups.affluent.length > 0 && <div className="rounded-2xl border border-sky-500/20 bg-sky-500/[0.045] p-4 dark:bg-sky-500/10 md:col-span-2"><div className="mb-3 flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600 text-white"><Droplets className="h-4 w-4" /></span><div><h3 className="text-sm font-semibold text-foreground">Águas Afluentes</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Indicadores registados separadamente do consumo de água.</p></div></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{waterMetricGroups.affluent.map((metric: any) => <div key={metric.id} className="rounded-xl border border-sky-500/15 bg-card p-3"><p className="text-xs text-muted-foreground">{metric.name}</p><p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{formatNumber(totals[metric.id] || 0)} <span className="text-xs font-medium text-muted-foreground">{metric.unit}</span></p></div>)}</div></div>}
                 </>}
                 {dashPage === 2 && <>
                 <ChartCard title="Trabalhadores em Obra"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" strokeWidth={2} /></LineChart></ChartCard>
                 <ChartCard title="Trabalhadores vs Horas"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Legend /><Line type="monotone" dataKey="workforce" stroke="#8b5cf6" name={t("Trabalhadores")} /><Line type="monotone" dataKey={`m_${findMetric("workforce", "horas")?.id || 0}`} stroke="#06b6d4" name={t("Horas")} /></LineChart></ChartCard>
                 <ChartCard title="Transporte"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="transport" fill="#06b6d4" /></BarChart></ChartCard>
-                <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-violet-50 to-purple-50"><Users className="w-8 h-8 text-purple-500 mb-2" /><p className="text-2xl font-bold text-purple-700">{(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return tec + ' / ' + total; })()}</p><p className="text-xs text-muted-foreground">{t("Técnicos Ambiente / Total Trabalhadores")}</p><p className="text-[10px] text-emerald-600 font-medium mt-1">Rácio: {(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return ((tec / Math.max(total, 1)) * 100).toFixed(1); })()}%</p></Card>
+                <StandMetricCard label={t("Técnicos Ambiente / Total Trabalhadores")} value={(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return tec + ' / ' + total; })()} detail={`Rácio: ${(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return ((tec / Math.max(total, 1)) * 100).toFixed(1); })()}%`} icon={Users} tone="brand" />
                 </>}
                 {dashPage === 3 && <>
                 <div className="grid grid-cols-2 gap-3">
                   <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill="#ef4444" /></BarChart></ChartCard>
-                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-red-50 to-orange-50"><AlertTriangle className="w-8 h-8 text-red-500 mb-2" /><p className="text-2xl font-bold text-red-700">{totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">Total Incidentes</p></Card>
-                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-amber-50 to-yellow-50"><Activity className="w-8 h-8 text-amber-500 mb-2" /><p className="text-2xl font-bold text-amber-700">{totals[findMetric("incidents", "derrames")?.id || 0] || 0}</p><p className="text-xs text-muted-foreground">{ t("Derrames") }</p></Card>
-                  <Card className="flex flex-col justify-center items-center p-4 bg-gradient-to-br from-emerald-50 to-green-50"><Activity className="w-8 h-8 text-emerald-500 mb-2" /><p className="text-2xl font-bold text-emerald-700">{chartData.filter(d => Object.values(d).some(v => typeof v === "number" && v > 0)).length}</p><p className="text-xs text-muted-foreground">Semanas com Dados</p></Card>
+                  <StandMetricCard label="Total Incidentes" value={totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0} detail={reportPeriodLabel} icon={AlertTriangle} tone="danger" />
+                  <StandMetricCard label={t("Derrames")} value={totals[findMetric("incidents", "derrames")?.id || 0] || 0} detail={reportPeriodLabel} icon={Activity} tone="warning" />
+                  <StandMetricCard label="Semanas com Dados" value={chartData.filter(d => Object.values(d).some(v => typeof v === "number" && v > 0)).length} detail={reportPeriodLabel} icon={Activity} tone="success" />
                 </div>
-                <Card className="mt-3"><CardContent className="p-4">
+                <Card className="mt-3 overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm"><CardContent className="p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-semibold">{t("Registo de Incidentes")}</p>
-                    {isAdminOrDO && <Button size="sm" variant="outline" onClick={() => setShowIncidentForm(!showIncidentForm)}>{t("+ Adicionar")}</Button>}
+                    <div><p className="stand-kicker text-primary">OCORRÊNCIAS</p><p className="mt-1 text-sm font-semibold">{t("Registo de Incidentes")}</p></div>
+                    {isAdminOrDO && <Button size="sm" variant="outline" className="min-h-9 rounded-xl" onClick={() => setShowIncidentForm(!showIncidentForm)}>{t("+ Adicionar")}</Button>}
                   </div>
                   {showIncidentForm && isAdminOrDO && (
-                    <div className="grid grid-cols-5 gap-2 mb-3 p-3 bg-muted/30 rounded-lg">
+                    <div className="mb-4 grid gap-2 rounded-xl border border-border/70 bg-muted/25 p-3 sm:grid-cols-2 xl:grid-cols-5">
                       <Input placeholder={t("Nome do incidente")} value={incidentForm.name} onChange={e => setIncidentForm({...incidentForm, name: e.target.value})} />
                       <Input type="date" value={incidentForm.date} onChange={e => setIncidentForm({...incidentForm, date: e.target.value})} />
-                      <select className="border rounded px-2 py-1 text-sm" value={incidentForm.status} onChange={e => setIncidentForm({...incidentForm, status: e.target.value})}>
+                      <select aria-label="Estado do incidente" className="h-10 rounded-xl border border-input bg-background px-3 text-sm" value={incidentForm.status} onChange={e => setIncidentForm({...incidentForm, status: e.target.value})}>
                         <option value="aberto">{t("Aberto")}</option><option value="em_investigacao">{t("Em Investigação")}</option><option value="resolvido">{t("Resolvido")}</option><option value="encerrado">{t("Encerrado")}</option>
                       </select>
-                      <select className="border rounded px-2 py-1 text-sm" value={incidentForm.severity} onChange={e => setIncidentForm({...incidentForm, severity: e.target.value})}>
+                      <select aria-label="Grau do incidente" className="h-10 rounded-xl border border-input bg-background px-3 text-sm" value={incidentForm.severity} onChange={e => setIncidentForm({...incidentForm, severity: e.target.value})}>
                         <option value="baixo">{t("Baixo")}</option><option value="medio">{t("Médio")}</option><option value="alto">{t("Alto")}</option><option value="critico">{t("Crítico")}</option>
                       </select>
                       <div className="flex gap-1">
                         <Input placeholder="Link (opcional)" value={incidentForm.link} onChange={e => setIncidentForm({...incidentForm, link: e.target.value})} className="flex-1" />
-                        <Button size="sm" onClick={() => { if (incidentForm.name && incidentForm.date && activeProject) { createIncidentMut.mutate({ projectId: activeProject.id, ...incidentForm, link: incidentForm.link || undefined }); setIncidentForm({ name: "", date: "", status: "aberto", severity: "baixo", link: "" }); setShowIncidentForm(false); } }}>✓</Button>
+                        <Button aria-label="Guardar incidente" size="sm" className="min-h-10 rounded-xl" onClick={() => { if (incidentForm.name && incidentForm.date && activeProject) { createIncidentMut.mutate({ projectId: activeProject.id, ...incidentForm, link: incidentForm.link || undefined }); setIncidentForm({ name: "", date: "", status: "aberto", severity: "baixo", link: "" }); setShowIncidentForm(false); } }}>✓</Button>
                       </div>
                     </div>
                   )}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead><tr className="border-b"><th className="text-left p-2">Incidente</th><th className="p-2">{t("Data")}</th><th className="p-2">Status</th><th className="p-2">{t("Grau")}</th><th className="p-2">Link</th>{isAdminOrDO && <th className="p-2"></th>}</tr></thead>
+                    <table className="w-full min-w-[640px] text-xs"><caption className="sr-only">{t("Registo de Incidentes")}</caption>
+                      <thead className="bg-muted/35"><tr className="border-b border-border/70"><th scope="col" className="p-3 text-left font-semibold text-muted-foreground">Incidente</th><th scope="col" className="p-3 font-semibold text-muted-foreground">{t("Data")}</th><th scope="col" className="p-3 font-semibold text-muted-foreground">Status</th><th scope="col" className="p-3 font-semibold text-muted-foreground">{t("Grau")}</th><th scope="col" className="p-3 font-semibold text-muted-foreground">Link</th>{isAdminOrDO && <th scope="col" className="p-3"><span className="sr-only">Ações</span></th>}</tr></thead>
                       <tbody>
                         {(incidentsQuery.data || []).map((inc: any) => (
-                          <tr key={inc.id} className="border-b hover:bg-muted/20">
-                            <td className="p-2 font-medium">{inc.name}</td>
-                            <td className="p-2 text-center">{inc.date}</td>
-                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.status === "resolvido" || inc.status === "encerrado" ? "bg-green-100 text-green-700" : inc.status === "em_investigacao" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>{inc.status}</span></td>
-                            <td className="p-2 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${inc.severity === "critico" ? "bg-red-200 text-red-800" : inc.severity === "alto" ? "bg-orange-100 text-orange-700" : inc.severity === "medio" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{inc.severity}</span></td>
-                            <td className="p-2 text-center">{inc.link ? <a href={inc.link} target="_blank" rel="noopener" className="text-blue-600 underline">{t("Ver")}</a> : "—"}</td>
-                            {isAdminOrDO && <td className="p-2"><Button size="sm" variant="ghost" className="text-red-500 h-6 w-6 p-0" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}>×</Button></td>}
+                          <tr key={inc.id} className="border-b border-border/60 transition-colors hover:bg-primary/[0.035]">
+                            <th scope="row" className="p-3 text-left font-semibold text-foreground">{inc.name}</th>
+                            <td className="p-3 text-center text-muted-foreground">{inc.date}</td>
+                            <td className="p-3 text-center"><StandStatusBadge label={inc.status} tone={inc.status === "resolvido" || inc.status === "encerrado" ? "success" : inc.status === "em_investigacao" ? "warning" : "danger"} /></td>
+                            <td className="p-3 text-center"><StandStatusBadge label={inc.severity} tone={inc.severity === "critico" ? "danger" : inc.severity === "alto" || inc.severity === "medio" ? "warning" : "neutral"} /></td>
+                            <td className="p-3 text-center">{inc.link ? <a href={inc.link} target="_blank" rel="noopener" className="font-medium text-primary underline-offset-4 hover:underline">{t("Ver")}</a> : "—"}</td>
+                            {isAdminOrDO && <td className="p-3"><Button aria-label={`Eliminar incidente ${inc.name}`} size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => deleteIncidentMut.mutate({ id: inc.id })}><Trash2 className="h-3.5 w-3.5" /></Button></td>}
                           </tr>
                         ))}
                         {(!incidentsQuery.data || incidentsQuery.data.length === 0) && <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">{ t("Sem incidentes registados") }</td></tr>}
@@ -540,20 +559,20 @@ export default function KPI() {
           {/* Metas */}
           {user?.role === "admin" && (
             <TabsContent value="metas" className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Ano:</span>
-                <Select value={String(targetYear)} onValueChange={v => setTargetYear(Number(v))}><SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select>
-                <Button size="sm" onClick={() => setEditingTarget({ metricId: metrics[0]?.id || 1, projectId, targetType: "monthly", targetValue: "", targetDirection: "max", year: targetYear })}><Plus className="w-3 h-3 mr-1" /> {t("Nova Meta")}</Button>
-              </div>
+              <section className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
+                <div><p className="stand-kicker text-primary">GOVERNAÇÃO DE DESEMPENHO</p><h2 className="mt-1 text-base font-semibold text-foreground">Metas e limites</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Defina e acompanhe objetivos mensais ou anuais para cada indicador.</p></div>
+                <div className="flex items-end gap-2"><div><label htmlFor="kpi-target-year" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Ano</label><Select value={String(targetYear)} onValueChange={v => setTargetYear(Number(v))}><SelectTrigger id="kpi-target-year" className="h-10 w-24 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{[2024, 2025, 2026, 2027, 2028].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent></Select></div>
+                <Button size="sm" className="min-h-10 rounded-xl" onClick={() => setEditingTarget({ metricId: metrics[0]?.id || 1, projectId, targetType: "monthly", targetValue: "", targetDirection: "max", year: targetYear })}><Plus className="mr-1.5 h-3.5 w-3.5" /> {t("Nova Meta")}</Button></div>
+              </section>
               {editingTarget && (
-                <Card className="border-emerald-200 bg-emerald-50/30"><CardContent className="p-4 space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Select value={String(editingTarget.metricId)} onValueChange={v => setEditingTarget({ ...editingTarget, metricId: Number(v) })}><SelectTrigger className="text-sm"><SelectValue placeholder={t("Métrica")} /></SelectTrigger><SelectContent>{metrics.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
-                    <Input placeholder="Valor" value={editingTarget.targetValue} onChange={e => setEditingTarget({ ...editingTarget, targetValue: e.target.value })} className="text-sm" />
-                    <Select value={editingTarget.targetDirection} onValueChange={v => setEditingTarget({ ...editingTarget, targetDirection: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="max">{t("Não exceder")}</SelectItem><SelectItem value="min">Atingir</SelectItem></SelectContent></Select>
-                    <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">{t("Mensal")}</SelectItem><SelectItem value="annual">{t("Anual")}</SelectItem></SelectContent></Select>
+                <Card className="rounded-2xl border-emerald-500/20 bg-emerald-500/[0.045] shadow-sm dark:bg-emerald-500/10"><CardContent className="space-y-3 p-4 sm:p-5">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <Select value={String(editingTarget.metricId)} onValueChange={v => setEditingTarget({ ...editingTarget, metricId: Number(v) })}><SelectTrigger aria-label={t("Métrica")} className="h-10 rounded-xl text-sm"><SelectValue placeholder={t("Métrica")} /></SelectTrigger><SelectContent>{metrics.map((m: any) => <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>)}</SelectContent></Select>
+                    <Input aria-label="Valor da meta" placeholder="Valor" value={editingTarget.targetValue} onChange={e => setEditingTarget({ ...editingTarget, targetValue: e.target.value })} className="h-10 rounded-xl text-sm" />
+                    <Select value={editingTarget.targetDirection} onValueChange={v => setEditingTarget({ ...editingTarget, targetDirection: v })}><SelectTrigger aria-label="Direção da meta" className="h-10 rounded-xl text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="max">{t("Não exceder")}</SelectItem><SelectItem value="min">Atingir</SelectItem></SelectContent></Select>
+                    <Select value={editingTarget.targetType} onValueChange={v => setEditingTarget({ ...editingTarget, targetType: v })}><SelectTrigger aria-label="Periodicidade da meta" className="h-10 rounded-xl text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="monthly">{t("Mensal")}</SelectItem><SelectItem value="annual">{t("Anual")}</SelectItem></SelectContent></Select>
                   </div>
-                  <div className="flex gap-2"><Button size="sm" onClick={() => upsertTargetMutation.mutate(editingTarget)}>{t("Guardar")}</Button><Button size="sm" variant="outline" onClick={() => setEditingTarget(null)}>{t("Cancelar")}</Button></div>
+                  <div className="flex gap-2"><Button size="sm" className="min-h-9 rounded-xl" onClick={() => upsertTargetMutation.mutate(editingTarget)}>{t("Guardar")}</Button><Button size="sm" variant="outline" className="min-h-9 rounded-xl" onClick={() => setEditingTarget(null)}>{t("Cancelar")}</Button></div>
                 </CardContent></Card>
               )}
               {targets.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sem metas para {targetYear}.</p> : targets.map((t: any) => {
@@ -563,11 +582,11 @@ export default function KPI() {
                 const progress = target > 0 ? (current / target) * 100 : 0;
                 const isGood = t.targetDirection === "max" ? current <= target : current >= target;
                 return (
-                  <Card key={t.id} className={`border-l-4 ${isGood ? "border-l-green-500" : "border-l-red-500"}`}><CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex-1"><p className="text-sm font-medium">{metric?.name || "—"}</p><p className="text-xs text-muted-foreground">{t.targetType === "monthly" ? "Mensal" : "Anual"} • {t.targetDirection === "max" ? "Não exceder" : "Atingir"} {t.targetValue} {metric?.unit}</p></div>
-                    <div className="text-right"><p className={`text-lg font-bold ${isGood ? "text-green-600" : "text-red-600"}`}>{formatNumber(current)}</p><p className="text-[10px] text-muted-foreground">de {t.targetValue}</p></div>
-                    <div className="w-16"><div className="h-2 rounded-full bg-muted overflow-hidden"><div className={`h-full ${isGood ? "bg-green-500" : "bg-red-500"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div><p className="text-[10px] text-center">{progress.toFixed(0)}%</p></div>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => { if (confirm("Eliminar?")) deleteTargetMutation.mutate({ id: t.id }); }}><Trash2 className="w-3 h-3" /></Button>
+                  <Card key={t.id} className={`overflow-hidden rounded-2xl border shadow-sm ${isGood ? "border-emerald-500/25 bg-emerald-500/[0.025] dark:bg-emerald-500/10" : "border-rose-500/25 bg-rose-500/[0.025] dark:bg-rose-500/10"}`}><CardContent className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
+                    <div className="min-w-[13rem] flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold text-foreground">{metric?.name || "—"}</p><StandStatusBadge label={isGood ? "Dentro da meta" : "Requer atenção"} tone={isGood ? "success" : "danger"} /></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{t.targetType === "monthly" ? "Mensal" : "Anual"} • {t.targetDirection === "max" ? "Não exceder" : "Atingir"} {t.targetValue} {metric?.unit}</p></div>
+                    <div className="min-w-24 text-right"><p className="text-lg font-bold tabular-nums text-foreground">{formatNumber(current)}</p><p className="text-xs text-muted-foreground">de {t.targetValue}</p></div>
+                    <div className="w-28"><div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${isGood ? "bg-emerald-600" : "bg-rose-600"}`} style={{ width: `${Math.min(progress, 100)}%` }} /></div><p className="mt-1 text-center text-xs font-medium text-muted-foreground">{progress.toFixed(0)}%</p></div>
+                    <Button aria-label={`Eliminar meta ${metric?.name || ""}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { if (confirm("Eliminar?")) deleteTargetMutation.mutate({ id: t.id }); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </CardContent></Card>
                 );
               })}
@@ -580,7 +599,7 @@ export default function KPI() {
 }
 
 function ChartCard({ title, children, h = "h-48" }: { title: string; children: React.ReactNode; h?: string }) {
-  return <Card><CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-xs text-muted-foreground">{title}</CardTitle></CardHeader><CardContent className={`${h} px-2 pb-2`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
+  return <Card className="overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm"><CardHeader className="border-b border-border/60 bg-muted/20 px-4 pb-3 pt-4"><CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle></CardHeader><CardContent className={`${h} px-3 pb-3 pt-4`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
 }
 
 function getISOWeek(date: Date): number {

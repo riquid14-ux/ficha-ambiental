@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 
 const TOPICS = {
@@ -60,12 +61,13 @@ function DocumentScopeFields({ value, onChange, projects, prefix }: { value: Doc
 }
 
 export default function DocumentLibraryAdminTab() {
+  const { t } = useLanguage();
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.documentLibrary.list.useQuery();
   const projectsQuery = trpc.projects.list.useQuery();
-  const create = trpc.documentLibrary.create.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success("Documento guardado na biblioteca."); setForm(initialForm); setFile(null); }, onError: error => toast.error(error.message) });
-  const update = trpc.documentLibrary.update.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success("Documento actualizado."); setEditing(null); }, onError: error => toast.error(error.message) });
-  const remove = trpc.documentLibrary.delete.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success("Documento eliminado da biblioteca."); }, onError: error => toast.error(error.message) });
+  const create = trpc.documentLibrary.create.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success(t("Documento guardado na biblioteca.")); setForm(initialForm); setFile(null); }, onError: error => toast.error(error.message) });
+  const update = trpc.documentLibrary.update.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success(t("Documento actualizado.")); setEditing(null); }, onError: error => toast.error(error.message) });
+  const remove = trpc.documentLibrary.delete.useMutation({ onSuccess: () => { utils.documentLibrary.list.invalidate(); toast.success(t("Documento eliminado da biblioteca.")); }, onError: error => toast.error(error.message) });
   const [form, setForm] = useState(initialForm);
   const [file, setFile] = useState<File | null>(null);
   const [editing, setEditing] = useState<LibraryItem | null>(null);

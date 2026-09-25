@@ -3,9 +3,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 type Lang = "pt" | "en";
 
 // Full translation dictionary
-const translations: Record<string, Record<Lang, string>> = {
+export const translations: Record<string, Record<Lang, string>> = {
   // ─── Navigation / Sidebar ───
   "Dashboard": { pt: "Dashboard", en: "Dashboard" },
+  "Documentação": { pt: "Documentação", en: "Documentation" },
   "Matriz": { pt: "Matriz", en: "Tracking Matrix" },
   "Planos": { pt: "Planos", en: "Monitoring Plans" },
   "Calendário": { pt: "Calendário", en: "Calendar" },
@@ -36,6 +37,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Atrasados": { pt: "Atrasados", en: "Overdue" },
   "Resumo Geral": { pt: "Resumo Geral", en: "General Summary" },
   "Total de Fichas": { pt: "Total de Fichas", en: "Total Forms" },
+  "Relatório Mensal": { pt: "Relatório Mensal", en: "Monthly Report" },
   "Taxa de Aprovação": { pt: "Taxa de Aprovação", en: "Approval Rate" },
   "Actividade de Submissão": { pt: "Actividade de Submissão", en: "Submission Activity" },
   "Evolução do Projeto": { pt: "Evolução do Projeto", en: "Project Evolution" },
@@ -94,6 +96,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "Final de Construção": { pt: "Final de Construção", en: "End of Construction" },
   "Exploração / Operação": { pt: "Exploração / Operação", en: "Operation" },
   "Desativação": { pt: "Desativação", en: "Decommissioning" },
+  "Resíduos": { pt: "Resíduos", en: "Waste" },
 
   // ─── KPI ───
 
@@ -113,7 +116,13 @@ const translations: Record<string, Record<Lang, string>> = {
   "Sim": { pt: "Sim", en: "Yes" },
   "Não": { pt: "Não", en: "No" },
   "Selecionar projeto": { pt: "Selecionar projeto", en: "Select project" },
-  "Plataforma de Gestão Ambiental — Start Campus": { pt: "Plataforma de Gestão Ambiental — Start Campus", en: "Environmental Management Platform — Start Campus" },
+  "Plataforma de Gestão Ambiental — Start Campus": { pt: "STAND — Onde a sustentabilidade ganha posição", en: "STAND — Where sustainability takes its stand" },
+  "Plataforma de Gestão Ambiental": { pt: "STAND", en: "STAND" },
+  "Plataforma de Gestão Ambiental, Start Campus": { pt: "STAND", en: "STAND" },
+  "Onde a sustentabilidade ganha posição": { pt: "Onde a sustentabilidade ganha posição", en: "Where sustainability takes its stand" },
+  "Infraestruturas digitais sustentáveis, com governação ambiental.": { pt: "Infraestruturas digitais sustentáveis, com governação ambiental.", en: "Sustainable digital infrastructure, with environmental governance." },
+  "Modo escuro": { pt: "Modo escuro", en: "Dark mode" },
+  "Modo claro": { pt: "Modo claro", en: "Light mode" },
 
   // ─── Login ───
   "Iniciar Sessão": { pt: "Iniciar Sessão", en: "Sign In" },
@@ -150,6 +159,9 @@ const translations: Record<string, Record<Lang, string>> = {
   "Semestre": { pt: "Semestre", en: "Semester" },
   "Ano": { pt: "Ano", en: "Year" },
   "Projeto": { pt: "Projeto", en: "Project" },
+  "Visão": { pt: "Visão", en: "Overview" },
+  "Recursos": { pt: "Recursos", en: "Resources" },
+  "Menu": { pt: "Menu", en: "Menu" },
   "Energia & CO2": { pt: "Energia & CO2", en: "Energy & CO2" },
   "Incidentes Ambientais": { pt: "Incidentes Ambientais", en: "Environmental Incidents" },
   "Água Construção": { pt: "Água Construção", en: "Construction Water" },
@@ -316,7 +328,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Período selecionado:": { pt: "Período selecionado:", en: "Selected period:" },
   "Período:": { pt: "Período:", en: "Period:" },
   "Plano/Projeto": { pt: "Plano/Projeto", en: "Plan/Project" },
-  "Plataforma de Gestão Ambiental": { pt: "Plataforma de Gestão Ambiental", en: "Environmental Management Platform" },
   "Preenche e submete a ficha semanal com evidências fotográficas e documentais.": { pt: "Preenche e submete a ficha semanal com evidências fotográficas e documentais.", en: "Fills and submits the weekly form with photographic and documentary evidence." },
   "Programa de Monitorização": { pt: "Programa de Monitorização", en: "Monitoring Programme" },
   "Programas e planos do DCAPE — Fase de Construção": { pt: "Programas e planos do DCAPE — Fase de Construção", en: "DCAPE programmes and plans — Construction Phase" },
@@ -1049,7 +1060,6 @@ const translations: Record<string, Record<Lang, string>> = {
   "Pessoa Responsável": { pt: "Pessoa Responsável", en: "Responsible Person" },
   "Pilar Secundário": { pt: "Pilar Secundário", en: "Secondary Pillar" },
   "Plataforma de Gestão Ambiental - Start Campus": { pt: "Plataforma de Gestão Ambiental - Start Campus", en: "Plataforma de Gestão Ambiental - Start Campus" },
-  "Plataforma de Gestão Ambiental, Start Campus": { pt: "Plataforma de Gestão Ambiental, Start Campus", en: "Plataforma de Gestão Ambiental, Start Campus" },
   "Pontuação": { pt: "Pontuação", en: "Pontuação" },
   "Potência (kW)": { pt: "Potência (kW)", en: "Power (kW)" },
   "Potência Instalada de TI (kW)": { pt: "Potência Instalada de TI (kW)", en: "Potência Instalada de TI (kW)" },
@@ -1123,6 +1133,58 @@ const translations: Record<string, Record<Lang, string>> = {
   "Exportação Word em desenvolvimento": { pt: "Exportação Word em desenvolvimento", en: "Word export in development" },
   "Entrega confirmada": { pt: "Entrega confirmada", en: "Delivery confirmed" },
   "A gerar PDF de evolução...": { pt: "A gerar PDF de evolução...", en: "Generating evolution PDF..." },
+  "Página Não Encontrada": { pt: "Página Não Encontrada", en: "Page Not Found" },
+  "A página que procura não existe.": { pt: "A página que procura não existe.", en: "The page you are looking for does not exist." },
+  "Pode ter sido movida ou eliminada.": { pt: "Pode ter sido movida ou eliminada.", en: "It may have been moved or removed." },
+  "Ir para Início": { pt: "Ir para Início", en: "Go to Home" },
+  "Pedidos EEP": { pt: "Pedidos EEP", en: "EEP Requests" },
+  "Nova EEP": { pt: "Nova EEP", en: "New EEP" },
+  "Esta área é exclusiva das Entidades Executantes.": { pt: "Esta área é exclusiva das Entidades Executantes.", en: "This area is exclusive to Executing Entities." },
+  "Peça a criação de uma Entidade Executante Parceira, dos seus utilizadores e dos acessos necessários.": { pt: "Peça a criação de uma Entidade Executante Parceira, dos seus utilizadores e dos acessos necessários.", en: "Request the creation of a Partner Executing Entity, its users and the necessary access." },
+  "Dashboard Parceiros": { pt: "Dashboard Parceiros", en: "Partner Dashboard" },
+  "Matriz de submissão KPI": { pt: "Matriz de submissão KPI", en: "KPI Submission Matrix" },
+  "Todos — EE + EEP": { pt: "Todos — EE + EEP", en: "All — EE + EEP" },
+  "Semanas": { pt: "Semanas", en: "Weeks" },
+  "a": { pt: "a", en: "to" },
+  "Não submetido": { pt: "Não submetido", en: "Not submitted" },
+  "Dashboard exclusivo das Entidades Executantes.": { pt: "Dashboard exclusivo das Entidades Executantes.", en: "This dashboard is exclusive to Executing Entities." },
+  "Seleccione um projecto.": { pt: "Seleccione um projecto.", en: "Select a project." },
+  "Selecione o projeto individual SIN01 — NEST para consultar a Operação.": { pt: "Selecione o projeto individual SIN01 — NEST para consultar a Operação.", en: "Select the individual SIN01 — NEST project to view Operations." },
+  "Selecione o SIN01 — NEST para configurar parâmetros de Operação.": { pt: "Selecione o SIN01 — NEST para configurar parâmetros de Operação.", en: "Select SIN01 — NEST to configure Operations parameters." },
+  "Documentação Ambiental": { pt: "Documentação Ambiental", en: "Environmental Documentation" },
+  "Seleccione um projeto para consultar a documentação": { pt: "Seleccione um projeto para consultar a documentação", en: "Select a project to view documentation" },
+  "A Documentação é apresentada apenas no projeto individual a que cada documento foi aplicado.": { pt: "A Documentação é apresentada apenas no projeto individual a que cada documento foi aplicado.", en: "Documentation is shown only in the individual project to which each document was assigned." },
+  "A carregar documentação...": { pt: "A carregar documentação...", en: "Loading documentation..." },
+  "Não tem autorização para consultar a documentação deste projeto.": { pt: "Não tem autorização para consultar a documentação deste projeto.", en: "You are not authorised to view documentation for this project." },
+  "Documento guardado na biblioteca.": { pt: "Documento guardado na biblioteca.", en: "Document saved in the library." },
+  "Documento actualizado.": { pt: "Documento actualizado.", en: "Document updated." },
+  "Documento eliminado da biblioteca.": { pt: "Documento eliminado da biblioteca.", en: "Document removed from the library." },
+  "Resumo executivo": { pt: "Resumo executivo", en: "Executive summary" },
+  "Âmbito ativo": { pt: "Âmbito ativo", en: "Active scope" },
+  "Leitura consolidada para priorização transversal.": { pt: "Leitura consolidada para priorização transversal.", en: "Consolidated view for cross-project prioritisation." },
+  "Indicadores e ações filtrados pelo projeto selecionado.": { pt: "Indicadores e ações filtrados pelo projeto selecionado.", en: "Indicators and actions filtered by the selected project." },
+  "Cumprimento registado": { pt: "Cumprimento registado", en: "Recorded compliance" },
+  "fichas aguardam revisão": { pt: "fichas aguardam revisão", en: "forms are awaiting review" },
+  "Sem fichas pendentes de revisão.": { pt: "Sem fichas pendentes de revisão.", en: "No forms are awaiting review." },
+  "Atenção a prazos": { pt: "Atenção a prazos", en: "Deadline attention" },
+  "Sem atrasos": { pt: "Sem atrasos", en: "No overdue items" },
+  "Consulte os entregáveis críticos e atribua uma ação.": { pt: "Consulte os entregáveis críticos e atribua uma ação.", en: "Review critical deliverables and assign an action." },
+  "Acompanhe os próximos reportings no calendário.": { pt: "Acompanhe os próximos reportings no calendário.", en: "Track upcoming reporting dates in the calendar." },
+  "Cockpit de Operação NEST": { pt: "Cockpit de Operação NEST", en: "NEST Operations Cockpit" },
+  "Centro de comando de exploração": { pt: "Centro de comando de exploração", en: "Operations command centre" },
+  "Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.": { pt: "Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.", en: "One view of DCAPE compliance, critical reporting and waste management for the building in operation." },
+  "Ver calendário operacional": { pt: "Ver calendário operacional", en: "View operations calendar" },
+  "Medidas de exploração": { pt: "Medidas de exploração", en: "Operation measures" },
+  "Catálogo DCAPE ativo": { pt: "Catálogo DCAPE ativo", en: "Active DCAPE catalogue" },
+  "Medidas pós-exploração": { pt: "Medidas pós-exploração", en: "Post-operation measures" },
+  "Sem entrega agendada": { pt: "Sem entrega agendada", en: "No delivery scheduled" },
+  "Registos ambientais no MIRR": { pt: "Registos ambientais no MIRR", en: "Environmental records in MIRR" },
+  "Agenda de controlo": { pt: "Agenda de controlo", en: "Control agenda" },
+  "Gerir prazos": { pt: "Gerir prazos", en: "Manage deadlines" },
+  "Governação": { pt: "Governação", en: "Governance" },
+  "Desempenho de resíduos": { pt: "Desempenho de resíduos", en: "Waste performance" },
+  "Abrir resíduos": { pt: "Abrir resíduos", en: "Open waste" },
+  "Total registado no período atual": { pt: "Total registado no período atual", en: "Total recorded in the current period" },
 };
 interface LanguageContextType {
   language: Lang;
@@ -1137,19 +1199,31 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // App is 100% Portuguese — English toggle was removed permanently
-  // Force PT and clear any stale English preference from localStorage
-  const [language, setLanguage] = useState<Lang>("pt");
+  const [language, setLanguageState] = useState<Lang>(() => {
+    try {
+      return localStorage.getItem("app_lang") === "en" ? "en" : "pt";
+    } catch {
+      return "pt";
+    }
+  });
 
   useEffect(() => {
-    // Clear any old English preference that might be stored
-    localStorage.removeItem("app_lang");
-  }, []);
+    document.documentElement.lang = language === "en" ? "en" : "pt-PT";
+  }, [language]);
+
+  const setLanguage = (nextLanguage: Lang) => {
+    setLanguageState(nextLanguage);
+    try {
+      localStorage.setItem("app_lang", nextLanguage);
+    } catch {
+      // A preferência continua válida durante a sessão atual.
+    }
+  };
 
   const t = (key: string): string => {
     const entry = translations[key];
     if (!entry) return key;
-    return entry.pt || key;
+    return entry[language] || entry.pt || key;
   };
 
   return (

@@ -79,7 +79,7 @@ function writePdfHeader(doc: any, title: string, subtitle: string, project: any)
 
 function writePdfFooter(doc: any) {
   doc.moveDown(1);
-  doc.fontSize(7).font("Helvetica").fillColor("#64748b").text(`Plataforma de Gestão Ambiental — Start Campus · Gerado em ${new Date().toLocaleString("pt-PT")}`, { align: "center" });
+  doc.fontSize(7).font("Helvetica").fillColor("#64748b").text(`STAND — Onde a sustentabilidade ganha posição · Gerado em ${new Date().toLocaleString("pt-PT")}`, { align: "center" });
   doc.fillColor("#111827");
 }
 
@@ -187,7 +187,7 @@ export function registerPdfRoutes(app: Express) {
       if (!await canExportProjectPdf(user, projectId, "timeline")) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
       const project = await db.getProjectById(projectId);
       if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
-      const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getAllSections(), db.getAllMeasures(), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
+      const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getProjectSections(projectId), db.getProjectMeasures(projectId), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
       const requestedPhaseId = req.query.phaseId === undefined ? null : Number(req.query.phaseId);
       if (requestedPhaseId !== null && (!Number.isInteger(requestedPhaseId) || requestedPhaseId < 1)) return res.status(400).json({ error: "Fase inválida" });
       const renderedPhases = requestedPhaseId === null ? phases.filter((phase: any) => !phase.hidden) : phases.filter((phase: any) => phase.id === requestedPhaseId && !phase.hidden);
@@ -307,10 +307,13 @@ export function registerPdfRoutes(app: Express) {
       if (sub.status !== "submitted" && sub.status !== "approved") {
         return res.status(409).json({ error: "O PDF formal só pode ser gerado após submissão ou aprovação da ficha." });
       }
+      if (!sub.projectId) {
+        return res.status(409).json({ error: "A ficha não tem um projeto associado." });
+      }
 
       const formalCompany = await db.getCompanyById(sub.companyId);
-      const formalSections = await db.getAllSections();
-      const formalMeasures = await db.getAllMeasures();
+      const formalSections = await db.getProjectSections(sub.projectId);
+      const formalMeasures = await db.getProjectMeasures(sub.projectId);
       const formalPdfBuffer = await buildWeeklyControlPdf(sub, formalCompany, formalSections, formalMeasures);
 
       res.setHeader("Content-Type", "application/pdf");
@@ -367,10 +370,6 @@ export function registerPdfRoutes(app: Express) {
         }
       });
 
-      // Pre-fetch shared data
-      const sections = await db.getAllSections();
-      const measures = await db.getAllMeasures();
-
       for (const submissionId of ids) {
         try {
           const sub = await db.getSubmissionById(submissionId);
@@ -383,8 +382,13 @@ export function registerPdfRoutes(app: Express) {
 
           // Only export submitted or approved
           if (sub.status !== "submitted" && sub.status !== "approved") continue;
+          if (!sub.projectId) continue;
 
-          const company = await db.getCompanyById(sub.companyId);
+          const [company, sections, measures] = await Promise.all([
+            db.getCompanyById(sub.companyId),
+            db.getProjectSections(sub.projectId),
+            db.getProjectMeasures(sub.projectId),
+          ]);
           const pdfBuffer = await buildWeeklyControlPdf(sub, company, sections, measures);
 
           const filename = `ficha_controlo_S${String(sub.weekNumber).padStart(2, "0")}_${sub.weekYear}_${company?.shortName || "EE"}_${sub.status === "approved" ? "APROVADA" : "SUBMETIDA"}.pdf`;
@@ -418,10 +422,12 @@ export function registerPdfRoutes(app: Express) {
       const startDate = req.query.startDate as string;
       const endDate = req.query.endDate as string;
       const statusFilter = req.query.status as string | undefined; // I, C, NC, NA
+      const projectId = Number(req.query.projectId);
 
-      if (!measureIdsParam || !startDate || !endDate) {
-        return res.status(400).json({ error: "Parâmetros measureIds, startDate e endDate são obrigatórios" });
+      if (!measureIdsParam || !startDate || !endDate || !Number.isInteger(projectId) || projectId < 1) {
+        return res.status(400).json({ error: "Parâmetros measureIds, projectId, startDate e endDate são obrigatórios" });
       }
+      if (!await canExportProjectPdf(user, projectId)) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
 
       const measureIds = measureIdsParam.split(",").map((id) => parseInt(id.trim())).filter((id) => !isNaN(id));
       if (measureIds.length === 0) {
@@ -434,7 +440,7 @@ export function registerPdfRoutes(app: Express) {
       }
 
       // Get the measures info
-      const allMeasures = await db.getAllMeasures();
+      const allMeasures = await db.getProjectMeasures(projectId);
       // Filter measures by user role first, then by requested IDs
       const allowedMeasures = filterMeasuresForUser(allMeasures, user);
       const allowedIds = new Set(allowedMeasures.map((m: any) => m.id));
@@ -443,7 +449,7 @@ export function registerPdfRoutes(app: Express) {
         return res.status(403).json({ error: "Sem permissão para exportar as medidas selecionadas" });
       }
 
-      const allSections = await db.getAllSections();
+      const allSections = await db.getProjectSections(projectId);
 
       // Get all submissions in the date range (approved or submitted)
       const { weeklySubmissions: wsTbl, measureResponses: mrTbl, evidenceImages: eiTbl } = await import("../drizzle/schema");
@@ -451,6 +457,7 @@ export function registerPdfRoutes(app: Express) {
 
       // Build query conditions
       const conditions: any[] = [
+        eq(wsTbl.projectId, projectId),
         gte(wsTbl.weekStartDate, startDate),
         lte(wsTbl.weekEndDate, endDate),
         inArray(wsTbl.status, ["submitted", "approved"]),

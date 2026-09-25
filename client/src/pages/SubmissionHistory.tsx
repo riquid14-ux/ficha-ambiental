@@ -87,8 +87,9 @@ export default function SubmissionHistory(props: any) {
   });
 
   // Fetch measures and sections for per-measure export
-  const measuresQuery = trpc.measures.list.useQuery();
-  const sectionsQuery = trpc.sections.list.useQuery();
+  const catalogueProjectId = activeProject?.id ?? 0;
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
 
   // Filter measures by search
   const filteredMeasures = useMemo(() => {
@@ -121,11 +122,16 @@ export default function SubmissionHistory(props: any) {
       toast.error(t("Selecione as datas de início e fim do período."));
       return;
     }
+    if (!activeProject?.id) {
+      toast.error(t("Selecione um projeto individual para exportar a evolução de medidas."));
+      return;
+    }
     setExportingMeasure(true);
     toast.info(t("A gerar PDF de evolução..."));
 
     const params = new URLSearchParams({
       measureIds: selectedMeasureIds.join(","),
+      projectId: String(activeProject.id),
       startDate: measureStartDate,
       endDate: measureEndDate,
     });

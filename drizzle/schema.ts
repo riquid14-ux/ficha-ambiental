@@ -134,10 +134,14 @@ export type InsertEepRequestUser = typeof eepRequestUsers.$inferInsert;
  */
 export const sections = mysqlTable("sections", {
   id: int("id").autoincrement().primaryKey(),
+  // O catálogo regulatório pertence a um projeto; SIN01 mantém o seu catálogo de operação isolado.
+  projectId: int("projectId"),
   name: varchar("name", { length: 500 }).notNull(),
   orderIndex: int("orderIndex").notNull(),
   phase: varchar("phase", { length: 100 }).notNull(),
-});
+}, (table) => ({
+  projectOrderIdx: index("sections_project_order_idx").on(table.projectId, table.orderIndex),
+}));
 
 export type Section = typeof sections.$inferSelect;
 export type InsertSection = typeof sections.$inferInsert;
@@ -147,12 +151,16 @@ export type InsertSection = typeof sections.$inferInsert;
  */
 export const measures = mysqlTable("measures", {
   id: int("id").autoincrement().primaryKey(),
+  // Redundância controlada para consultas e validações de pertença sem depender apenas da secção.
+  projectId: int("projectId"),
   number: varchar("number", { length: 20 }).notNull(),
   description: text("description").notNull(),
   responsible: varchar("responsible", { length: 50 }).notNull(),
   sectionId: int("sectionId").notNull(),
   orderIndex: int("orderIndex").notNull(),
-});
+}, (table) => ({
+  projectSectionOrderIdx: index("measures_project_section_order_idx").on(table.projectId, table.sectionId, table.orderIndex),
+}));
 
 export type Measure = typeof measures.$inferSelect;
 export type InsertMeasure = typeof measures.$inferInsert;

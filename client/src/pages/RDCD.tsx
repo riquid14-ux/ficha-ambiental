@@ -66,8 +66,9 @@ export default function RDCD() {
 
   // Fetch submissions for selected projects and period
   const { data: allSubmissions, isLoading: loadingSubs } = trpc.submissions.listAll.useQuery(undefined, { enabled: step >= 3 });
-  const { data: sections } = trpc.sections.list.useQuery(undefined, { enabled: step >= 3 });
-  const { data: measures } = trpc.measures.list.useQuery(undefined, { enabled: step >= 3 });
+  const catalogueProjectId = selectedProjects[0] ?? 0;
+  const { data: sections } = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: step >= 3 && catalogueProjectId > 0 });
+  const { data: measures } = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: step >= 3 && catalogueProjectId > 0 });
   const { data: plans } = trpc.monitoringPlans.list.useQuery(undefined, { enabled: step >= 2 && includePlans });
 
   // Filter submissions by selected projects and period

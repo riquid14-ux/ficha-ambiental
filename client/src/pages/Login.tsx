@@ -3,15 +3,17 @@ import { LOGO_URL } from "@/lib/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { AlertCircle, Loader2, Mail, Lock, Shield, UserPlus } from "lucide-react";
+import { AlertCircle, Loader2, Mail, Lock, Shield, UserPlus, Globe2, Moon, Sun } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPassword";
 
 export default function Login() {
-  const { t, language } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const { user, loading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
@@ -154,26 +156,38 @@ export default function Login() {
   const isInIframe = window.self !== window.top;
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-green-50 via-white to-emerald-50">
+    <div className="min-h-screen flex relative overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_29%),radial-gradient(circle_at_4%_96%,color-mix(in_oklch,var(--chart-2)_9%,transparent),transparent_34%)]" />
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+        <Button variant="outline" size="sm" className="bg-background/80 backdrop-blur" onClick={() => toggleTheme?.()}>
+          {theme === "dark" ? <Sun className="mr-1.5 h-3.5 w-3.5" /> : <Moon className="mr-1.5 h-3.5 w-3.5" />}
+          {theme === "dark" ? t("Modo claro") : t("Modo escuro")}
+        </Button>
+        <Button variant="outline" size="sm" className="bg-background/80 backdrop-blur" onClick={() => setLanguage(language === "pt" ? "en" : "pt")}>
+          <Globe2 className="mr-1.5 h-3.5 w-3.5" />{language === "pt" ? "English" : "Português"}
+        </Button>
+      </div>
       {/* Left panel - brand image (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative">
+      <div className="hidden lg:flex lg:w-1/2 relative border-r border-border/50">
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
-        <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
-          <h2 className="text-white text-3xl font-bold mb-2">{t("Start Campus")}</h2>
-          <p className="text-white/80 text-lg">{t("Plataforma de Gestão Ambiental")}</p>
-          <p className="text-white/60 text-sm mt-2">Infraestruturas digitais sustentáveis, com governação ambiental.</p>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-transparent flex flex-col justify-end p-10">
+          <p className="stand-kicker text-emerald-200">Start Campus · Sines</p>
+          <h2 className="mt-3 text-white text-4xl font-semibold tracking-[-0.05em]">STAND</h2>
+          <p className="mt-3 max-w-md text-white/85 text-lg leading-7">{t("Onde a sustentabilidade ganha posição")}</p>
+          <p className="text-white/60 text-sm mt-3">{t("Infraestruturas digitais sustentáveis, com governação ambiental.")}</p>
         </div>
       </div>
       {/* Right panel - login form */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div className="relative flex-1 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="bg-background rounded-2xl shadow-xl border border-green-100/50 p-8">
+        <div className="rounded-[1.35rem] bg-card/95 shadow-[0_24px_60px_hsl(var(--shadow-color)/0.13)] border border-border/75 p-7 sm:p-8 backdrop-blur">
         <div className="flex flex-col items-center gap-5 mb-8">
-          <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-700 rounded-xl shadow-lg">
-            <img src={LOGO_URL} alt="Start Campus" className="h-10 object-contain brightness-0 invert" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
+            <img src={LOGO_URL} alt="Start Campus" className="h-9 object-contain brightness-0 invert" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Plataforma de Gestão Ambiental")}</h1>
+            <p className="stand-kicker text-primary">Environmental governance</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">STAND</h1>
             <p className="text-sm text-muted-foreground mt-2">
               {viewMode === "login" && "Introduza as suas credenciais para aceder"}
               {viewMode === "register" && "Crie uma conta para solicitar acesso"}
@@ -192,7 +206,7 @@ export default function Login() {
         )}
 
         {success && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 text-green-700 text-sm mb-4">
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 text-sm mb-4">
             <Shield className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{success}</span>
           </div>
@@ -214,12 +228,14 @@ export default function Login() {
             )}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
+                <label htmlFor="login-email" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Email profissional</label>
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus={!isInIframe} disabled={loginMutation.isPending} />
+                <Input id="login-email" type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus={!isInIframe} disabled={loginMutation.isPending} />
               </div>
               <div className="relative">
+                <label htmlFor="login-password" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Palavra-passe</label>
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" disabled={loginMutation.isPending} />
+                <Input id="login-password" type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" disabled={loginMutation.isPending} />
               </div>
               <Button type="submit" size="lg" className="w-full h-12 shadow-lg" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : t("Entrar")}
@@ -313,7 +329,7 @@ export default function Login() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
             </div>
-            <Button type="submit" size="lg" className="w-full h-12 bg-green-700 hover:bg-green-800 shadow-lg" disabled={loginMutation.isPending}>
+            <Button type="submit" size="lg" className="w-full h-12 shadow-lg shadow-primary/15" disabled={loginMutation.isPending}>
               {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Confirmar"}
             </Button>
             <div className="flex justify-between text-sm">

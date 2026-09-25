@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban , MessageSquare} from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, PanelLeft, Shield, FileSearch, UserCircle, FolderKanban, MessageSquare, AlertTriangle, KeyRound } from "lucide-react";
 import { Grid3X3, FileText, CalendarDays, Settings2, FileBarChart } from "lucide-react";
 import { BookOpen, Layers, GitBranch, Heart } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -48,7 +48,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Recycle, Home, Bell, Gauge } from "lucide-react";
+import { Recycle, Home, Bell, Gauge, Globe2, Moon, Sun } from "lucide-react";
 import { isProjectRouteEnabled } from "@/lib/project-modules";
 import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 
@@ -142,7 +142,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackPhotos, setFeedbackPhotos] = useState<File[]>([]);
   const { language, setLanguage, t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, switchable } = useTheme();
   // Password verification for OAuth-authenticated users
   const [passwordVerified, setPasswordVerified] = useState(() => sessionStorage.getItem("pw_verified") === "1");
   const [pwInput, setPwInput] = useState("");
@@ -220,6 +220,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
     ...(canAdmin ? adminMenuItems : []),
   ];
   const activeMenuItem = allItems.find((item) => location.startsWith(item.path));
+  const navigationGroups = [
+    { label: t("Visão"), items: allItems.filter(item => ["Bem-vindo", "Dashboard", "Dashboard Parceiros"].includes(item.label)) },
+    { label: t("Conformidade"), items: allItems.filter(item => ["Planos", "Calendário", "Timeline", "Ficha Semanal", "RDCD", "Fases", "Certificações"].includes(item.label)) },
+    { label: t("Operação"), items: allItems.filter(item => ["Operação", "Gestão de Resíduos", "MIRR", "KPI's"].includes(item.label)) },
+    { label: t("Recursos"), items: allItems.filter(item => ["Documentação", "GAMMA", "Pedidos EEP", "Administração"].includes(item.label)) },
+  ].filter(group => group.items.length > 0);
 
   // NAV-01 FIX: Route guard — when project mode changes, if current route is not
   // in the new menu, redirect to Dashboard to avoid orphan pages
@@ -273,12 +279,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
-          <SidebarHeader className="h-16 justify-center">
+        <Sidebar collapsible="icon" className="border-r border-sidebar-border/70" disableTransition={isResizing}>
+          <SidebarHeader className="h-[4.5rem] justify-center border-b border-sidebar-border/70">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none shrink-0"
+                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors shrink-0"
                 aria-label="Toggle navigation"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
@@ -286,9 +292,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               {!isCollapsed && (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <img src={LOGO_URL} alt="Start Campus" className="h-6 object-contain" />
-                  <span className="font-semibold tracking-tight truncate text-sm">
-                    Plataforma de Gestão Ambiental
-                  </span>
+                  <div className="min-w-0"><span className="block font-semibold tracking-tight truncate text-sm">STAND</span><span className="block text-[10px] leading-none text-muted-foreground">Start Campus</span></div>
                   {userRole !== "ee_partner" && <NotificationBell />}
                 </div>
               )}
@@ -298,16 +302,16 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           <SidebarContent className="gap-0">
             {/* Project Selector */}
             {!isCollapsed && projects.length > 0 && (
-              <div className="px-3 py-2 border-b">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1 block">
-                  Projeto
+              <div className="px-3 py-3 border-b border-sidebar-border/70">
+                <label className="stand-kicker text-muted-foreground mb-1.5 block">
+                  {t("Projeto")}
                 </label>
                 <Select
                   value={isAllProjects ? "all" : String(activeProject?.id || "")}
                   onValueChange={(val) => setActiveProjectId(val === "all" ? null : parseInt(val, 10))}
                 >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecionar projeto" />
+                  <SelectTrigger className="h-9 border-sidebar-border/80 bg-sidebar-accent/35 text-xs">
+                    <SelectValue placeholder={t("Selecionar projeto")} />
                   </SelectTrigger>
                   <SelectContent>
                     {canSeeAllProjects && (
@@ -328,30 +332,26 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                 </Select>
               </div>
             )}
-            <SidebarMenu className="px-2 py-1">
-              {allItems.map((item) => {
-                const isActive = location.startsWith(item.path);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={t(item.label)}
-                      className="h-10 transition-all font-normal"
-                    >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+            <SidebarMenu className="px-2 py-3">
+              {navigationGroups.map((group, groupIndex) => <div key={group.label} className={groupIndex ? "mt-4" : ""}>
+                {!isCollapsed && <p className="stand-kicker mb-1.5 px-2 text-muted-foreground">{group.label}</p>}
+                {group.items.map((item) => {
+                  const isActive = location.startsWith(item.path);
+                  return <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton isActive={isActive} onClick={() => setLocation(item.path)} tooltip={t(item.label)} className="h-10 transition-all font-medium">
+                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                       <span>{t(item.label)}</span>
                     </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+                  </SidebarMenuItem>;
+                })}
+              </div>)}
             </SidebarMenu>
           </SidebarContent>
 
           <SidebarFooter className="p-3 pb-14">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none">
+                <button className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-2 hover:border-sidebar-border hover:bg-sidebar-accent/55 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
                       {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -363,7 +363,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
                 {userRole !== "ee_partner" && <>
                   <DropdownMenuItem onClick={() => setLocation("/perfil")} className="cursor-pointer">
                     <UserCircle className="mr-2 h-4 w-4" />
@@ -374,6 +374,19 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
                     <span>{t("Deixar Feedback")}</span>
                   </DropdownMenuItem>
                 </>}
+                {switchable && (
+                  <DropdownMenuItem onClick={() => toggleTheme?.()} className="cursor-pointer">
+                    {theme === "dark" ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                    <span>{theme === "dark" ? t("Modo claro") : t("Modo escuro")}</span>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={() => setLanguage(language === "pt" ? "en" : "pt")}
+                  className="cursor-pointer"
+                >
+                  <Globe2 className="mr-2 h-4 w-4" />
+                  <span>{language === "pt" ? "English" : "Português"}</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={(event) => {
                     event.preventDefault();
@@ -399,16 +412,14 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
 
       <SidebarInset>
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur sticky top-0 z-40">
+          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <span className="tracking-tight text-foreground text-sm font-medium">
-                {activeMenuItem?.label ?? "Menu"}
-              </span>
+              <div><span className="block tracking-tight text-foreground text-sm font-semibold">{activeMenuItem ? t(activeMenuItem.label) : t("Menu")}</span>{activeProject && !isAllProjects && <span className="block text-[10px] text-muted-foreground">{activeProject.code} · {activeProject.name}</span>}</div>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6 pb-16 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 pb-16 overflow-auto"><div className="mx-auto w-full max-w-[1680px]">{children}</div></main>
       </SidebarInset>
       {/* 2FA Enforcement Overlay */}
       {needs2FA && (
@@ -497,8 +508,8 @@ function NotificationBell() {
   const items = notifQuery.data?.items || [];
   const total = notifQuery.data?.totalCount || 0;
 
-  const typeIcons: Record<string, string> = {
-    review: "📋", rejected: "🔴", draft: "📝", access: "🔑", users: "👤",
+  const typeIcons: Record<string, typeof ClipboardList> = {
+    review: ClipboardList, rejected: AlertTriangle, draft: FileText, access: KeyRound, users: UserCircle,
   };
   const typeColors: Record<string, string> = {
     review: "text-blue-600", rejected: "text-red-600", draft: "text-amber-600",
@@ -520,7 +531,7 @@ function NotificationBell() {
       <PopoverContent align="end" className="w-72 p-0">
         <div className="p-3 border-b">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            🔔 {t("Notificações")}
+            <Bell className="h-4 w-4 text-primary" /> {t("Notificações")}
             {total > 0 && <span className="text-xs text-muted-foreground">({total})</span>}
           </h4>
         </div>
@@ -530,13 +541,14 @@ function NotificationBell() {
               {t("Sem notificações pendentes")}
             </div>
           ) : (
-            items.map((item, i) => (
-              <button
+            items.map((item, i) => {
+              const ItemIcon = typeIcons[item.type] || Bell;
+              return <button
                 key={i}
                 onClick={() => setLocation(item.path)}
-                className="w-full text-left px-3 py-2.5 hover:bg-accent/50 transition-colors border-b last:border-b-0 flex items-center gap-3"
+                className="w-full text-left px-3 py-3 hover:bg-accent/50 transition-colors border-b last:border-b-0 flex items-center gap-3"
               >
-                <span className="text-lg">{typeIcons[item.type] || "📌"}</span>
+                <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted ${typeColors[item.type] || "text-muted-foreground"}`}><ItemIcon className="h-4 w-4" /></span>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${typeColors[item.type] || ""}`}>
                     {t(item.label)}
@@ -545,8 +557,8 @@ function NotificationBell() {
                 <span className="text-xs font-bold bg-muted rounded-full h-6 w-6 flex items-center justify-center shrink-0">
                   {item.count}
                 </span>
-              </button>
-            ))
+              </button>;
+            })
           )}
         </div>
       </PopoverContent>

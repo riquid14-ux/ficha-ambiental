@@ -41,10 +41,9 @@ export default function PhaseMeasures(props: any) {
   const { activeProject } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
 
-  const sectionsQuery = trpc.sections.list.useQuery();
-  const measuresQuery = trpc.measures.list.useQuery();
-
   const projectId = activeProject?.id || 1;
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId }, { enabled: !!activeProject?.id });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId }, { enabled: !!activeProject?.id });
   const projectPhasesQuery = trpc.projectPhases.list.useQuery({ projectId });
   const hiddenPhaseKeys = new Set((projectPhasesQuery.data || []).filter((pp: any) => pp.hidden).map((pp: any) => pp.phaseKey || pp.phaseName));
 
@@ -262,6 +261,7 @@ export default function PhaseMeasures(props: any) {
                           const sec = (phaseData[phase.key] || [])[0]?.section;
                           if (!sec) { toast.error(t("Secção não encontrada")); return; }
                           addMeasureMutation?.mutate?.({
+                            projectId,
                             number: newMeasure.number,
                             description: newMeasure.description,
                             responsible: "DO",
@@ -298,7 +298,7 @@ export default function PhaseMeasures(props: any) {
                           <>
                             <Input className="w-20 h-8 text-xs" value={editingMeasure!.number} onChange={e => setEditingMeasure({ ...editingMeasure!, number: e.target.value })} />
                             <Input className="flex-1 h-8 text-xs" value={editingMeasure!.description} onChange={e => setEditingMeasure({ ...editingMeasure!, description: e.target.value })} />
-                            <Button size="sm" variant="default" className="h-7 px-2 text-xs" onClick={() => updateMeasureMutation.mutate({ id: editingMeasure!.id, number: editingMeasure!.number, description: editingMeasure!.description, responsible: editingMeasure!.responsible })}>
+                            <Button size="sm" variant="default" className="h-7 px-2 text-xs" onClick={() => updateMeasureMutation.mutate({ id: editingMeasure!.id, projectId, number: editingMeasure!.number, description: editingMeasure!.description, responsible: editingMeasure!.responsible })}>
                               Guardar
                             </Button>
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure(null)}>
@@ -312,7 +312,7 @@ export default function PhaseMeasures(props: any) {
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure({ id: m.id, number: m.number, description: m.description, responsible: m.responsible })}>
                               <Pencil className="w-3 h-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => { if (confirm(`Eliminar medida ${m.number}?`)) deleteMeasureMutation.mutate({ id: m.id }); }}>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => { if (confirm(`Eliminar medida ${m.number}?`)) deleteMeasureMutation.mutate({ id: m.id, projectId }); }}>
                               <Trash2 className="w-3 h-3" />
                             </Button>
                           </>

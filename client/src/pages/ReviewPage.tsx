@@ -86,8 +86,9 @@ export default function ReviewPage(props: any) {
   const [verdicts, setVerdicts] = useState<VerdictMap>({});
 
   // Queries for detail/review view
-  const sectionsQuery = trpc.sections.list.useQuery();
-  const measuresQuery = trpc.measures.list.useQuery();
+  const catalogueProjectId = selectedSubmission?.projectId ?? activeProject?.id ?? 0;
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 && !!selectedSubmission });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 && !!selectedSubmission });
   const responsesQuery = trpc.responses.getBySubmission.useQuery(
     { submissionId: selectedSubmission?.id! },
     { enabled: !!selectedSubmission && (detailDialogOpen || reviewDialogOpen) }

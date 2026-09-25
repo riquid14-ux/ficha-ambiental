@@ -254,29 +254,53 @@ export async function getAllSections() {
   return db.select().from(sections).orderBy(sections.orderIndex);
 }
 
+export async function getProjectSections(projectId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database.select().from(sections)
+    .where(eq(sections.projectId, projectId))
+    .orderBy(sections.orderIndex);
+}
+
 export async function getAllMeasures() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(measures).orderBy(measures.orderIndex);
 }
 
-export async function getMeasureById(id: number) {
+export async function getProjectMeasures(projectId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database.select().from(measures)
+    .where(eq(measures.projectId, projectId))
+    .orderBy(measures.sectionId, measures.orderIndex);
+}
+
+export async function getMeasureById(id: number, projectId?: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(measures).where(eq(measures.id, id)).limit(1);
+  const condition = projectId === undefined
+    ? eq(measures.id, id)
+    : and(eq(measures.id, id), eq(measures.projectId, projectId));
+  const result = await db.select().from(measures).where(condition).limit(1);
   return result[0];
 }
 
-export async function getMeasuresBySection(sectionId: number) {
+export async function getMeasuresBySection(sectionId: number, projectId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(measures).where(eq(measures.sectionId, sectionId)).orderBy(measures.orderIndex);
+  const condition = projectId === undefined
+    ? eq(measures.sectionId, sectionId)
+    : and(eq(measures.sectionId, sectionId), eq(measures.projectId, projectId));
+  return db.select().from(measures).where(condition).orderBy(measures.orderIndex);
 }
 
-export async function createMeasure(data: { number: string; description: string; responsible: string; sectionId: number }) {
+export async function createMeasure(data: { projectId: number; number: string; description: string; responsible: string; sectionId: number }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const existing = await db.select().from(measures).where(eq(measures.sectionId, data.sectionId)).orderBy(desc(measures.orderIndex));
+  const existing = await db.select().from(measures)
+    .where(and(eq(measures.sectionId, data.sectionId), eq(measures.projectId, data.projectId)))
+    .orderBy(desc(measures.orderIndex));
   const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 1;
   const result = await db.insert(measures).values({ ...data, orderIndex: nextOrder });
   return result[0].insertId;

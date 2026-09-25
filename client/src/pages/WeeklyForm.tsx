@@ -14,16 +14,17 @@ import { useParams, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useProject } from "@/contexts/ProjectContext";
 import { LOGO_URL } from "@/lib/logo";
-import { Save, Send, Upload, X, Image as ImageIcon, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight } from "lucide-react";
-import { FilePlus, Paperclip, Download, File, Grid3X3, History, ClipboardList, FileUp } from "lucide-react";
+import { Save, Send, Upload, X, Loader2, AlertTriangle, Check, XCircle, Trash2, FileText, ArrowRight, FilePlus, Paperclip, Download, File, Grid3X3, History, ClipboardList, FileUp, CalendarDays, Building2, ListChecks, CircleAlert, Camera } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import MatrizFull from "./Matriz";
 import ReviewPageFull from "./ReviewPage";
 import SubmissionHistoryFull from "./SubmissionHistory";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandMetricCard } from "@/components/stand/StandMetricCard";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 function getWeekOptions() {
   const now = new Date();
   const year = now.getFullYear();
@@ -82,8 +83,9 @@ export default function WeeklyForm() {
     projectId: activeProject?.id ?? 0,
   }), [selectedWeek, selectedYear, weekDates, activeProject]);
 
-  const sectionsQuery = trpc.sections.list.useQuery();
-  const measuresQuery = trpc.measures.list.useQuery();
+  const catalogueProjectId = activeProject?.id ?? 0;
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
   // FLOW-07 FIX: Query project phases to determine current phase and scope the ficha
   const projectPhasesQuery = trpc.projectPhases.list.useQuery(
     { projectId: activeProject?.id ?? 0 },
@@ -403,6 +405,18 @@ export default function WeeklyForm() {
     })).filter((s) => s.measures.length > 0);
   }, [measuresQuery.data, sectionsQuery.data, measureFilterType, isRejected, showAllMeasuresOnRejected, reviewFeedbackMap]);
 
+  // Presentation-only decision summary. It deliberately derives from the existing response state.
+  const responseSummary = useMemo(() => {
+    const measureIds = measuresBySection.flatMap(({ measures }) => measures.map((measure) => measure.id));
+    const selectedResponses = measureIds.map((measureId) => responses[measureId]?.status).filter(Boolean);
+    return {
+      total: measureIds.length,
+      completed: selectedResponses.length,
+      compliant: selectedResponses.filter((status) => status === "C" || status === "I").length,
+      nonCompliant: selectedResponses.filter((status) => status === "NC").length,
+    };
+  }, [measuresBySection, responses]);
+
   // Evidence images grouped by measureId (via responseId)
   const imagesByMeasure = useMemo(() => {
     if (!evidenceQuery.data || !responsesQuery.data) return new Map<number, any[]>();
@@ -481,13 +495,29 @@ export default function WeeklyForm() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">  
-        {/* Aerial hero image */}
-        <div className="relative rounded-xl overflow-hidden h-44">
-          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(8).jpg" alt="Start Campus Sines" className="w-full h-full object-cover object-top" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end pb-3 pl-5">
-            <p className="text-white text-xs font-medium opacity-90">{t("Start Campus — Sines, Portugal")}</p>
-          </div>
+      <div className="mx-auto max-w-[1440px] space-y-5 pb-8">
+        <div className="print:hidden">
+          <StandPageHeader
+            eyebrow="DCAPE · ACOMPANHAMENTO OPERACIONAL"
+            title="Ficha de Controlo de Medidas Ambientais"
+            description={t("Registe evidências, acompanhe medidas e submeta o controlo semanal para revisão ambiental.")}
+            context={activeProject?.code || "STAND"}
+            tone="operations"
+            actions={
+              <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-left backdrop-blur-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10"><Building2 className="h-4 w-4 text-emerald-100" /></div>
+                <div className="min-w-0">
+                  <p className="max-w-[180px] truncate text-xs font-semibold text-white">{companyName}</p>
+                  <p className="max-w-[180px] truncate text-[12px] text-emerald-50/70">{user?.name || "—"}</p>
+                </div>
+              </div>
+            }
+          >
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] leading-5 text-emerald-50/80">
+              <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{t("Acompanhamento Semanal")}</span>
+              {activeProject && <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{activeProject.name}</span>}
+            </div>
+          </StandPageHeader>
         </div>
 
         {/* Ficha Header with Logo and Company */}
@@ -511,33 +541,33 @@ export default function WeeklyForm() {
 
         {/* Tabs: Nova Ficha / Rascunhos */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="nova" className="gap-1 text-xs">
-              <FilePlus className="w-3.5 h-3.5" />
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-xl border bg-card p-1 shadow-sm sm:grid-cols-3 xl:grid-cols-6 print:hidden">
+            <TabsTrigger value="nova" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <FilePlus className="h-3.5 w-3.5" />
               Nova Ficha
             </TabsTrigger>
-            <TabsTrigger value="rascunhos" className="gap-1 text-xs">
-              <FileText className="w-3.5 h-3.5" />
+            <TabsTrigger value="rascunhos" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <FileText className="h-3.5 w-3.5" />
               {t("Estado de Fichas")}
               {(draftsAndRejected.length + rejectedFichas.length + approvedFichas.length) > 0 && (
-                <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+                <Badge variant="secondary" className="ml-1 border-0 bg-background/20 px-1.5 py-0 text-[12px] text-current">
                   {draftsAndRejected.length + rejectedFichas.length + approvedFichas.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="matriz" className="gap-1 text-xs">
-              <Grid3X3 className="w-3.5 h-3.5" />
+            <TabsTrigger value="matriz" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <Grid3X3 className="h-3.5 w-3.5" />
               Matriz
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 text-xs">
-              <History className="w-3.5 h-3.5" />{t("Histórico")}</TabsTrigger>
-            <TabsTrigger value="revisao" className="gap-1 text-xs">
-              <FileText className="w-3.5 h-3.5" />
+            <TabsTrigger value="historico" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <History className="h-3.5 w-3.5" />{t("Histórico")}</TabsTrigger>
+            <TabsTrigger value="revisao" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <FileText className="h-3.5 w-3.5" />
               {t("Revisão")}
             </TabsTrigger>
 
-            <TabsTrigger value="pdf-historico" className="gap-1 text-xs">
-              <FileUp className="w-3.5 h-3.5" />
+            <TabsTrigger value="pdf-historico" className="min-h-10 gap-1.5 rounded-lg px-3 text-xs font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+              <FileUp className="h-3.5 w-3.5" />
               {t("Importar Fichas")}
             </TabsTrigger>
           </TabsList>
@@ -546,19 +576,23 @@ export default function WeeklyForm() {
           <TabsContent value="nova" className="space-y-4 mt-4">
             {/* Date/Week Selection (before starting) */}
             {!started && !params.id && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t("Selecionar Semana")}</CardTitle>
+          <Card className="overflow-hidden border-border/80 bg-card shadow-sm">
+            <CardHeader className="border-b bg-muted/30 px-5 py-4 sm:px-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><CalendarDays className="h-5 w-5" /></div>
+                <div>
+                  <p className="stand-kicker text-primary">PLANEAMENTO DO CICLO</p>
+                  <CardTitle className="mt-1 text-lg tracking-tight">{t("Selecionar Semana")}</CardTitle>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{t("Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.")}</p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t("Selecione a semana e o ano para a qual pretende preencher a ficha de controlo.")}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="space-y-5 p-5 sm:p-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t("Semana")}</Label>
+                  <Label className="text-sm font-semibold">{t("Semana")}</Label>
                   <Select value={String(selectedWeek)} onValueChange={(v) => setSelectedWeek(Number(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 bg-background text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -569,9 +603,9 @@ export default function WeeklyForm() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t("Ano")}</Label>
+                  <Label className="text-sm font-semibold">{t("Ano")}</Label>
                   <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 bg-background text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -582,23 +616,27 @@ export default function WeeklyForm() {
                   </Select>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-sm text-muted-foreground">{t("Período:")}<strong>{weekDates.start}</strong> a <strong>{weekDates.end}</strong>
-                </p>
+              <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/[0.035] p-4 dark:bg-primary/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><CalendarDays className="h-4 w-4" /></div>
+                <div>
+                  <p className="stand-kicker text-primary">{t("Período:")}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{weekDates.start} <span className="px-1 text-muted-foreground">—</span> {weekDates.end}</p>
+                </div>
               </div>
               {isAllProjects && !params.id ? (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-4 text-sm text-amber-900 dark:text-amber-100">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{t("Selecione um projeto específico no menu lateral para criar uma ficha de controlo.")}</span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Button onClick={() => setStarted(true)} size="lg" className="w-full">
+                <div className="space-y-3 border-t pt-5">
+                  <Button onClick={() => setStarted(true)} size="lg" className="h-11 w-full gap-2 text-sm font-semibold sm:w-auto sm:px-6">
+                    <ArrowRight className="h-4 w-4" />
                     {t("Iniciar Ficha")} — {t("Semana")} {selectedWeek}/{selectedYear}
                   </Button>
-                  <p className="text-xs text-center text-muted-foreground">{t("As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.")}</p>
+                  <p className="text-[12px] leading-5 text-muted-foreground">{t("As respostas da sua última ficha submetida serão carregadas automaticamente como ponto de partida.")}</p>
                 </div>
               )}
             </CardContent>
@@ -609,177 +647,193 @@ export default function WeeklyForm() {
         {(started || params.id) && (
           <>
             {/* Status and Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  Semana {submissionQuery.data?.weekNumber || selectedWeek}/{submissionQuery.data?.weekYear || selectedYear}
-                  <span className="text-sm font-normal text-muted-foreground ml-2">
-                    ({weekDates.start} — {weekDates.end})
-                  </span>
-                </h2>
-                {isSubmitted && <Badge className="mt-1">{t("Submetida — Aguarda Revisão")}</Badge>}
-                {isApproved && <Badge className="mt-1 bg-green-600">{t("Aprovada")}</Badge>}
-                {isRejected && (
-                  <div className="mt-2 p-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20 dark:bg-red-950/40 rounded-lg shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center shrink-0 animate-pulse">
-                        <AlertTriangle className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-red-800 dark:text-red-200">{t("AÇÃO IMEDIATA NECESSÁRIA")}</h3>
-                        <p className="text-xs text-red-600 dark:text-red-400">{t("Esta ficha foi rejeitada pela RAA e requer correção prioritária.")}</p>
-                      </div>
-                    </div>
+            <section className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+              <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="stand-kicker text-primary">FICHA EM CURSO</p>
+                    {isSubmitted && <StandStatusBadge label={t("Submetida — Aguarda Revisão")} tone="info" />}
+                    {isApproved && <StandStatusBadge label={t("Aprovada")} tone="success" />}
+                    {isUnderReview && <StandStatusBadge label={t("Em Revisão")} tone="warning" />}
+                    {!subStatus && <StandStatusBadge label={t("Rascunho")} tone="neutral" />}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                      {t("Semana")} {submissionQuery.data?.weekNumber || selectedWeek}/{submissionQuery.data?.weekYear || selectedYear}
+                    </h2>
+                    <span className="text-sm text-muted-foreground">{weekDates.start} — {weekDates.end}</span>
+                  </div>
+                  <p className="mt-2 text-[12px] leading-5 text-muted-foreground">{companyName}</p>
+                </div>
+                {!isReadOnly && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-10 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => {
+                          if (confirm(t("Tem a certeza que pretende eliminar esta ficha?"))) {
+                            deleteMutation.mutate({ id: submissionId! });
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar
+                      </Button>
+                    )}
+                    <Button variant="outline" className="h-10" onClick={handleSave} disabled={saving}>
+                      {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Guardar
+                    </Button>
+                    {canSubmitThis && (
+                      <Button className="h-10" onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
+                        {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        {isRejected ? t("Resubmeter") : t("Submeter")}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-3 border-t bg-muted/25 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                <StandMetricCard label={t("medidas")} value={responseSummary.total} detail="Disponíveis nesta ficha" icon={ListChecks} tone="brand" />
+                <StandMetricCard label="RESPONDIDAS" value={<>{responseSummary.completed}<span className="ml-1 text-sm font-medium text-muted-foreground">/ {responseSummary.total}</span></>} detail="Com estado de avaliação" icon={Check} tone="info" />
+                <StandMetricCard label="CONFORMES" value={responseSummary.compliant} detail="Implementadas ou conformes" icon={Check} tone="success" />
+                <StandMetricCard label="NÃO CONFORMES" value={responseSummary.nonCompliant} detail="Exigem acompanhamento" icon={CircleAlert} tone={responseSummary.nonCompliant > 0 ? "danger" : "neutral"} />
+              </div>
+            </section>
+
+            {isRejected && (
+              <div className="rounded-2xl border border-rose-500/25 bg-rose-500/[0.06] p-5 dark:bg-rose-500/10">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white"><CircleAlert className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="text-base font-semibold text-rose-950 dark:text-rose-100">{t("AÇÃO IMEDIATA NECESSÁRIA")}</h3><StandStatusBadge label={t("Rejeitada")} tone="danger" /></div>
+                    <p className="mt-1 text-sm leading-6 text-rose-900/85 dark:text-rose-100/85">{t("Esta ficha foi rejeitada pela RAA e requer correção prioritária.")}</p>
                     {submissionQuery.data?.reviewNotes && (
-                      <div className="mt-2 p-3 bg-background dark:bg-red-950/60 border border-red-200 dark:border-red-800 rounded">
-                        <p className="text-sm text-red-800 dark:text-red-200">
-                          <strong>{t("Notas do revisor:")}</strong> {submissionQuery.data.reviewNotes}
-                        </p>
+                      <div className="mt-3 rounded-xl border border-rose-500/20 bg-background/80 p-3">
+                        <p className="text-sm leading-6 text-foreground"><strong>{t("Notas do revisor:")}</strong> {submissionQuery.data.reviewNotes}</p>
                       </div>
                     )}
                     {reviewFeedbackMap.size > 0 && (
-                      <div className="mt-2 flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-300">
-                        <XCircle className="w-4 h-4 shrink-0" />
-                        <span>
-                          <strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong>{t("medida(s) marcada(s) como não conforme — corrija os itens assinalados abaixo e resubmeta.")}</span>
-                      </div>
+                      <p className="mt-3 flex items-start gap-2 text-[12px] font-medium leading-5 text-rose-800 dark:text-rose-200">
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span><strong>{Array.from(reviewFeedbackMap.values()).filter(v => v.verdict === "nok").length}</strong>{t("medida(s) marcada(s) como não conforme — corrija os itens assinalados abaixo e resubmeta.")}</span>
+                      </p>
                     )}
-                    <p className="mt-2 text-xs text-red-500 dark:text-red-400 italic">
-                      {t("As medidas com problemas estão destacadas. Corrija e resubmeta.")}
-                    </p>
                     <button
-                      className="mt-2 text-xs text-red-600 underline hover:text-red-800 font-medium"
+                      type="button"
+                      className="mt-3 min-h-10 rounded-lg px-2 text-[12px] font-semibold text-rose-800 underline decoration-rose-400 underline-offset-4 hover:text-rose-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:text-rose-200 dark:hover:text-white"
                       onClick={() => setShowAllMeasuresOnRejected(prev => !prev)}
                     >
                       {showAllMeasuresOnRejected ? t("Mostrar apenas medidas rejeitadas") : t("Mostrar todas as medidas")}
                     </button>
                   </div>
-                )}
-                {isUnderReview && <Badge variant="outline" className="mt-1">{t("Em Revisão")}</Badge>}
-              </div>
-              {!isReadOnly && (
-                <div className="flex gap-2">
-                  {canDelete && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm(t("Tem a certeza que pretende eliminar esta ficha?"))) {
-                          deleteMutation.mutate({ id: submissionId! });
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Eliminar
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={handleSave} disabled={saving}>
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Guardar
-                  </Button>
-                  {canSubmitThis && (
-                    <Button onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                      {isRejected ? t("Resubmeter") : t("Submeter")}
-                    </Button>
-                  )}
                 </div>
-              )}
-            </div>
-
+              </div>
+            )}
             {/* Measures by Section */}
-            {/* Measure count indicator */}
-            <p className="text-xs text-muted-foreground mb-2 px-1">
-              {measuresBySection.reduce((acc: number, s: any) => acc + s.measures.length, 0)} {t("medidas")}
-            </p>
-            <Accordion type="multiple" className="space-y-2">
+            <div className="flex flex-wrap items-end justify-between gap-3 pt-1">
+              <div>
+                <p className="stand-kicker text-primary">MEDIDAS A AVALIAR</p>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("medidas")}</h3>
+              </div>
+              <p className="text-[12px] leading-5 text-muted-foreground">{responseSummary.completed} / {responseSummary.total} {t("medidas")}</p>
+            </div>
+            <Accordion type="multiple" className="space-y-3">
           {measuresBySection.map(({ section, measures }) => (
-            <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-4">
-              <AccordionTrigger className="text-sm font-medium hover:no-underline">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">{section.phase}</Badge>
-                  <span className="text-left">{section.name.length > 60 ? section.name.slice(0, 60) + "..." : section.name}</span>
-                  <Badge variant="outline" className="ml-auto text-xs">{measures.length}</Badge>
+            <AccordionItem key={section.id} value={String(section.id)} className="overflow-hidden rounded-xl border border-border/80 bg-card px-0 shadow-sm">
+              <AccordionTrigger className="px-4 py-4 text-sm font-semibold hover:bg-muted/40 hover:no-underline sm:px-5">
+                <div className="flex min-w-0 flex-1 items-center gap-3 pr-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{String(section.phase).slice(0, 2)}</span>
+                  <span className="min-w-0 text-left leading-5">{section.name.length > 60 ? section.name.slice(0, 60) + "..." : section.name}</span>
+                  <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[12px] font-semibold text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{measures.length}</span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4 pt-2">
+              <AccordionContent className="border-t bg-muted/[0.18] px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
+                <div className="space-y-3">
                   {measures.map((measure) => {
                     const response = responses[measure.id];
                     const images = imagesByMeasure.get(measure.id) || [];
                     const reviewFeedback = reviewFeedbackMap.get(measure.id);
                     return (
-                      <div key={measure.id} className={`p-4 border rounded-lg space-y-3 ${reviewFeedback?.verdict === "nok" ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
+                      <article key={measure.id} className={`space-y-4 rounded-xl border p-4 shadow-sm sm:p-5 ${reviewFeedback?.verdict === "nok" ? "border-rose-500/30 bg-rose-500/[0.045] dark:bg-rose-500/10" : "border-border/80 bg-card"}`}>
                         <div className="flex items-start gap-3">
-                          <span className="text-xs font-mono bg-muted px-2 py-1 rounded shrink-0">
+                          <span className="rounded-lg bg-muted px-2.5 py-1.5 font-mono text-[12px] font-semibold text-foreground shadow-sm">
                             {measure.number}
                           </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-foreground leading-relaxed">{measure.description}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm leading-6 text-foreground">{measure.description}</p>
+                            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
                               Responsável: {measure.responsible.replace(/\|/g, " / ").replace(/\bDO\b/g, "Dono de Obra").replace(/\bEE\b/g, "Entidade Executante").replace(/\bRAP\b/g, "Resp. Acomp. Patrimonial").replace(/\bRAA\b/g, "Resp. Acomp. Ambiental")}
                             </p>
                           </div>
                           {reviewFeedback && (
-                            <span className={`shrink-0 flex items-center gap-1 text-xs font-medium px-2 py-1 rounded ${reviewFeedback.verdict === "ok" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                              {reviewFeedback.verdict === "ok" ? <Check className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                              {reviewFeedback.verdict === "ok" ? "RAA: OK" : "RAA: NC"}
-                            </span>
+                            <StandStatusBadge label={reviewFeedback.verdict === "ok" ? "RAA: OK" : "RAA: NC"} tone={reviewFeedback.verdict === "ok" ? "success" : "danger"} />
                           )}
                         </div>
 
                         {/* RAA Review Feedback */}
                         {reviewFeedback && (reviewFeedback.comment || reviewFeedback.verdict === "nok") && (
-                          <div className={`ml-8 p-2 border rounded text-xs ${reviewFeedback.verdict === "nok" ? "bg-red-100/80 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300" : "bg-green-100/80 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300"}`}>
+                          <div className={`rounded-lg border p-3 text-[12px] leading-5 ${reviewFeedback.verdict === "nok" ? "border-rose-500/20 bg-rose-500/[0.08] text-rose-900 dark:text-rose-200" : "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-900 dark:text-emerald-200"}`}>
                             <strong>{t("Comentário RAA:")}</strong> {reviewFeedback.comment || (reviewFeedback.verdict === "nok" ? "Medida marcada como não conforme — necessita correção." : "Conforme.")}
                           </div>
                         )}
 
                         {/* Status Radio */}
-                        <RadioGroup
-                          value={response?.status || ""}
-                          onValueChange={(v) => handleStatusChange(measure.id, v as any)}
-                          className="flex flex-wrap gap-4"
-                          disabled={isReadOnly}
-                        >
-                          {(["I", "C", "NC", "NA"] as const).map((s) => (
-                            <div key={s} className="flex items-center gap-1.5">
-                              <RadioGroupItem value={s} id={`${measure.id}-${s}`} />
-                              <Label htmlFor={`${measure.id}-${s}`} className="text-xs cursor-pointer">
-                                {s === "I" ? t("Implementado") : s === "C" ? t("Conforme") : s === "NC" ? t("Não Conforme") : t("N/A")}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
+                        <fieldset className="space-y-2">
+                          <legend className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Estado da medida</legend>
+                          <RadioGroup
+                            value={response?.status || ""}
+                            onValueChange={(v) => handleStatusChange(measure.id, v as any)}
+                            className="grid grid-cols-2 gap-2 lg:grid-cols-4"
+                            disabled={isReadOnly}
+                          >
+                            {(["I", "C", "NC", "NA"] as const).map((s) => {
+                              const selected = response?.status === s;
+                              const stateLabel = s === "I" ? t("Implementado") : s === "C" ? t("Conforme") : s === "NC" ? t("Não Conforme") : t("N/A");
+                              const stateClass = s === "NC" ? "border-rose-500/35 bg-rose-500/[0.07] has-[[data-state=checked]]:border-rose-600 has-[[data-state=checked]]:bg-rose-500/[0.13]" : s === "C" || s === "I" ? "border-emerald-500/25 bg-emerald-500/[0.04] has-[[data-state=checked]]:border-emerald-600 has-[[data-state=checked]]:bg-emerald-500/[0.12]" : "border-border bg-background has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/[0.08]";
+                              return (
+                                <Label key={s} htmlFor={`${measure.id}-${s}`} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[12px] font-semibold transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${stateClass} ${isReadOnly ? "cursor-default opacity-70" : "hover:border-primary/50"}`}>
+                                  <RadioGroupItem value={s} id={`${measure.id}-${s}`} aria-label={stateLabel} />
+                                  <span>{stateLabel}</span>
+                                  {selected && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden="true" />}
+                                </Label>
+                              );
+                            })}
+                          </RadioGroup>
+                        </fieldset>
 
                         {/* Observations */}
                         <Textarea
                           placeholder={t("Observações...")}
                           value={response?.observations || ""}
                           onChange={(e) => handleObservationChange(measure.id, e.target.value)}
-                          className="text-sm min-h-[60px]"
+                          aria-label={`${t("Observações...")} — ${measure.number}`}
+                          className="min-h-[76px] resize-y bg-background text-sm leading-6"
                           disabled={isReadOnly}
                         />
 
                         {/* Images */}
-                        <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex flex-wrap items-center gap-2 border-t pt-3">
                           {images.map((img: any) => (
-                            <div key={img.id} className="relative group w-16 h-16 rounded border overflow-hidden">
-                              <img src={img.url} alt="" className="w-full h-full object-cover" />
+                            <div key={img.id} className="group relative h-16 w-16 overflow-hidden rounded-lg border bg-muted shadow-sm">
+                              <img src={img.url} alt={`${t("Imagem")} — ${measure.number}`} className="h-full w-full object-cover" />
                             </div>
                           ))}
                           {!isReadOnly && (
-                            <label className="w-16 h-16 rounded border-2 border-dashed flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
+                            <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border border-dashed border-border bg-background text-muted-foreground transition-colors hover:border-primary hover:bg-primary/[0.04] hover:text-primary focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                               {uploadingMeasure === measure.id ? (
-                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                <Loader2 className="h-5 w-5 animate-spin" />
                               ) : (
-                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <Camera className="h-5 w-5" />
                               )}
                               <input
                                 type="file"
                                 accept="image/*"
                                 multiple
+                                aria-label={`Carregar imagem — ${measure.number}`}
                                 className="hidden"
                                 onChange={(e) => e.target.files && handleImageUpload(measure.id, e.target.files)}
                               />
@@ -795,23 +849,25 @@ export default function WeeklyForm() {
                               {measureFiles.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
                                   {measureFiles.map((f: any) => (
-                                    <div key={f.id} className="flex items-center gap-1.5 bg-muted/50 border rounded px-2 py-1 text-xs group">
-                                      <File className="w-3 h-3 text-muted-foreground shrink-0" />
+                                    <div key={f.id} className="group flex min-h-9 items-center gap-1.5 rounded-lg border bg-muted/40 px-2.5 py-1.5 text-[12px]">
+                                      <File className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                       <a href={f.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[150px]" title={f.filename}>
                                         {f.filename}
                                       </a>
                                       {f.fileSize && (
                                         <span className="text-muted-foreground">({Math.round(f.fileSize / 1024)}KB)</span>
                                       )}
-                                      <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground">
-                                        <Download className="w-3 h-3" />
+                                      <a href={f.url} target="_blank" rel="noopener noreferrer" aria-label={`${t("Download")} ${f.filename}`} className="text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                        <Download className="h-3.5 w-3.5" />
                                       </a>
                                       {!isReadOnly && (
                                         <button
+                                          type="button"
                                           onClick={() => deleteFileMutation.mutate({ id: f.id })}
-                                          className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                          aria-label={`${t("Eliminar")} ${f.filename}`}
+                                          className="text-muted-foreground hover:text-destructive opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
-                                          <X className="w-3 h-3" />
+                                          <X className="h-3.5 w-3.5" />
                                         </button>
                                       )}
                                     </div>
@@ -819,17 +875,18 @@ export default function WeeklyForm() {
                                 </div>
                               )}
                               {!isReadOnly && (
-                                <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
+                                <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg px-2 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                                   {uploadingFileMeasure === measure.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                   ) : (
-                                    <Paperclip className="w-3.5 h-3.5" />
+                                    <Paperclip className="h-3.5 w-3.5" />
                                   )}
                                   <span>{t("Anexar ficheiro")}</span>
                                   <input
                                     type="file"
                                     accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt,.csv"
                                     multiple
+                                    aria-label={`${t("Anexar ficheiro")} — ${measure.number}`}
                                     className="hidden"
                                     onChange={(e) => e.target.files && handleFileUpload(measure.id, e.target.files)}
                                   />
@@ -838,7 +895,7 @@ export default function WeeklyForm() {
                             </div>
                           );
                         })()}
-                      </div>
+                      </article>
                     );
                   })}
                 </div>

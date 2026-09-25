@@ -1749,22 +1749,28 @@ export const appRouter = router({
 
   // ─── Sections & Measures ───────────────────────────────────────────────────
   sections: router({
-    list: protectedProcedure.query(async () => {
-      return db.getAllSections();
+    list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
+      await assertProjectAccess(ctx.user, input.projectId);
+      return db.getProjectSections(input.projectId);
     }),
   }),
 
   measures: router({
-    list: protectedProcedure.query(async () => {
-      return db.getAllMeasures();
+    list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
+      await assertProjectAccess(ctx.user, input.projectId);
+      return db.getProjectMeasures(input.projectId);
     }),
     bySection: protectedProcedure
-      .input(z.object({ sectionId: z.number() }))
-      .query(async ({ input }) => {
-        return db.getMeasuresBySection(input.sectionId);
+      .input(z.object({ projectId: z.number(), sectionId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await assertProjectAccess(ctx.user, input.projectId);
+        const section = (await db.getProjectSections(input.projectId)).find(item => item.id === input.sectionId);
+        if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Secção não encontrada neste projeto." });
+        return db.getMeasuresBySection(input.sectionId, input.projectId);
       }),
     create: protectedProcedure
       .input(z.object({
+        projectId: z.number(),
         number: z.string().min(1),
         description: z.string().min(1),
         responsible: z.string().default("DO"),
@@ -1774,12 +1780,22 @@ export const appRouter = router({
        if (!isAdminOrDono(ctx.user.role)) {
          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
        }
-       const id = await db.createMeasure(input);
+       await assertProjectAccess(ctx.user, input.projectId);
+       const section = (await db.getProjectSections(input.projectId)).find(item => item.id === input.sectionId);
+       if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Secção não encontrada neste projeto." });
+       const id = await db.createMeasure({
+         projectId: input.projectId,
+         number: input.number,
+         description: input.description,
+         responsible: input.responsible,
+         sectionId: input.sectionId,
+       });
        return { id };
      }),
     update: protectedProcedure
       .input(z.object({
         id: z.number(),
+        projectId: z.number(),
         number: z.string().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
@@ -1788,15 +1804,21 @@ export const appRouter = router({
         if (ctx.user.role !== "admin") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode editar medidas" });
         }
+        await assertProjectAccess(ctx.user, input.projectId);
+        const measure = await db.getMeasureById(input.id, input.projectId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         await db.updateMeasure(input.id, { number: input.number, description: input.description, responsible: input.responsible });
         return { success: true };
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
+      .input(z.object({ id: z.number(), projectId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode eliminar medidas" });
         }
+        await assertProjectAccess(ctx.user, input.projectId);
+        const measure = await db.getMeasureById(input.id, input.projectId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         await db.deleteMeasure(input.id);
         return { success: true };
       }),
@@ -1919,7 +1941,7 @@ export const appRouter = router({
             // Use company type for EE
             filterType = company.companyType.toUpperCase() === "RAP" ? "RAP" : "EE";
           }
-          const allMeasures = await db.getAllMeasures();
+          const allMeasures = sub.projectId ? await db.getProjectMeasures(sub.projectId) : [];
           const nonRelevant = allMeasures.filter((m) => !m.responsible.toUpperCase().includes(filterType));
           if (nonRelevant.length > 0) {
             await db.bulkUpsertResponses(
@@ -2501,8 +2523,8 @@ export const appRouter = router({
         }
 
         // Get all measures for this project
-        const allMeasures = await database.select().from(schema.measures);
-        const measureList = allMeasures.map((m: any) => `ID:${m.id} - ${m.code || ''} ${m.description}`).join('\n');
+        const allMeasures = await db.getProjectMeasures(input.projectId);
+        const measureList = allMeasures.map((m: any) => `ID:${m.id} - ${m.number || ''} ${m.description}`).join('\n');
         
         // Use LLM to extract responses from the PDF
         const llmResponse = await callLLM([
@@ -3798,12 +3820,13 @@ export const appRouter = router({
         const allProjects = await db.getAllProjects();
         // Get all phase measure statuses for all projects
         const results: any[] = [];
-        const allSections = await db.getAllSections();
-        const allMeasures = await db.getAllMeasures();
-
         const ppDb = await db.getDb(); const allProjectPhases = ppDb ? await ppDb.select().from(schema.projectPhases) : [];
         for (const proj of allProjects) {
-          const statuses = await db.getPhaseMeasureStatuses(proj.id);
+          const [statuses, projectSections, projectMeasures] = await Promise.all([
+            db.getPhaseMeasureStatuses(proj.id),
+            db.getProjectSections(proj.id),
+            db.getProjectMeasures(proj.id),
+          ]);
           const projPhases = allProjectPhases.filter((pp: any) => pp.projectId === proj.id);
           const statusMap = new Map<number, string>();
           statuses.forEach((s: any) => statusMap.set(s.measureId, s.trackingStatus));
@@ -3812,9 +3835,9 @@ export const appRouter = router({
           const PHASE_KEYS = ["Prévias Licenciamento", "Em Sede de Licenciamento", "Pré-Construção", "Preparação Prévia", "Execução da Obra", "Fase Final", "Fase Final Construção", "Exploração", "Desativação (Pós-Exploração)"];
 
           for (const phaseKey of PHASE_KEYS) {
-            const phaseSections = allSections.filter((s: any) => s.phase === phaseKey);
+            const phaseSections = projectSections.filter((s: any) => s.phase === phaseKey);
             const sectionIds = new Set(phaseSections.map((s: any) => s.id));
-            const phaseMeasures = allMeasures.filter((m: any) => sectionIds.has(m.sectionId));
+            const phaseMeasures = projectMeasures.filter((m: any) => sectionIds.has(m.sectionId));
             const total = phaseMeasures.length;
             if (total === 0) continue;
             const concluido = phaseMeasures.filter((m: any) => statusMap.get(m.id) === "concluido").length;
@@ -3869,7 +3892,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem configurar responsáveis das medidas." });
         }
         await assertProjectAccess(ctx.user, input.projectId);
-        const measure = await db.getMeasureById(input.measureId);
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
 
         let ownerName: string | null | undefined;
@@ -3917,7 +3940,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
-        const measure = await db.getMeasureById(input.measureId);
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
         const tracking = await db.getPhaseMeasureStatus(input.projectId, input.measureId);
         if (!(isAdminOrDono(ctx.user.role) || ctx.user.role === "raa" || tracking?.ownerId === ctx.user.id)) {
@@ -3947,7 +3970,7 @@ export const appRouter = router({
       .input(z.object({ projectId: z.number(), measureId: z.number() }))
       .query(async ({ ctx, input }) => {
         await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
-        const measure = await db.getMeasureById(input.measureId);
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada." });
         return await db.getPhaseMeasureUpdates(input.projectId, input.measureId);
       }),
@@ -3964,6 +3987,8 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
         }
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         await db.upsertPhaseMeasureStatus({
           measureId: input.measureId,
           projectId: input.projectId,
@@ -3985,6 +4010,8 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         // Set first delivery date and calculate next (+1 year)
         const nextDate = input.firstDeliveryDate + 365 * 24 * 60 * 60 * 1000;
         await db.upsertPhaseMeasureStatus({
@@ -4009,6 +4036,8 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role)) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
+        if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         // Mark as delivered, set next delivery date to +1 year from now
         const now = Date.now();
         const nextDate = now + 365 * 24 * 60 * 60 * 1000;

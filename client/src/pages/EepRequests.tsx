@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { Building2, Plus, Send, Trash2, Users } from "lucide-react";
 import { useState } from "react";
@@ -16,6 +17,7 @@ const statusLabels: Record<string, string> = { pending: "Pendente", approved: "A
 
 export default function EepRequests() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { projects } = useProject();
   const [companyName, setCompanyName] = useState("");
   const [shortName, setShortName] = useState("");
@@ -33,17 +35,17 @@ export default function EepRequests() {
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "ee") return <AppLayout><div className="p-8 text-center text-muted-foreground">Esta área é exclusiva das Entidades Executantes.</div></AppLayout>;
+  if (user?.role !== "ee") return <AppLayout><div className="p-8 text-center text-muted-foreground">{t("Esta área é exclusiva das Entidades Executantes.")}</div></AppLayout>;
   const validUsers = requestedUsers.filter(item => item.fullName.trim() && item.email.trim());
   const canSubmit = companyName.trim().length >= 2 && shortName.trim().length >= 2 && projectIds.length > 0 && (allowKpi || allowWaste) && validUsers.length === requestedUsers.length && validUsers.length > 0;
 
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl space-y-6 p-6">
-        <div><h1 className="text-2xl font-semibold">Pedidos EEP</h1><p className="text-sm text-muted-foreground">Peça a criação de uma Entidade Executante Parceira, dos seus utilizadores e dos acessos necessários.</p></div>
+        <div><h1 className="text-2xl font-semibold">{t("Pedidos EEP")}</h1><p className="text-sm text-muted-foreground">{t("Peça a criação de uma Entidade Executante Parceira, dos seus utilizadores e dos acessos necessários.")}</p></div>
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Building2 className="h-4 w-4" />Nova EEP</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Building2 className="h-4 w-4" />{t("Nova EEP")}</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2"><div><Label>Nome da empresa</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} /></div><div><Label>Sigla</Label><Input value={shortName} onChange={e => setShortName(e.target.value)} /></div></div>
               <div><Label>Módulos solicitados</Label><div className="mt-2 flex gap-5 rounded-lg border p-3 text-sm"><label className="flex items-center gap-2"><input type="checkbox" checked={allowKpi} onChange={e => setAllowKpi(e.target.checked)} />KPI</label><label className="flex items-center gap-2"><input type="checkbox" checked={allowWaste} onChange={e => setAllowWaste(e.target.checked)} />Resíduos</label></div></div>

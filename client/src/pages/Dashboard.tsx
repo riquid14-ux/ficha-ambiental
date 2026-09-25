@@ -9,12 +9,14 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandMetricCard } from "@/components/stand/StandMetricCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp, FileDown } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp, FileDown, ArrowUpRight, ClipboardCheck, Recycle, ShieldCheck } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
@@ -104,7 +106,9 @@ export default function Dashboard() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const companiesQuery = trpc.companies.list.useQuery();
-  const sectionsQuery = trpc.sections.list.useQuery();
+  const catalogueProjectId = activeProject?.id ?? 0;
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
 
   const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador";
   const submissionsQuery = canSeeAll
@@ -137,6 +141,26 @@ export default function Dashboard() {
   const analytics = analyticsQuery.data;
   const calendarEventsQuery = trpc.calendarEvents.list.useQuery(activeProject?.id ? { projectId: activeProject.id } : { projectId: 0 });
   const wasteQuery = trpc.wasteEgars.list.useQuery({ projectId: activeProject?.id || 0, year: new Date().getFullYear() });
+
+  const operationCatalogue = useMemo(() => {
+    const sections = sectionsQuery.data || [];
+    const measures = measuresQuery.data || [];
+    const measuresForPhase = (phase: string) => {
+      const sectionIds = new Set(sections.filter((section: any) => section.phase === phase).map((section: any) => section.id));
+      return measures.filter((measure: any) => sectionIds.has(measure.sectionId)).length;
+    };
+    return {
+      exploration: measuresForPhase("Exploração"),
+      decommissioning: measuresForPhase("Desativação (Pós-Exploração)"),
+    };
+  }, [measuresQuery.data, sectionsQuery.data]);
+
+  const nextOperationReport = useMemo(() => {
+    const pending = (calendarEventsQuery.data || [])
+      .filter((event: any) => event.status === "pending" && Number(event.nextDate) >= Date.now())
+      .sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate));
+    return pending[0] || null;
+  }, [calendarEventsQuery.data]);
 
   // Filter charts by selected status
   const filteredByWeek = useMemo(() => {
@@ -204,154 +228,80 @@ export default function Dashboard() {
       }));
   }, [analytics, selectedStatus]);
 
+  const decisionSnapshot = useMemo(() => {
+    const status = analytics?.byStatus || {};
+    const total = Object.values(status).reduce((sum: number, value: any) => sum + Number(value || 0), 0);
+    const compliant = Number(status.I || 0) + Number(status.C || 0);
+    const submissions = submissionsQuery.data || [];
+    const waitingReview = submissions.filter((item: any) => item.status === "submitted" || item.status === "under_review").length;
+    const deadlines = (calendarEventsQuery.data || []).filter((item: any) => item.status === "pending");
+    const overdue = deadlines.filter((item: any) => item.nextDate && Number(item.nextDate) < Date.now()).length;
+    return {
+      scope: activeProject?.code || t("Todos os Projetos"),
+      compliance: total ? Math.round((compliant / total) * 100) : null,
+      waitingReview,
+      overdue,
+    };
+  }, [activeProject?.code, analytics?.byStatus, calendarEventsQuery.data, isAllProjects, submissionsQuery.data, t]);
+
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Dashboard")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t("Visão geral do cumprimento ambiental")}</p>
-          </div>
-          {(user?.role === "admin" || user?.role === "dono_obra") && (
-            <Button variant="outline" size="sm" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>
-          )}
-        </div>
+        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <Button variant="outline" size="sm" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button> : undefined} />
 
         {/* Brand hero image */}
-        <div className="relative rounded-xl overflow-hidden h-48 ">
+        <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-800 via-teal-700 to-slate-800">
           <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
             <p className="text-white font-semibold text-lg">{t("Plataforma de Gestão Ambiental — Start Campus")}</p>
           </div>
         </div>
 
+        <section aria-label={t("Resumo executivo")} className="grid gap-3 md:grid-cols-3">
+          <StandMetricCard label={t("Âmbito ativo")} value={decisionSnapshot.scope} detail={isAllProjects ? t("Leitura consolidada para priorização transversal.") : t("Indicadores e ações filtrados pelo projeto selecionado.")} icon={FolderKanban} tone="brand" />
+          <StandMetricCard label={t("Cumprimento registado")} value={decisionSnapshot.compliance === null ? "—" : `${decisionSnapshot.compliance}%`} detail={decisionSnapshot.waitingReview ? `${decisionSnapshot.waitingReview} ${t("fichas aguardam revisão")}` : t("Sem fichas pendentes de revisão.")} icon={TrendingUp} tone="success" />
+          <StandMetricCard label={t("Atenção a prazos")} value={decisionSnapshot.overdue ? `${decisionSnapshot.overdue} ${t("em atraso")}` : t("Sem atrasos")} detail={decisionSnapshot.overdue ? t("Consulte os entregáveis críticos e atribua uma ação.") : t("Acompanhe os próximos reportings no calendário.")} icon={CalendarDays} tone={decisionSnapshot.overdue ? "danger" : "info"} onClick={() => setLocation("/calendario")} />
+        </section>
+
         {/* Operation-only project dashboard */}
         {isOperationOnly && (
-          <div className="space-y-4">
-            {/* Operation header */}
-            <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-100 shrink-0">
-                    <Building2 className="w-5 h-5 text-emerald-600" />
+          <section className="space-y-5" aria-label={t("Cockpit de Operação NEST")}>
+            <div className="relative isolate overflow-hidden rounded-[28px] border border-emerald-950/20 bg-[#062a24] p-6 text-white shadow-[0_24px_70px_-28px_rgba(5,150,105,0.8)] sm:p-7">
+              <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(110,231,183,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(110,231,183,.16)_1px,transparent_1px)] [background-size:32px_32px]" />
+              <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
+              <div className="absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-emerald-300/10 blur-3xl" />
+              <div className="relative">
+                <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
+                  <div className="max-w-2xl">
+                    <div className="mb-4 flex items-center gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200/30 bg-emerald-300/15"><Building2 className="h-5 w-5 text-emerald-100" /></span><span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">NEST · SIN01</span></div>
+                    <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("Centro de comando de exploração")}</h2>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">{t("Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.")}</p>
                   </div>
-                  <div>
-                    <p className="font-semibold text-emerald-900">{t("Fase de Operação")} — {activeProject?.name}</p>
-                    <p className="text-xs text-muted-foreground">{t("Monitorização contínua de medidas ambientais e gestão de resíduos")}</p>
-                  </div>
+                  <button onClick={() => setLocation("/calendario")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-100/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/20"><CalendarDays className="h-4 w-4" />{t("Ver calendário operacional")}<ArrowUpRight className="h-4 w-4" /></button>
                 </div>
-              </CardContent>
-            </Card>
-            {/* Dynamic cards row */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <Card><CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-emerald-600">15</p>
-                <p className="text-xs text-muted-foreground">{t("Medidas Exploração")}</p>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-emerald-300" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Catálogo DCAPE ativo")}</p></div>
+                  <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-violet-200" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Medidas pós-exploração")}</p></div>
+                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/10 bg-white/8 p-4 text-left backdrop-blur-sm transition hover:bg-white/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-sky-200" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-emerald-100/65">{nextOperationReport?.name || t("Sem entrega agendada")}</p></button>
+                  <button onClick={() => setLocation("/mirr")} className="rounded-2xl border border-white/10 bg-white/8 p-4 text-left backdrop-blur-sm transition hover:bg-white/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-amber-200" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Registos ambientais no MIRR")}</p></button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-12">
+              <Card className="xl:col-span-8 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{t("Agenda de controlo")}</p><CardTitle className="mt-1 text-lg">{t("Próximos Reportings")}</CardTitle></div><button onClick={() => setLocation("/calendario")} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300">{t("Gerir prazos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-3">
+                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{evt.name}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString("pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
               </CardContent></Card>
-              <Card className="cursor-pointer hover:border-sky-300" onClick={() => window.location.href = "/calendario"}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-sky-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents || calEvents.length === 0) return "—"; const next = calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) > new Date()).sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate))[0]; return next ? new Date(Number(next.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</p>
-                  <p className="text-xs text-muted-foreground">{t("Próximo Reporting")}</p>
-                </CardContent>
-              </Card>
-              <Card className="cursor-pointer hover:border-amber-300" onClick={() => window.location.href = "/mirr"}>
-                <CardContent className="p-4 text-center">
-                  <p className="text-2xl font-bold text-amber-600">{wasteQuery?.data?.length || 0}</p>
-                  <p className="text-xs text-muted-foreground">e-GARs ({new Date().getFullYear()})</p>
-                </CardContent>
-              </Card>
-              <Card><CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-indigo-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return calEvents.filter((e: any) => e.status === "pending" && new Date(Number(e.nextDate)) < new Date()).length; })()}</p>
-                <p className="text-xs text-muted-foreground">{t("Em Incumprimento")}</p>
+              <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
+                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents) return null; const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {}); if (Object.keys(owners).length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Atribua responsáveis no Calendário → Gerir.")}</p>; return <div className="space-y-2">{Object.entries(owners).map(([name, events]) => <div key={name} className="rounded-xl border border-border/70 bg-muted/20 p-3"><p className="truncate text-sm font-semibold">{name}</p><p className="mt-1 text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p></div>)}</div>; })()}
               </CardContent></Card>
             </div>
-            {/* Reporting timeline */}
-            <Card>
-              <CardHeader><CardTitle className="text-sm">{t("Próximos Reportings")}</CardTitle></CardHeader>
-              <CardContent>
-                {(() => {
-                  const calEvents = calendarEventsQuery?.data;
-                  if (!calEvents || calEvents.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Sem eventos de reporting configurados.")}</p>;
-                  const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5);
-                  return (
-                    <div className="space-y-2">
-                      {upcoming.map((evt: any) => {
-                        const date = new Date(Number(evt.nextDate));
-                        const isOverdue = date < new Date();
-                        return (
-                          <div key={evt.id} className={`flex items-center justify-between p-2 rounded border ${isOverdue ? "border-red-200 bg-red-50" : "border-gray-100"}`}>
-                            <div>
-                              <p className="text-sm font-medium">{evt.name}</p>
-                              <p className="text-xs text-muted-foreground">{evt.ownerName || "Sem responsável"}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className={`text-sm font-medium ${isOverdue ? "text-red-600" : ""}`}>{date.toLocaleDateString("pt-PT")}</p>
-                              {isOverdue && <Badge variant="destructive" className="text-[10px]">{t("Em atraso")}</Badge>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-            {/* Responsible persons */}
-            <Card>
-              <CardHeader><CardTitle className="text-sm">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader>
-              <CardContent>
-                {(() => {
-                  const calEvents = calendarEventsQuery?.data;
-                  if (!calEvents) return null;
-                  const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {});
-                  if (Object.keys(owners).length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Atribua responsáveis no Calendário → Gerir.")}</p>;
-                  return (
-                    <div className="space-y-2">
-                      {Object.entries(owners).map(([name, events]) => (
-                        <div key={name} className="flex items-center justify-between p-2 rounded border border-gray-100">
-                          <p className="text-sm font-medium">{name}</p>
-                          <p className="text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          
-            {/* Waste summary */}
-            <Card>
-              <CardHeader><CardTitle className="text-sm">Resíduos ({new Date().getFullYear()})</CardTitle></CardHeader>
-              <CardContent>
-                {(() => {
-                  const waste = wasteQuery?.data;
-                  if (!waste || waste.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>;
-                  const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
-                  const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
-                  const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0);
-                  const landfill = total - recycled - incinerated;
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Total: <strong>{total.toFixed(3)} t</strong></span>
-                        <span className="text-sm text-green-600">Desvio aterro: <strong>{total > 0 ? ((recycled / total) * 100).toFixed(0) : 0}%</strong></span>
-                      </div>
-                      <div className="h-4 rounded-full overflow-hidden flex bg-muted">
-                        {recycled > 0 && <div className="bg-emerald-400 h-full" style={{ width: `${(recycled/total)*100}%` }} />}
-                        {incinerated > 0 && <div className="bg-amber-400 h-full" style={{ width: `${(incinerated/total)*100}%` }} />}
-                        {landfill > 0 && <div className="bg-red-400 h-full" style={{ width: `${(landfill/total)*100}%` }} />}
-                      </div>
-                      <div className="flex gap-4 text-xs">
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-400" /> Reciclado ({recycled.toFixed(2)}t)</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-400" /> Incinerado ({incinerated.toFixed(2)}t)</span>
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-400" /> Aterro ({landfill.toFixed(2)}t)</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-          </div>
+
+            <Card className="overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">MIRR</p><CardTitle className="mt-1 text-lg">{t("Desempenho de resíduos")}</CardTitle></div><button onClick={() => setLocation("/mirr")} className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">{t("Abrir resíduos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-5">
+              {(() => { const waste = wasteQuery.data; if (!waste || waste.length === 0) return <p className="py-5 text-center text-sm text-muted-foreground">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>; const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const landfill = Math.max(0, total - recycled - incinerated); return <div className="grid items-center gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p className="text-3xl font-semibold tracking-tight">{total.toFixed(3)} <span className="text-base font-medium text-muted-foreground">t</span></p><p className="mt-1 text-sm text-muted-foreground">{t("Total registado no período atual")}</p></div><div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{recycled > 0 && <div className="bg-emerald-500" style={{ width: `${(recycled / total) * 100}%` }} />}{incinerated > 0 && <div className="bg-amber-400" style={{ width: `${(incinerated / total) * 100}%` }} />}{landfill > 0 && <div className="bg-rose-500" style={{ width: `${(landfill / total) * 100}%` }} />}</div><div className="mt-3 grid grid-cols-3 gap-3 text-xs"><span className="rounded-lg bg-emerald-50 p-2 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"><b>{recycled.toFixed(2)} t</b><br />{t("Reciclado")}</span><span className="rounded-lg bg-amber-50 p-2 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"><b>{incinerated.toFixed(2)} t</b><br />{t("Incinerado")}</span><span className="rounded-lg bg-rose-50 p-2 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200"><b>{landfill.toFixed(2)} t</b><br />{t("Aterro")}</span></div></div></div>; })()}
+            </CardContent></Card>
+          </section>
         )}
 
         {/* All Projects Professional Dashboard */}

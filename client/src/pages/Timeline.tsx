@@ -5,20 +5,44 @@ import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
 import PhaseMeasures from "./PhaseMeasures";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Clock, AlertCircle, ArrowRight, Layers, Settings, EyeOff, Eye, Download } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowRight,
+  Layers,
+  Settings,
+  EyeOff,
+  Eye,
+  Download,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { StandMetricCard } from "@/components/stand/StandMetricCard";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 
-type PhaseDef = typeof PHASE_DEFS[number];
-type PhaseDataItem = PhaseDef & { total: number; concluido: number; emCurso: number; pendente: number; progress: number; isComplete: boolean; hasActivity: boolean };
+type PhaseDef = (typeof PHASE_DEFS)[number];
+type PhaseDataItem = PhaseDef & {
+  total: number;
+  concluido: number;
+  emCurso: number;
+  pendente: number;
+  progress: number;
+  isComplete: boolean;
+  hasActivity: boolean;
+};
 
 // Phase definitions matching the database
 // Construction sub-phases that should be labelled "Construção" in the all-projects view
-const CONSTRUCTION_PHASE_KEYS = ["Preparação Prévia", "Execução da Obra", "Fase Final"];
+const CONSTRUCTION_PHASE_KEYS = [
+  "Preparação Prévia",
+  "Execução da Obra",
+  "Fase Final",
+];
 
 // Simplified phase labels for the all-projects badge
 function getSimplifiedPhaseLabel(phaseKey: string): string {
@@ -28,7 +52,8 @@ function getSimplifiedPhaseLabel(phaseKey: string): string {
 }
 
 function getPhaseColor(phaseKey: string): string {
-  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-300";
+  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey))
+    return "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-300";
   const def = PHASE_DEFS.find(p => p.key === phaseKey);
   if (!def) return "bg-muted text-foreground";
   return def.lightColor + " " + def.textColor;
@@ -39,15 +64,78 @@ const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const OPERATION_PHASES = ["Exploração", "Desativação (Pós-Exploração)"];
 
 const PHASE_DEFS = [
-  { key: "Prévias Licenciamento", label: "Pré-Licenciamento", shortLabel: "Pré-Lic.", color: "bg-purple-500", lightColor: "bg-purple-50 dark:bg-purple-900/20 border-purple-200", textColor: "text-purple-700" },
-  { key: "Em Sede de Licenciamento", label: "Licenciamento", shortLabel: "Lic.", color: "bg-blue-500", lightColor: "bg-blue-50 dark:bg-blue-900/20 border-blue-200", textColor: "text-blue-700" },
-  { key: "Pré-Construção", label: "Pré-Construção", shortLabel: "Pré-Const.", color: "bg-cyan-500", lightColor: "bg-cyan-50 border-cyan-200", textColor: "text-cyan-700" },
-  { key: "Preparação Prévia", label: "Construção (Preparação)", shortLabel: "Prep.", color: "bg-emerald-400", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Execução da Obra", label: "Construção (Execução)", shortLabel: "Exec.", color: "bg-emerald-500", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Fase Final", label: "Construção (Final)", shortLabel: "Final", color: "bg-emerald-600", lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200", textColor: "text-emerald-700" },
-  { key: "Fase Final Construção", label: "Final da Construção", shortLabel: "Final Const.", color: "bg-amber-500", lightColor: "bg-amber-50 dark:bg-amber-900/20 border-amber-200", textColor: "text-amber-700" },
-  { key: "Exploração", label: "Exploração", shortLabel: "Expl.", color: "bg-orange-500", lightColor: "bg-orange-50 dark:bg-orange-900/20 border-orange-200", textColor: "text-orange-700" },
-  { key: "Desativação (Pós-Exploração)", label: "Desativação", shortLabel: "Desat.", color: "bg-muted0", lightColor: "bg-muted border-border", textColor: "text-foreground" },
+  {
+    key: "Prévias Licenciamento",
+    label: "Pré-Licenciamento",
+    shortLabel: "Pré-Lic.",
+    color: "bg-purple-500",
+    lightColor: "bg-purple-50 dark:bg-purple-900/20 border-purple-200",
+    textColor: "text-purple-700",
+  },
+  {
+    key: "Em Sede de Licenciamento",
+    label: "Licenciamento",
+    shortLabel: "Lic.",
+    color: "bg-blue-500",
+    lightColor: "bg-blue-50 dark:bg-blue-900/20 border-blue-200",
+    textColor: "text-blue-700",
+  },
+  {
+    key: "Pré-Construção",
+    label: "Pré-Construção",
+    shortLabel: "Pré-Const.",
+    color: "bg-cyan-500",
+    lightColor: "bg-cyan-50 border-cyan-200",
+    textColor: "text-cyan-700",
+  },
+  {
+    key: "Preparação Prévia",
+    label: "Construção (Preparação)",
+    shortLabel: "Prep.",
+    color: "bg-emerald-400",
+    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
+    textColor: "text-emerald-700",
+  },
+  {
+    key: "Execução da Obra",
+    label: "Construção (Execução)",
+    shortLabel: "Exec.",
+    color: "bg-emerald-500",
+    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
+    textColor: "text-emerald-700",
+  },
+  {
+    key: "Fase Final",
+    label: "Construção (Final)",
+    shortLabel: "Final",
+    color: "bg-emerald-600",
+    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
+    textColor: "text-emerald-700",
+  },
+  {
+    key: "Fase Final Construção",
+    label: "Final da Construção",
+    shortLabel: "Final Const.",
+    color: "bg-amber-500",
+    lightColor: "bg-amber-50 dark:bg-amber-900/20 border-amber-200",
+    textColor: "text-amber-700",
+  },
+  {
+    key: "Exploração",
+    label: "Exploração",
+    shortLabel: "Expl.",
+    color: "bg-orange-500",
+    lightColor: "bg-orange-50 dark:bg-orange-900/20 border-orange-200",
+    textColor: "text-orange-700",
+  },
+  {
+    key: "Desativação (Pós-Exploração)",
+    label: "Desativação",
+    shortLabel: "Desat.",
+    color: "bg-muted0",
+    lightColor: "bg-muted border-border",
+    textColor: "text-foreground",
+  },
 ];
 
 export default function Timeline() {
@@ -56,14 +144,28 @@ export default function Timeline() {
   const { activeProject, isAllProjects, projects } = useProject();
 
   const [showSettings, setShowSettings] = useState(false);
-  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({ onSuccess: () => { toast.success("Fase atualizada"); projectPhasesQuery.refetch(); } });
-  const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">("timeline");
+  const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Fase atualizada");
+      projectPhasesQuery.refetch();
+    },
+  });
+  const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">(
+    "timeline"
+  );
   const projectId = activeProject?.id;
 
-  // Fetch all sections and measures
-  const { data: allSections } = trpc.sections.list.useQuery();
+  // Fetch the isolated catalogue for the active project.
+  const catalogueProjectId = projectId ?? 0;
+  const { data: allSections } = trpc.sections.list.useQuery(
+    { projectId: catalogueProjectId },
+    { enabled: catalogueProjectId > 0 }
+  );
   const { data: brandImages } = trpc.appSettings.getAll.useQuery();
-  const { data: allMeasures } = trpc.measures.list.useQuery();
+  const { data: allMeasures } = trpc.measures.list.useQuery(
+    { projectId: catalogueProjectId },
+    { enabled: catalogueProjectId > 0 }
+  );
 
   // Fetch phase measure statuses for the selected project
   const { data: phaseStatuses } = trpc.phaseMeasures.getStatuses.useQuery(
@@ -77,9 +179,10 @@ export default function Timeline() {
   const projectPhasesData = projectPhasesQuery.data || [];
 
   // Fetch all projects progress from backend (single endpoint)
-  const { data: allProjectsProgress } = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, {
-    enabled: !projectId, // only fetch when in all-projects view
-  });
+  const { data: allProjectsProgress } =
+    trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, {
+      enabled: !projectId, // only fetch when in all-projects view
+    });
 
   // Compute current phase for each project based on real backend data
   const projectCurrentPhases = useMemo(() => {
@@ -137,323 +240,596 @@ export default function Timeline() {
     (phaseStatuses || []).forEach(s => statusMap.set(s.measureId, s.status));
 
     // Filter phases for operation-only projects
-    const isOperationOnly = activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
+    const isOperationOnly =
+      activeProject &&
+      OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
     const applicablePhases = isOperationOnly
       ? PHASE_DEFS.filter(p => OPERATION_PHASES.includes(p.key))
       : PHASE_DEFS;
 
-    return applicablePhases.map(phaseDef => {
-      // Find sections matching this phase
-      const phaseSections = allSections.filter(s => s.phase === phaseDef.key);
-      const sectionIds = new Set(phaseSections.map(s => s.id));
+    return applicablePhases
+      .map(phaseDef => {
+        // Find sections matching this phase
+        const phaseSections = allSections.filter(s => s.phase === phaseDef.key);
+        const sectionIds = new Set(phaseSections.map(s => s.id));
 
-      // Find measures in those sections
-      const phaseMeasures = allMeasures.filter(m => sectionIds.has(m.sectionId));
-      const total = phaseMeasures.length;
+        // Find measures in those sections
+        const phaseMeasures = allMeasures.filter(m =>
+          sectionIds.has(m.sectionId)
+        );
+        const total = phaseMeasures.length;
 
-      if (total === 0) return null;
+        if (total === 0) return null;
 
-      // Count statuses
-      let concluido = 0;
-      let emCurso = 0;
-      let pendente = 0;
+        // Count statuses
+        let concluido = 0;
+        let emCurso = 0;
+        let pendente = 0;
 
-      phaseMeasures.forEach(m => {
-        const status = statusMap.get(m.id) || "pendente";
-        if (status === "concluido") concluido++;
-        else if (status === "em_curso") emCurso++;
-        else pendente++;
-      });
+        phaseMeasures.forEach(m => {
+          const status = statusMap.get(m.id) || "pendente";
+          if (status === "concluido") concluido++;
+          else if (status === "em_curso") emCurso++;
+          else pendente++;
+        });
 
-      const progress = total > 0 ? Math.round((concluido / total) * 100) : 0;
-      const isComplete = concluido === total;
-      const hasActivity = concluido > 0 || emCurso > 0;
+        const progress = total > 0 ? Math.round((concluido / total) * 100) : 0;
+        const isComplete = concluido === total;
+        const hasActivity = concluido > 0 || emCurso > 0;
 
-      // Merge DB data (hidden, dates, dbId)
-      // Match DB phase using multiple strategies (phaseKey, phaseName, or normalized comparison)
-      const normalizeKey = (s: string) => s.toLowerCase().replace(/[áàã]/g, "a").replace(/[éè]/g, "e").replace(/[íì]/g, "i").replace(/[óòõ]/g, "o").replace(/[úù]/g, "u").replace(/[^a-z0-9]/g, "");
-      const defNorm = normalizeKey(phaseDef.key);
-      const dbPhase = projectPhasesData.find((pp: any) => 
-        pp.phaseName === phaseDef.key || pp.phaseKey === phaseDef.key ||
-        normalizeKey(pp.phaseName) === defNorm || normalizeKey(pp.phaseKey) === defNorm ||
-        // Handle specific mismatches
-        (phaseDef.key === "Prévias Licenciamento" && (pp.phaseKey === "previas_licenciamento" || pp.phaseName?.includes("Licenciamento") && pp.phaseName?.includes("Previamente"))) ||
-        (phaseDef.key === "Desativação (Pós-Exploração)" && (pp.phaseKey === "desativacao" || pp.phaseName === "Desativação")) ||
-        (phaseDef.key === "Execução da Obra" && (pp.phaseKey === "execucao_obra" || pp.phaseKey === "construcao"))
-      );
-      return {
-      ...phaseDef,
-      total,
-      concluido,
-      emCurso,
-      pendente,
-      progress,
-      isComplete,
-      hasActivity,
-      dbId: dbPhase?.id || 0,
-      hidden: dbPhase?.hidden || false,
-      startDate: dbPhase?.startDate || null,
-      endDate: dbPhase?.endDate || null,
-    };
-    }).filter(Boolean) as PhaseDataItem[];
+        // Merge DB data (hidden, dates, dbId)
+        // Match DB phase using multiple strategies (phaseKey, phaseName, or normalized comparison)
+        const normalizeKey = (s: string) =>
+          s
+            .toLowerCase()
+            .replace(/[áàã]/g, "a")
+            .replace(/[éè]/g, "e")
+            .replace(/[íì]/g, "i")
+            .replace(/[óòõ]/g, "o")
+            .replace(/[úù]/g, "u")
+            .replace(/[^a-z0-9]/g, "");
+        const defNorm = normalizeKey(phaseDef.key);
+        const dbPhase = projectPhasesData.find(
+          (pp: any) =>
+            pp.phaseName === phaseDef.key ||
+            pp.phaseKey === phaseDef.key ||
+            normalizeKey(pp.phaseName) === defNorm ||
+            normalizeKey(pp.phaseKey) === defNorm ||
+            // Handle specific mismatches
+            (phaseDef.key === "Prévias Licenciamento" &&
+              (pp.phaseKey === "previas_licenciamento" ||
+                (pp.phaseName?.includes("Licenciamento") &&
+                  pp.phaseName?.includes("Previamente")))) ||
+            (phaseDef.key === "Desativação (Pós-Exploração)" &&
+              (pp.phaseKey === "desativacao" ||
+                pp.phaseName === "Desativação")) ||
+            (phaseDef.key === "Execução da Obra" &&
+              (pp.phaseKey === "execucao_obra" || pp.phaseKey === "construcao"))
+        );
+        return {
+          ...phaseDef,
+          total,
+          concluido,
+          emCurso,
+          pendente,
+          progress,
+          isComplete,
+          hasActivity,
+          dbId: dbPhase?.id || 0,
+          hidden: dbPhase?.hidden || false,
+          startDate: dbPhase?.startDate || null,
+          endDate: dbPhase?.endDate || null,
+        };
+      })
+      .filter(Boolean) as PhaseDataItem[];
   }, [allSections, allMeasures, phaseStatuses, projectPhasesData]);
 
   // Overall stats
   const visiblePhaseData = phaseData.filter((p: any) => !p.hidden);
   const totalMeasures = visiblePhaseData.reduce((sum, p) => sum + p.total, 0);
-  const totalConcluido = visiblePhaseData.reduce((sum, p) => sum + p.concluido, 0);
+  const totalConcluido = visiblePhaseData.reduce(
+    (sum, p) => sum + p.concluido,
+    0
+  );
   const totalEmCurso = visiblePhaseData.reduce((sum, p) => sum + p.emCurso, 0);
-  const totalPendente = visiblePhaseData.reduce((sum, p) => sum + p.pendente, 0);
-  const overallProgress = totalMeasures > 0 ? Math.round((totalConcluido / totalMeasures) * 100) : 0;
+  const totalPendente = visiblePhaseData.reduce(
+    (sum, p) => sum + p.pendente,
+    0
+  );
+  const overallProgress =
+    totalMeasures > 0 ? Math.round((totalConcluido / totalMeasures) * 100) : 0;
 
   if (!projectId) {
     return (
-      <AppLayout><div className="max-w-5xl mx-auto space-y-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2 mb-2">
-          <Layers className="w-6 h-6" /> {t("Timeline do Projeto")}
-        </h1>
-        <p className="text-muted-foreground">{t("Visão geral do estado de cada projeto e a fase em que se encontra.")}</p>
+      <AppLayout>
+        <div className="max-w-6xl mx-auto space-y-5">
+          <StandPageHeader
+            eyebrow="Governança ambiental · portefólio"
+            title={t("Timeline do Projeto")}
+            description={t(
+              "Visão geral do estado de cada projeto e a fase em que se encontra."
+            )}
+            context={t("Todos os Projetos")}
+            tone="governance"
+          >
+            <div className="relative h-16 overflow-hidden rounded-xl border border-primary/10">
+              <img
+                src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(17).jpg"
+                alt=""
+                className="h-full w-full object-cover opacity-35"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-card/90 via-card/55 to-transparent" />
+              <p className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-foreground">
+                {t("Ciclo de vida dos projetos Start Campus")}
+              </p>
+            </div>
+          </StandPageHeader>
 
-        {/* Brand image */}
-        <div className="relative rounded-xl overflow-hidden h-44">
-          <img src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(17).jpg" alt="Start Campus" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent flex items-end pb-4 pl-5">
-            <p className="text-white text-sm font-medium">{t("Ciclo de vida dos projetos Start Campus")}</p>
-          </div>
-        </div>
-
-        {/* All projects overview with phase indicators */}
-        {projects && projects.length > 0 && (
-          <div className="space-y-2">
-            {projects.map(p => (
-              <Card key={p.id} className="hover:shadow-sm transition-all">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">{p.code?.slice(0, 4)}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">{p.code}</p>
-                    </div>
-                    <Badge className={`text-xs border ${getPhaseColor(projectCurrentPhases.get(p.id) || "Pré-Licenciamento")}`}>
-                      {projectCurrentPhases.get(p.id) || "Pré-Licenciamento"}
-                    </Badge>
-                  </div>
-                  {/* Phase progress mini-bar */}
-                  {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
-                    <div className="flex gap-1">
-                      <div className="flex-1">
-                        <div className="h-2.5 rounded-full bg-orange-500" />
-                        <p className="text-[9px] text-center text-muted-foreground mt-0.5">{t("Operação")}</p>
+          {projects && projects.length > 0 && (
+            <section
+              aria-label="Estado do portefólio"
+              className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+            >
+              {projects.map(p => {
+                const currentPhase =
+                  projectCurrentPhases.get(p.id) || "Pré-Licenciamento";
+                return (
+                  <article
+                    key={p.id}
+                    className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] transition-colors hover:border-primary/25"
+                  >
+                    <div className="mb-4 flex items-start gap-3">
+                      <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                        {p.code?.slice(0, 4)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">
+                          {p.name}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {p.code}
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex gap-0.5">
-                      {PHASE_DEFS.filter(ph => ph.key !== "Desativação (Pós-Exploração)").map((phase) => {
-                        // Use real progress data from backend
-                        const phaseProgress = projectPhaseProgress.get(p.id)?.get(phase.key) ?? 0;
-                        const isComplete = phaseProgress === 100;
-                        const isCurrent = phaseProgress > 0 && phaseProgress < 100;
-                        return (
-                          <div key={phase.key} className="flex-1">
-                            <div className={`h-2 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`} title={`${t(phase.label)}: ${phaseProgress}%`} />
-                            <p className="text-[8px] text-center text-muted-foreground mt-0.5 truncate">{t(phase.shortLabel)}</p>
-                          </div>
-                        );
-                      })}
+                    <div className="mb-4 flex items-center justify-between gap-2">
+                      <span className="stand-kicker text-muted-foreground">
+                        Fase atual
+                      </span>
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getPhaseColor(currentPhase)}`}
+                      >
+                        {currentPhase}
+                      </span>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                    {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
+                      <div>
+                        <div className="h-2.5 rounded-full bg-orange-500" />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t("Operação")}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div
+                          className="flex gap-1"
+                          aria-label={`Progresso das fases de ${p.name}`}
+                        >
+                          {PHASE_DEFS.filter(
+                            ph => ph.key !== "Desativação (Pós-Exploração)"
+                          ).map(phase => {
+                            const phaseProgress =
+                              projectPhaseProgress.get(p.id)?.get(phase.key) ??
+                              0;
+                            const isComplete = phaseProgress === 100;
+                            const isCurrent =
+                              phaseProgress > 0 && phaseProgress < 100;
+                            return (
+                              <div
+                                key={phase.key}
+                                className={`h-2.5 flex-1 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`}
+                                title={`${t(phase.label)}: ${phaseProgress}%`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t("Progresso por fase")}
+                        </p>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </section>
+          )}
 
-        <p className="text-xs text-muted-foreground text-center">{t("Selecione um projeto no menu lateral para ver o detalhe completo da timeline.")}</p>
-      </div></AppLayout>
+          <p className="rounded-xl border border-dashed border-border bg-muted/25 px-4 py-3 text-center text-xs text-muted-foreground">
+            {t(
+              "Selecione um projeto no menu lateral para ver o detalhe completo da timeline."
+            )}
+          </p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <AppLayout><div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        {/* Brand banner */}
-        <div className="relative rounded-xl overflow-hidden h-32 mb-4 ">
-          <img src={brandImages?.image_timeline || "/manus-storage/sc-datacenter-1_78c8d65f.jpg"} alt="" className="w-full h-full object-cover" style={{ objectPosition: brandImages?.image_timeline_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="absolute inset-0 bg-gradient-to-r from-green-900/50 to-transparent" />
-        </div>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Layers className="w-6 h-6" /> {t("Timeline do Projeto")}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {t("Visão geral do cumprimento de medidas por fase")} — {activeProject?.name}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.open(`/api/pdf/fases/${projectId}`, "_blank", "noopener,noreferrer")}><Download className="mr-1 h-4 w-4" />Relatório PDF</Button>
-            {user?.role === "admin" && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings className="w-4 h-4 mr-1" />{t("Definições")}</Button>}
-          </div>
-        </div>
-      </div>
-      {/* Sub-navigation: Vista Geral | Fases */}
-      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveSubTab("timeline")}
-          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "timeline" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Vista Geral
-        </button>
-        <button
-          onClick={() => setActiveSubTab("fases")}
-          className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${activeSubTab === "fases" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          Fases
-        </button>
-      </div>
-
-      {/* Render PhaseMeasures inline when Fases tab is active */}
-      {activeSubTab === "fases" && (
-        <PhaseMeasures embedded />
-      )}
-
-      {activeSubTab === "timeline" && (<>
-
-      {/* Admin Settings Panel */}
-      {showSettings && user?.role === "admin" && (
-        <Card className="border-amber-200 bg-amber-50/50">
-          <CardContent className="p-4 space-y-3">
-            <p className="text-sm font-semibold flex items-center gap-1"><Settings className="w-4 h-4" /> {t("Definições da Timeline")}</p>
-            <p className="text-xs text-muted-foreground">{t("Ocultar fases, definir datas de início/fim (sincroniza com calendário)")}</p>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {phaseData.map((phase: any) => (
-                <div key={phase.key} className="flex items-center gap-2 p-2 border rounded bg-background text-xs">
-                  <button onClick={() => updatePhaseMutation.mutate({ id: phase.dbId || 0, hidden: phase.hidden ? 0 : 1 })} className="shrink-0">
-                    {phase.hidden ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-green-600" />}
-                  </button>
-                  <span className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}>{t(phase.label)}</span>
-                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.startDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, startDate: e.target.value || undefined })} placeholder={t("Início")} />
-                  <Input type="date" className="w-32 h-7 text-xs" defaultValue={phase.endDate || ""} onBlur={(e: any) => updatePhaseMutation.mutate({ id: phase.dbId || 0, endDate: e.target.value || undefined })} placeholder="Fim" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {/* Overall progress card */}
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm text-muted-foreground">{t("Progresso Global")}</p>
-              <p className="text-3xl font-bold">{overallProgress}%</p>
-            </div>
-            <div className="text-right text-sm">
-              <p className="text-muted-foreground">{totalMeasures} {t("medidas total")}</p>
-              <div className="flex gap-3 mt-1">
-                <span className="flex items-center gap-1 text-green-700">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {totalConcluido}
-                </span>
-                <span className="flex items-center gap-1 text-amber-600">
-                  <Clock className="w-3.5 h-3.5" /> {totalEmCurso}
-                </span>
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <AlertCircle className="w-3.5 h-3.5" /> {totalPendente}
-                </span>
-              </div>
-            </div>
-          </div>
-          <Progress value={overallProgress} className="h-3" />
-        </CardContent>
-      </Card>
-
-      {/* Phase pipeline - visual timeline */}
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Pipeline de Fases")}</h2>
-
-        {/* Horizontal pipeline for desktop */}
-        <div className="hidden lg:flex items-center gap-1 overflow-x-auto pb-2">
-          {visiblePhaseData.map((phase, idx) => (
-            <div key={phase.key} className="flex items-center">
-              <div className={`relative px-3 py-2 rounded-lg border min-w-[110px] text-center ${phase.lightColor} ${phase.isComplete ? "ring-2 ring-green-400" : ""}`}>
-                <p className="text-xs font-medium truncate">{t(phase.shortLabel)}</p>
-                <p className="text-lg font-bold">{phase.progress}%</p>
-                <p className="text-[10px] text-muted-foreground">{phase.concluido}/{phase.total}</p>
-                {phase.isComplete && (
-                  <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                    <CheckCircle2 className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </div>
-              {idx < visiblePhaseData.length - 1 && (
-                <ArrowRight className="w-4 h-4 text-muted-foreground/50 shrink-0 mx-0.5" />
+    <AppLayout>
+      <div className="max-w-6xl mx-auto space-y-5">
+        <StandPageHeader
+          eyebrow="Governança ambiental · medidas"
+          title={t("Timeline do Projeto")}
+          context={activeProject?.name}
+          description={t("Visão geral do cumprimento de medidas por fase")}
+          tone="operations"
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                onClick={() =>
+                  window.open(
+                    `/api/pdf/fases/${projectId}`,
+                    "_blank",
+                    "noopener,noreferrer"
+                  )
+                }
+              >
+                <Download className="mr-1.5 h-4 w-4" />
+                Relatório PDF
+              </Button>
+              {user?.role === "admin" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                  onClick={() => setShowSettings(!showSettings)}
+                  aria-expanded={showSettings}
+                >
+                  <Settings className="mr-1.5 h-4 w-4" />
+                  {t("Definições")}
+                </Button>
               )}
-            </div>
-          ))}
-        </div>
-      </div>
+            </>
+          }
+        >
+          <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 bg-emerald-950/25">
+            <img
+              src={
+                brandImages?.image_timeline ||
+                "/manus-storage/sc-datacenter-1_78c8d65f.jpg"
+              }
+              alt=""
+              className="h-full w-full object-cover opacity-40"
+              style={{
+                objectPosition:
+                  brandImages?.image_timeline_position || "center",
+              }}
+              onError={e => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-emerald-950/20 to-transparent" />
+            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-emerald-50">
+              Acompanhamento de execução por fase do projeto
+            </span>
+          </div>
+        </StandPageHeader>
+        {/* Sub-navigation: Vista Geral | Fases */}
+        <nav
+          aria-label="Navegação da timeline"
+          className="inline-flex rounded-xl border border-border bg-muted/45 p-1.5 shadow-sm"
+        >
+          <button
+            type="button"
+            aria-current={activeSubTab === "timeline" ? "page" : undefined}
+            onClick={() => setActiveSubTab("timeline")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${activeSubTab === "timeline" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
+          >
+            Vista Geral
+          </button>
+          <button
+            type="button"
+            aria-current={activeSubTab === "fases" ? "page" : undefined}
+            onClick={() => setActiveSubTab("fases")}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${activeSubTab === "fases" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}
+          >
+            Fases
+          </button>
+        </nav>
 
-      {/* Detailed phase cards */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("Detalhe por Fase")}</h2>
-        {visiblePhaseData.map(phase => (
-          <Card key={phase.key} className={`overflow-hidden ${phase.isComplete ? "border-green-200" : ""}`}>
-            <CardContent className="p-0">
-              <div className="flex items-stretch">
-                {/* Color bar */}
-                <div className={`w-1.5 ${phase.color} shrink-0`} />
+        {/* Render PhaseMeasures inline when Fases tab is active */}
+        {activeSubTab === "fases" && <PhaseMeasures embedded />}
 
-                <div className="flex-1 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{t(phase.label)}</h3>
-                      {phase.isComplete && (
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">{t("Concluída")}</Badge>
+        {activeSubTab === "timeline" && (
+          <>
+            {/* Admin Settings Panel */}
+            {showSettings && user?.role === "admin" && (
+              <Card className="rounded-2xl border-amber-500/25 bg-amber-500/[0.045] shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] dark:bg-amber-500/10">
+                <CardContent className="space-y-3 p-4 sm:p-5">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold">
+                      <Settings className="h-4 w-4" />{" "}
+                      {t("Definições da Timeline")}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {t(
+                        "Ocultar fases, definir datas de início/fim (sincroniza com calendário)"
                       )}
-                      {!phase.isComplete && phase.hasActivity && (
-                        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">{t("Em Curso")}</Badge>
-                      )}
-                      {!phase.isComplete && !phase.hasActivity && (
-                        <Badge variant="secondary" className="text-xs">{t("Pendente")}</Badge>
-                      )}
-                    </div>
-                    <span className="text-sm font-bold">{phase.progress}%</span>
+                    </p>
                   </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {phaseData.map((phase: any) => (
+                      <div
+                        key={phase.key}
+                        className="flex items-center gap-2 rounded-xl border border-border/80 bg-card p-3 text-xs"
+                      >
+                        <button
+                          type="button"
+                          aria-label={`${phase.hidden ? "Mostrar" : "Ocultar"} ${t(phase.label)}`}
+                          onClick={() =>
+                            updatePhaseMutation.mutate({
+                              id: phase.dbId || 0,
+                              hidden: phase.hidden ? 0 : 1,
+                            })
+                          }
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          {phase.hidden ? (
+                            <EyeOff className="w-4 h-4 text-gray-400" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-green-600" />
+                          )}
+                        </button>
+                        <span
+                          className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}
+                        >
+                          {t(phase.label)}
+                        </span>
+                        <Input
+                          type="date"
+                          className="h-8 w-32 text-xs"
+                          defaultValue={phase.startDate || ""}
+                          onBlur={(e: any) =>
+                            updatePhaseMutation.mutate({
+                              id: phase.dbId || 0,
+                              startDate: e.target.value || undefined,
+                            })
+                          }
+                          placeholder={t("Início")}
+                        />
+                        <Input
+                          type="date"
+                          className="h-8 w-32 text-xs"
+                          defaultValue={phase.endDate || ""}
+                          onBlur={(e: any) =>
+                            updatePhaseMutation.mutate({
+                              id: phase.dbId || 0,
+                              endDate: e.target.value || undefined,
+                            })
+                          }
+                          placeholder="Fim"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <section
+              aria-label={t("Progresso Global")}
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            >
+              <StandMetricCard
+                label={t("Progresso Global")}
+                value={`${overallProgress}%`}
+                detail={`${totalMeasures} ${t("medidas total")}`}
+                icon={Layers}
+                tone="brand"
+              />
+              <StandMetricCard
+                label={t("Concluídas")}
+                value={totalConcluido}
+                detail={`${totalMeasures ? Math.round((totalConcluido / totalMeasures) * 100) : 0}% do total`}
+                icon={CheckCircle2}
+                tone="success"
+              />
+              <StandMetricCard
+                label={t("Em curso")}
+                value={totalEmCurso}
+                detail={t("Medidas com execução ativa")}
+                icon={Clock}
+                tone="warning"
+              />
+              <StandMetricCard
+                label={t("Pendentes")}
+                value={totalPendente}
+                detail={t("Medidas sem atividade registada")}
+                icon={AlertCircle}
+                tone={totalPendente > 0 ? "neutral" : "success"}
+              />
+            </section>
 
-                  <Progress value={phase.progress} className="h-2 mb-2" />
-
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500" /> {t("Concluídas")}: {phase.concluido}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Em curso")}: {phase.emCurso}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-300" /> {t("Pendentes")}: {phase.pendente}
-                    </span>
-                    <span className="ml-auto font-medium">{phase.total} medidas</span>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-emerald-900">Responsável, suporte e status updates são definidos individualmente em cada medida.</p>
-                    <Button size="sm" variant="outline" onClick={() => setActiveSubTab("fases")}>Ver medidas e responsáveis</Button>
-                  </div>
+            <section className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_12px_30px_hsl(var(--shadow-color)/0.045)] sm:p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="stand-kicker text-primary">
+                    {t("Progresso Global")}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {overallProgress}% {t("de execução concluída")}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {totalConcluido} {t("Concluídas")}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    {totalEmCurso} {t("Em curso")}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
+                    {totalPendente} {t("Pendentes")}
+                  </span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <Progress value={overallProgress} className="h-3" />
+            </section>
 
-      {visiblePhaseData.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Layers className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>{t("Nenhuma fase com medidas encontrada.")}</p>
-        </div>
-      )}
-      </>)}
-    </div>
-  </AppLayout>);
+            <section
+              aria-labelledby="pipeline-title"
+              className="rounded-2xl border border-border/80 bg-card/75 p-4 shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] sm:p-5"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="stand-kicker text-primary">Planeamento</p>
+                  <h2
+                    id="pipeline-title"
+                    className="mt-1 text-base font-semibold tracking-tight"
+                  >
+                    {t("Pipeline de Fases")}
+                  </h2>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {visiblePhaseData.length} fases visíveis
+                </span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {visiblePhaseData.map((phase, idx) => (
+                  <div
+                    key={phase.key}
+                    className="flex min-w-[145px] flex-1 items-center gap-2"
+                  >
+                    <div
+                      className={`relative w-full rounded-xl border p-3 ${phase.lightColor} ${phase.isComplete ? "ring-1 ring-emerald-500/50" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="truncate text-xs font-semibold">
+                          {t(phase.shortLabel)}
+                        </p>
+                        {phase.isComplete && (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        )}
+                      </div>
+                      <p className="mt-2 text-xl font-semibold tracking-tight">
+                        {phase.progress}%
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {phase.concluido}/{phase.total} {t("medidas")}
+                      </p>
+                    </div>
+                    {idx < visiblePhaseData.length - 1 && (
+                      <ArrowRight
+                        aria-hidden
+                        className="h-4 w-4 shrink-0 text-muted-foreground/55"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section aria-labelledby="phase-detail-title" className="space-y-3">
+              <div className="px-1">
+                <p className="stand-kicker text-primary">Execução</p>
+                <h2
+                  id="phase-detail-title"
+                  className="mt-1 text-base font-semibold tracking-tight"
+                >
+                  {t("Detalhe por Fase")}
+                </h2>
+              </div>
+              {visiblePhaseData.map(phase => {
+                const phaseStatus = phase.isComplete
+                  ? { label: t("Concluída"), tone: "success" as const }
+                  : phase.hasActivity
+                    ? { label: t("Em Curso"), tone: "warning" as const }
+                    : { label: t("Pendente"), tone: "neutral" as const };
+                return (
+                  <article
+                    key={phase.key}
+                    className="overflow-hidden rounded-2xl border border-border/80 bg-card/90 shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)]"
+                  >
+                    <div className="flex items-stretch">
+                      <div className={`w-1.5 shrink-0 ${phase.color}`} />
+                      <div className="min-w-0 flex-1 p-4 sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-sm font-semibold">
+                                {t(phase.label)}
+                              </h3>
+                              <StandStatusBadge
+                                label={phaseStatus.label}
+                                tone={phaseStatus.tone}
+                              />
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {phase.total} {t("medidas")} {t("associadas")}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="stand-kicker text-muted-foreground">
+                              {t("Progresso Global")}
+                            </p>
+                            <p className="mt-1 text-2xl font-semibold tracking-tight">
+                              {phase.progress}%
+                            </p>
+                          </div>
+                        </div>
+                        <Progress
+                          value={phase.progress}
+                          className="my-4 h-2.5"
+                        />
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" />{" "}
+                            {t("Concluídas")}: {phase.concluido}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-amber-500" />{" "}
+                            {t("Em curso")}: {phase.emCurso}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-muted-foreground/55" />{" "}
+                            {t("Pendentes")}: {phase.pendente}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-600/15 bg-emerald-600/[0.045] p-3 sm:flex-row sm:items-center sm:justify-between dark:bg-emerald-500/10">
+                          <p className="text-xs leading-5 text-emerald-950 dark:text-emerald-100">
+                            Responsável, suporte e status updates são definidos
+                            individualmente em cada medida.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 text-xs"
+                            onClick={() => setActiveSubTab("fases")}
+                          >
+                            Ver medidas e responsáveis
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+
+            {visiblePhaseData.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-border bg-muted/25 py-12 text-center text-muted-foreground">
+                <Layers className="mx-auto mb-3 h-10 w-10 opacity-50" />
+                <p className="text-sm">
+                  {t("Nenhuma fase com medidas encontrada.")}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </AppLayout>
+  );
 }

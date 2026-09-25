@@ -99,10 +99,10 @@ describe("auth.me", () => {
 });
 
 describe("sections.list", () => {
-  it("returns sections list for authenticated user", async () => {
-    const { ctx } = createUserContext();
+  it("returns sections for the requested authorized project", async () => {
+    const { ctx } = createAdminContext();
     const caller = appRouter.createCaller(ctx);
-    const result = await caller.sections.list();
+    const result = await caller.sections.list({ projectId: 1 });
     expect(Array.isArray(result)).toBe(true);
     // Should have sections (14 construction + 6 new phases = 20)
     expect(result.length).toBeGreaterThanOrEqual(17);
@@ -110,10 +110,10 @@ describe("sections.list", () => {
 });
 
 describe("measures.list", () => {
-  it("returns all measures for authenticated user", async () => {
-    const { ctx } = createUserContext();
+  it("returns measures for the requested authorized project", async () => {
+    const { ctx } = createAdminContext();
     const caller = appRouter.createCaller(ctx);
-    const result = await caller.measures.list();
+    const result = await caller.measures.list({ projectId: 1 });
     expect(Array.isArray(result)).toBe(true);
     // Catálogo atual: 156 medidas de construção + 48 medidas de fases.
     expect(result.length).toBe(204);

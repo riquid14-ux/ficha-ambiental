@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InfrastructureSettingsSection from "@/components/InfrastructureSettingsSection";
 import OperationImportMappingSettings from "@/components/OperationImportMappingSettings";
 import { useProject } from "@/contexts/ProjectContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { Activity, BadgeEuro, Calculator, Database, Factory, Gauge, Leaf, MapPin, Save, Settings2, Sparkles, Waves } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -39,6 +40,7 @@ function parseDraft(draft: Draft) {
 
 export default function OperationSettingsAdmin() {
   const { activeProject } = useProject();
+  const { t } = useLanguage();
   const projectId = activeProject?.id || 0;
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [configurationMode, setConfigurationMode] = useState<"illustrative" | "approved">("approved");
@@ -55,7 +57,7 @@ export default function OperationSettingsAdmin() {
     setCoolingStrategyBaseline(settings.coolingStrategyBaseline || "agua_mar");
   }, [settingsQuery.data]);
 
-  if (activeProject?.code !== "SIN01") return <p className="text-sm text-muted-foreground">Selecione o SIN01 — NEST para configurar parâmetros de Operação.</p>;
+  if (activeProject?.code !== "SIN01") return <p className="text-sm text-muted-foreground">{t("Selecione o SIN01 — NEST para configurar parâmetros de Operação.")}</p>;
   const save = () => {
     const parsed = parseDraft(draft);
     if (!parsed) { toast.error("Use apenas números válidos; deixe em branco um parâmetro ainda não definido."); return; }

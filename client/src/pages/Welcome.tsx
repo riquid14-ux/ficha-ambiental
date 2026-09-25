@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { getVisibleNavigationPaths } from "@/lib/role-navigation";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
+import { useLocation } from "wouter";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -63,6 +66,7 @@ export default function Welcome() {
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
+  const [, setLocation] = useLocation();
   const userRole = (user as any)?.role || "user";
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
@@ -94,34 +98,18 @@ export default function Welcome() {
   return (
     <AppLayout>
       <div className="space-y-6 pb-8">
-        {/* Hero Section with welcome message */}
-        <div className="rounded-xl overflow-hidden border bg-gradient-to-br from-green-800 via-emerald-700 to-teal-600 text-white p-8 relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-          <div className="relative z-10 max-w-3xl">
-            <p className="text-emerald-200 text-sm font-medium mb-2 uppercase tracking-wider">{t("Plataforma de Gestão Ambiental, Start Campus")}</p>
-            <h1 className="text-3xl font-bold mb-3">
-              {t("Obrigado por te juntares")}, {userName}!
-            </h1>
-            <div className="flex gap-2 flex-wrap mb-5">
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                {roleLabel}
-              </Badge>
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30 text-xs">
-                {projectName}
-              </Badge>
-            </div>
-          </div>
-        </div>
+        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName}>
+          <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={isNest ? "NEST · Operação" : "Conformidade ambiental"} tone="success" /></div>
+        </StandPageHeader>
 
         {/* Inspirational quote */}
-        <div className="flex items-start gap-4 p-5 rounded-xl border-l-4 border-emerald-500 bg-emerald-50/50">
+        <div className="flex items-start gap-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-5 dark:bg-primary/10">
           <Leaf className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-base italic text-emerald-900 leading-relaxed">
+            <p className="text-base italic text-foreground leading-relaxed">
               "Esta plataforma foi pensada para cada um de nós. Para que a informação esteja sempre atualizada, para que possamos tomar decisões mais conscientes e para que, juntos, consigamos reduzir ao máximo o nosso impacto ambiental. Cada dado que aqui registamos contribui para um futuro mais sustentável."
             </p>
-            <p className="text-sm text-emerald-700 mt-2 font-medium">{t("Equipa de Sustentabilidade, Start Campus")}</p>
+            <p className="text-sm text-primary mt-2 font-semibold">{t("Equipa de Sustentabilidade, Start Campus")}</p>
           </div>
         </div>
 
@@ -170,8 +158,8 @@ export default function Welcome() {
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {features.map((feature, i) => (
-                  <div key={i} className="flex gap-3 p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors group cursor-default">
-                    <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-green-100 text-green-700 flex items-center justify-center">
+                  <button type="button" key={i} onClick={() => setLocation(feature.path)} className="stand-interactive flex gap-3 rounded-xl border bg-card p-3 text-left transition-colors group">
+                    <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                       <feature.icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -181,7 +169,7 @@ export default function Welcome() {
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{t(feature.description)}</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </CardContent>

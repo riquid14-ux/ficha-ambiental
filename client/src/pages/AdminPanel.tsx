@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -176,9 +178,10 @@ export default function AdminPanel() {
   if (user?.role !== "admin") {
     return (
       <AppLayout>
-        <Card>
+        <Card className="border-destructive/25 bg-destructive/[0.035] shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04)]">
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Acesso restrito a administradores.</p>
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive"><Shield className="h-5 w-5" /></div>
+            <p className="font-semibold text-foreground">Acesso restrito a administradores.</p>
           </CardContent>
         </Card>
       </AppLayout>
@@ -187,67 +190,75 @@ export default function AdminPanel() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Administração")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t("Gestão de empresas, utilizadores e submissões")}</p>
-        </div>
+      <div className="space-y-6 pb-8">
+        <StandPageHeader
+          eyebrow="STAND · GOVERNAÇÃO"
+          title={t("Administração")}
+          description={t("Gestão de empresas, utilizadores e submissões")}
+          context={activeProject?.code || "Âmbito global"}
+          tone="governance"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <StandStatusBadge label="Acesso administrativo" tone="info" icon={Shield} />
+            <span className="text-xs leading-5 text-muted-foreground">Configuração, supervisão e rastreabilidade da plataforma.</span>
+          </div>
+        </StandPageHeader>
 
         {/* Explanatory Roles Panel */}
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-          <CardContent className="p-4">
+        <Card className="border-sky-500/20 bg-sky-500/[0.035] shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04)] dark:bg-sky-500/[0.06]">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex items-center gap-2 mb-3">
-              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-200">{t("Tipos de Entidade e Permissões")}</h3>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300"><Info className="h-4 w-4" /></div>
+              <div><p className="stand-kicker text-sky-700 dark:text-sky-300">Matriz de acesso</p><h2 className="text-base font-semibold text-foreground">{t("Tipos de Entidade e Permissões")}</h2></div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">EE — Entidade Executante</p>
-                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">EE — Entidade Executante</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <Users className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">EEP — Entidade Executante Parceira</p>
-                  <p className="text-xs text-muted-foreground">Subcontratado de uma EE. Acede apenas a KPI e/ou Resíduos nos projectos autorizados.</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">EEP — Entidade Executante Parceira</p>
+                  <p className="text-xs leading-5 text-muted-foreground">Subcontratado de uma EE. Acede apenas a KPI e/ou Resíduos nos projectos autorizados.</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
-                  <p className="text-xs text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
-                  <p className="text-xs text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <Users className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">PM — Gestor de Projeto</p>
-                  <p className="text-xs text-muted-foreground">{t("Acompanha o projecto, o calendário, a timeline e os indicadores dentro do seu âmbito.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">PM — Gestor de Projeto</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Acompanha o projecto, o calendário, a timeline e os indicadores dentro do seu âmbito.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">Dono de Obra — Start Campus</p>
-                  <p className="text-xs text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">Dono de Obra — Start Campus</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-2 p-2 bg-background dark:bg-slate-900 rounded border">
+              <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
                 <Eye className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs font-bold text-foreground">Observador</p>
-                  <p className="text-xs text-muted-foreground">{t("Acesso de leitura. Pode ver dashboard, histórico e revisões.")}</p>
+                  <p className="text-xs font-bold leading-5 text-foreground">Observador</p>
+                  <p className="text-xs leading-5 text-muted-foreground">{t("Acesso de leitura. Pode ver dashboard, histórico e revisões.")}</p>
                 </div>
               </div>
             </div>
@@ -255,56 +266,58 @@ export default function AdminPanel() {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto whitespace-nowrap p-1">
-            <TabsTrigger value="companies" className="gap-2">
+          <div className="overflow-x-auto rounded-xl border border-border bg-muted/45 p-1.5 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.025)]">
+          <TabsList aria-label="Áreas de administração" className="h-auto w-max min-w-full justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="companies" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               <Building2 className="w-4 h-4" /> Empresas
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
+            <TabsTrigger value="users" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               <Users className="w-4 h-4" /> Utilizadores
             </TabsTrigger>
-            <TabsTrigger value="images" className="gap-2">
+            <TabsTrigger value="images" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               <ImageIcon className="w-4 h-4" /> Imagens
             </TabsTrigger>
-            <TabsTrigger value="documentos" className="gap-2">
+            <TabsTrigger value="documentos" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               <BookOpen className="w-4 h-4" /> Documentação
             </TabsTrigger>
-            <TabsTrigger value="pedidos" className="gap-2">
+            <TabsTrigger value="pedidos" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               🔑 Pedidos de Acesso
             </TabsTrigger>
             {user?.role === "admin" && (
-              <TabsTrigger value="pedidos-eep" className="gap-2">
+              <TabsTrigger value="pedidos-eep" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Building2 className="w-4 h-4" /> Pedidos EEP
               </TabsTrigger>
             )}
-            <TabsTrigger value="melhorias" className="gap-2">
+            <TabsTrigger value="melhorias" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
               💡 Melhorias
             </TabsTrigger>
             {activeProject?.code === "SIN01" && (
-              <TabsTrigger value="operacao" className="gap-2">
+              <TabsTrigger value="operacao" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Settings2 className="w-4 h-4" /> Operação
               </TabsTrigger>
             )}
             {user?.role === "admin" && (
-              <TabsTrigger value="auditoria" className="gap-2">
+              <TabsTrigger value="auditoria" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 📋 Auditoria
               </TabsTrigger>
             )}
             {user?.role === "admin" && (
-              <TabsTrigger value="resiliencia" className="gap-2">
+              <TabsTrigger value="resiliencia" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Shield className="w-4 h-4" /> Resiliência
               </TabsTrigger>
             )}
             {user?.role === "admin" && (
-              <TabsTrigger value="email" className="gap-2">
+              <TabsTrigger value="email" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 ✉️ {t("Email")}
               </TabsTrigger>
             )}
             {user?.role === "admin" && (
-              <TabsTrigger value="notificacoes" className="gap-2">
+              <TabsTrigger value="notificacoes" className="min-h-9 gap-2 rounded-lg px-3 text-xs font-semibold text-muted-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 🔔 {t("Notificações")}
               </TabsTrigger>
             )}
           </TabsList>
+          </div>
 
           <TabsContent value="companies" className="mt-4">
             <CompaniesTab />
@@ -338,7 +351,7 @@ export default function AdminPanel() {
         {/* Audit Log Tab - Admin only */}
           {user?.role === "admin" && (
             <TabsContent value="auditoria" className="space-y-4">
-            <Card>
+            <Card className="border-border bg-card shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04)]">
               <CardHeader>
                 <CardTitle>{t("Histórico de Ações")}</CardTitle>
                 <p className="text-sm text-muted-foreground">{t("Registo de todas as alterações realizadas na plataforma (apenas leitura)")}</p>
@@ -604,8 +617,10 @@ function CompaniesTab() {
                       </div>
                     </div>
                   ) : (
-                    <div
-                      className="flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 min-w-[80px]"
+                    <button
+                      type="button"
+                      aria-label={`Editar projetos atribuídos à empresa ${c.name}`}
+                      className="flex min-w-[80px] items-center gap-1 rounded px-1 py-0.5 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       onClick={() => {
                         setEditingCompanyId(c.id);
                         setSelectedProjectIds(companyProjectsMap.get(c.id) || []);
@@ -616,7 +631,7 @@ function CompaniesTab() {
                           {(companyProjectsMap.get(c.id) || []).map(pid => {
                             const proj = projectsQuery.data?.find(p => p.id === pid);
                             return proj ? (
-                              <Badge key={pid} variant="secondary" className="text-[10px] px-1 py-0">
+                              <Badge key={pid} variant="secondary" className="px-1 py-0 text-xs">
                                 {proj.code}
                               </Badge>
                             ) : null;
@@ -628,7 +643,7 @@ function CompaniesTab() {
                           Sem projectos atribuídos
                         </span>
                       )}
-                    </div>
+                    </button>
                   )}
                 </TableCell>
                 <TableCell>
@@ -1315,7 +1330,7 @@ function UsersTab() {
                 <TableRow key={u.id}>
                   <TableCell className="font-medium">
                     {u.name || "-"}
-                    {u.role === "admin" && <Badge variant="destructive" className="ml-2 text-[10px] px-1.5 py-0">ADMIN</Badge>}
+                    {u.role === "admin" && <Badge variant="destructive" className="ml-2 px-1.5 py-0 text-xs">ADMIN</Badge>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email || "-"}</TableCell>
                   <TableCell>
@@ -1400,8 +1415,10 @@ function UsersTab() {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className="flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 min-w-[80px]"
+                      <button
+                        type="button"
+                        aria-label={`Editar projetos atribuídos a ${u.name || u.email || "utilizador"}`}
+                        className="flex min-w-[80px] items-center gap-1 rounded px-1 py-0.5 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         onClick={() => {
                           setEditingProjectsUserId(u.id);
                           setSelectedProjectIds(userProjectsMap.get(u.id) || []);
@@ -1412,7 +1429,7 @@ function UsersTab() {
                             {(userProjectsMap.get(u.id) || []).map(pid => {
                               const proj = projectsQuery.data?.find(p => p.id === pid);
                               return proj ? (
-                                <Badge key={pid} variant="secondary" className="text-[10px] px-1 py-0">
+                                <Badge key={pid} variant="secondary" className="px-1 py-0 text-xs">
                                   {proj.code}
                                 </Badge>
                               ) : null;
@@ -1424,15 +1441,15 @@ function UsersTab() {
                            Todos
                          </span>
                        )}
-                     </div>
+                     </button>
                    )}
                  </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-0.5">
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-50 dark:bg-green-900/20 text-green-700">Todas</Badge>
+                        <Badge variant="outline" className="bg-green-50 px-1 py-0 text-xs text-green-700 dark:bg-green-900/20">Todas</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">{t("Construção")}</Badge>
+                        <Badge variant="outline" className="px-1 py-0 text-xs">{t("Construção")}</Badge>
                       )}
                     </div>
                   </TableCell>

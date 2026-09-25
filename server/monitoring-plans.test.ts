@@ -149,7 +149,7 @@ describe("Planos — experiência e exportação", () => {
 
   it("exporta Word com número, responsável, entrega e último update", () => {
     expect(uiSource).toContain("Actualização dos Planos de Monitorização");
-    expect(uiSource).toContain('"N.º", "Plano", "Estado", "Responsável interno", "Suporte", "Próxima entrega", "Último update"');
+    expect(uiSource).toMatch(/"N\.º",\s*"Plano",\s*"Estado",\s*"Responsável interno",\s*"Suporte",\s*"Próxima entrega",\s*"Último update"/);
     expect(uiSource).toContain("Packer.toBlob(wordDocument)");
   });
 });

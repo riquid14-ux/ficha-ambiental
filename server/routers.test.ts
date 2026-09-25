@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "../shared/const";
+import { MFA_PENDING_COOKIE } from "./_core/mfa";
 import type { TrpcContext } from "./_core/context";
 import * as db from "./db";
 import { vi } from "vitest";
@@ -73,8 +74,9 @@ describe("auth.logout", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.auth.logout();
     expect(result).toEqual({ success: true });
-    expect(clearedCookies).toHaveLength(1);
+    expect(clearedCookies).toHaveLength(2);
     expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
+    expect(clearedCookies[1]?.name).toBe(MFA_PENDING_COOKIE);
   });
 });
 
@@ -113,8 +115,8 @@ describe("measures.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.measures.list();
     expect(Array.isArray(result)).toBe(true);
-    // Should have 200 measures (156 construction + 44 new phase measures)
-    expect(result.length).toBe(200);
+    // Catálogo atual: 156 medidas de construção + 48 medidas de fases.
+    expect(result.length).toBe(204);
   });
 });
 

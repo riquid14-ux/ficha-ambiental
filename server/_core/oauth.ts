@@ -1,4 +1,4 @@
-import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
+import { COOKIE_NAME, THIRTY_DAYS_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
@@ -40,26 +40,47 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      if (!existingUser) {
+        // Uma identidade OAuth desconhecida nunca se torna ativa por defeito.
+        // O pedido fica pendente para a aprovação normal da Administração.
+        await db.upsertUser({
+          openId: userInfo.openId,
+          name: userInfo.name || null,
+          email: userInfo.email ?? null,
+          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+          accountStatus: "pending",
+          lastSignedIn: new Date(),
+        });
+        res.redirect(302, "/login?error=no_access");
+        return;
+      }
+      if (existingUser.accountStatus !== "active" || Boolean(existingUser.totpEnabled)) {
+        // O callback externo não prova a palavra-passe; contas com 2FA seguem
+        // obrigatoriamente pelo login local + desafio efémero de segundo fator.
+        res.redirect(302, "/login?error=local_login_required");
+        return;
+      }
       await db.upsertUser({
-        openId: userInfo.openId,
-        name: userInfo.name || null,
-        email: userInfo.email ?? null,
+        openId: existingUser.openId,
+        name: existingUser.name || userInfo.name || null,
+        email: existingUser.email ?? userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
+      const sessionToken = await sdk.createSessionToken(existingUser.openId, {
+        name: existingUser.name || userInfo.name || "",
+        expiresInMs: THIRTY_DAYS_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
       res.redirect(302, "/");
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      res.status(500).json({ error: "Não foi possível concluir a autenticação." });
     }
   });
 }

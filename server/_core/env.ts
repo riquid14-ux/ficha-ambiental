@@ -9,4 +9,5 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   adsClientId: process.env.ADS_CLIENT_ID ?? "",
   adsClientSecret: process.env.ADS_CLIENT_SECRET ?? "",
+  adsRedirectUri: process.env.ADS_REDIRECT_URI ?? "",
 };

@@ -60,7 +60,7 @@ describe("1. OWASP Top Vulnerabilities", () => {
         routersCode.indexOf("getBySubmission: protectedProcedure"),
         routersCode.indexOf("getBySubmission: protectedProcedure") + 600
       );
-      expect(evidenceSection).toMatch(/companyId|isAdminOrDono|FORBIDDEN/);
+      expect(evidenceSection).toMatch(/assertSubmissionReadAccess|companyId|isAdminOrDono|FORBIDDEN/);
     });
 
     it("submissions.delete checks ownership (createdBy) or admin", () => {

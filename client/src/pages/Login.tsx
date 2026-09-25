@@ -12,7 +12,7 @@ type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPasswor
 
 export default function Login() {
   const { t, language } = useLanguage();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [, setLocation] = useLocation();
   const searchString = useSearch();
   const [viewMode, setViewMode] = useState<ViewMode>("login");
@@ -161,7 +161,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-r from-green-900/60 to-green-800/30 flex flex-col justify-end p-10">
           <h2 className="text-white text-3xl font-bold mb-2">{t("Start Campus")}</h2>
           <p className="text-white/80 text-lg">{t("Plataforma de Gestão Ambiental")}</p>
-          <p className="text-white/60 text-sm mt-2">{t("Delivering Sustainable AI-Scale Data Centers")}</p>
+          <p className="text-white/60 text-sm mt-2">Infraestruturas digitais sustentáveis, com governação ambiental.</p>
         </div>
       </div>
       {/* Right panel - login form */}
@@ -192,7 +192,7 @@ export default function Login() {
         )}
 
         {success && (
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 text-sm mb-4">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 text-green-700 text-sm mb-4">
             <Shield className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{success}</span>
           </div>
@@ -320,7 +320,7 @@ export default function Login() {
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => setViewMode("forgotPassword")}>
                 Esqueceu a palavra-passe?
               </button>
-              <button type="button" className="text-red-500 hover:underline" onClick={() => { window.location.href = "/api/auth/logout"; }}>{t("Terminar Sessão")}</button>
+              <button type="button" className="text-red-500 hover:underline" onClick={() => { void logout().finally(() => { window.location.href = "/login"; }); }}>{t("Terminar Sessão")}</button>
             </div>
           </form>
         )}

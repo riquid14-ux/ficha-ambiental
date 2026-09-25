@@ -29,6 +29,7 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
+  const [disableTotpCode, setDisableTotpCode] = useState("");
   const [qrData, setQrData] = useState<{ qrCode: string; secret: string } | null>(null);
 
   const changePasswordMutation = trpc.auth.changePassword.useMutation({
@@ -47,7 +48,7 @@ export default function Profile() {
   });
 
   const disable2FAMutation = trpc.auth.disable2FA.useMutation({
-    onSuccess: () => { toast.success("2FA desativado"); },
+    onSuccess: () => { toast.success("2FA desativado"); setDisableTotpCode(""); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -232,13 +233,19 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">{t("Adicione uma camada extra de segurança à sua conta usando o Google Authenticator ou Microsoft Authenticator.")}</p>
             {!qrData ? (
-              <div className="flex gap-2">
+              <div className="space-y-3">
                 <Button variant="outline" onClick={() => setup2FAMutation.mutate()} disabled={setup2FAMutation.isPending}>
                   <ShieldCheck className="h-4 w-4 mr-2" /> Configurar 2FA
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => disable2FAMutation.mutate()} disabled={disable2FAMutation.isPending}>
-                  Desativar 2FA
-                </Button>
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">Para desativar o 2FA, confirme o código atual do autenticador.</p>
+                  <div className="flex gap-2">
+                    <Input value={disableTotpCode} onChange={(e) => setDisableTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="max-w-32 font-mono tracking-widest" maxLength={6} />
+                    <Button variant="destructive" size="sm" onClick={() => disable2FAMutation.mutate({ code: disableTotpCode })} disabled={disableTotpCode.length !== 6 || disable2FAMutation.isPending}>
+                      Desativar 2FA
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

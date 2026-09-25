@@ -2,38 +2,53 @@ import { Express, Request, Response } from "express";
 import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, THIRTY_DAYS_MS } from "@shared/const";
 import * as db from "./db";
+import crypto from "node:crypto";
 
 const ADS_AUTH_URL = "https://developer.api.autodesk.com/authentication/v2";
 const ADS_USERINFO_URL = "https://api.aps.autodesk.com/userinfo";
 const ADS_CALLBACK_URL_PATH = "/api/autodesk/callback";
+const ADS_STATE_COOKIE = "__Host-autodesk_oauth_state";
 
 function getCallbackUrl(req: Request): string {
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "ambientfich-7cdehgqy.manus.space";
-  return `${protocol}://${host}${ADS_CALLBACK_URL_PATH}`;
+  if (ENV.adsRedirectUri) return ENV.adsRedirectUri;
+  // Não aceitar Host/X-Forwarded-Host arbitrário no redirect_uri. O fallback
+  // é apenas para desenvolvimento local e deve ser substituído por
+  // ADS_REDIRECT_URI no servidor Start Campus.
+  if (!ENV.isProduction && (req.hostname === "localhost" || req.hostname === "127.0.0.1")) {
+    return `http://${req.headers.host || "localhost:3000"}${ADS_CALLBACK_URL_PATH}`;
+  }
+  return `https://ambientfich.co${ADS_CALLBACK_URL_PATH}`;
 }
 
 export function registerAutodeskRoutes(app: Express) {
   // ─── Autodesk OAuth: Initiate login ───
   app.get("/api/autodesk/login", (req: Request, res: Response) => {
     if (!ENV.adsClientId) {
-      return res.status(500).json({ error: "Autodesk credentials not configured" });
+      return res.status(503).json({ error: "A integração Autodesk não está disponível." });
     }
 
     const callbackUrl = getCallbackUrl(req);
     const scopes = "data:read data:write account:read openid";
-    const authUrl = `${ADS_AUTH_URL}/authorize?response_type=code&client_id=${ENV.adsClientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${encodeURIComponent(scopes)}`;
+    const state = crypto.randomBytes(32).toString("base64url");
+    res.cookie(ADS_STATE_COOKIE, state, { ...getSessionCookieOptions(req), maxAge: 10 * 60 * 1000 });
+    const authUrl = `${ADS_AUTH_URL}/authorize?response_type=code&client_id=${ENV.adsClientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${encodeURIComponent(scopes)}&state=${encodeURIComponent(state)}`;
 
     res.redirect(authUrl);
   });
 
   // ─── Autodesk OAuth: Callback ───
   app.get("/api/autodesk/callback", async (req: Request, res: Response) => {
-    const { code } = req.query;
-    if (!code) {
-      return res.status(400).json({ error: "Authorization code missing" });
+    const { code, state } = req.query;
+    const expectedState = req.cookies?.[ADS_STATE_COOKIE];
+    res.clearCookie(ADS_STATE_COOKIE, getSessionCookieOptions(req));
+    const stateMatches = typeof state === "string"
+      && typeof expectedState === "string"
+      && Buffer.byteLength(state) === Buffer.byteLength(expectedState)
+      && crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState));
+    if (!code || !stateMatches) {
+      return res.status(403).json({ error: "Não foi possível validar a autenticação Autodesk." });
     }
 
     try {
@@ -53,7 +68,7 @@ export function registerAutodeskRoutes(app: Express) {
       if (!tokenResponse.ok) {
         const err = await tokenResponse.text();
         console.error("[Autodesk] Token exchange failed:", err);
-        return res.status(400).json({ error: "Failed to exchange token", details: err });
+        return res.status(400).json({ error: "Não foi possível concluir a autenticação Autodesk." });
       }
 
       const tokenData = await tokenResponse.json() as any;
@@ -103,7 +118,7 @@ export function registerAutodeskRoutes(app: Express) {
       res.redirect("/dashboard");
     } catch (error: any) {
       console.error("[Autodesk] OAuth callback error:", error);
-      return res.status(500).json({ error: "OAuth callback failed", details: error.message });
+      return res.status(500).json({ error: "Não foi possível concluir a autenticação Autodesk." });
     }
   });
 
@@ -111,7 +126,7 @@ export function registerAutodeskRoutes(app: Express) {
   app.post("/api/autodesk/auto-login", async (req: Request, res: Response) => {
     const token = req.cookies?.ads_token;
     if (!token) {
-      return res.status(401).json({ error: "No Autodesk token found. Please authenticate with Autodesk first." });
+      return res.status(401).json({ error: "Não existe uma sessão Autodesk válida." });
     }
 
     try {
@@ -121,14 +136,14 @@ export function registerAutodeskRoutes(app: Express) {
       });
 
       if (!userInfoRes.ok) {
-        return res.status(401).json({ error: "Autodesk token expired or invalid. Please re-authenticate." });
+        return res.status(401).json({ error: "A sessão Autodesk expirou ou é inválida." });
       }
 
       const userInfo = await userInfoRes.json() as any;
       const email = (userInfo.email || "").toLowerCase().trim();
 
       if (!email) {
-        return res.status(400).json({ error: "Could not retrieve email from Autodesk profile." });
+        return res.status(400).json({ error: "Não foi possível obter o email Autodesk." });
       }
 
       const loginResult = await autodeskEmailLogin(email, userInfo.name || email.split("@")[0], req, res);
@@ -143,7 +158,7 @@ export function registerAutodeskRoutes(app: Express) {
       }
     } catch (error: any) {
       console.error("[Autodesk] Auto-login error:", error);
-      return res.status(500).json({ error: "Auto-login failed", details: error.message });
+      return res.status(500).json({ error: "Não foi possível validar a sessão Autodesk." });
     }
   });
 
@@ -152,7 +167,6 @@ export function registerAutodeskRoutes(app: Express) {
     const token = req.cookies?.ads_token;
     res.json({
       connected: !!token,
-      clientId: ENV.adsClientId ? ENV.adsClientId.substring(0, 8) + "..." : null,
       configured: !!(ENV.adsClientId && ENV.adsClientSecret),
     });
   });
@@ -255,13 +269,15 @@ async function autodeskEmailLogin(
   );
 
   if (existingUser) {
+    if (existingUser.accountStatus !== "active" || Boolean(existingUser.totpEnabled)) return { success: false };
     const sessionToken = await sdk.createSessionToken(existingUser.openId, {
       name: existingUser.name || name,
+      expiresInMs: THIRTY_DAYS_MS,
     });
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, {
       ...cookieOptions,
-      maxAge: 365 * 24 * 60 * 60 * 1000,
+      maxAge: THIRTY_DAYS_MS,
     });
     return { success: true };
   }
@@ -285,36 +301,15 @@ async function autodeskEmailLogin(
     }
     await db.acceptInvitation(invitation.id);
 
-    const sessionToken = await sdk.createSessionToken(openId, { name });
+    const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: THIRTY_DAYS_MS });
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, {
       ...cookieOptions,
-      maxAge: 365 * 24 * 60 * 60 * 1000,
+      maxAge: THIRTY_DAYS_MS,
     });
     return { success: true };
   }
 
-  // 3. Check if it's one of the auto-admin emails
-  const autoAdminEmails = ["rmd@startcampus.pt", "rom@startcampus.pt", "npa@startcampus.pt"];
-  if (autoAdminEmails.includes(email)) {
-    const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
-    await db.upsertUser({
-      openId,
-      name,
-      email,
-      loginMethod: "autodesk",
-      role: "admin",
-    });
-
-    const sessionToken = await sdk.createSessionToken(openId, { name });
-    const cookieOptions = getSessionCookieOptions(req);
-    res.cookie(COOKIE_NAME, sessionToken, {
-      ...cookieOptions,
-      maxAge: 365 * 24 * 60 * 60 * 1000,
-    });
-    return { success: true };
-  }
-
-  // 4. No access
+  // 3. Administradores são criados e promovidos apenas pela Administração.
   return { success: false };
 }

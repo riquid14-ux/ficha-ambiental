@@ -24,7 +24,7 @@ describe("Autodesk Integration", () => {
     expect(response.ok).toBe(true);
     const data = await response.json();
     expect(data.configured).toBe(true);
-    expect(data.clientId).toContain("...");
+    expect(data).not.toHaveProperty("clientId");
   });
 
   it("should redirect to Autodesk OAuth on /api/autodesk/login", async () => {

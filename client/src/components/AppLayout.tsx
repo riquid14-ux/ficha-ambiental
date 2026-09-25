@@ -447,7 +447,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               )}
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground mb-2">{t("Não consegue aceder ao autenticador? Contacte")} <strong>apoioamb@startcampus.pt</strong></p>
-                <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { window.location.href = "/api/auth/logout"; }}>
+                <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { void logout().finally(() => { window.location.href = "/login"; }); }}>
                   Terminar Sessão
                 </button>
               </div>

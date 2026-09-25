@@ -43,6 +43,8 @@ export function getSessionCookieOptions(
     httpOnly: true,
     path: "/",
     sameSite: "none",
-    secure: isSecureRequest(req),
+    // Um cookie SameSite=None sem Secure é rejeitado pelos browsers. Em
+    // produção falha fechado mesmo que um proxy esteja mal configurado.
+    secure: process.env.NODE_ENV === "production" ? true : isSecureRequest(req),
   };
 }

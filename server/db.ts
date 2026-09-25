@@ -70,13 +70,6 @@ export async function getDb() {
 
 // ─── Users ───────────────────────────────────────────────────────────────────
 
-// These emails are auto-assigned admin on FIRST login only
-const AUTO_ADMIN_EMAILS = [
-  "rmd@startcampus.pt",
-  "rom@startcampus.pt",
-  "npa@startcampus.pt",
-];
-
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -108,10 +101,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   } else if (user.openId === ENV.ownerOpenId) {
     values.role = "admin";
     updateSet.role = "admin";
-  } else if (user.email && AUTO_ADMIN_EMAILS.includes(user.email.toLowerCase())) {
-    // Only set admin on INSERT (first login), don't override on subsequent logins
-    values.role = "admin";
-    // Don't put role in updateSet — preserve whatever role was manually set
+  }
+
+  if (user.accountStatus !== undefined) {
+    values.accountStatus = user.accountStatus;
+    updateSet.accountStatus = user.accountStatus;
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
@@ -183,6 +177,15 @@ export async function getUserById(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+/** Invalida todas as sessões emitidas antes de uma alteração de segurança. */
+export async function incrementUserSessionVersion(userId: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database.update(users)
+    .set({ sessionVersion: sql`${users.sessionVersion} + 1` })
+    .where(eq(users.id, userId));
 }
 
 export async function getAllUsers() {

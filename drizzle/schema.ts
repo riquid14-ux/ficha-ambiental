@@ -19,6 +19,7 @@ export const users = mysqlTable("users", {
   totpEnabled: int("totpEnabled").default(0),
   twoFactorGraceUntil: timestamp("twoFactorGraceUntil"),
   accountStatus: varchar("accountStatus", { length: 20 }).default("active"),
+  sessionVersion: int("sessionVersion").default(0).notNull(),
   passwordResetToken: varchar("passwordResetToken", { length: 255 }),
   passwordResetExpiry: bigint("passwordResetExpiry", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -209,7 +210,9 @@ export const evidenceImages = mysqlTable("evidence_images", {
   filename: varchar("filename", { length: 255 }),
   mimeType: varchar("mimeType", { length: 100 }),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  fileKeyIdx: index("evidence_images_file_key_idx").on(table.fileKey),
+}));
 
 export type EvidenceImage = typeof evidenceImages.$inferSelect;
 export type InsertEvidenceImage = typeof evidenceImages.$inferInsert;
@@ -261,7 +264,9 @@ export const historicalPdfs = mysqlTable("historical_pdfs", {
   filename: varchar("filename", { length: 255 }),
   uploadedBy: int("uploadedBy"),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  fileKeyIdx: index("historical_pdfs_file_key_idx").on(table.fileKey),
+}));
 
 export type HistoricalPdf = typeof historicalPdfs.$inferSelect;
 export type InsertHistoricalPdf = typeof historicalPdfs.$inferInsert;
@@ -383,7 +388,9 @@ export const evidenceFiles = mysqlTable("evidence_files", {
   mimeType: varchar("mimeType", { length: 100 }),
   fileSize: int("fileSize"),
   uploadedAt: timestamp("uploadedAt").defaultNow().notNull(),
-});
+}, (table) => ({
+  fileKeyIdx: index("evidence_files_file_key_idx").on(table.fileKey),
+}));
 export type EvidenceFile = typeof evidenceFiles.$inferSelect;
 export type InsertEvidenceFile = typeof evidenceFiles.$inferInsert;
 
@@ -480,6 +487,7 @@ export const monitoringPlanAttachments = mysqlTable("monitoring_plan_attachments
   assignmentIdx: index("monitoring_plan_attachments_assignment_idx").on(table.assignmentId),
   planIdx: index("monitoring_plan_attachments_plan_idx").on(table.planId),
   updateIdx: index("monitoring_plan_attachments_update_idx").on(table.updateId),
+  fileKeyIdx: index("monitoring_plan_attachments_file_key_idx").on(table.fileKey),
 }));
 export type MonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferSelect;
 export type InsertMonitoringPlanAttachment = typeof monitoringPlanAttachments.$inferInsert;
@@ -636,7 +644,9 @@ export const phaseEvidence = mysqlTable("phase_evidence", {
   createdByName: varchar("createdByName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   referenceYear: int("referenceYear"),
-});
+}, (table) => ({
+  fileKeyIdx: index("phase_evidence_file_key_idx").on(table.fileKey),
+}));
 
 export type PhaseEvidence = typeof phaseEvidence.$inferSelect;
 export type InsertPhaseEvidence = typeof phaseEvidence.$inferInsert;
@@ -877,6 +887,7 @@ export const operationImportBatches = mysqlTable("operation_import_batches", {
   importedAt: timestamp("importedAt").defaultNow().notNull(),
 }, (table) => ({
   projectDateIdx: index("operation_import_batches_project_date_idx").on(table.projectId, table.measuredDate),
+  sourceFileKeyIdx: index("operation_import_batches_source_file_key_idx").on(table.sourceFileKey),
 }));
 export type OperationImportBatch = typeof operationImportBatches.$inferSelect;
 export type InsertOperationImportBatch = typeof operationImportBatches.$inferInsert;
@@ -928,6 +939,7 @@ export const operationInvoices = mysqlTable("operation_invoices", {
 }, (table) => ({
   projectPeriodIdx: index("operation_invoices_project_period_idx").on(table.projectId, table.periodStart, table.periodEnd),
   projectTypeIdx: index("operation_invoices_project_type_idx").on(table.projectId, table.invoiceType),
+  fileKeyIdx: index("operation_invoices_file_key_idx").on(table.fileKey),
 }));
 export type OperationInvoice = typeof operationInvoices.$inferSelect;
 export type InsertOperationInvoice = typeof operationInvoices.$inferInsert;
@@ -1020,6 +1032,8 @@ export const operationInfrastructurePoints = mysqlTable("operation_infrastructur
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   projectOrderIdx: index("operation_infrastructure_points_project_order_idx").on(table.projectId, table.sortOrder),
+  cardImageKeyIdx: index("operation_infrastructure_card_image_key_idx").on(table.cardImageKey),
+  chartFileKeyIdx: index("operation_infrastructure_chart_file_key_idx").on(table.chartFileKey),
 }));
 export type OperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferSelect;
 export type InsertOperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferInsert;
@@ -1036,6 +1050,32 @@ export const auditLog = mysqlTable("audit_log", {
   newValue: text("newValue"),
   createdAt: timestamp("createdAt").defaultNow(),
 });
+
+/**
+ * Registo administrativo de incidentes e retoma. Não contém segredos, dados de
+ * sessão nem cópias de ficheiros; concentra apenas contexto operacional para
+ * coordenação da recuperação e aprendizagem pós-incidente.
+ */
+export const operationalIncidents = mysqlTable("operational_incidents", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 255 }).notNull(),
+  severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull().default("medium"),
+  status: mysqlEnum("status", ["open", "investigating", "monitoring", "resolved"]).notNull().default("open"),
+  affectedServices: varchar("affectedServices", { length: 500 }).notNull().default("Aplicação"),
+  impactSummary: text("impactSummary"),
+  recoverySteps: text("recoverySteps"),
+  followUpActions: text("followUpActions"),
+  occurredAt: timestamp("occurredAt").notNull().defaultNow(),
+  resolvedAt: timestamp("resolvedAt"),
+  createdBy: int("createdBy").notNull(),
+  createdByName: varchar("createdByName", { length: 255 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  statusOccurredIdx: index("operational_incidents_status_occurred_idx").on(table.status, table.occurredAt),
+}));
+
+export type OperationalIncident = typeof operationalIncidents.$inferSelect;
+export type InsertOperationalIncident = typeof operationalIncidents.$inferInsert;
 
 // Notification recipients per project — who gets email when fichas are submitted
 export const notificationRecipients = mysqlTable("notification_recipients", {

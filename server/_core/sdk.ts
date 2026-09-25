@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME, THIRTY_DAYS_MS, decodeOAuthState } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -22,6 +22,7 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  sessionVersion?: number;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -167,11 +168,14 @@ class SDKServer {
     openId: string,
     options: { expiresInMs?: number; name?: string } = {}
   ): Promise<string> {
+    const user = await db.getUserByOpenId(openId);
+    if (!user) throw new Error("Não foi possível criar uma sessão para um utilizador inexistente.");
     return this.signSession(
       {
         openId,
         appId: ENV.appId,
         name: options.name || "",
+        sessionVersion: user.sessionVersion ?? 0,
       },
       options
     );
@@ -182,7 +186,7 @@ class SDKServer {
     options: { expiresInMs?: number } = {}
   ): Promise<string> {
     const issuedAt = Date.now();
-    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
+    const expiresInMs = options.expiresInMs ?? THIRTY_DAYS_MS;
     const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
     const secretKey = this.getSessionSecret();
 
@@ -190,6 +194,7 @@ class SDKServer {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      sessionVersion: payload.sessionVersion ?? 0,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -198,7 +203,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; sessionVersion: number } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -209,7 +214,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, sessionVersion } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -219,11 +224,18 @@ class SDKServer {
         console.warn("[Auth] Session payload missing required fields");
         return null;
       }
+      if (appId !== ENV.appId) {
+        console.warn("[Auth] Session token belongs to another application");
+        return null;
+      }
 
       return {
         openId,
         appId,
         name,
+        sessionVersion: typeof sessionVersion === "number" && Number.isSafeInteger(sessionVersion) && sessionVersion >= 0
+          ? sessionVersion
+          : 0,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -298,6 +310,9 @@ class SDKServer {
         const allUsers = await db.getAllUsers();
         const existingByEmail = allUsers.find(u => u.email?.toLowerCase().trim() === email);
         if (existingByEmail) {
+          if (existingByEmail.accountStatus !== "active" || Boolean(existingByEmail.totpEnabled)) {
+            throw ForbiddenError("Utilize a autenticação local desta conta.");
+          }
           // User exists by email but different openId - link them
           await db.upsertUser({
             openId: userInfo.openId,
@@ -308,6 +323,7 @@ class SDKServer {
             role: existingByEmail.role as any,
           });
           user = await db.getUserByOpenId(userInfo.openId);
+          if (user && existingByEmail.companyId) await db.updateUserCompany(user.id, existingByEmail.companyId);
         } else {
           // Check for pending invitation
           const invitation = await db.getPendingInvitationByEmail(email);
@@ -349,6 +365,13 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    if (user.accountStatus !== "active") {
+      throw ForbiddenError("Conta sem acesso ativo.");
+    }
+    if (session.sessionVersion !== (user.sessionVersion ?? 0)) {
+      throw ForbiddenError("Sessão revogada.");
+    }
+
     await db.upsertUser({
       openId: user.openId,
       email: user.email ?? undefined,
@@ -357,7 +380,10 @@ class SDKServer {
 
     // Re-fetch user after upsert to reflect any auto-assignment from invitations
     const updatedUser = await db.getUserByOpenId(user.openId);
-    return updatedUser || user;
+    const authenticatedUser = updatedUser || user;
+    if (authenticatedUser.accountStatus !== "active") throw ForbiddenError("Conta sem acesso ativo.");
+    if (session.sessionVersion !== (authenticatedUser.sessionVersion ?? 0)) throw ForbiddenError("Sessão revogada.");
+    return authenticatedUser;
   }
 }
 

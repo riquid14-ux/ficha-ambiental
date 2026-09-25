@@ -33,11 +33,9 @@ class ErrorBoundary extends Component<Props, State> {
 
             <h2 className="text-xl mb-4">Ocorreu um erro inesperado.</h2>
 
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
-                {this.state.error?.stack}
-              </pre>
-            </div>
+            <p className="max-w-md text-center text-sm text-muted-foreground mb-6">
+              A informação técnica foi protegida. Recarregue a página; se o problema persistir, contacte o apoio ambiental.
+            </p>
 
             <button
               onClick={() => window.location.reload()}

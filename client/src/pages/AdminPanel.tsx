@@ -20,6 +20,7 @@ import { CompanyRelationshipMap } from "@/components/CompanyRelationshipMap";
 import { useProject } from "@/contexts/ProjectContext";
 import DocumentLibraryAdminTab from "./DocumentLibraryAdminTab";
 import OperationSettingsAdmin from "./OperationSettingsAdmin";
+import AdminResilienceSection from "@/components/AdminResilienceSection";
 
 const ROLE_LABELS: Record<string, string> = {
   user: "Utilizador",
@@ -289,6 +290,11 @@ export default function AdminPanel() {
               </TabsTrigger>
             )}
             {user?.role === "admin" && (
+              <TabsTrigger value="resiliencia" className="gap-2">
+                <Shield className="w-4 h-4" /> Resiliência
+              </TabsTrigger>
+            )}
+            {user?.role === "admin" && (
               <TabsTrigger value="email" className="gap-2">
                 ✉️ {t("Email")}
               </TabsTrigger>
@@ -330,8 +336,8 @@ export default function AdminPanel() {
           )}
         
         {/* Audit Log Tab - Admin only */}
-        {user?.role === "admin" && (
-          <TabsContent value="auditoria" className="space-y-4">
+          {user?.role === "admin" && (
+            <TabsContent value="auditoria" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>{t("Histórico de Ações")}</CardTitle>
@@ -341,8 +347,9 @@ export default function AdminPanel() {
                 <AuditLogTab />
               </CardContent>
             </Card>
-          </TabsContent>
-        )}
+            </TabsContent>
+          )}
+          {user?.role === "admin" && <TabsContent value="resiliencia" className="mt-4"><AdminResilienceSection /></TabsContent>}
 </Tabs>
       </div>
 

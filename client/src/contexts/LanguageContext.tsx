@@ -161,6 +161,7 @@ export const translations: Record<string, Record<Lang, string>> = {
   "Projeto": { pt: "Projeto", en: "Project" },
   "Visão": { pt: "Visão", en: "Overview" },
   "Recursos": { pt: "Recursos", en: "Resources" },
+  "Desempenho e Monitorização Ambiental": { pt: "Desempenho e Monitorização Ambiental", en: "Performance & Environmental Monitoring" },
   "Menu": { pt: "Menu", en: "Menu" },
   "Energia & CO2": { pt: "Energia & CO2", en: "Energy & CO2" },
   "Incidentes Ambientais": { pt: "Incidentes Ambientais", en: "Environmental Incidents" },
@@ -1185,6 +1186,15 @@ export const translations: Record<string, Record<Lang, string>> = {
   "Desempenho de resíduos": { pt: "Desempenho de resíduos", en: "Waste performance" },
   "Abrir resíduos": { pt: "Abrir resíduos", en: "Open waste" },
   "Total registado no período atual": { pt: "Total registado no período atual", en: "Total recorded in the current period" },
+  "Categoria fotográfica": { pt: "Categoria fotográfica", en: "Photo category" },
+  "Ex.: Estaleiro, Linha de água, Acesso Norte": { pt: "Ex.: Estaleiro, Linha de água, Acesso Norte", en: "E.g. Site compound, Watercourse, North access" },
+  "Abrir fotografia": { pt: "Abrir fotografia", en: "Open photo" },
+  "Fotografia": { pt: "Fotografia", en: "Photo" },
+  "Sem categoria": { pt: "Sem categoria", en: "Uncategorised" },
+  "Adicionar fotografia": { pt: "Adicionar fotografia", en: "Add photo" },
+  "Não iniciado": { pt: "Não iniciado", en: "Not started" },
+  "Em validação": { pt: "Em validação", en: "Under validation" },
+  "Bloqueado": { pt: "Bloqueado", en: "Blocked" },
 };
 interface LanguageContextType {
   language: Lang;
@@ -1197,6 +1207,19 @@ const LanguageContext = createContext<LanguageContextType>({
   setLanguage: () => {},
   t: (key) => key,
 });
+
+const warnedTranslationGaps = new Set<string>();
+
+function warnTranslationGap(kind: "missing-key" | "missing-language", language: Lang, key: string) {
+  if (!import.meta.env.DEV) return;
+  const warningId = `${kind}:${language}:${key}`;
+  if (warnedTranslationGaps.has(warningId)) return;
+  warnedTranslationGaps.add(warningId);
+  const detail = kind === "missing-key"
+    ? `Falta tradução para: "${key}"`
+    : `"${key}" não tem tradução em "${language}"`;
+  console.warn(`[i18n] ${detail}`);
+}
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Lang>(() => {
@@ -1222,7 +1245,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string): string => {
     const entry = translations[key];
-    if (!entry) return key;
+    if (!entry) {
+      warnTranslationGap("missing-key", language, key);
+      return key;
+    }
+    if (!entry[language]) warnTranslationGap("missing-language", language, key);
     return entry[language] || entry.pt || key;
   };
 

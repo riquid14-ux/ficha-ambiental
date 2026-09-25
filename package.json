@@ -10,6 +10,7 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "audit:i18n": "node scripts/audit-i18n-literals.mjs",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "ops:watchdog": "node ops/pm2-crash-watchdog.mjs",
     "ops:backup": "bash ops/backup-database.sh",

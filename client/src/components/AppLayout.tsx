@@ -223,7 +223,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   const navigationGroups = [
     { label: t("Visão"), items: allItems.filter(item => ["Bem-vindo", "Dashboard", "Dashboard Parceiros"].includes(item.label)) },
     { label: t("Conformidade"), items: allItems.filter(item => ["Planos", "Calendário", "Timeline", "Ficha Semanal", "RDCD", "Fases", "Certificações"].includes(item.label)) },
-    { label: t("Operação"), items: allItems.filter(item => ["Operação", "Gestão de Resíduos", "MIRR", "KPI's"].includes(item.label)) },
+    { label: t("Desempenho e Monitorização Ambiental"), items: allItems.filter(item => ["Operação", "Gestão de Resíduos", "MIRR", "KPI's"].includes(item.label)) },
     { label: t("Recursos"), items: allItems.filter(item => ["Documentação", "GAMMA", "Pedidos EEP", "Administração"].includes(item.label)) },
   ].filter(group => group.items.length > 0);
 

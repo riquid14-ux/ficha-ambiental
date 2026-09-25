@@ -648,6 +648,9 @@ export const phaseEvidence = mysqlTable("phase_evidence", {
   fileKey: varchar("fileKey", { length: 500 }),
   filename: varchar("filename", { length: 255 }),
   mimeType: varchar("mimeType", { length: 100 }),
+  // Área fotográfica opcional, por exemplo "Estaleiro" ou "Acesso Norte".
+  // Mantém-se nula para todas as evidências históricas.
+  category: varchar("category", { length: 120 }),
   createdBy: int("createdBy").notNull(),
   createdByName: varchar("createdByName", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

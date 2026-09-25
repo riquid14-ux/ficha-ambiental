@@ -1033,6 +1033,10 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
         await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
+        if (!measure) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A medida não pertence ao projecto seleccionado." });
+        }
         const result = await db.addPhaseEvidence({
           measureId: input.measureId,
           projectId: input.projectId,
@@ -1053,12 +1057,18 @@ export const appRouter = router({
         mimeType: z.string(),
         data: z.string(), // base64
         isPhoto: z.boolean().default(false),
+        category: z.string().trim().max(120).optional(),
+        referenceYear: z.number().int().min(2000).max(2100).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
         }
         await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
+        const measure = await db.getMeasureById(input.measureId, input.projectId);
+        if (!measure) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A medida não pertence ao projecto seleccionado." });
+        }
         // Security: validate file type and size
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
         if (input.data.length > MAX_FILE_SIZE_B64) throw new TRPCError({ code: "BAD_REQUEST", message: "Ficheiro demasiado grande (máx. 10MB)" });
@@ -1082,8 +1092,10 @@ export const appRouter = router({
           fileKey: key,
           filename: input.filename,
           mimeType: input.mimeType,
+          category: input.category || null,
           createdBy: ctx.user.id,
           createdByName: ctx.user.name || ctx.user.email || "Utilizador",
+          referenceYear: input.referenceYear ?? null,
         });
         return { id: result.id, url, filename: input.filename };
       }),
@@ -1091,9 +1103,12 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        if (!isAdminOrDono(ctx.user.role)) {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        const evidence = await db.getPhaseEvidenceById(input.id);
+        if (!evidence) throw new TRPCError({ code: "NOT_FOUND", message: "Evidência não encontrada." });
+        await assertProjectModuleAccess(ctx.user, evidence.projectId, "timeline");
         await db.deletePhaseEvidence(input.id);
         return { success: true };
       }),

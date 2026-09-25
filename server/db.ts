@@ -1811,6 +1811,13 @@ export async function getPhaseEvidence(projectId: number, measureId?: number) {
     .orderBy(desc(phaseEvidence.createdAt));
 }
 
+export async function getPhaseEvidenceById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(phaseEvidence).where(eq(phaseEvidence.id, id)).limit(1);
+  return result[0];
+}
+
 export async function addPhaseEvidence(data: Omit<InsertPhaseEvidence, "id" | "createdAt">) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");

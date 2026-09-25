@@ -1,0 +1,1 @@
+ALTER TABLE `phase_evidence` ADD `category` varchar(120);

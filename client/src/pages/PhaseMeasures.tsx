@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
 import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 import { groupsWithMeasures } from "@/lib/phase-measure-presentation";
 
@@ -348,7 +348,7 @@ export default function PhaseMeasures(props: any) {
                       isExpanded={expandedMeasures.has(measure.id)}
                       onToggle={() => toggleMeasure(measure.id)}
                       onAddComment={(content) => addCommentMutation.mutate({ projectId, measureId: measure.id, content, referenceYear: isOperationOnly ? evidenceYear : undefined })}
-                      onUploadFile={(file, isPhoto) => {
+                      onUploadFile={(file, isPhoto, category) => {
                         const reader = new FileReader();
                         reader.onload = () => {
                           const base64 = (reader.result as string).split(",")[1];
@@ -359,6 +359,8 @@ export default function PhaseMeasures(props: any) {
                             mimeType: file.type,
                             data: base64,
                             isPhoto,
+                            category: category || undefined,
+                            referenceYear: isOperationOnly ? evidenceYear : undefined,
                           });
                         };
                         reader.readAsDataURL(file);
@@ -392,7 +394,7 @@ function MeasureCard({
   isExpanded: boolean;
   onToggle: () => void;
   onAddComment: (content: string) => void;
-  onUploadFile: (file: File, isPhoto: boolean) => void;
+  onUploadFile: (file: File, isPhoto: boolean, category?: string) => void;
   onDeleteEvidence: (id: number) => void;
   isEditable: boolean;
   phaseColor: string;
@@ -401,12 +403,16 @@ function MeasureCard({
 }) {
   const { t } = useLanguage();
   const [commentText, setCommentText] = useState("");
+  const [photoCategory, setPhotoCategory] = useState("");
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const comments = evidence.filter(e => e.type === "comment");
   const photos = evidence.filter(e => e.type === "photo");
   const files = evidence.filter(e => e.type === "file");
+  const photoCategories = Array.from(new Set(photos.map((photo: any) => photo.category).filter(Boolean))) as string[];
+  const selectedPhoto = selectedPhotoIndex === null ? null : photos[selectedPhotoIndex];
   const totalAttachments = evidence.length;
 
   const trackingStatus = tracking?.trackingStatus || "nao_iniciado";
@@ -509,12 +515,21 @@ function MeasureCard({
               <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                 <Image className="w-4 h-4" /> Fotos ({photos.length})
               </h4>
-              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                {photos.map(p => (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {photos.map((p, index) => (
                   <div key={p.id} className="relative group">
-                    <img src={p.content} alt={p.filename} className="w-full h-24 object-cover rounded-lg border" />
+                    <button
+                      type="button"
+                      className="block w-full overflow-hidden rounded-xl border bg-muted text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setSelectedPhotoIndex(index)}
+                      aria-label={`${t("Abrir fotografia")}: ${p.filename || t("Fotografia")}`}
+                    >
+                      <img src={p.content} alt={p.filename || t("Fotografia")} className="h-40 w-full object-cover sm:h-44" />
+                      <span className="block truncate px-2 py-1.5 text-xs text-muted-foreground">{p.category || t("Sem categoria")}</span>
+                    </button>
                     {isEditable && (
                       <button
+                        type="button"
                         onClick={() => onDeleteEvidence(p.id)}
                         className="absolute top-0.5 right-0.5 bg-destructive/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
@@ -524,15 +539,90 @@ function MeasureCard({
                   </div>
                 ))}
               </div>
+              <Dialog
+                open={selectedPhotoIndex !== null}
+                onOpenChange={(open) => { if (!open) setSelectedPhotoIndex(null); }}
+              >
+                <DialogContent
+                  className="max-h-[94vh] max-w-6xl overflow-hidden border-border/70 bg-background p-0"
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowLeft" && selectedPhotoIndex !== null && selectedPhotoIndex > 0) {
+                      event.preventDefault();
+                      setSelectedPhotoIndex(selectedPhotoIndex - 1);
+                    }
+                    if (event.key === "ArrowRight" && selectedPhotoIndex !== null && selectedPhotoIndex < photos.length - 1) {
+                      event.preventDefault();
+                      setSelectedPhotoIndex(selectedPhotoIndex + 1);
+                    }
+                  }}
+                >
+                  {selectedPhoto && selectedPhotoIndex !== null && (
+                    <div className="flex max-h-[94vh] flex-col">
+                      <DialogHeader className="border-b px-5 py-4 pr-12 text-left">
+                        <DialogTitle className="truncate text-base">{selectedPhoto.filename || t("Fotografia")}</DialogTitle>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedPhoto.category || t("Sem categoria")} · {selectedPhotoIndex + 1}/{photos.length}
+                        </p>
+                      </DialogHeader>
+                      <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black/95 p-3 sm:p-6">
+                        <img
+                          src={selectedPhoto.content}
+                          alt={selectedPhoto.filename || t("Fotografia")}
+                          className="max-h-[74vh] w-auto max-w-full rounded-md object-contain"
+                        />
+                        {selectedPhotoIndex > 0 && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full shadow-lg"
+                            onClick={() => setSelectedPhotoIndex(selectedPhotoIndex - 1)}
+                            aria-label={t("Anterior")}
+                          >
+                            <ChevronLeft className="size-5" />
+                          </Button>
+                        )}
+                        {selectedPhotoIndex < photos.length - 1 && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full shadow-lg"
+                            onClick={() => setSelectedPhotoIndex(selectedPhotoIndex + 1)}
+                            aria-label={t("Seguinte")}
+                          >
+                            <ChevronRight className="size-5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
               {isEditable && (
                 <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground" htmlFor={`photo-category-${measure.id}`}>{t("Categoria fotográfica")}</label>
+                    <Input
+                      id={`photo-category-${measure.id}`}
+                      list={`photo-category-options-${measure.id}`}
+                      className="h-8 text-xs"
+                      placeholder={t("Ex.: Estaleiro, Linha de água, Acesso Norte")}
+                      value={photoCategory}
+                      onChange={(event) => setPhotoCategory(event.target.value)}
+                      maxLength={120}
+                    />
+                    <datalist id={`photo-category-options-${measure.id}`}>
+                      {photoCategories.map(category => <option key={category} value={category} />)}
+                    </datalist>
+                  </div>
                   <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
                     const f = e.target.files?.[0];
-                    if (f) onUploadFile(f, true);
+                    if (f) onUploadFile(f, true, photoCategory.trim() || undefined);
                     e.target.value = "";
                   }} />
                   <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => photoInputRef.current?.click()}>
-                    <Image className="w-3 h-3 mr-1" /> Adicionar Foto
+                    <Image className="w-3 h-3 mr-1" /> {t("Adicionar fotografia")}
                   </Button>
                 </>
               )}
@@ -583,18 +673,18 @@ function MeasureCard({
 
 function StatusBadge({ status }: { status?: string }) {
   const { t } = useLanguage();
-  if (!status || status === "nao_iniciado") return <Badge variant="outline" className="text-xs text-gray-500 px-1.5 py-0">Não iniciado</Badge>;
+  if (!status || status === "nao_iniciado") return <Badge variant="outline" className="text-xs text-gray-500 px-1.5 py-0">{t("Não iniciado")}</Badge>;
   switch (status) {
     case "concluido":
-      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />Reportado</Badge>;
+      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />{t("Reportado")}</Badge>;
     case "em_curso":
       return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
     case "em_validacao":
-      return <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />Em validação</Badge>;
+      return <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em validação")}</Badge>;
     case "bloqueado":
-      return <Badge className="text-xs bg-red-100 text-red-800 hover:bg-red-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />Bloqueado</Badge>;
+      return <Badge className="text-xs bg-red-100 text-red-800 hover:bg-red-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Bloqueado")}</Badge>;
     default:
       return null;
   }
 }
-import { Settings2 as SettingsGear, Pencil, X } from "lucide-react";
+import { Settings2 as SettingsGear, Pencil } from "lucide-react";

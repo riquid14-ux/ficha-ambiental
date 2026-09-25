@@ -407,6 +407,13 @@
       "when": 1790338698033,
       "tag": "0057_fair_tag",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1790342339982,
+      "tag": "0058_fancy_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

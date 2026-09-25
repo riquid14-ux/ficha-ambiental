@@ -7,6 +7,8 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
+import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -398,30 +400,27 @@ export default function RDCD() {
 
   return (
     <AppLayout>
-      <div className="space-y-5 max-w-5xl mx-auto">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileBarChart className="w-6 h-6" />{t("RDCD — Relatório de Demonstração de Cumprimento")}</h1>
-          <p className="text-muted-foreground text-sm">{t("Compilar fichas semanais e gerar o relatório semestral para a APA")}</p>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-5 pb-8">
+        <StandPageHeader tone="governance" eyebrow="COMPLIANCE REPORTING" title={t("RDCD — Relatório de Demonstração de Cumprimento")} description={t("Organize o período, reveja as evidências e prepare o documento antes da validação técnica.")} context={selectedProject?.code || t("Por configurar")} actions={<StandStatusBadge label={step === 4 ? t("Pronto para revisão") : `${t("Passo")} ${step} ${t("de")} ${STEPS.length}`} tone={step === 4 ? "success" : "info"} />}>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span>1 relatório = 1 projeto</span><span>•</span><span>{t("Dados aprovados e rastreáveis")}</span><span>•</span><span>{t("Geração Word sob controlo humano")}</span></div>
+        </StandPageHeader>
 
         {/* Wizard Steps */}
-        <div className="flex items-center gap-1">
+        <div className="stand-surface flex overflow-x-auto p-2">
           {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center">
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${step === s.id ? "bg-primary text-primary-foreground" : step > s.id ? "bg-green-100 text-green-800" : "bg-muted text-muted-foreground"}`}>
-                {step > s.id ? <Check className="w-4 h-4" /> : <span className="w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold">{s.id}</span>}
-                <span className="font-medium">{t(s.labelKey)}</span>
+            <div key={s.id} className="flex min-w-fit items-center">
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${step === s.id ? "bg-primary text-primary-foreground shadow-sm" : step > s.id ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200" : "text-muted-foreground"}`}>
+                {step > s.id ? <Check className="h-4 w-4" /> : <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold ${step === s.id ? "border-primary-foreground/50" : "border-current/30"}`}>{s.id}</span>}
+                <span className="font-semibold">{t(s.labelKey)}</span>
               </div>
-              {i < STEPS.length - 1 && <ChevronRight className="w-4 h-4 text-muted-foreground mx-1" />}
+              {i < STEPS.length - 1 && <div className={`mx-1 h-px w-5 ${step > s.id ? "bg-emerald-500/50" : "bg-border"}`} />}
             </div>
           ))}
         </div>
 
         {/* Step 1: Project Selection */}
         {step === 1 && (
-          <Card>
+          <Card className="stand-surface">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Selecionar Projeto")}</h2>
               <p className="text-sm text-muted-foreground mb-4">{t("Cada RDCD é emitido por projeto. Selecione o projeto a incluir no relatório.")}</p>
@@ -454,7 +453,7 @@ export default function RDCD() {
 
         {/* Step 2: Period Definition */}
         {step === 2 && (
-          <Card>
+          <Card className="stand-surface">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Definir Período")}</h2>
               <p className="text-sm text-muted-foreground mb-4">{t("Indique o intervalo de semanas a incluir no RDCD (tipicamente ~26 semanas / 6 meses).")}</p>
@@ -557,7 +556,7 @@ export default function RDCD() {
 
         {/* Step 3: Measure Compilation */}
         {step === 3 && (
-          <Card>
+          <Card className="stand-surface">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Compilação de Medidas")}</h2>
               {(loadingSubs || loadingResponses) ? (
@@ -668,14 +667,15 @@ export default function RDCD() {
 
         {/* Step 4: Preview & Generate */}
         {step === 4 && (
-          <Card>
+          <Card className="stand-surface">
             <CardContent className="p-6">
               <h2 className="text-lg font-semibold mb-1">{t("Pré-visualização do RDCD")}</h2>
               <p className="text-sm text-muted-foreground mb-4">{t("Reveja o resumo e complete a ficha técnica antes de gerar o documento Word.")}</p>
-              <div className="mb-5 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
-                <p className="mb-3 text-sm font-semibold text-emerald-950">Ficha técnica do relatório</p>
-                {usesSin02Template && <p className="mb-3 text-xs text-emerald-900">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
-                <div className="grid gap-3 md:grid-cols-2">
+              <div className="mb-5 overflow-hidden rounded-2xl border border-primary/18 bg-primary/[0.035]">
+                <div className="border-b border-primary/12 px-4 py-3 sm:px-5"><p className="stand-kicker text-primary">CONTROLO DE EMISSÃO</p><p className="mt-1 text-sm font-semibold text-foreground">Ficha técnica do relatório</p></div>
+                <div className="p-4 sm:p-5">
+                  {usesSin02Template && <p className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.08] p-3 text-xs leading-5 text-foreground">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
+                  <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <label className="text-xs font-medium text-slate-700">N.º do relatório</label>
                     <Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-white" />
@@ -697,6 +697,7 @@ export default function RDCD() {
                   <div>
                     <label className="text-xs font-medium text-slate-700">Revisão</label>
                     <Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 bg-white md:max-w-32" />
+                  </div>
                   </div>
                 </div>
               </div>

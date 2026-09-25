@@ -75,12 +75,13 @@ export default function Welcome() {
   const settingsQuery = trpc.appSettings.getAll.useQuery(undefined, {
     enabled: userRole !== "ee_partner",
   });
-  const videoUrl = (settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE";
-  const embedUrl = (videoUrl.includes("watch?v=")
-    ? videoUrl.replace("watch?v=", "embed/")
-    : videoUrl.includes("youtu.be/")
-    ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
-    : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
+  const configuredVideoUrl = String((settingsQuery.data as any)?.welcomeVideoUrl || "").trim();
+  const hasConfiguredVideo = /^https:\/\//.test(configuredVideoUrl);
+  const embedUrl = (configuredVideoUrl.includes("watch?v=")
+    ? configuredVideoUrl.replace("watch?v=", "embed/")
+    : configuredVideoUrl.includes("youtu.be/")
+    ? configuredVideoUrl.replace("youtu.be/", "www.youtube.com/embed/")
+    : configuredVideoUrl) + "?autoplay=0&mute=1&loop=1&controls=1";
 
   const visiblePaths = getVisibleNavigationPaths({
     role: userRole,
@@ -116,28 +117,34 @@ export default function Welcome() {
         {/* Video + Features side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Video - smaller, 2/5 width */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Play className="w-4 h-4 text-green-600" />
-                {t("Conheça a Start Campus")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative w-full rounded-lg overflow-hidden" style={{ paddingBottom: "56.25%" }}>
-                <iframe
-                  className="absolute top-0 left-0 w-full h-full"
-                  src={embedUrl}
-                  title="Start Campus"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
+          <Card className="stand-surface lg:col-span-2 overflow-hidden">
+            <CardContent className="p-0">
+              {hasConfiguredVideo ? (
+                <div className="relative aspect-video w-full bg-black">
+                  <iframe
+                    className="absolute inset-0 h-full w-full"
+                    src={embedUrl}
+                    title="Start Campus"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <div className="stand-video-brief min-h-[235px] rounded-none border-0 p-6 sm:p-7">
+                  <div className="relative z-10 flex h-full flex-col">
+                    <span className="flex size-10 items-center justify-center rounded-2xl bg-white/15 text-white"><Play className="size-5" /></span>
+                    <p className="mt-6 text-xs font-bold uppercase tracking-[0.14em] text-emerald-200">STAND · START CAMPUS</p>
+                    <h2 className="mt-2 max-w-sm text-xl font-semibold tracking-[-0.03em] text-white">{t("Conheça a plataforma pelo seu contexto de trabalho")}</h2>
+                    <p className="mt-3 max-w-sm text-sm leading-6 text-white/70">{t("Escolha um módulo para entrar diretamente no seu fluxo. A Administração pode publicar aqui um vídeo institucional quando existir uma versão aprovada.")}</p>
+                    <div className="mt-auto flex items-center gap-2 pt-7 text-xs font-medium text-emerald-100"><span className="size-1.5 rounded-full bg-emerald-300" />{t("Conteúdo institucional configurável")}</div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* What you can do - 3/5 width */}
-          <Card className="lg:col-span-3">
+          <Card className="stand-surface lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Info className="w-4 h-4 text-blue-600" />

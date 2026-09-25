@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight, ChevronLeft, X } from "lucide-react";
+import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight, ChevronLeft, X, ZoomIn, ZoomOut, RotateCcw, Images } from "lucide-react";
 import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 import { groupsWithMeasures } from "@/lib/phase-measure-presentation";
 
@@ -62,6 +62,11 @@ export default function PhaseMeasures(props: any) {
 
   const deleteEvidenceMutation = trpc.phaseEvidence.delete.useMutation({
     onSuccess: () => { evidenceQuery.refetch(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updatePhotoCategoryMutation = trpc.phaseEvidence.updateCategory.useMutation({
+    onSuccess: () => { evidenceQuery.refetch(); toast.success(t("Categoria da fotografia atualizada")); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -366,6 +371,7 @@ export default function PhaseMeasures(props: any) {
                         reader.readAsDataURL(file);
                       }}
                       onDeleteEvidence={(id) => deleteEvidenceMutation.mutate({ id })}
+                      onUpdatePhotoCategory={(id, category) => updatePhotoCategoryMutation.mutate({ id, category })}
                       isEditable={!!isAdminOrDono}
                       phaseColor={phase.color}
                       isOperationOnly={!!isOperationOnly}
@@ -384,7 +390,7 @@ export default function PhaseMeasures(props: any) {
 }
 function MeasureCard({
   measure, tracking, projectId, evidence, isExpanded, onToggle,
-  onAddComment, onUploadFile, onDeleteEvidence,
+  onAddComment, onUploadFile, onDeleteEvidence, onUpdatePhotoCategory,
   isEditable, phaseColor, isOperationOnly, evidenceYear,
 }: {
   measure: any;
@@ -396,6 +402,7 @@ function MeasureCard({
   onAddComment: (content: string) => void;
   onUploadFile: (file: File, isPhoto: boolean, category?: string) => void;
   onDeleteEvidence: (id: number) => void;
+  onUpdatePhotoCategory: (id: number, category: string | null) => void;
   isEditable: boolean;
   phaseColor: string;
   isOperationOnly?: boolean;
@@ -404,7 +411,11 @@ function MeasureCard({
   const { t } = useLanguage();
   const [commentText, setCommentText] = useState("");
   const [photoCategory, setPhotoCategory] = useState("");
+  const [photoFilter, setPhotoFilter] = useState("all");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [photoScale, setPhotoScale] = useState(1);
+  const [photoOffset, setPhotoOffset] = useState({ x: 0, y: 0 });
+  const panStartRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -412,8 +423,19 @@ function MeasureCard({
   const photos = evidence.filter(e => e.type === "photo");
   const files = evidence.filter(e => e.type === "file");
   const photoCategories = Array.from(new Set(photos.map((photo: any) => photo.category).filter(Boolean))) as string[];
-  const selectedPhoto = selectedPhotoIndex === null ? null : photos[selectedPhotoIndex];
+  const visiblePhotos = photoFilter === "all" ? photos : photos.filter((photo: any) => photo.category === photoFilter);
+  const selectedPhoto = selectedPhotoIndex === null ? null : visiblePhotos[selectedPhotoIndex];
   const totalAttachments = evidence.length;
+
+  useEffect(() => {
+    setPhotoScale(1);
+    setPhotoOffset({ x: 0, y: 0 });
+  }, [selectedPhotoIndex, photoFilter]);
+
+  const resetPhotoView = () => {
+    setPhotoScale(1);
+    setPhotoOffset({ x: 0, y: 0 });
+  };
 
   const trackingStatus = tracking?.trackingStatus || "nao_iniciado";
   const statusColor = trackingStatus === "concluido"
@@ -515,8 +537,20 @@ function MeasureCard({
               <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                 <Image className="w-4 h-4" /> Fotos ({photos.length})
               </h4>
+              {photoCategories.length > 0 && (
+                <div className="flex flex-wrap gap-1.5" aria-label={t("Filtrar fotografias por categoria")}>
+                  <Button type="button" size="sm" variant={photoFilter === "all" ? "default" : "outline"} className="h-7 rounded-full px-2.5 text-xs" onClick={() => setPhotoFilter("all")}>
+                    <Images className="mr-1 size-3" />{t("Todas")} ({photos.length})
+                  </Button>
+                  {photoCategories.map((category) => (
+                    <Button type="button" key={category} size="sm" variant={photoFilter === category ? "default" : "outline"} className="h-7 rounded-full px-2.5 text-xs" onClick={() => setPhotoFilter(category)}>
+                      {category} ({photos.filter((photo: any) => photo.category === category).length})
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {photos.map((p, index) => (
+                {visiblePhotos.map((p, index) => (
                   <div key={p.id} className="relative group">
                     <button
                       type="button"
@@ -560,16 +594,52 @@ function MeasureCard({
                     <div className="flex max-h-[94vh] flex-col">
                       <DialogHeader className="border-b px-5 py-4 pr-12 text-left">
                         <DialogTitle className="truncate text-base">{selectedPhoto.filename || t("Fotografia")}</DialogTitle>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedPhoto.category || t("Sem categoria")} · {selectedPhotoIndex + 1}/{photos.length}
-                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <p className="text-xs text-muted-foreground">{selectedPhotoIndex + 1}/{visiblePhotos.length}</p>
+                          {isEditable ? (
+                            <Select value={selectedPhoto.category || "sem-categoria"} onValueChange={(value) => onUpdatePhotoCategory(selectedPhoto.id, value === "sem-categoria" ? null : value)}>
+                              <SelectTrigger className="h-7 min-w-40 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="sem-categoria">{t("Sem categoria")}</SelectItem>
+                                {photoCategories.filter((category) => category !== selectedPhoto.category).map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                                {selectedPhoto.category && <SelectItem value={selectedPhoto.category}>{selectedPhoto.category}</SelectItem>}
+                              </SelectContent>
+                            </Select>
+                          ) : <span className="text-xs text-muted-foreground">{selectedPhoto.category || t("Sem categoria")}</span>}
+                        </div>
                       </DialogHeader>
-                      <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black/95 p-3 sm:p-6">
+                      <div
+                        className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden bg-black/95 p-3 sm:p-6"
+                        onWheel={(event) => {
+                          event.preventDefault();
+                          const nextScale = Math.min(4, Math.max(1, photoScale + (event.deltaY < 0 ? 0.25 : -0.25)));
+                          setPhotoScale(nextScale);
+                          if (nextScale === 1) setPhotoOffset({ x: 0, y: 0 });
+                        }}
+                        onPointerDown={(event) => {
+                          if (photoScale <= 1) return;
+                          panStartRef.current = { x: event.clientX, y: event.clientY, offsetX: photoOffset.x, offsetY: photoOffset.y };
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                        }}
+                        onPointerMove={(event) => {
+                          if (!panStartRef.current || photoScale <= 1) return;
+                          setPhotoOffset({ x: panStartRef.current.offsetX + event.clientX - panStartRef.current.x, y: panStartRef.current.offsetY + event.clientY - panStartRef.current.y });
+                        }}
+                        onPointerUp={() => { panStartRef.current = null; }}
+                      >
                         <img
                           src={selectedPhoto.content}
                           alt={selectedPhoto.filename || t("Fotografia")}
-                          className="max-h-[74vh] w-auto max-w-full rounded-md object-contain"
+                          className={`max-h-[74vh] w-auto max-w-full rounded-md object-contain transition-transform duration-150 ${photoScale > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"}`}
+                          style={{ transform: `translate(${photoOffset.x}px, ${photoOffset.y}px) scale(${photoScale})` }}
+                          onDoubleClick={() => photoScale > 1 ? resetPhotoView() : setPhotoScale(2)}
                         />
+                        <div className="absolute left-4 top-4 flex items-center gap-1 rounded-xl border border-white/15 bg-black/45 p-1 backdrop-blur">
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={() => setPhotoScale((value) => Math.min(4, value + 0.25))} aria-label={t("Ampliar fotografia")}><ZoomIn className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={() => { const nextScale = Math.max(1, photoScale - 0.25); setPhotoScale(nextScale); if (nextScale === 1) setPhotoOffset({ x: 0, y: 0 }); }} aria-label={t("Reduzir fotografia")}><ZoomOut className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={resetPhotoView} aria-label={t("Repor visualização")}><RotateCcw className="size-4" /></Button>
+                          <a href={selectedPhoto.content} download={selectedPhoto.filename || "fotografia"} className="inline-flex size-8 items-center justify-center rounded-md text-white hover:bg-white/15" aria-label={t("Descarregar fotografia")}><Download className="size-4" /></a>
+                        </div>
                         {selectedPhotoIndex > 0 && (
                           <Button
                             type="button"
@@ -582,7 +652,7 @@ function MeasureCard({
                             <ChevronLeft className="size-5" />
                           </Button>
                         )}
-                        {selectedPhotoIndex < photos.length - 1 && (
+                        {selectedPhotoIndex < visiblePhotos.length - 1 && (
                           <Button
                             type="button"
                             variant="secondary"

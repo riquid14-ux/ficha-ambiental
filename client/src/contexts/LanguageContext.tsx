@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { uiLiteralTranslations } from "@/lib/ui-literal-translations";
 
 type Lang = "pt" | "en";
 
@@ -1245,6 +1246,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = (key: string): string => {
     const entry = translations[key];
+    // O mapa auditado cobre chaves históricas cujo valor EN era, por vezes,
+    // igual ao PT. Dá prioridade à tradução validada sem tocar em conteúdo de
+    // negócio, evidências, registos ou texto regulamentar.
+    if (language === "en" && uiLiteralTranslations[key]) return uiLiteralTranslations[key];
     if (!entry) {
       warnTranslationGap("missing-key", language, key);
       return key;

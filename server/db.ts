@@ -1831,6 +1831,12 @@ export async function deletePhaseEvidence(id: number) {
   await db.delete(phaseEvidence).where(eq(phaseEvidence.id, id));
 }
 
+export async function updatePhaseEvidenceCategory(id: number, category: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.update(phaseEvidence).set({ category }).where(eq(phaseEvidence.id, id));
+}
+
 // ─── Waste e-GARs (MIRR) ─────────────────────────────────────────────────────
 import { wasteEgars, InsertWasteEgar } from "../drizzle/schema";
 import { notificationRecipients } from "../drizzle/schema";

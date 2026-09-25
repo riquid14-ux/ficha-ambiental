@@ -973,6 +973,44 @@ export const operationScenarios = mysqlTable("operation_scenarios", {
 export type OperationScenario = typeof operationScenarios.$inferSelect;
 export type InsertOperationScenario = typeof operationScenarios.$inferInsert;
 
+// Inventário operacional sustentável do NEST. É deliberadamente separado de
+// leituras BMS, faturas e cenários: representa stocks físicos e declarações
+// operacionais verificadas, sem alterar métricas calculadas existentes.
+export const operationSustainabilitySnapshots = mysqlTable("operation_sustainability_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  recordedAt: varchar("recordedAt", { length: 10 }).notNull(),
+  hvoLiters: varchar("hvoLiters", { length: 80 }),
+  dieselLiters: varchar("dieselLiters", { length: 80 }),
+  absoluteCo2Tonnes: varchar("absoluteCo2Tonnes", { length: 80 }),
+  notes: text("notes"),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectRecordedIdx: index("operation_sustainability_snapshot_project_recorded_idx").on(table.projectId, table.recordedAt),
+}));
+export type OperationSustainabilitySnapshot = typeof operationSustainabilitySnapshots.$inferSelect;
+export type InsertOperationSustainabilitySnapshot = typeof operationSustainabilitySnapshots.$inferInsert;
+
+export const operationChemicalInventory = mysqlTable("operation_chemical_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  chemicalName: varchar("chemicalName", { length: 255 }).notNull(),
+  quantity: varchar("quantity", { length: 80 }).notNull(),
+  unit: varchar("unit", { length: 40 }).notNull(),
+  safetyThreshold: varchar("safetyThreshold", { length: 80 }),
+  location: varchar("location", { length: 255 }),
+  notes: text("notes"),
+  updatedBy: int("updatedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
+}, (table) => ({
+  projectNameIdx: index("operation_chemical_inventory_project_name_idx").on(table.projectId, table.chemicalName),
+}));
+export type OperationChemicalInventory = typeof operationChemicalInventory.$inferSelect;
+export type InsertOperationChemicalInventory = typeof operationChemicalInventory.$inferInsert;
+
 // Configuração aprovada pela Administração para converter leituras medidas em
 // indicadores ambientais e avaliar limites de licença. Todos os campos são
 // opcionais para impedir cálculos por suposição quando ainda não existe valor

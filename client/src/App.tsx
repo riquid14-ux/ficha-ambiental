@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { UiLanguageBridge } from "@/components/UiLanguageBridge";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -102,6 +103,7 @@ function App() {
         <TooltipProvider>
           <LanguageProvider>
             <ProjectProvider>
+              <UiLanguageBridge />
               <Toaster richColors position="top-right" />
               <Router />
             </ProjectProvider>

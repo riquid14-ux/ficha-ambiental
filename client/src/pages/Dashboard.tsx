@@ -307,41 +307,7 @@ export default function Dashboard() {
         {/* All Projects Professional Dashboard */}
         {isAllProjects && (
           <>
-          {/* KPI Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "approved").length; })()}</p>
-                <p className="text-[11px] text-emerald-600 font-medium mt-1">{t("Fichas Aprovadas")}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-blue-700">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "submitted" || s.status === "under_review").length; })()}</p>
-                <p className="text-[11px] text-blue-600 font-medium mt-1">{t("Em Revisão")}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-slate-600">{(() => { const subs = submissionsQuery.data; if (!subs || !Array.isArray(subs)) return 0; return subs.filter((s: any) => s.status === "draft").length; })()}</p>
-                <p className="text-[11px] text-slate-500 font-medium mt-1">{t("Rascunhos")}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-amber-700">{projects.length}</p>
-                <p className="text-[11px] text-amber-600 font-medium mt-1">{t("Projetos Ativos")}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-red-50 to-red-100/50 border-red-200">
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-red-700">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return 0; return (calEvents as any[]).filter((e: any) => e.status === "pending" && e.nextDate && Number(e.nextDate) < Date.now()).length; })()}</p>
-                <p className="text-[11px] text-red-600 font-medium mt-1">{t("Em Incumprimento")}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Compliance by Project + Calendar Deadlines side by side */}
+          {/* Prioridades por projeto e prazos */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Project Compliance */}
             <Card>

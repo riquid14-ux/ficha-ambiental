@@ -4,11 +4,11 @@ import React, { type ReactNode } from "react";
 export type StandMetricTone = "brand" | "success" | "info" | "warning" | "danger" | "neutral";
 
 const toneClass: Record<StandMetricTone, string> = {
-  brand: "border-primary/20 bg-primary/[0.035] dark:bg-primary/10",
-  success: "border-emerald-500/20 bg-emerald-500/[0.035] dark:bg-emerald-500/10",
-  info: "border-sky-500/20 bg-sky-500/[0.035] dark:bg-sky-500/10",
-  warning: "border-amber-500/20 bg-amber-500/[0.04] dark:bg-amber-500/10",
-  danger: "border-rose-500/20 bg-rose-500/[0.04] dark:bg-rose-500/10",
+  brand: "border-primary/16 bg-card",
+  success: "border-emerald-500/18 bg-card",
+  info: "border-sky-500/18 bg-card",
+  warning: "border-amber-500/20 bg-card",
+  danger: "border-rose-500/20 bg-card",
   neutral: "border-border bg-card",
 };
 
@@ -52,7 +52,7 @@ export function StandMetricCard({
     </>
   );
 
-  const classes = `stand-metric-card ${toneClass[tone]} ${interactive ? "stand-interactive" : ""}`;
+  const classes = `stand-metric-card relative overflow-hidden ${toneClass[tone]} ${interactive ? "stand-interactive" : ""}`;
   return interactive ? <button type="button" onClick={onClick} className={`${classes} text-left`}>{content}</button> : <div className={classes}>{content}</div>;
 }
 

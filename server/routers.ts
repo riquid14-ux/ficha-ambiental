@@ -1112,6 +1112,23 @@ export const appRouter = router({
         await db.deletePhaseEvidence(input.id);
         return { success: true };
       }),
+
+    updateCategory: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), category: z.string().trim().max(120).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão" });
+        }
+        const evidence = await db.getPhaseEvidenceById(input.id);
+        if (!evidence || evidence.type !== "photo") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Fotografia não encontrada." });
+        }
+        await assertProjectModuleAccess(ctx.user, evidence.projectId, "timeline");
+        const category = input.category?.trim() || null;
+        await db.updatePhaseEvidenceCategory(input.id, category);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "phase_evidence_category_updated", "phase_evidence", input.id, evidence.category ?? null, category);
+        return { success: true, category };
+      }),
   }),
 
   appSettings: router({
@@ -4833,6 +4850,66 @@ export const appRouter = router({
         await database.execute(sql`INSERT INTO operation_settings (projectId, operationImportMappingJson, updatedBy) VALUES (${input.projectId}, ${JSON.stringify(mapping)}, ${ctx.user.id}) ON DUPLICATE KEY UPDATE operationImportMappingJson = VALUES(operationImportMappingJson), updatedBy = VALUES(updatedBy)`);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_import_mapping_update", "operation_settings", input.projectId, previous, JSON.stringify(mapping));
         return { success: true, mapping };
+      }),
+    sustainabilitySnapshots: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), limit: z.number().int().min(1).max(120).default(24) }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT id, recordedAt, hvoLiters, dieselLiters, absoluteCo2Tonnes, notes, createdBy, createdAt, updatedAt FROM operation_sustainability_snapshots WHERE projectId = ${input.projectId} ORDER BY recordedAt DESC, id DESC LIMIT ${input.limit}`);
+        return ((result as any)[0] || []).map((row: any) => ({ ...row, hvoLiters: row.hvoLiters === null ? null : Number(row.hvoLiters), dieselLiters: row.dieselLiters === null ? null : Number(row.dieselLiters), absoluteCo2Tonnes: row.absoluteCo2Tonnes === null ? null : Number(row.absoluteCo2Tonnes) }));
+      }),
+    recordSustainabilitySnapshot: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), recordedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), hvoLiters: z.number().finite().min(0).max(10_000_000).nullable(), dieselLiters: z.number().finite().min(0).max(10_000_000).nullable(), absoluteCo2Tonnes: z.number().finite().min(0).max(10_000_000).nullable(), notes: z.string().trim().max(2000).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!["admin", "dono_obra", "pm"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para registar inventário operacional." });
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const [created] = await database.insert(schema.operationSustainabilitySnapshots).values({ projectId: input.projectId, recordedAt: input.recordedAt, hvoLiters: input.hvoLiters === null ? null : String(input.hvoLiters), dieselLiters: input.dieselLiters === null ? null : String(input.dieselLiters), absoluteCo2Tonnes: input.absoluteCo2Tonnes === null ? null : String(input.absoluteCo2Tonnes), notes: input.notes?.trim() || null, createdBy: ctx.user.id }).$returningId();
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_sustainability_snapshot_create", "operation_sustainability_snapshot", created.id, null, JSON.stringify({ ...input, projectId: undefined }));
+        return { success: true, id: created.id };
+      }),
+    chemicalInventory: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.execute(sql`SELECT id, chemicalName, quantity, unit, safetyThreshold, location, notes, updatedBy, createdAt, updatedAt FROM operation_chemical_inventory WHERE projectId = ${input.projectId} ORDER BY chemicalName ASC, id ASC`);
+        return ((result as any)[0] || []).map((row: any) => ({ ...row, quantity: Number(row.quantity), safetyThreshold: row.safetyThreshold === null ? null : Number(row.safetyThreshold) }));
+      }),
+    upsertChemicalInventory: protectedProcedure
+      .input(z.object({ id: z.number().int().positive().optional(), projectId: z.number().int().positive(), chemicalName: z.string().trim().min(2).max(255), quantity: z.number().finite().min(0).max(10_000_000), unit: z.string().trim().min(1).max(40), safetyThreshold: z.number().finite().min(0).max(10_000_000).nullable(), location: z.string().trim().max(255).nullable(), notes: z.string().trim().max(2000).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!["admin", "dono_obra", "pm"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para atualizar inventário químico." });
+        await assertOperationAccess(ctx.user, input.projectId);
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const payload = { chemicalName: input.chemicalName, quantity: String(input.quantity), unit: input.unit, safetyThreshold: input.safetyThreshold === null ? null : String(input.safetyThreshold), location: input.location?.trim() || null, notes: input.notes?.trim() || null, updatedBy: ctx.user.id };
+        let id = input.id;
+        let previous: any = null;
+        if (id) {
+          const existing = await database.execute(sql`SELECT id, projectId, chemicalName, quantity, unit, safetyThreshold, location, notes FROM operation_chemical_inventory WHERE id = ${id} LIMIT 1`);
+          previous = (existing as any)[0]?.[0] || null;
+          if (!previous || Number(previous.projectId) !== input.projectId) throw new TRPCError({ code: "NOT_FOUND", message: "Produto químico não encontrado." });
+          await database.update(schema.operationChemicalInventory).set(payload).where(eq(schema.operationChemicalInventory.id, id));
+        } else {
+          const [created] = await database.insert(schema.operationChemicalInventory).values({ projectId: input.projectId, ...payload }).$returningId();
+          id = created.id;
+        }
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), previous ? "operation_chemical_update" : "operation_chemical_create", "operation_chemical_inventory", id!, previous ? JSON.stringify(previous) : null, JSON.stringify({ ...input, projectId: undefined, id: undefined }));
+        return { success: true, id };
+      }),
+    deleteChemicalInventory: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!["admin", "dono_obra", "pm"].includes(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        const database = await db.getDb(); if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const existing = await database.execute(sql`SELECT id, projectId, chemicalName, quantity, unit, safetyThreshold, location, notes FROM operation_chemical_inventory WHERE id = ${input.id} LIMIT 1`);
+        const chemical = (existing as any)[0]?.[0];
+        if (!chemical) throw new TRPCError({ code: "NOT_FOUND", message: "Produto químico não encontrado." });
+        await assertOperationAccess(ctx.user, Number(chemical.projectId));
+        await database.delete(schema.operationChemicalInventory).where(eq(schema.operationChemicalInventory.id, input.id));
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_chemical_delete", "operation_chemical_inventory", input.id, JSON.stringify(chemical), null);
+        return { success: true };
       }),
     infrastructurePoints: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))

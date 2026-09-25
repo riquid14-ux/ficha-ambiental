@@ -5,19 +5,19 @@ export type StandMetricTone = "brand" | "success" | "info" | "warning" | "danger
 
 const toneClass: Record<StandMetricTone, string> = {
   brand: "border-primary/16 bg-card",
-  success: "border-emerald-500/18 bg-card",
-  info: "border-sky-500/18 bg-card",
-  warning: "border-amber-500/20 bg-card",
-  danger: "border-rose-500/20 bg-card",
+  success: "border-primary/26 bg-card",
+  info: "border-[#0A3638]/18 bg-card",
+  warning: "border-[#6D7A70]/28 bg-card",
+  danger: "border-destructive/24 bg-card",
   neutral: "border-border bg-card",
 };
 
 const iconTone: Record<StandMetricTone, string> = {
   brand: "bg-primary text-primary-foreground",
-  success: "bg-emerald-600 text-white",
-  info: "bg-sky-600 text-white",
-  warning: "bg-amber-500 text-amber-950",
-  danger: "bg-rose-600 text-white",
+  success: "bg-primary text-primary-foreground",
+  info: "bg-[#0A3638] text-white",
+  warning: "bg-[#6D7A70] text-white",
+  danger: "bg-destructive text-white",
   neutral: "bg-muted text-muted-foreground",
 };
 

@@ -382,12 +382,12 @@ export default function RDCD() {
   }
 
   const statusColors: Record<string, string> = {
-    conform: "bg-green-100 text-green-800 border-green-200",
+    conform: "bg-primary text-primary-foreground border-primary",
     nc: "bg-red-100 text-red-800 border-red-200",
     na: "bg-muted text-foreground border-border",
-    pending: "bg-amber-100 text-amber-800 border-amber-200",
-    partial: "bg-blue-100 text-blue-800 border-blue-200",
-    no_data: "bg-gray-100 text-gray-500 border-gray-200",
+    pending: "bg-[#EDEBEB] text-[#646461] border-[#6D7A70]",
+    partial: "bg-[#0A3638] text-white border-[#0A3638]",
+    no_data: "bg-muted/40 text-muted-foreground border-border",
   };
   const statusLabels: Record<string, string> = {
     conform: "Cumprido",
@@ -409,11 +409,11 @@ export default function RDCD() {
         <div className="stand-surface flex overflow-x-auto p-2">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex min-w-fit items-center">
-              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${step === s.id ? "bg-primary text-primary-foreground shadow-sm" : step > s.id ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-200" : "text-muted-foreground"}`}>
+              <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors ${step === s.id ? "bg-primary text-primary-foreground shadow-sm" : step > s.id ? "bg-primary/10 text-primary dark:text-primary" : "text-muted-foreground"}`}>
                 {step > s.id ? <Check className="h-4 w-4" /> : <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold ${step === s.id ? "border-primary-foreground/50" : "border-current/30"}`}>{s.id}</span>}
                 <span className="font-semibold">{t(s.labelKey)}</span>
               </div>
-              {i < STEPS.length - 1 && <div className={`mx-1 h-px w-5 ${step > s.id ? "bg-emerald-500/50" : "bg-border"}`} />}
+              {i < STEPS.length - 1 && <div className={`mx-1 h-px w-5 ${step > s.id ? "bg-primary/50" : "bg-border"}`} />}
             </div>
           ))}
         </div>
@@ -515,7 +515,7 @@ export default function RDCD() {
                   <div className="ml-6 space-y-1.5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">{t("Selecione os planos a incluir:")}</p>
-                      <button className="text-[10px] text-blue-600 hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
+                      <button className="text-[10px] text-[#0A3638] hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
                         {selectedPlanIds.length === plans.length ? t("Desselecionar todos") : t("Selecionar todos")}
                       </button>
                     </div>
@@ -525,10 +525,10 @@ export default function RDCD() {
                           checked={selectedPlanIds.includes(p.id)}
                           onCheckedChange={(v) => setSelectedPlanIds(v ? [...selectedPlanIds, p.id] : selectedPlanIds.filter(id => id !== p.id))}
                         />
-                        <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-green-500" : p.submissionStatus === "submitted" ? "bg-blue-500" : "bg-amber-500"}`} />
+                        <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-primary" : p.submissionStatus === "submitted" ? "bg-[#0A3638]" : "bg-[#EDEBEB]"}`} />
                         <span className="font-medium">{p.name}</span>
                         <span className="text-muted-foreground">— {p.periodicity || "—"}</span>
-                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-green-100 text-green-700" : p.submissionStatus === "submitted" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-primary text-primary-foreground" : p.submissionStatus === "submitted" ? "bg-[#0A3638] text-white" : "bg-[#EDEBEB] text-[#646461]"}`}>
                           {p.submissionStatus === "delivered" ? t("Entregue") : p.submissionStatus === "submitted" ? t("Submetido") : t("Pendente")}
                         </span>
                       </div>
@@ -571,25 +571,25 @@ export default function RDCD() {
                   </p>
                   {/* Summary */}
                   <div className="grid grid-cols-5 gap-3 mb-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-green-700">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
-                      <p className="text-xs text-green-600">{t("Conforme")}</p>
+                    <div className="bg-primary border border-primary rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-primary">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
+                      <p className="text-xs text-primary">{t("Conforme")}</p>
                     </div>
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
                       <p className="text-xs text-red-600">{t("Não Conforme")}</p>
                     </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-blue-700">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
-                      <p className="text-xs text-blue-600">{t("Parcial")}</p>
+                    <div className="bg-[#0A3638] border border-[#0A3638] rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-[#0A3638]">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
+                      <p className="text-xs text-[#0A3638]">{t("Parcial")}</p>
                     </div>
                     <div className="bg-muted border border-border rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
                       <p className="text-xs text-muted-foreground">{t("N/A")}</p>
                     </div>
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-gray-500">{compiledMeasures.filter(m => m.autoStatus === "no_data").length}</p>
-                      <p className="text-xs text-gray-500">{t("Sem dados")}</p>
+                    <div className="bg-gray-50 border border-border rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-muted-foreground">{compiledMeasures.filter(m => m.autoStatus === "no_data").length}</p>
+                      <p className="text-xs text-muted-foreground">{t("Sem dados")}</p>
                     </div>
                   </div>
                   {/* Measures grouped by section */}
@@ -615,7 +615,7 @@ export default function RDCD() {
                                 </Badge>
                               </div>
                               {(m.autoStatus === "conform" || m.autoStatus === "partial") && m.responses.length > 0 && (
-                                <div className="mt-2 pl-3 border-l-2 border-green-200">
+                                <div className="mt-2 pl-3 border-l-2 border-primary">
                                   <p className="text-xs text-muted-foreground mb-1">{t("Selecione semanas a incluir como evidência:")}</p>
                                   <div className="flex flex-wrap gap-1">
                                     {m.responses.slice(0, 10).map((r: any, i: number) => {
@@ -674,29 +674,29 @@ export default function RDCD() {
               <div className="mb-5 overflow-hidden rounded-2xl border border-primary/18 bg-primary/[0.035]">
                 <div className="border-b border-primary/12 px-4 py-3 sm:px-5"><p className="stand-kicker text-primary">CONTROLO DE EMISSÃO</p><p className="mt-1 text-sm font-semibold text-foreground">Ficha técnica do relatório</p></div>
                 <div className="p-4 sm:p-5">
-                  {usesSin02Template && <p className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.08] p-3 text-xs leading-5 text-foreground">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
+                  {usesSin02Template && <p className="mb-4 rounded-xl border border-[#6D7A70]/20 bg-[#EDEBEB]/[0.08] p-3 text-xs leading-5 text-foreground">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
                   <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <label className="text-xs font-medium text-slate-700">N.º do relatório</label>
-                    <Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-white" />
+                    <label className="text-xs font-medium text-foreground">N.º do relatório</label>
+                    <Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-card" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Fase da obra reportada</label>
-                    <select value={reportPhase} onChange={event => setReportPhase(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-white px-3 text-sm">
+                    <label className="text-xs font-medium text-foreground">Fase da obra reportada</label>
+                    <select value={reportPhase} onChange={event => setReportPhase(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-card px-3 text-sm">
                       <option>Preparação prévia</option><option>Execução da obra</option><option>Fase final</option><option>Desativação</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Elaborado por</label>
-                    <Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder="Nome / função — Equipa Ambiental Start Campus" className="mt-1 bg-white" />
+                    <label className="text-xs font-medium text-foreground">Elaborado por</label>
+                    <Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder="Nome / função — Equipa Ambiental Start Campus" className="mt-1 bg-card" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Revisto / aprovado por</label>
-                    <Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder="Nome / função" className="mt-1 bg-white" />
+                    <label className="text-xs font-medium text-foreground">Revisto / aprovado por</label>
+                    <Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder="Nome / função" className="mt-1 bg-card" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-700">Revisão</label>
-                    <Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 bg-white md:max-w-32" />
+                    <label className="text-xs font-medium text-foreground">Revisão</label>
+                    <Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 bg-card md:max-w-32" />
                   </div>
                   </div>
                 </div>
@@ -719,9 +719,9 @@ export default function RDCD() {
                   <p className="text-xs text-muted-foreground uppercase font-medium">{t("Medidas no relatório")}</p>
                   <p className="text-sm">
                     {compiledMeasures.filter(m => m.totalResponses > 0).length} {t("medidas")} ·
-                    <span className="text-green-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} {t("conformes")}</span> ·
+                    <span className="text-primary ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} {t("conformes")}</span> ·
                     <span className="text-red-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "nc").length} NC</span> ·
-                    <span className="text-blue-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "partial").length} {t("parciais")}</span> ·
+                    <span className="text-[#0A3638] ml-1">{compiledMeasures.filter(m => m.autoStatus === "partial").length} {t("parciais")}</span> ·
                     <span className="text-muted-foreground ml-1">{compiledMeasures.filter(m => m.autoStatus === "na").length} N/A</span>
                   </p>
                 </div>

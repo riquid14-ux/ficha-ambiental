@@ -81,11 +81,11 @@ function TopicPanel({ documents, topic, projectId, onlyLeed = false }: { documen
 
 function CentralDocumentCard({ document, projectId }: { document: LibraryItem; projectId: number }) {
   return (
-    <Card className="h-full border-amber-500/25 bg-gradient-to-br from-amber-500/[0.10] via-card to-card shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04),0_10px_24px_hsl(var(--shadow-color)/0.035)] dark:from-amber-500/10">
+    <Card className="h-full border-primary/24 bg-gradient-to-br from-primary/[0.08] via-card to-card shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04),0_10px_24px_hsl(var(--shadow-color)/0.035)]">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="rounded-xl bg-amber-500/15 p-2.5 text-amber-800 dark:text-amber-200"><FileText className="h-5 w-5" /></div>
+            <div className="rounded-xl bg-primary/12 p-2.5 text-[#0A3638]"><FileText className="h-5 w-5" /></div>
             <div className="min-w-0"><p className="font-semibold leading-snug text-card-foreground">{document.title}</p><p className="mt-1 text-xs text-muted-foreground">{document.filename} · {document.language}</p></div>
           </div>
           {document.isMandatoryRead === 1 && <StandStatusBadge label="Obrigatório" tone="warning" icon={ClipboardCheck} />}
@@ -112,12 +112,12 @@ export function DocumentLibraryReadOnlyContent({ role, documents, projectId, pro
         <StandMetricCard label="Leitura obrigatória" value={mandatoryDocuments} detail="Itens que requerem consulta prioritária" icon={ShieldAlert} tone={mandatoryDocuments > 0 ? "warning" : "neutral"} />
       </section>
 
-      <section aria-labelledby="central-documents-title" className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.045] p-5 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.025)] sm:p-6 dark:bg-amber-500/[0.06]">
+      <section aria-labelledby="central-documents-title" className="stand-engineering-grid rounded-2xl border border-primary/24 bg-primary/[0.045] p-5 shadow-[0_1px_2px_hsl(var(--shadow-color)/0.025)] sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3"><div className="rounded-xl bg-amber-500/15 p-2.5 text-amber-800 dark:text-amber-200"><ShieldCheck className="h-6 w-6" /></div><div><p className="stand-kicker text-amber-800 dark:text-amber-200">Consulta prioritária</p><h2 id="central-documents-title" className="mt-1 text-xl font-bold tracking-tight text-foreground">Central de Documentos do Projeto</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">DCAPE, PGA e outros documentos-base que definem as regras ambientais do projeto. Consulte-os antes de iniciar actividade em obra.</p></div></div>
+          <div className="flex items-start gap-3"><div className="rounded-xl bg-primary p-2.5 text-[#0A3638]"><ShieldCheck className="h-6 w-6" /></div><div><p className="stand-kicker text-primary">Consulta prioritária</p><h2 id="central-documents-title" className="mt-1 text-xl font-bold tracking-tight text-foreground">Central de Documentos do Projeto</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">DCAPE, PGA e outros documentos-base que definem as regras ambientais do projeto. Consulte-os antes de iniciar actividade em obra.</p></div></div>
           {centralDocuments.some(document => document.isMandatoryRead === 1) && <StandStatusBadge label="Inclui leitura obrigatória" tone="warning" icon={ClipboardCheck} />}
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{centralDocuments.length > 0 ? centralDocuments.map(document => <CentralDocumentCard key={document.id} document={document} projectId={projectId} />) : <div className="rounded-xl border border-dashed border-amber-500/35 bg-card/70 px-5 py-7 text-sm leading-6 text-muted-foreground md:col-span-2 xl:col-span-3">A Administração ainda não publicou documentos-base nesta central. Quando DCAPE, PGA ou outros documentos de referência forem carregados, ficarão destacados aqui.</div>}</div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{centralDocuments.length > 0 ? centralDocuments.map(document => <CentralDocumentCard key={document.id} document={document} projectId={projectId} />) : <div className="rounded-xl border border-dashed border-primary/35 bg-card/70 px-5 py-7 text-sm leading-6 text-muted-foreground md:col-span-2 xl:col-span-3">A Administração ainda não publicou documentos-base nesta central. Quando DCAPE, PGA ou outros documentos de referência forem carregados, ficarão destacados aqui.</div>}</div>
       </section>
 
       <Tabs defaultValue="obrigacoes_ambientais" className="space-y-5">

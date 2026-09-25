@@ -504,16 +504,16 @@ export default function WeeklyForm() {
             context={activeProject?.code || "STAND"}
             tone="operations"
             actions={
-              <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-left backdrop-blur-sm">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10"><Building2 className="h-4 w-4 text-emerald-100" /></div>
+              <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-card/10 px-3 py-2 text-left backdrop-blur-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-card/10"><Building2 className="h-4 w-4 text-primary" /></div>
                 <div className="min-w-0">
                   <p className="max-w-[180px] truncate text-xs font-semibold text-white">{companyName}</p>
-                  <p className="max-w-[180px] truncate text-[12px] text-emerald-50/70">{user?.name || "—"}</p>
+                  <p className="max-w-[180px] truncate text-[12px] text-primary/70">{user?.name || "—"}</p>
                 </div>
               </div>
             }
           >
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] leading-5 text-emerald-50/80">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] leading-5 text-primary/80">
               <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />{t("Acompanhamento Semanal")}</span>
               {activeProject && <span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />{activeProject.name}</span>}
             </div>
@@ -624,7 +624,7 @@ export default function WeeklyForm() {
                 </div>
               </div>
               {isAllProjects && !params.id ? (
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.08] p-4 text-sm text-amber-900 dark:text-amber-100">
+                <div className="rounded-xl border border-[#6D7A70]/25 bg-[#EDEBEB]/[0.08] p-4 text-sm text-[#646461] dark:text-[#646461]">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{t("Selecione um projeto específico no menu lateral para criar uma ficha de controlo.")}</span>
@@ -776,7 +776,7 @@ export default function WeeklyForm() {
 
                         {/* RAA Review Feedback */}
                         {reviewFeedback && (reviewFeedback.comment || reviewFeedback.verdict === "nok") && (
-                          <div className={`rounded-lg border p-3 text-[12px] leading-5 ${reviewFeedback.verdict === "nok" ? "border-rose-500/20 bg-rose-500/[0.08] text-rose-900 dark:text-rose-200" : "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-900 dark:text-emerald-200"}`}>
+                          <div className={`rounded-lg border p-3 text-[12px] leading-5 ${reviewFeedback.verdict === "nok" ? "border-rose-500/20 bg-rose-500/[0.08] text-rose-900 dark:text-rose-200" : "border-primary/20 bg-primary/[0.08] text-primary dark:text-primary"}`}>
                             <strong>{t("Comentário RAA:")}</strong> {reviewFeedback.comment || (reviewFeedback.verdict === "nok" ? "Medida marcada como não conforme — necessita correção." : "Conforme.")}
                           </div>
                         )}
@@ -793,7 +793,7 @@ export default function WeeklyForm() {
                             {(["I", "C", "NC", "NA"] as const).map((s) => {
                               const selected = response?.status === s;
                               const stateLabel = s === "I" ? t("Implementado") : s === "C" ? t("Conforme") : s === "NC" ? t("Não Conforme") : t("N/A");
-                              const stateClass = s === "NC" ? "border-rose-500/35 bg-rose-500/[0.07] has-[[data-state=checked]]:border-rose-600 has-[[data-state=checked]]:bg-rose-500/[0.13]" : s === "C" || s === "I" ? "border-emerald-500/25 bg-emerald-500/[0.04] has-[[data-state=checked]]:border-emerald-600 has-[[data-state=checked]]:bg-emerald-500/[0.12]" : "border-border bg-background has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/[0.08]";
+                              const stateClass = s === "NC" ? "border-rose-500/35 bg-rose-500/[0.07] has-[[data-state=checked]]:border-rose-600 has-[[data-state=checked]]:bg-rose-500/[0.13]" : s === "C" || s === "I" ? "border-primary/25 bg-primary/[0.04] has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/[0.12]" : "border-border bg-background has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/[0.08]";
                               return (
                                 <Label key={s} htmlFor={`${measure.id}-${s}`} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-[12px] font-semibold transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${stateClass} ${isReadOnly ? "cursor-default opacity-70" : "hover:border-primary/50"}`}>
                                   <RadioGroupItem value={s} id={`${measure.id}-${s}`} aria-label={stateLabel} />
@@ -985,12 +985,12 @@ export default function WeeklyForm() {
               </Card>
 
               {/* Sub-secção: Aprovadas */}
-              <Card className="border-emerald-200">
+              <Card className="border-primary">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base text-emerald-700">
+                  <CardTitle className="flex items-center gap-2 text-base text-primary">
                     <Check className="w-5 h-5" />
                     {t("Aprovadas")}
-                    {approvedFichas.length > 0 && <Badge className="text-[10px] px-1.5 py-0 bg-emerald-600">{approvedFichas.length}</Badge>}
+                    {approvedFichas.length > 0 && <Badge className="text-[10px] px-1.5 py-0 bg-primary">{approvedFichas.length}</Badge>}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">{t("Fichas aprovadas pela RAA. Estas fichas contam para o compliance.")}</p>
                 </CardHeader>
@@ -1002,15 +1002,15 @@ export default function WeeklyForm() {
                     </div>
                   )}
                   {approvedFichas.map((sub: any) => (
-                    <div key={sub.id} className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/50 transition-all hover:shadow-md">
+                    <div key={sub.id} className="p-3 rounded-lg border border-primary bg-primary/50 transition-all hover:shadow-md">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{t("Semana")} {sub.weekNumber} / {sub.weekYear}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{sub.weekStartDate} — {sub.weekEndDate}</p>
                         </div>
-                        <Badge className="text-xs bg-emerald-600">{t("Aprovada")}</Badge>
+                        <Badge className="text-xs bg-primary">{t("Aprovada")}</Badge>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full mt-2 gap-2 text-emerald-700 border-emerald-300" onClick={() => setLocation(`/ficha/${sub.id}`)}>
+                      <Button variant="outline" size="sm" className="w-full mt-2 gap-2 text-primary border-primary" onClick={() => setLocation(`/ficha/${sub.id}`)}>
                         <ArrowRight className="w-4 h-4" /> {t("Ver Ficha")}
                       </Button>
                     </div>
@@ -1240,7 +1240,7 @@ function HistoricoPdfEmbedded() {
                       <td className="py-2 px-3 font-medium">S{h.weekNumber}/{h.weekYear}</td>
                       <td className="py-2 px-3">{company?.companyType === "rap" ? "RAP - " : ""}{company?.shortName || "-"}</td>
                       <td className="py-2 px-3">
-                        <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                        <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-[#0A3638] hover:underline text-sm">
                           {h.filename || "PDF"}
                         </a>
                       </td>
@@ -1394,7 +1394,7 @@ function HistoricoEmbedded() {
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+          <AlertTriangle className="w-10 h-10 text-[#646461] mx-auto mb-3" />
           <h3 className="font-semibold">{t("Seleccione um projecto")}</h3>
           <p className="text-sm text-muted-foreground mt-1">{t("A importação de fichas é sempre associada a um projecto específico.")}</p>
         </CardContent>
@@ -1404,10 +1404,10 @@ function HistoricoEmbedded() {
 
   return (
     <div className="space-y-6">
-      <Card className="overflow-hidden border-emerald-200">
+      <Card className="overflow-hidden border-primary">
         <CardHeader className="bg-gradient-to-r from-emerald-50 to-white">
           <CardTitle className="flex items-center gap-2">
-            <FileUp className="w-5 h-5 text-emerald-700" />
+            <FileUp className="w-5 h-5 text-primary" />
             {t("Importar Ficha Externa")}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -1419,7 +1419,7 @@ function HistoricoEmbedded() {
             <Label className="text-sm font-semibold">{t("1. Escolha o destino da ficha")}</Label>
             <RadioGroup value={destination} onValueChange={(value) => setDestination(value as "review" | "historical")} className="grid md:grid-cols-2 gap-3 mt-3">
               {canSubmitForReview && (
-                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "review" ? "border-blue-500 bg-blue-50" : "hover:bg-muted/40"}`}>
+                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "review" ? "border-[#0A3638] bg-[#0A3638]" : "hover:bg-muted/40"}`}>
                   <div className="flex gap-3">
                     <RadioGroupItem value="review" className="mt-1" />
                     <div>
@@ -1430,7 +1430,7 @@ function HistoricoEmbedded() {
                 </label>
               )}
               {canArchiveApproved && (
-                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "historical" ? "border-emerald-500 bg-emerald-50" : "hover:bg-muted/40"}`}>
+                <label className={`rounded-xl border p-4 cursor-pointer transition-colors ${destination === "historical" ? "border-primary bg-primary" : "hover:bg-muted/40"}`}>
                   <div className="flex gap-3">
                     <RadioGroupItem value="historical" className="mt-1" />
                     <div>
@@ -1493,7 +1493,7 @@ function HistoricoEmbedded() {
               />
               <div className="min-h-11 px-4 py-2 flex items-center justify-between gap-3 pointer-events-none">
                 <span className="flex items-center gap-2 text-sm font-medium">
-                  <Upload className="w-4 h-4 text-emerald-700" />
+                  <Upload className="w-4 h-4 text-primary" />
                   {importFile ? importFile.name : t("Escolher ficheiro PDF ou Word")}
                 </span>
                 <span className="text-xs text-muted-foreground">{t("Procurar")}</span>
@@ -1515,7 +1515,7 @@ function HistoricoEmbedded() {
       </Card>
 
       {preview && (
-        <Card className="border-blue-200">
+        <Card className="border-[#0A3638]">
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-3">
               <span>{t("3. Confirme a pré-visualização")}</span>
@@ -1533,7 +1533,7 @@ function HistoricoEmbedded() {
 
             <div className="flex flex-wrap gap-4 text-sm">
               <span><strong>{preview.extractedPhotos}</strong> {t("fotografias extraídas")}</span>
-              <a href={preview.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">{t("Abrir documento original")}</a>
+              <a href={preview.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[#0A3638] hover:underline">{t("Abrir documento original")}</a>
             </div>
 
             <div className="rounded-lg border overflow-hidden">
@@ -1583,7 +1583,7 @@ function HistoricoEmbedded() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex gap-2 text-sm text-amber-900">
+            <div className="rounded-lg bg-[#EDEBEB] border border-[#6D7A70] p-3 flex gap-2 text-sm text-[#646461]">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{t("A leitura automática é assistiva. Confirme o projecto, empresa, semana, estados e observações antes de gravar.")}</span>
             </div>

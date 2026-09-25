@@ -20,10 +20,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  nao_iniciado: "border-slate-200 bg-slate-50 text-slate-700",
-  em_curso: "border-blue-200 bg-blue-50 text-blue-700",
-  em_validacao: "border-amber-200 bg-amber-50 text-amber-700",
-  concluido: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  nao_iniciado: "border-border bg-muted/40 text-foreground",
+  em_curso: "border-[#0A3638] bg-[#0A3638] text-white",
+  em_validacao: "border-[#6D7A70] bg-[#EDEBEB] text-[#646461]",
+  concluido: "border-primary bg-primary text-primary-foreground",
   bloqueado: "border-red-200 bg-red-50 text-red-700",
 };
 
@@ -91,7 +91,7 @@ export default function MeasureTrackingPanel({
   const trackingStatus = tracking?.trackingStatus || "nao_iniciado";
 
   return (
-    <Card className="border-emerald-100 bg-emerald-50/30 p-4">
+    <Card className="border-primary bg-primary/30 p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="grid flex-1 gap-3 sm:grid-cols-3">
           <div>
@@ -113,7 +113,7 @@ export default function MeasureTrackingPanel({
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg border bg-white p-3">
+      <div className="mt-3 rounded-lg border bg-card p-3">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Último status update desta medida</p>
         {tracking?.latestUpdate ? (
           <>
@@ -129,7 +129,7 @@ export default function MeasureTrackingPanel({
           <div className="space-y-5">
             {isAdminOrDono && (
               <section className="space-y-3 rounded-xl border p-4">
-                <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Responsável interno pela medida</h4></div>
+                <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /><h4 className="font-semibold">Responsável interno pela medida</h4></div>
                 <Select value={ownerId} onValueChange={setOwnerId}>
                   <SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger>
                   <SelectContent>
@@ -137,7 +137,7 @@ export default function MeasureTrackingPanel({
                     {candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Suporte desta medida</h4></div>
+                <div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-primary" /><h4 className="font-semibold">Suporte desta medida</h4></div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome" />
                   <Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" />

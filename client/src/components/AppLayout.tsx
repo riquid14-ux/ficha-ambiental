@@ -427,7 +427,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="h-5 w-5 text-orange-500" />
+                <Shield className="h-5 w-5 text-[#646461]" />
                 Autenticação de Dois Fatores Obrigatória
               </CardTitle>
             </CardHeader>
@@ -489,7 +489,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
             </div>
             <div className="flex gap-2 justify-end">
               <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>{t("Cancelar")}</button>
-              <button className="px-3 py-1.5 text-sm rounded bg-primary text-white hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>
+              <button className="px-3 py-1.5 text-sm rounded bg-primary text-[#0A3638] hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>
             </div>
           </div>
         </div>
@@ -512,8 +512,8 @@ function NotificationBell() {
     review: ClipboardList, rejected: AlertTriangle, draft: FileText, access: KeyRound, users: UserCircle,
   };
   const typeColors: Record<string, string> = {
-    review: "text-blue-600", rejected: "text-red-600", draft: "text-amber-600",
-    access: "text-purple-600", users: "text-green-600",
+    review: "text-[#0A3638]", rejected: "text-red-600", draft: "text-[#646461]",
+    access: "text-[#0A3638]", users: "text-primary",
   };
 
   return (

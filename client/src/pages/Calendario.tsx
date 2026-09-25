@@ -74,24 +74,24 @@ function getEventStatusMeta(type: CalendarEvent["type"]) {
         dot: "bg-rose-600",
       };
     case "reported":
-      return { label: "Submetido", tone: "info" as const, dot: "bg-sky-600" };
+      return { label: "Submetido", tone: "info" as const, dot: "bg-[#0A3638]" };
     case "confirmed":
       return {
         label: "Validado",
         tone: "success" as const,
-        dot: "bg-emerald-600",
+        dot: "bg-primary",
       };
     case "internal_deadline":
       return {
         label: "Prazo Interno",
         tone: "warning" as const,
-        dot: "bg-indigo-500",
+        dot: "bg-[#F4F4FF]",
       };
     default:
       return {
         label: "Prazo Regulatório",
         tone: "neutral" as const,
-        dot: "bg-slate-500",
+        dot: "bg-muted/400",
       };
   }
 }
@@ -439,7 +439,7 @@ export default function Calendario() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                  className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                   onClick={() => setShowControlRoom(!showControlRoom)}
                   aria-pressed={showControlRoom}
                 >
@@ -449,7 +449,7 @@ export default function Calendario() {
               {isAdminOrDono && (
                 <Button
                   size="sm"
-                  className="bg-white text-emerald-950 hover:bg-emerald-50"
+                  className="bg-card text-primary hover:bg-primary"
                   onClick={() => setShowCreateEvent(true)}
                 >
                   <Plus className="mr-1.5 h-4 w-4" /> Novo Evento
@@ -458,7 +458,7 @@ export default function Calendario() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                 onClick={goToday}
               >
                 {t("Hoje")}
@@ -466,7 +466,7 @@ export default function Calendario() {
             </>
           }
         >
-          <div className="relative mt-1 h-14 overflow-hidden rounded-xl border border-white/10 bg-emerald-950/25">
+          <div className="relative mt-1 h-14 overflow-hidden rounded-xl border border-white/10 bg-primary/25">
             <img
               src={
                 brandImages?.image_calendario ||
@@ -482,8 +482,8 @@ export default function Calendario() {
                 e.currentTarget.style.display = "none";
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-emerald-950/20 to-transparent" />
-            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-emerald-50">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-[#0A3638]/20 to-transparent" />
+            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-primary">
               Visão operacional de prazos, responsáveis e submissões
             </span>
           </div>
@@ -498,19 +498,19 @@ export default function Calendario() {
               {t("Legenda")}
             </span>
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-muted/400" />
               {t("Prazo Regulatório de Submissão")}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#F4F4FF]" />
               {t("Prazo Interno de Preparação")}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-sky-600" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#0A3638]" />
               {t("Submetido")}
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-600" />
+              <span className="h-2.5 w-2.5 rounded-full bg-primary" />
               {t("Validado pela Entidade")}
             </div>
             <div className="flex items-center gap-1.5">
@@ -684,7 +684,7 @@ export default function Calendario() {
                           tone={status.tone}
                         />
                         {evt.sourceType === "monitoring_plan_assignment" && (
-                          <span className="inline-flex items-center rounded-full border border-emerald-600/20 bg-emerald-600/10 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+                          <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary dark:text-primary">
                             Gerido em Planos
                           </span>
                         )}
@@ -713,7 +713,7 @@ export default function Calendario() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 border-emerald-500/35 text-xs text-emerald-800 hover:bg-emerald-500/10 dark:text-emerald-200"
+                                  className="h-8 border-primary/35 text-xs text-primary hover:bg-primary/10 dark:text-primary"
                                   onClick={() =>
                                     updateStatusMutation.mutate({
                                       id: evt.rawId!,
@@ -842,7 +842,7 @@ export default function Calendario() {
                                 </td>
                                 <td className="py-2.5 px-2">
                                   {allDone ? (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-green-100 text-green-800 border-green-200">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-primary text-[#0A3638] border-primary">
                                       Todos reportados
                                     </span>
                                   ) : hasOverdue ? (
@@ -858,7 +858,7 @@ export default function Calendario() {
                                     </span>
                                   ) : (
                                     <span className="text-xs">
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium border bg-amber-100 text-amber-800 border-amber-200">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium border bg-[#EDEBEB] text-[#646461] border-[#6D7A70]">
                                         Pendente: {pendingProjects.join(", ")}
                                       </span>
                                       {reportedProjects.length > 0 && (
@@ -944,10 +944,10 @@ export default function Calendario() {
                           const badgeBg: Record<string, string> = {
                             overdue: "bg-red-100 text-red-800 border-red-200",
                             pending:
-                              "bg-slate-100 text-slate-800 border-slate-200",
-                            reported: "bg-sky-100 text-sky-800 border-sky-200",
+                              "bg-muted text-foreground border-border",
+                            reported: "bg-[#0A3638] text-white border-[#0A3638]",
                             confirmed:
-                              "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-200",
+                              "bg-primary text-primary-foreground border-primary",
                           };
                           const statusLabel: Record<string, string> = {
                             overdue: "Em Incumprimento",
@@ -1079,7 +1079,7 @@ export default function Calendario() {
 
         {/* Inline Control Room */}
         {showControlRoom && isAdminOrDono && calEvents && (
-          <Card className="overflow-hidden rounded-2xl border-violet-500/20 bg-violet-500/[0.035] shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] dark:bg-violet-500/10">
+          <Card className="overflow-hidden rounded-2xl border-[#0A3638]/20 bg-[#F4F4FF]/[0.035] shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] dark:bg-[#F4F4FF]/10">
             <CardContent className="p-4 sm:p-5">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <Settings2 className="w-4 h-4" />
@@ -1202,7 +1202,7 @@ export default function Calendario() {
         {/* Edit Event Dialog */}
         {editingEvent && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A3638]/55 p-4 backdrop-blur-sm"
             onClick={() => setEditingEvent(null)}
           >
             <div
@@ -1337,7 +1337,7 @@ export default function Calendario() {
         {/* Create Event Dialog */}
         {showCreateEvent && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#0A3638]/55 p-4 backdrop-blur-sm"
             onClick={() => setShowCreateEvent(false)}
           >
             <div

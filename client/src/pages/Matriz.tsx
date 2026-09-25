@@ -181,15 +181,15 @@ export default function Matriz(props: any) {
                 <span>{t("Sem ficha")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-amber-400" />
+                <div className="w-4 h-4 rounded bg-[#EDEBEB]" />
                 <span>{t("Criada (Rascunho)")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-blue-400" />
+                <div className="w-4 h-4 rounded bg-[#0A3638]" />
                 <span>{t("Em Revisão")}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-emerald-500" />
+                <div className="w-4 h-4 rounded bg-primary" />
                 <span>{t("Aprovada")}</span>
               </div>
               <span className="text-muted-foreground">|</span>
@@ -201,7 +201,7 @@ export default function Matriz(props: any) {
                 <>
                   <span className="text-muted-foreground">|</span>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-4 rounded bg-purple-400" />
+                    <div className="w-4 h-4 rounded bg-[#F4F4FF]" />
                     <span>{t("Parcialmente entregue")}</span>
                   </div>
                 </>
@@ -300,13 +300,13 @@ export default function Matriz(props: any) {
                                   <TooltipTrigger asChild>
                                     <div
                                       className={`w-8 h-8 rounded-md mx-auto flex items-center justify-center transition-all hover:scale-110 cursor-default ${
-                                        inactive ? "bg-gray-200 border border-gray-300" :
-                                        noWork ? "bg-gray-300 border border-gray-400" :
+                                        inactive ? "bg-muted border border-border" :
+                                        noWork ? "bg-muted-foreground/40 border border-gray-400" :
                                         display ? display.color : "bg-muted/50 border border-dashed border-border"
                                       }`}
                                     >
                                       {inactive ? (
-                                        <span className="text-[8px] text-gray-500">—</span>
+                                        <span className="text-[8px] text-muted-foreground">—</span>
                                       ) : noWork ? (
                                         <span className="text-[8px] text-gray-600">P</span>
                                       ) : display ? (
@@ -353,13 +353,13 @@ export default function Matriz(props: any) {
                                   <TooltipTrigger asChild>
                                     <div
                                       className={`w-8 h-8 rounded-md mx-auto flex items-center justify-center transition-all hover:scale-110 cursor-default ${
-                                        inactive ? "bg-gray-200 border border-gray-300" :
-                                        noWork ? "bg-gray-300 border border-gray-400" :
+                                        inactive ? "bg-muted border border-border" :
+                                        noWork ? "bg-muted-foreground/40 border border-gray-400" :
                                         display ? display.color : "bg-muted/50 border border-dashed border-border"
                                       }`}
                                     >
                                       {inactive ? (
-                                        <span className="text-[8px] text-gray-500">—</span>
+                                        <span className="text-[8px] text-muted-foreground">—</span>
                                       ) : noWork ? (
                                         <span className="text-[8px] text-gray-600">P</span>
                                       ) : display ? (
@@ -398,19 +398,19 @@ export default function Matriz(props: any) {
             <CardContent className="p-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold text-emerald-600">
+                  <p className="text-2xl font-bold text-primary">
                     {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "approved").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Aprovadas")}</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-500">
+                  <p className="text-2xl font-bold text-[#0A3638]">
                     {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "submitted" || c.status === "under_review").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Em Revisão")}</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-500">
+                  <p className="text-2xl font-bold text-[#646461]">
                     {matrixData.rows.reduce((acc: number, row: any) => acc + row.cells.filter((c: any) => c.status === "draft").length, 0)}
                   </p>
                   <p className="text-xs text-muted-foreground">{t("Rascunho")}</p>

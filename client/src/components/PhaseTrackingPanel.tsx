@@ -20,10 +20,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  nao_iniciado: "border-slate-200 bg-slate-50 text-slate-700",
-  em_curso: "border-blue-200 bg-blue-50 text-blue-700",
-  em_validacao: "border-amber-200 bg-amber-50 text-amber-700",
-  concluido: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  nao_iniciado: "border-border bg-muted/40 text-foreground",
+  em_curso: "border-[#0A3638] bg-[#0A3638] text-white",
+  em_validacao: "border-[#6D7A70] bg-[#EDEBEB] text-[#646461]",
+  concluido: "border-primary bg-primary text-primary-foreground",
   bloqueado: "border-red-200 bg-red-50 text-red-700",
 };
 
@@ -76,7 +76,7 @@ export default function PhaseTrackingPanel({ phase, projectId, compact = false }
   if (!phase) return null;
 
   return (
-    <Card className={`mt-3 border-emerald-100 bg-emerald-50/30 ${compact ? "p-3" : "p-4"}`}>
+    <Card className={`mt-3 border-primary bg-primary/30 ${compact ? "p-3" : "p-4"}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="grid flex-1 gap-2 sm:grid-cols-3">
           <div><p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Responsável interno</p><p className="mt-1 text-sm font-semibold">{phase.ownerName || "Por definir"}</p></div>
@@ -88,7 +88,7 @@ export default function PhaseTrackingPanel({ phase, projectId, compact = false }
           {(isAdminOrDono || canUpdate) && <Button size="sm" onClick={() => setOpen(true)}>Actualizar</Button>}
         </div>
       </div>
-      <div className="mt-3 rounded-lg border bg-white p-3">
+      <div className="mt-3 rounded-lg border bg-card p-3">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Último status update</p>
         {phase.latestUpdate ? <><p className="mt-1 text-sm">{phase.latestUpdate.updateText}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3 w-3" />{phase.latestUpdate.createdByName} · {formatDateTime(phase.latestUpdate.createdAt)}</p></> : <p className="mt-1 text-sm text-muted-foreground">Ainda sem actualizações.</p>}
       </div>
@@ -97,7 +97,7 @@ export default function PhaseTrackingPanel({ phase, projectId, compact = false }
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader><DialogTitle>Acompanhamento — {phase.phaseName}</DialogTitle></DialogHeader>
           <div className="space-y-5">
-            {isAdminOrDono && <section className="space-y-3 rounded-xl border p-4"><div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Responsável interno</h4></div><Select value={ownerId} onValueChange={setOwnerId}><SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger><SelectContent><SelectItem value="none">Sem responsável</SelectItem>{candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}</SelectContent></Select><div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-emerald-700" /><h4 className="font-semibold">Suporte</h4></div><div className="grid gap-3 sm:grid-cols-2"><Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome" /><Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" /><Input type="email" value={supportEmail} onChange={event => setSupportEmail(event.target.value)} placeholder="Email" /><Input value={supportPhone} onChange={event => setSupportPhone(event.target.value)} placeholder="Telefone" /></div><Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ phaseId: phase.id, ownerId: ownerId === "none" ? null : Number(ownerId), supportName: supportName.trim() || null, supportCompany: supportCompany.trim() || null, supportEmail: supportEmail.trim() || null, supportPhone: supportPhone.trim() || null })}><Save className="mr-2 h-4 w-4" />Guardar responsáveis</Button></section>}
+            {isAdminOrDono && <section className="space-y-3 rounded-xl border p-4"><div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" /><h4 className="font-semibold">Responsável interno</h4></div><Select value={ownerId} onValueChange={setOwnerId}><SelectTrigger><SelectValue placeholder="Responsável" /></SelectTrigger><SelectContent><SelectItem value="none">Sem responsável</SelectItem>{candidates.map((candidate: any) => <SelectItem key={candidate.id} value={String(candidate.id)}>{candidate.name} — {candidate.role}</SelectItem>)}</SelectContent></Select><div className="flex items-center gap-2"><UsersRound className="h-4 w-4 text-primary" /><h4 className="font-semibold">Suporte</h4></div><div className="grid gap-3 sm:grid-cols-2"><Input value={supportName} onChange={event => setSupportName(event.target.value)} placeholder="Nome" /><Input value={supportCompany} onChange={event => setSupportCompany(event.target.value)} placeholder="Empresa/entidade" /><Input type="email" value={supportEmail} onChange={event => setSupportEmail(event.target.value)} placeholder="Email" /><Input value={supportPhone} onChange={event => setSupportPhone(event.target.value)} placeholder="Telefone" /></div><Button variant="outline" className="w-full" disabled={configureMutation.isPending} onClick={() => configureMutation.mutate({ phaseId: phase.id, ownerId: ownerId === "none" ? null : Number(ownerId), supportName: supportName.trim() || null, supportCompany: supportCompany.trim() || null, supportEmail: supportEmail.trim() || null, supportPhone: supportPhone.trim() || null })}><Save className="mr-2 h-4 w-4" />Guardar responsáveis</Button></section>}
             {canUpdate && <section className="space-y-3 rounded-xl border p-4"><h4 className="font-semibold">Novo status update</h4><Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><Textarea value={updateText} onChange={event => setUpdateText(event.target.value)} placeholder="Estado actual, trabalho concluído, bloqueios e próximos passos..." className="min-h-28" /><Button className="w-full" disabled={updateText.trim().length < 3 || updateMutation.isPending} onClick={() => updateMutation.mutate({ phaseId: phase.id, status: status as any, updateText })}><Save className="mr-2 h-4 w-4" />Registar update</Button></section>}
             <p className="text-xs text-muted-foreground">Este acompanhamento não cria eventos de calendário nem alertas automáticos.</p>
           </div>

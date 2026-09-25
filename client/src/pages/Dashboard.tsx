@@ -20,7 +20,7 @@ import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban
 
 const STATUS_COLORS: Record<string, string> = {
   I: "#22c55e",
-  C: "#3b82f6",
+  C: "#0A3638",
   NC: "#ef4444",
   NA: "#94a3b8",
 };
@@ -249,11 +249,11 @@ export default function Dashboard() {
       <div className="space-y-6">
         <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <Button variant="outline" size="sm" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button> : undefined} />
 
-        {/* Brand hero image */}
-        <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-800 via-teal-700 to-slate-800">
-          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent flex items-center pl-6">
-            <p className="text-white font-semibold text-lg">{t("Plataforma de Gestão Ambiental — Start Campus")}</p>
+        {/* Fotografia institucional: o grading é partilhado com Login, Timeline e Calendário. */}
+        <div className="stand-photo-panel h-52">
+          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="Start Campus em Sines" className="photo-grade absolute inset-0 h-full w-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+          <div className="flex h-full items-end p-6 sm:p-7">
+            <div className="max-w-xl text-white"><p className="stand-kicker text-primary">START CAMPUS · GOVERNAÇÃO AMBIENTAL</p><p className="mt-2 text-xl font-semibold tracking-[-0.03em] sm:text-2xl">{t("Plataforma de Gestão Ambiental — Start Campus")}</p><p className="mt-1 text-sm leading-6 text-white/75">Visão operacional, documental e de conformidade no mesmo contexto de projeto.</p></div>
           </div>
         </div>
 
@@ -266,40 +266,37 @@ export default function Dashboard() {
         {/* Operation-only project dashboard */}
         {isOperationOnly && (
           <section className="space-y-5" aria-label={t("Cockpit de Operação NEST")}>
-            <div className="relative isolate overflow-hidden rounded-[28px] border border-emerald-950/20 bg-[#062a24] p-6 text-white shadow-[0_24px_70px_-28px_rgba(5,150,105,0.8)] sm:p-7">
-              <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(110,231,183,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(110,231,183,.16)_1px,transparent_1px)] [background-size:32px_32px]" />
-              <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
-              <div className="absolute -bottom-28 left-1/3 h-52 w-52 rounded-full bg-emerald-300/10 blur-3xl" />
+            <div className="ops-surface p-6 sm:p-7">
               <div className="relative">
                 <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
                   <div className="max-w-2xl">
-                    <div className="mb-4 flex items-center gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-200/30 bg-emerald-300/15"><Building2 className="h-5 w-5 text-emerald-100" /></span><span className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">NEST · SIN01</span></div>
+                    <div className="mb-4 flex items-center gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-[#0A3638]"><Building2 className="h-5 w-5" /></span><span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">NEST · SIN01</span></div>
                     <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("Centro de comando de exploração")}</h2>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">{t("Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.")}</p>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-white/75">{t("Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.")}</p>
                   </div>
-                  <button onClick={() => setLocation("/calendario")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-100/25 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/20"><CalendarDays className="h-4 w-4" />{t("Ver calendário operacional")}<ArrowUpRight className="h-4 w-4" /></button>
+                  <button onClick={() => setLocation("/calendario")} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-card/8 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-card/16"><CalendarDays className="h-4 w-4" />{t("Ver calendário operacional")}<ArrowUpRight className="h-4 w-4" /></button>
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-emerald-300" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Catálogo DCAPE ativo")}</p></div>
-                  <div className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-violet-200" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Medidas pós-exploração")}</p></div>
-                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/10 bg-white/8 p-4 text-left backdrop-blur-sm transition hover:bg-white/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-sky-200" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-emerald-100/65">{nextOperationReport?.name || t("Sem entrega agendada")}</p></button>
-                  <button onClick={() => setLocation("/mirr")} className="rounded-2xl border border-white/10 bg-white/8 p-4 text-left backdrop-blur-sm transition hover:bg-white/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-emerald-100/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-amber-200" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-emerald-100/65">{t("Registos ambientais no MIRR")}</p></button>
+                  <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-white/65">{t("Catálogo DCAPE ativo")}</p></div>
+                  <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-white/65">{t("Medidas pós-exploração")}</p></div>
+                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-primary" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-white/65">{nextOperationReport?.name || t("Sem entrega agendada")}</p></button>
+                  <button onClick={() => setLocation("/mirr")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-white/65">{t("Registos ambientais no MIRR")}</p></button>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-5 xl:grid-cols-12">
-              <Card className="xl:col-span-8 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{t("Agenda de controlo")}</p><CardTitle className="mt-1 text-lg">{t("Próximos Reportings")}</CardTitle></div><button onClick={() => setLocation("/calendario")} className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300">{t("Gerir prazos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-3">
-                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-emerald-200 hover:bg-emerald-50/50 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{evt.name}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString("pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
+              <Card className="xl:col-span-8 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary dark:text-primary">{t("Agenda de controlo")}</p><CardTitle className="mt-1 text-lg">{t("Próximos Reportings")}</CardTitle></div><button onClick={() => setLocation("/calendario")} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline dark:text-primary">{t("Gerir prazos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-3">
+                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-primary hover:bg-primary/50 dark:hover:border-primary dark:hover:bg-primary/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{evt.name}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString("pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
               </CardContent></Card>
-              <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700 dark:text-sky-300">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
+              <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0A3638] dark:text-[#0A3638]">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
                 {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents) return null; const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {}); if (Object.keys(owners).length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Atribua responsáveis no Calendário → Gerir.")}</p>; return <div className="space-y-2">{Object.entries(owners).map(([name, events]) => <div key={name} className="rounded-xl border border-border/70 bg-muted/20 p-3"><p className="truncate text-sm font-semibold">{name}</p><p className="mt-1 text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p></div>)}</div>; })()}
               </CardContent></Card>
             </div>
 
-            <Card className="overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">MIRR</p><CardTitle className="mt-1 text-lg">{t("Desempenho de resíduos")}</CardTitle></div><button onClick={() => setLocation("/mirr")} className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:underline dark:text-amber-300">{t("Abrir resíduos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-5">
-              {(() => { const waste = wasteQuery.data; if (!waste || waste.length === 0) return <p className="py-5 text-center text-sm text-muted-foreground">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>; const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const landfill = Math.max(0, total - recycled - incinerated); return <div className="grid items-center gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p className="text-3xl font-semibold tracking-tight">{total.toFixed(3)} <span className="text-base font-medium text-muted-foreground">t</span></p><p className="mt-1 text-sm text-muted-foreground">{t("Total registado no período atual")}</p></div><div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{recycled > 0 && <div className="bg-emerald-500" style={{ width: `${(recycled / total) * 100}%` }} />}{incinerated > 0 && <div className="bg-amber-400" style={{ width: `${(incinerated / total) * 100}%` }} />}{landfill > 0 && <div className="bg-rose-500" style={{ width: `${(landfill / total) * 100}%` }} />}</div><div className="mt-3 grid grid-cols-3 gap-3 text-xs"><span className="rounded-lg bg-emerald-50 p-2 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"><b>{recycled.toFixed(2)} t</b><br />{t("Reciclado")}</span><span className="rounded-lg bg-amber-50 p-2 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"><b>{incinerated.toFixed(2)} t</b><br />{t("Incinerado")}</span><span className="rounded-lg bg-rose-50 p-2 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200"><b>{landfill.toFixed(2)} t</b><br />{t("Aterro")}</span></div></div></div>; })()}
+            <Card className="overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#646461] dark:text-[#646461]">MIRR</p><CardTitle className="mt-1 text-lg">{t("Desempenho de resíduos")}</CardTitle></div><button onClick={() => setLocation("/mirr")} className="inline-flex items-center gap-1 text-xs font-semibold text-[#646461] hover:underline dark:text-[#646461]">{t("Abrir resíduos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-5">
+              {(() => { const waste = wasteQuery.data; if (!waste || waste.length === 0) return <p className="py-5 text-center text-sm text-muted-foreground">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>; const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const landfill = Math.max(0, total - recycled - incinerated); return <div className="grid items-center gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p className="text-3xl font-semibold tracking-tight">{total.toFixed(3)} <span className="text-base font-medium text-muted-foreground">t</span></p><p className="mt-1 text-sm text-muted-foreground">{t("Total registado no período atual")}</p></div><div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{recycled > 0 && <div className="bg-primary" style={{ width: `${(recycled / total) * 100}%` }} />}{incinerated > 0 && <div className="bg-[#EDEBEB]" style={{ width: `${(incinerated / total) * 100}%` }} />}{landfill > 0 && <div className="bg-rose-500" style={{ width: `${(landfill / total) * 100}%` }} />}</div><div className="mt-3 grid grid-cols-3 gap-3 text-xs"><span className="rounded-lg bg-primary p-2 text-[#0A3638] dark:bg-primary/30 dark:text-[#0A3638]"><b>{recycled.toFixed(2)} t</b><br />{t("Reciclado")}</span><span className="rounded-lg bg-[#EDEBEB] p-2 text-[#646461] dark:bg-[#EDEBEB]/30 dark:text-[#646461]"><b>{incinerated.toFixed(2)} t</b><br />{t("Incinerado")}</span><span className="rounded-lg bg-rose-50 p-2 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200"><b>{landfill.toFixed(2)} t</b><br />{t("Aterro")}</span></div></div></div>; })()}
             </CardContent></Card>
           </section>
         )}
@@ -323,7 +320,7 @@ export default function Dashboard() {
                     // Color logic based on endDate of current phase
                     const now = new Date();
                     const endDateStr = currentPhase?.endDate;
-                    let colorClass = "bg-emerald-500"; // default green = on track
+                    let colorClass = "bg-primary"; // default green = on track
                     let statusText = t("No prazo");
                     if (endDateStr) {
                       const endDate = new Date(endDateStr);
@@ -333,11 +330,11 @@ export default function Dashboard() {
                         colorClass = "bg-red-500"; // overdue
                         statusText = t("Em atraso");
                       } else if (diffDays < 30 && currentPhase.progress < 100) {
-                        colorClass = "bg-amber-500"; // less than 1 month
+                        colorClass = "bg-[#EDEBEB]"; // less than 1 month
                         statusText = "< 1 mês";
                       }
                     } else if (overallProgress === 0) {
-                      colorClass = "bg-gray-300";
+                      colorClass = "bg-muted-foreground/40";
                       statusText = t("Sem data");
                     }
                     const projCode = proj.code;
@@ -350,7 +347,7 @@ export default function Dashboard() {
                           <p className="text-[10px] text-muted-foreground">{t(currentPhase?.key || "Pré-Licenciamento")}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colorClass === "bg-amber-500" ? "bg-amber-50 dark:bg-amber-900/20 text-amber-600" : colorClass === "bg-emerald-500" ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
+                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colorClass === "bg-[#EDEBEB]" ? "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 text-[#646461]" : colorClass === "bg-primary" ? "bg-primary dark:bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
                         </div>
                       </div>
                     );
@@ -383,10 +380,10 @@ export default function Dashboard() {
                         </div>
                       )}
                       {upcoming.length > 0 && (
-                        <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200">
-                          <p className="text-[11px] font-semibold text-amber-700 mb-1.5">Próximos 60 dias ({upcoming.length})</p>
+                        <div className="p-2.5 rounded-lg bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70]">
+                          <p className="text-[11px] font-semibold text-[#646461] mb-1.5">Próximos 60 dias ({upcoming.length})</p>
                           {upcoming.slice(0, 4).map((e: any) => (
-                            <div key={e.id} className="flex justify-between text-[10px] text-amber-600 py-0.5">
+                            <div key={e.id} className="flex justify-between text-[10px] text-[#646461] py-0.5">
                               <span className="truncate flex-1">{e.name}</span>
                               <span className="ml-2 shrink-0">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}</span>
                             </div>
@@ -394,13 +391,13 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="flex gap-3 text-center pt-1">
-                        <div className="flex-1 p-2 rounded bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100">
-                          <p className="text-lg font-bold text-emerald-700">{validated.length}</p>
-                          <p className="text-[9px] text-emerald-600">{t("Validados")}</p>
+                        <div className="flex-1 p-2 rounded bg-primary dark:bg-primary/20 border border-primary">
+                          <p className="text-lg font-bold text-primary">{validated.length}</p>
+                          <p className="text-[9px] text-primary">{t("Validados")}</p>
                         </div>
-                        <div className="flex-1 p-2 rounded bg-blue-50 dark:bg-blue-900/20 border border-blue-100">
-                          <p className="text-lg font-bold text-blue-700">{events.length}</p>
-                          <p className="text-[9px] text-blue-600">{t("Total Eventos")}</p>
+                        <div className="flex-1 p-2 rounded bg-[#0A3638] dark:bg-[#0A3638]/20 border border-[#0A3638]">
+                          <p className="text-lg font-bold text-[#0A3638]">{events.length}</p>
+                          <p className="text-[9px] text-[#0A3638]">{t("Total Eventos")}</p>
                         </div>
                         <div className="flex-1 p-2 rounded bg-red-50 dark:bg-red-900/20 border border-red-100">
                           <p className="text-lg font-bold text-red-700">{overdue.length}</p>
@@ -459,7 +456,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
                     <span className="text-xs font-medium">{t("Taxa de Aprovação")}</span>
-                    <span className="text-sm font-bold text-emerald-600">{(() => { const s = submissionsQuery.data; if (!s || !Array.isArray(s)) return "—"; const total = s.filter((x: any) => x.status !== "deleted" && x.status !== "draft").length; const approved = s.filter((x: any) => x.status === "approved").length; return total > 0 ? `${Math.round(approved / total * 100)}%` : "—"; })()}</span>
+                    <span className="text-sm font-bold text-primary">{(() => { const s = submissionsQuery.data; if (!s || !Array.isArray(s)) return "—"; const total = s.filter((x: any) => x.status !== "deleted" && x.status !== "draft").length; const approved = s.filter((x: any) => x.status === "approved").length; return total > 0 ? `${Math.round(approved / total * 100)}%` : "—"; })()}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
                     <span className="text-xs">{t("Empresas Ativas")}</span>
@@ -467,7 +464,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
                     <span className="text-xs">{t("Próximo RDCD")}</span>
-                    <span className="text-sm font-bold text-blue-600">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</span>
+                    <span className="text-sm font-bold text-[#0A3638]">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"; })()}</span>
                   </div>
                 </div>
               </CardContent>
@@ -489,7 +486,7 @@ export default function Dashboard() {
                       <span className="text-[10px] font-mono w-14 shrink-0 text-muted-foreground">{p.code}</span>
                       <div className="flex-1 flex gap-0.5">
                         {phases.map((ph, i) => (
-                          <div key={i} className={`h-3 flex-1 rounded-sm text-[6px] flex items-center justify-center font-medium ${i < currentIdx ? "bg-emerald-500 text-white" : i === currentIdx ? "bg-amber-400 text-amber-900" : "bg-muted text-gray-400"}`} title={ph}>
+                          <div key={i} className={`h-3 flex-1 rounded-sm text-[6px] flex items-center justify-center font-medium ${i < currentIdx ? "bg-primary text-white" : i === currentIdx ? "bg-[#EDEBEB] text-[#646461]" : "bg-muted text-muted-foreground"}`} title={ph}>
                             {ph.slice(0, 3)}
                           </div>
                         ))}
@@ -499,8 +496,8 @@ export default function Dashboard() {
                 })}
               </div>
               <div className="flex gap-4 text-[9px] text-muted-foreground pt-1">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500"></span>{t("Concluída")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-400"></span>  {t("Em curso")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary"></span>{t("Concluída")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#EDEBEB]"></span>  {t("Em curso")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-muted border"></span> Por iniciar</span>
               </div>
             </CardContent>
@@ -551,22 +548,22 @@ export default function Dashboard() {
           const nextRDCDWeek = currentWeek + weeksUntilNextRDCD;
           
           return (
-            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <Card className="border-[#0A3638] bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100 shrink-0">
-                    <FileBarChart className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 rounded-lg bg-[#0A3638] shrink-0">
+                    <FileBarChart className="w-5 h-5 text-[#0A3638]" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm text-blue-800">{t("Próximo RDCD")}</p>
-                    <p className="text-xs text-blue-600">
+                    <p className="font-semibold text-sm text-[#0A3638]">{t("Próximo RDCD")}</p>
+                    <p className="text-xs text-[#0A3638]">
                       {weeksUntilNextRDCD <= 4
                         ? `Faltam ${weeksUntilNextRDCD} semanas para o próximo relatório semestral`
                         : `Próximo RDCD em ~${weeksUntilNextRDCD} semanas (Semana ${nextRDCDWeek > 52 ? nextRDCDWeek - 52 : nextRDCDWeek}/${nextRDCDWeek > 52 ? currentYear + 1 : currentYear})`
                       }
                     </p>
                   </div>
-                  <a href="/rdcd" className="text-xs text-blue-700 font-medium hover:underline shrink-0">{t("Gerar RDCD")} →</a>
+                  <a href="/rdcd" className="text-xs text-[#0A3638] font-medium hover:underline shrink-0">{t("Gerar RDCD")} →</a>
                 </div>
               </CardContent>
             </Card>
@@ -639,13 +636,13 @@ export default function Dashboard() {
                       const daysUntil = Math.ceil((Number(e.nextDate) - now) / 86400000);
                       const isUrgent = daysUntil <= 14;
                       return (
-                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-amber-50 dark:bg-amber-900/20 border border-amber-200" : "bg-muted/30"}`}>
-                          <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-amber-400" : "bg-emerald-400"}`} />
+                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70]" : "bg-muted/30"}`}>
+                          <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-[#EDEBEB]" : "bg-primary"}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium truncate">{e.name}</p>
                             <p className="text-[9px] text-muted-foreground">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}</p>
                           </div>
-                          <span className={`text-[9px] font-medium ${isUrgent ? "text-amber-700" : "text-muted-foreground"}`}>{daysUntil}d</span>
+                          <span className={`text-[9px] font-medium ${isUrgent ? "text-[#646461]" : "text-muted-foreground"}`}>{daysUntil}d</span>
                         </div>
                       );
                     })}
@@ -673,16 +670,16 @@ export default function Dashboard() {
                       const isDone = i < 3;
                       return (
                         <div key={i} className="flex items-center gap-2">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-emerald-500 text-white" : isActive ? "bg-amber-400 text-amber-900 ring-2 ring-amber-200" : "bg-muted text-gray-400"}`}>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-primary text-white" : isActive ? "bg-[#EDEBEB] text-[#646461] ring-2 ring-amber-200" : "bg-muted text-muted-foreground"}`}>
                             {isDone ? "✓" : i + 1}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className={`text-[11px] ${isActive ? "font-semibold text-amber-800" : isDone ? "text-emerald-700" : "text-muted-foreground"}`}>{phase}</span>
-                              {isActive && <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">{t("Em curso")}</span>}
+                              <span className={`text-[11px] ${isActive ? "font-semibold text-[#646461]" : isDone ? "text-primary" : "text-muted-foreground"}`}>{phase}</span>
+                              {isActive && <span className="text-[8px] bg-[#EDEBEB] text-[#646461] px-1.5 py-0.5 rounded-full font-medium">{t("Em curso")}</span>}
                             </div>
                           </div>
-                          {isDone && <span className="text-[9px] text-emerald-600">100%</span>}
+                          {isDone && <span className="text-[9px] text-primary">100%</span>}
                         </div>
                       );
                     })}
@@ -762,7 +759,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className={`cursor-pointer transition-all ${selectedStatus === "I" ? "ring-2 ring-green-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "I" ? "all" : "I")}>
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100"><CheckCircle className="w-5 h-5 text-green-600" /></div>
+              <div className="p-2 rounded-lg bg-primary"><CheckCircle className="w-5 h-5 text-primary" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.I ?? 0}</p>
                 <p className="text-xs text-muted-foreground">{t("Implementado")}</p>
@@ -771,7 +768,7 @@ export default function Dashboard() {
           </Card>
           <Card className={`cursor-pointer transition-all ${selectedStatus === "C" ? "ring-2 ring-blue-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "C" ? "all" : "C")}>
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100"><CheckCircle className="w-5 h-5 text-blue-600" /></div>
+              <div className="p-2 rounded-lg bg-[#0A3638]"><CheckCircle className="w-5 h-5 text-[#0A3638]" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.C ?? 0}</p>
                 <p className="text-xs text-muted-foreground">{t("Conforme")}</p>
@@ -787,9 +784,9 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
-          <Card className={`cursor-pointer transition-all ${selectedStatus === "NA" ? "ring-2 ring-slate-400" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "NA" ? "all" : "NA")}>
+          <Card className={`cursor-pointer transition-all ${selectedStatus === "NA" ? "ring-2 ring-muted-foreground" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "NA" ? "all" : "NA")}>
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-100"><MinusCircle className="w-5 h-5 text-slate-500" /></div>
+              <div className="p-2 rounded-lg bg-muted"><MinusCircle className="w-5 h-5 text-muted-foreground" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.NA ?? 0}</p>
                 <p className="text-xs text-muted-foreground">{t("Não Aplicável")}</p>

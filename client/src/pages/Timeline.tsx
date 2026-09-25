@@ -53,7 +53,7 @@ function getSimplifiedPhaseLabel(phaseKey: string): string {
 
 function getPhaseColor(phaseKey: string): string {
   if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey))
-    return "bg-emerald-100 text-emerald-800 dark:text-emerald-100 border-emerald-300";
+    return "bg-primary text-primary-foreground border-primary";
   const def = PHASE_DEFS.find(p => p.key === phaseKey);
   if (!def) return "bg-muted text-foreground";
   return def.lightColor + " " + def.textColor;
@@ -68,65 +68,65 @@ const PHASE_DEFS = [
     key: "Prévias Licenciamento",
     label: "Pré-Licenciamento",
     shortLabel: "Pré-Lic.",
-    color: "bg-purple-500",
-    lightColor: "bg-purple-50 dark:bg-purple-900/20 border-purple-200",
-    textColor: "text-purple-700",
+    color: "bg-[#F4F4FF]",
+    lightColor: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/20 border-[#0A3638]",
+    textColor: "text-[#0A3638]",
   },
   {
     key: "Em Sede de Licenciamento",
     label: "Licenciamento",
     shortLabel: "Lic.",
-    color: "bg-blue-500",
-    lightColor: "bg-blue-50 dark:bg-blue-900/20 border-blue-200",
-    textColor: "text-blue-700",
+    color: "bg-[#0A3638]",
+    lightColor: "bg-[#0A3638] dark:bg-[#0A3638]/20 border-[#0A3638]",
+    textColor: "text-[#0A3638]",
   },
   {
     key: "Pré-Construção",
     label: "Pré-Construção",
     shortLabel: "Pré-Const.",
-    color: "bg-cyan-500",
-    lightColor: "bg-cyan-50 border-cyan-200",
-    textColor: "text-cyan-700",
+    color: "bg-[#0A3638]",
+    lightColor: "bg-[#0A3638] border-[#0A3638]",
+    textColor: "text-[#0A3638]",
   },
   {
     key: "Preparação Prévia",
     label: "Construção (Preparação)",
     shortLabel: "Prep.",
-    color: "bg-emerald-400",
-    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
-    textColor: "text-emerald-700",
+    color: "bg-primary",
+    lightColor: "bg-primary dark:bg-primary/20 border-primary",
+    textColor: "text-primary",
   },
   {
     key: "Execução da Obra",
     label: "Construção (Execução)",
     shortLabel: "Exec.",
-    color: "bg-emerald-500",
-    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
-    textColor: "text-emerald-700",
+    color: "bg-primary",
+    lightColor: "bg-primary dark:bg-primary/20 border-primary",
+    textColor: "text-primary",
   },
   {
     key: "Fase Final",
     label: "Construção (Final)",
     shortLabel: "Final",
-    color: "bg-emerald-600",
-    lightColor: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200",
-    textColor: "text-emerald-700",
+    color: "bg-primary",
+    lightColor: "bg-primary dark:bg-primary/20 border-primary",
+    textColor: "text-primary",
   },
   {
     key: "Fase Final Construção",
     label: "Final da Construção",
     shortLabel: "Final Const.",
-    color: "bg-amber-500",
-    lightColor: "bg-amber-50 dark:bg-amber-900/20 border-amber-200",
-    textColor: "text-amber-700",
+    color: "bg-[#EDEBEB]",
+    lightColor: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border-[#6D7A70]",
+    textColor: "text-[#646461]",
   },
   {
     key: "Exploração",
     label: "Exploração",
     shortLabel: "Expl.",
-    color: "bg-orange-500",
-    lightColor: "bg-orange-50 dark:bg-orange-900/20 border-orange-200",
-    textColor: "text-orange-700",
+    color: "bg-[#EDEBEB]",
+    lightColor: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border-[#6D7A70]",
+    textColor: "text-[#646461]",
   },
   {
     key: "Desativação (Pós-Exploração)",
@@ -403,7 +403,7 @@ export default function Timeline() {
                     </div>
                     {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
                       <div>
-                        <div className="h-2.5 rounded-full bg-orange-500" />
+                        <div className="h-2.5 rounded-full bg-[#EDEBEB]" />
                         <p className="mt-2 text-xs text-muted-foreground">
                           {t("Operação")}
                         </p>
@@ -467,7 +467,7 @@ export default function Timeline() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                 onClick={() =>
                   window.open(
                     `/api/pdf/fases/${projectId}`,
@@ -483,7 +483,7 @@ export default function Timeline() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                  className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                   onClick={() => setShowSettings(!showSettings)}
                   aria-expanded={showSettings}
                 >
@@ -494,7 +494,7 @@ export default function Timeline() {
             </>
           }
         >
-          <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 bg-emerald-950/25">
+          <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 bg-primary/25">
             <img
               src={
                 brandImages?.image_timeline ||
@@ -510,8 +510,8 @@ export default function Timeline() {
                 e.currentTarget.style.display = "none";
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-emerald-950/20 to-transparent" />
-            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-emerald-50">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-[#0A3638]/20 to-transparent" />
+            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-primary">
               Acompanhamento de execução por fase do projeto
             </span>
           </div>
@@ -546,7 +546,7 @@ export default function Timeline() {
           <>
             {/* Admin Settings Panel */}
             {showSettings && user?.role === "admin" && (
-              <Card className="rounded-2xl border-amber-500/25 bg-amber-500/[0.045] shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] dark:bg-amber-500/10">
+              <Card className="rounded-2xl border-[#6D7A70]/25 bg-[#EDEBEB]/[0.045] shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] dark:bg-[#EDEBEB]/10">
                 <CardContent className="space-y-3 p-4 sm:p-5">
                   <div>
                     <p className="flex items-center gap-1.5 text-sm font-semibold">
@@ -577,13 +577,13 @@ export default function Timeline() {
                           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         >
                           {phase.hidden ? (
-                            <EyeOff className="w-4 h-4 text-gray-400" />
+                            <EyeOff className="w-4 h-4 text-muted-foreground" />
                           ) : (
-                            <Eye className="w-4 h-4 text-green-600" />
+                            <Eye className="w-4 h-4 text-primary" />
                           )}
                         </button>
                         <span
-                          className={`flex-1 font-medium ${phase.hidden ? "line-through text-gray-400" : ""}`}
+                          className={`flex-1 font-medium ${phase.hidden ? "line-through text-muted-foreground" : ""}`}
                         >
                           {t(phase.label)}
                         </span>
@@ -663,11 +663,11 @@ export default function Timeline() {
                 </div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="h-2 w-2 rounded-full bg-primary" />
                     {totalConcluido} {t("Concluídas")}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="h-2 w-2 rounded-full bg-[#EDEBEB]" />
                     {totalEmCurso} {t("Em curso")}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
@@ -711,7 +711,7 @@ export default function Timeline() {
                           {t(phase.shortLabel)}
                         </p>
                         {phase.isComplete && (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-primary dark:text-primary" />
                         )}
                       </div>
                       <p className="mt-2 text-xl font-semibold tracking-tight">
@@ -786,11 +786,11 @@ export default function Timeline() {
                         />
                         <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-emerald-500" />{" "}
+                            <span className="h-2 w-2 rounded-full bg-primary" />{" "}
                             {t("Concluídas")}: {phase.concluido}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-amber-500" />{" "}
+                            <span className="h-2 w-2 rounded-full bg-[#EDEBEB]" />{" "}
                             {t("Em curso")}: {phase.emCurso}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
@@ -798,8 +798,8 @@ export default function Timeline() {
                             {t("Pendentes")}: {phase.pendente}
                           </span>
                         </div>
-                        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-emerald-600/15 bg-emerald-600/[0.045] p-3 sm:flex-row sm:items-center sm:justify-between dark:bg-emerald-500/10">
-                          <p className="text-xs leading-5 text-emerald-950 dark:text-emerald-100">
+                        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/15 bg-primary/[0.045] p-3 sm:flex-row sm:items-center sm:justify-between dark:bg-primary/10">
+                          <p className="text-xs leading-5 text-primary dark:text-primary">
                             Responsável, suporte e status updates são definidos
                             individualmente em cada medida.
                           </p>

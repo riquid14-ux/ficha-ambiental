@@ -35,10 +35,10 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 const MEASURE_STATUS_COLORS: Record<string, string> = {
-  I: "bg-green-100 text-green-800",
-  C: "bg-blue-100 text-blue-800",
+  I: "bg-primary text-primary-foreground",
+  C: "bg-[#0A3638] text-white",
   NC: "bg-red-100 text-red-800",
-  NA: "bg-slate-100 text-slate-600",
+  NA: "bg-muted text-muted-foreground",
 };
 
 type MeasureStatusFilter = "all" | "I" | "C" | "NC" | "NA";
@@ -333,16 +333,16 @@ export default function ReviewPage(props: any) {
                   <Button size="sm" variant={measureFilter === "all" ? "default" : "outline"} onClick={() => setMeasureFilter("all")}>
                     Todos ({statusCounts.total})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "I" ? "default" : "outline"} className={measureFilter === "I" ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => setMeasureFilter("I")}>
+                  <Button size="sm" variant={measureFilter === "I" ? "default" : "outline"} className={measureFilter === "I" ? "bg-primary hover:bg-primary" : ""} onClick={() => setMeasureFilter("I")}>
                     I ({statusCounts.I})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "C" ? "default" : "outline"} className={measureFilter === "C" ? "bg-blue-600 hover:bg-blue-700" : ""} onClick={() => setMeasureFilter("C")}>
+                  <Button size="sm" variant={measureFilter === "C" ? "default" : "outline"} className={measureFilter === "C" ? "bg-[#0A3638] hover:bg-[#0A3638]" : ""} onClick={() => setMeasureFilter("C")}>
                     C ({statusCounts.C})
                   </Button>
                   <Button size="sm" variant={measureFilter === "NC" ? "default" : "outline"} className={measureFilter === "NC" ? "bg-red-600 hover:bg-red-700" : ""} onClick={() => setMeasureFilter("NC")}>
                     NC ({statusCounts.NC})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "NA" ? "default" : "outline"} className={measureFilter === "NA" ? "bg-slate-500 hover:bg-slate-600" : ""} onClick={() => setMeasureFilter("NA")}>
+                  <Button size="sm" variant={measureFilter === "NA" ? "default" : "outline"} className={measureFilter === "NA" ? "bg-muted/400 hover:bg-muted-foreground" : ""} onClick={() => setMeasureFilter("NA")}>
                     NA ({statusCounts.NA})
                   </Button>
                 </div>
@@ -363,7 +363,7 @@ export default function ReviewPage(props: any) {
                           {measures.map((m: any) => {
                             const v = verdicts[m.id];
                             return (
-                              <div key={m.id} className={`p-3 border rounded-lg space-y-2 transition-colors ${v?.verdict === "ok" ? "border-green-300 bg-green-50/50 dark:bg-green-950/20" : v?.verdict === "nok" ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
+                              <div key={m.id} className={`p-3 border rounded-lg space-y-2 transition-colors ${v?.verdict === "ok" ? "border-primary bg-primary/50 dark:bg-primary/20" : v?.verdict === "nok" ? "border-red-300 bg-red-50/50 dark:bg-red-950/20" : "bg-card"}`}>
                                 {/* Measure info */}
                                 <div className="flex items-start gap-2">
                                   <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
@@ -384,7 +384,7 @@ export default function ReviewPage(props: any) {
                                     type="button"
                                     size="sm"
                                     variant={v?.verdict === "ok" ? "default" : "outline"}
-                                    className={`h-8 px-3 ${v?.verdict === "ok" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-50 dark:bg-green-900/20 hover:border-green-300"}`}
+                                    className={`h-8 px-3 ${v?.verdict === "ok" ? "bg-primary hover:bg-primary text-white" : "hover:bg-primary dark:bg-primary/20 hover:border-primary"}`}
                                     onClick={() => setVerdict(m.id, v?.verdict === "ok" ? null : "ok")}
                                   >
                                     <Check className="w-4 h-4 mr-1" /> Conforme
@@ -426,9 +426,9 @@ export default function ReviewPage(props: any) {
                   <div className="flex gap-3">
                     {/* FLOW-04: Block self-approval in UI */}
                     {(selectedSubmission?.createdBy === user?.id || selectedSubmission?.submittedBy === user?.id) ? (
-                      <div className="w-full text-center p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-md">
-                        <p className="text-sm text-amber-700 font-medium">{t("Não pode aprovar/rejeitar uma ficha que criou ou submeteu.")}</p>
-                        <p className="text-xs text-amber-600 mt-1">{t("Separação de funções: peça a outro revisor para avaliar esta ficha.")}</p>
+                      <div className="w-full text-center p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70] rounded-md">
+                        <p className="text-sm text-[#646461] font-medium">{t("Não pode aprovar/rejeitar uma ficha que criou ou submeteu.")}</p>
+                        <p className="text-xs text-[#646461] mt-1">{t("Separação de funções: peça a outro revisor para avaliar esta ficha.")}</p>
                       </div>
                     ) : (
                       <>
@@ -464,16 +464,16 @@ export default function ReviewPage(props: any) {
                   <Button size="sm" variant={measureFilter === "all" ? "default" : "outline"} onClick={() => setMeasureFilter("all")}>
                     Todos ({statusCounts.total})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "I" ? "default" : "outline"} className={measureFilter === "I" ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => setMeasureFilter("I")}>
+                  <Button size="sm" variant={measureFilter === "I" ? "default" : "outline"} className={measureFilter === "I" ? "bg-primary hover:bg-primary" : ""} onClick={() => setMeasureFilter("I")}>
                     I ({statusCounts.I})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "C" ? "default" : "outline"} className={measureFilter === "C" ? "bg-blue-600 hover:bg-blue-700" : ""} onClick={() => setMeasureFilter("C")}>
+                  <Button size="sm" variant={measureFilter === "C" ? "default" : "outline"} className={measureFilter === "C" ? "bg-[#0A3638] hover:bg-[#0A3638]" : ""} onClick={() => setMeasureFilter("C")}>
                     C ({statusCounts.C})
                   </Button>
                   <Button size="sm" variant={measureFilter === "NC" ? "default" : "outline"} className={measureFilter === "NC" ? "bg-red-600 hover:bg-red-700" : ""} onClick={() => setMeasureFilter("NC")}>
                     NC ({statusCounts.NC})
                   </Button>
-                  <Button size="sm" variant={measureFilter === "NA" ? "default" : "outline"} className={measureFilter === "NA" ? "bg-slate-500 hover:bg-slate-600" : ""} onClick={() => setMeasureFilter("NA")}>
+                  <Button size="sm" variant={measureFilter === "NA" ? "default" : "outline"} className={measureFilter === "NA" ? "bg-muted/400 hover:bg-muted-foreground" : ""} onClick={() => setMeasureFilter("NA")}>
                     NA ({statusCounts.NA})
                   </Button>
                 </div>

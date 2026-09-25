@@ -240,11 +240,11 @@ export default function CalendarioControl() {
                               {isOverdue ? (
                                 <Badge className="bg-red-100 text-red-800 border-red-200 text-[10px]">{ t("Em atraso") }</Badge>
                               ) : evt.status === "reported" ? (
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px]">{ t("Reportado") }</Badge>
+                                <Badge className="bg-[#0A3638] text-white border-[#0A3638] text-[10px]">{ t("Reportado") }</Badge>
                               ) : evt.status === "confirmed" ? (
-                                <Badge className="bg-green-100 text-green-800 border-green-200 text-[10px]">{ t("Confirmado") }</Badge>
+                                <Badge className="bg-primary text-[#0A3638] border-primary text-[10px]">{ t("Confirmado") }</Badge>
                               ) : (
-                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">{t("Pendente")}</Badge>
+                                <Badge className="bg-[#EDEBEB] text-[#646461] border-[#6D7A70] text-[10px]">{t("Pendente")}</Badge>
                               )}
                             </td>
                             <td className="py-2.5 px-2">
@@ -264,7 +264,7 @@ export default function CalendarioControl() {
                                       Editar
                                     </Button>
                                     {(isOverdue || evt.status === "pending") && (
-                                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 border-blue-300 text-blue-700" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "reported" })}>
+                                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2 border-[#0A3638] text-[#0A3638]" onClick={() => updateStatusMutation.mutate({ id: evt.id, status: "reported" })}>
                                         Reportado
                                       </Button>
                                     )}

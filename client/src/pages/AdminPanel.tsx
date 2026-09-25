@@ -205,50 +205,50 @@ export default function AdminPanel() {
         </StandPageHeader>
 
         {/* Explanatory Roles Panel */}
-        <Card className="border-sky-500/20 bg-sky-500/[0.035] shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04)] dark:bg-sky-500/[0.06]">
+        <Card className="stand-engineering-grid border-[#0A3638]/18 bg-[#F4F4FF] shadow-[0_1px_2px_hsl(var(--shadow-color)/0.04)]">
           <CardContent className="p-5 sm:p-6">
             <div className="flex items-center gap-2 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/15 text-sky-700 dark:text-sky-300"><Info className="h-4 w-4" /></div>
-              <div><p className="stand-kicker text-sky-700 dark:text-sky-300">Matriz de acesso</p><h2 className="text-base font-semibold text-foreground">{t("Tipos de Entidade e Permissões")}</h2></div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[#0A3638]"><Info className="h-4 w-4" /></div>
+              <div><p className="stand-kicker text-primary">Matriz de acesso</p><h2 className="text-base font-semibold text-foreground">{t("Tipos de Entidade e Permissões")}</h2></div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <HardHat className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                <HardHat className="w-4 h-4 text-[#0A3638] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">EE — Entidade Executante</p>
                   <p className="text-xs leading-5 text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <Users className="w-4 h-4 text-teal-600 mt-0.5 shrink-0" />
+                <Users className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">EEP — Entidade Executante Parceira</p>
                   <p className="text-xs leading-5 text-muted-foreground">Subcontratado de uma EE. Acede apenas a KPI e/ou Resíduos nos projectos autorizados.</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                <Shield className="w-4 h-4 text-[#0A3638] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">RAP — Resp. Acompanhamento Patrimonial</p>
                   <p className="text-xs leading-5 text-muted-foreground">{t("Submete as fichas de controlo semanais relativas às suas medidas.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <FileCheck className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                <FileCheck className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">RAA — Resp. Acompanhamento Ambiental</p>
                   <p className="text-xs leading-5 text-muted-foreground">{t("Revê as fichas submetidas. Aprova ou rejeita com comentários por medida.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <Users className="w-4 h-4 text-sky-600 mt-0.5 shrink-0" />
+                <Users className="w-4 h-4 text-[#0A3638] mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">PM — Gestor de Projeto</p>
                   <p className="text-xs leading-5 text-muted-foreground">{t("Acompanha o projecto, o calendário, a timeline e os indicadores dentro do seu âmbito.")}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 shadow-sm">
-                <Building2 className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                <Building2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs font-bold leading-5 text-foreground">Dono de Obra — Start Campus</p>
                   <p className="text-xs leading-5 text-muted-foreground">{t("Visão geral do projeto. Acesso de administração e supervisão.")}</p>
@@ -505,7 +505,7 @@ function CompaniesTab() {
                 </Select>
               </div>
               {newType === "ee_partner" && (
-                <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
+                <div className="space-y-3 rounded-lg border border-primary bg-primary/60 p-3">
                   <div>
                     <Label>EE principal a que responde</Label>
                     <Select value={newParentCompanyId ? String(newParentCompanyId) : undefined} onValueChange={value => { setNewParentCompanyId(Number(value)); setNewProjectIds([]); }}>
@@ -656,7 +656,7 @@ function CompaniesTab() {
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { const newName = prompt("Nome da empresa:", c.name); if (newName && newName !== c.name) updateCompanyMutation.mutate({ id: c.id, name: newName }); }} title="Editar">
                       <Pencil className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-600" onClick={() => { if (confirm(`Desativar a empresa "${c.name}"? Os dados serão preservados.`)) updateCompanyMutation.mutate({ id: c.id, active: c.active ? 0 : 1 }); }} title={c.active ? "Desativar" : "Reativar"}>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs text-[#646461]" onClick={() => { if (confirm(`Desativar a empresa "${c.name}"? Os dados serão preservados.`)) updateCompanyMutation.mutate({ id: c.id, active: c.active ? 0 : 1 }); }} title={c.active ? "Desativar" : "Reativar"}>
                       {c.active ? <XCircle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => { if (confirm(`ELIMINAR PERMANENTEMENTE a empresa "${c.name}"? Esta ação é irreversível!`)) deleteCompanyMutation.mutate({ id: c.id }); }} title="Eliminar">
@@ -1029,10 +1029,10 @@ function UsersTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-emerald-200 bg-emerald-50/40">
+      <Card className="border-primary bg-primary/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Users className="size-4 text-emerald-700" />
+            <Users className="size-4 text-primary" />
             EEP — Entidades Executantes Parceiras
           </CardTitle>
           <p className="text-xs text-muted-foreground">
@@ -1154,9 +1154,9 @@ function UsersTab() {
         </DialogContent>
       </Dialog>
 
-      <Card className="border-sky-200 bg-sky-50/50">
+      <Card className="border-[#0A3638] bg-[#0A3638]/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Users className="size-4 text-sky-700" />PM — Gestão de Projeto</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><Users className="size-4 text-[#0A3638]" />PM — Gestão de Projeto</CardTitle>
           <p className="text-xs text-muted-foreground">O PM consulta o processo completo nos projetos atribuídos. A Administração pode restringir módulos por projeto sem lhe atribuir poderes de aprovação ou administração.</p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1447,7 +1447,7 @@ function UsersTab() {
                   <TableCell>
                     <div className="flex flex-wrap gap-0.5">
                       {(u.role === "admin" || u.role === "dono_obra" || u.role === "raa") ? (
-                        <Badge variant="outline" className="bg-green-50 px-1 py-0 text-xs text-green-700 dark:bg-green-900/20">Todas</Badge>
+                        <Badge variant="outline" className="bg-primary px-1 py-0 text-xs text-[#0A3638] dark:bg-primary/20">Todas</Badge>
                       ) : (
                         <Badge variant="outline" className="px-1 py-0 text-xs">{t("Construção")}</Badge>
                       )}
@@ -1652,7 +1652,7 @@ function HistoricalTab() {
                     <TableCell className="font-medium">S{h.weekNumber}/{h.weekYear}</TableCell>
                     <TableCell>{company?.companyType === "rap" ? "RAP - " : ""}{company?.shortName || "-"}</TableCell>
                     <TableCell>
-                      <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                      <a href={h.url} target="_blank" rel="noopener noreferrer" className="text-[#0A3638] hover:underline text-sm">
                         {h.filename || "PDF"}
                       </a>
                     </TableCell>
@@ -1688,7 +1688,7 @@ function MelhoriasTab() {
       ) : (
         <div className="space-y-3">
           {feedbacks.map((fb: any) => (
-            <div key={fb.id} className={`border rounded-lg p-4 ${fb.status === "implementado" ? "border-green-200 bg-green-50/30" : fb.status === "rejeitado" ? "border-red-200 bg-red-50/30" : "border-border"}`}>
+            <div key={fb.id} className={`border rounded-lg p-4 ${fb.status === "implementado" ? "border-primary bg-primary/30" : fb.status === "rejeitado" ? "border-red-200 bg-red-50/30" : "border-border"}`}>
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-medium">{fb.userName || fb.userEmail || "Anónimo"}</p>
@@ -1769,7 +1769,7 @@ function PendingAccountsTab() {
             <p className="text-sm text-muted-foreground">{p.email}</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}</button>
+            <button className="px-3 py-1 bg-primary text-[#0A3638] rounded text-sm hover:bg-primary" onClick={() => approveMutation.mutate({ userId: p.id, approve: true })}>{t("Aprovar")}</button>
             <button className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700" onClick={() => approveMutation.mutate({ userId: p.id, approve: false })}>{t("Rejeitar")}</button>
           </div>
         </div>
@@ -1823,11 +1823,11 @@ function EmailConfigTab() {
   return (
     <div className="space-y-4">
       {/* Enable/Disable toggle card */}
-      <Card className={`border-2 transition-colors ${enabled ? 'border-green-500 dark:border-green-600' : 'border-muted'}`}>
+      <Card className={`border-2 transition-colors ${enabled ? 'border-primary dark:border-green-600' : 'border-muted'}`}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enabled ? 'bg-green-100 dark:bg-green-900/30' : 'bg-muted'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${enabled ? 'bg-primary dark:bg-primary/30' : 'bg-muted'}`}>
                 <span className="text-lg">{enabled ? '✅' : '📧'}</span>
               </div>
               <div>
@@ -1837,7 +1837,7 @@ function EmailConfigTab() {
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="sr-only peer" />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"></div>
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-muted peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-border peer-checked:bg-primary"></div>
             </label>
           </div>
         </CardContent>
@@ -1878,15 +1878,15 @@ function EmailConfigTab() {
           <p className="font-medium text-sm mb-3">{t("Emails automáticos enviados pelo sistema")}:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
-              <span className="text-green-600 mt-0.5">📤</span>
+              <span className="text-primary mt-0.5">📤</span>
               <div><span className="font-medium">{t("Ficha submetida")}</span><br/><span className="text-muted-foreground">{t("Notifica RAA, Admin e Dono de Obra")}</span></div>
             </div>
             <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
-              <span className="text-blue-600 mt-0.5">✅</span>
+              <span className="text-[#0A3638] mt-0.5">✅</span>
               <div><span className="font-medium">{t("Ficha aprovada/rejeitada")}</span><br/><span className="text-muted-foreground">{t("Notifica o submitter")}</span></div>
             </div>
             <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">
-              <span className="text-purple-600 mt-0.5">👤</span>
+              <span className="text-[#0A3638] mt-0.5">👤</span>
               <div><span className="font-medium">{t("Convite de utilizador")}</span><br/><span className="text-muted-foreground">{t("Email com link de acesso e credenciais")}</span></div>
             </div>
             <div className="flex items-start gap-2 text-xs p-2 rounded bg-background border">

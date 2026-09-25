@@ -170,8 +170,8 @@ export default function Login() {
       {/* Left panel - brand image (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative border-r border-border/50">
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-transparent flex flex-col justify-end p-10">
-          <p className="stand-kicker text-emerald-200">Start Campus · Sines</p>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A3638]/90 via-slate-950/25 to-transparent flex flex-col justify-end p-10">
+          <p className="stand-kicker text-primary">Start Campus · Sines</p>
           <h2 className="mt-3 text-white text-4xl font-semibold tracking-[-0.05em]">STAND</h2>
           <p className="mt-3 max-w-md text-white/85 text-lg leading-7">{t("Onde a sustentabilidade ganha posição")}</p>
           <p className="text-white/60 text-sm mt-3">{t("Infraestruturas digitais sustentáveis, com governação ambiental.")}</p>
@@ -206,7 +206,7 @@ export default function Login() {
         )}
 
         {success && (
-          <div className="flex items-start gap-2 p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200 text-sm mb-4">
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-primary/20 bg-primary/10 text-primary dark:text-primary text-sm mb-4">
             <Shield className="w-4 h-4 mt-0.5 shrink-0" />
             <span>{success}</span>
           </div>
@@ -316,7 +316,7 @@ export default function Login() {
             loginMutation.mutate({ email: user?.email || "", password });
           }} className="space-y-4">
             <div className="text-center mb-4">
-              <Shield className="w-12 h-12 mx-auto text-green-600 mb-2" />
+              <Shield className="w-12 h-12 mx-auto text-primary mb-2" />
               <p className="text-sm text-muted-foreground">{t("Verificação de segurança — confirme a sua identidade.")}</p>
               {user?.email && <p className="text-xs text-muted-foreground mt-1 font-medium">{user.email}</p>}
             </div>

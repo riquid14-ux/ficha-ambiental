@@ -588,7 +588,7 @@ export default function MIRR() {
               {!isMIRRPage && (subProjects?.length ?? 0) > 0 && (
                 <Select value={subProject} onValueChange={setSubProject}>
                   <SelectTrigger
-                    className="h-9 w-[180px] border-white/20 bg-white/10 text-xs text-white hover:bg-white/15"
+                    className="h-9 w-[180px] border-white/20 bg-card/10 text-xs text-white hover:bg-card/15"
                     aria-label="Selecionar sub-projeto"
                   >
                     <SelectValue placeholder="Sub-projeto" />
@@ -605,7 +605,7 @@ export default function MIRR() {
                 </Select>
               )}
               {!isMIRRPage && canManageSubprojects && (
-                <div className="flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.06] p-1">
+                <div className="flex items-center gap-1 rounded-md border border-white/15 bg-card/[0.06] p-1">
                   <Input
                     className="h-7 w-[144px] border-0 bg-transparent px-2 text-xs text-white placeholder:text-white/60 focus-visible:ring-1 focus-visible:ring-white"
                     placeholder={t("Novo sub-projeto...")}
@@ -617,7 +617,7 @@ export default function MIRR() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 text-white hover:bg-white/15 hover:text-white"
+                    className="h-7 w-7 text-white hover:bg-card/15 hover:text-white"
                     aria-label={t("Adicionar")}
                     title={t("Adicionar")}
                     disabled={!projectId || createSubprojectMutation.isPending}
@@ -638,7 +638,7 @@ export default function MIRR() {
                 onValueChange={v => setSelectedYear(parseInt(v))}
               >
                 <SelectTrigger
-                  className="h-9 w-[108px] border-white/20 bg-white/10 text-xs text-white hover:bg-white/15"
+                  className="h-9 w-[108px] border-white/20 bg-card/10 text-xs text-white hover:bg-card/15"
                   aria-label="Selecionar ano de reporte"
                 >
                   <CalendarDays className="mr-2 h-3.5 w-3.5" />
@@ -657,7 +657,7 @@ export default function MIRR() {
                   type="button"
                   onClick={() => setShowAddForm(!showAddForm)}
                   size="sm"
-                  className="h-9 bg-white text-emerald-950 hover:bg-emerald-50"
+                  className="h-9 bg-card text-primary hover:bg-primary"
                 >
                   <Plus className="mr-1.5 h-4 w-4" /> {t("Nova e-GAR")}
                 </Button>
@@ -666,7 +666,7 @@ export default function MIRR() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 border-white/20 bg-transparent text-white hover:bg-white/15 hover:text-white"
+                className="h-9 border-white/20 bg-transparent text-white hover:bg-card/15 hover:text-white"
                 onClick={handleExportExcel}
                 disabled={!egars || egars.length === 0}
               >
@@ -676,23 +676,23 @@ export default function MIRR() {
             </div>
           }
         >
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-emerald-50/75">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-primary/75">
             <span className="inline-flex items-center gap-1.5">
               <Recycle className="h-3.5 w-3.5" />
               Registo e rastreabilidade de resíduos
             </span>
-            <span className="hidden h-3 w-px bg-white/20 sm:block" />
+            <span className="hidden h-3 w-px bg-card/20 sm:block" />
             <span>{egars?.length || 0} e-GARs no âmbito atual</span>
           </div>
         </StandPageHeader>
 
         {isPartner && (
           <aside
-            className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4 dark:bg-emerald-500/10"
+            className="rounded-xl border border-primary/20 bg-primary/[0.05] p-4 dark:bg-primary/10"
             aria-label="Âmbito de contributo do parceiro"
           >
             <div className="flex gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-[#0A3638]">
                 <ShieldAlert className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -1103,11 +1103,11 @@ export default function MIRR() {
               aria-label="Legenda do gráfico"
             >
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" />{" "}
+                <span className="h-2.5 w-2.5 rounded-sm bg-primary" />{" "}
                 {t(t("Reciclado"))}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm bg-amber-500" />{" "}
+                <span className="h-2.5 w-2.5 rounded-sm bg-[#EDEBEB]" />{" "}
                 {t(t("Incinerado"))}
               </span>
               <span className="inline-flex items-center gap-1.5">
@@ -1147,7 +1147,7 @@ export default function MIRR() {
                         )}
                         {m.incinerated > 0 && (
                           <div
-                            className="bg-amber-500"
+                            className="bg-[#EDEBEB]"
                             style={{
                               height: `${(m.incinerated / maxMonthlyTotal) * 100}%`,
                               minHeight: "3px",
@@ -1156,7 +1156,7 @@ export default function MIRR() {
                         )}
                         {m.recycled > 0 && (
                           <div
-                            className="bg-emerald-500"
+                            className="bg-primary"
                             style={{
                               height: `${(m.recycled / maxMonthlyTotal) * 100}%`,
                               minHeight: "3px",
@@ -1599,7 +1599,7 @@ export default function MIRR() {
                         <td className="whitespace-nowrap px-4 py-3 font-semibold tabular-nums">
                           {e.correctedQuantity ? (
                             <>
-                              <span className="text-emerald-700 dark:text-emerald-300">
+                              <span className="text-primary dark:text-primary">
                                 {e.correctedQuantity}
                               </span>{" "}
                               <span className="ml-1 text-xs font-normal text-muted-foreground line-through">

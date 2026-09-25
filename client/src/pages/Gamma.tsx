@@ -97,7 +97,7 @@ export default function Gamma() {
 
         {/* New Edition Dialog */}
         {showNewEdition && (
-          <Card className="border-green-200 bg-green-50">
+          <Card className="border-primary bg-primary">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-2">{t("Criar Nova Edição")}</h3>
               <div className="flex gap-2">
@@ -116,7 +116,7 @@ export default function Gamma() {
             const Icon = PILLAR_ICONS[pillar] || Leaf;
             return (
               <Card key={pillar} className="text-center p-3 hover:shadow-md transition-shadow">
-                <Icon className="w-6 h-6 mx-auto mb-1 text-green-600" />
+                <Icon className="w-6 h-6 mx-auto mb-1 text-primary" />
                 <p className="text-xs font-medium leading-tight">{pillar}</p>
               </Card>
             );
@@ -258,7 +258,7 @@ export default function Gamma() {
                       <Badge variant="outline" className="shrink-0 w-8 justify-center">{e.key}</Badge>
                       <span className="text-sm flex-1">{e.label}</span>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><CheckCircle2 className="w-3 h-3 text-green-600" />Sim</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><CheckCircle2 className="w-3 h-3 text-primary" />Sim</Button>
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><XCircle className="w-3 h-3 text-red-600" />{t("Não")}</Button>
                       </div>
                     </div>
@@ -441,7 +441,7 @@ export default function Gamma() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {showAddWinner && isAdmin && (
-                  <div className="p-4 border-2 border-dashed rounded-lg space-y-3 bg-green-50/50">
+                  <div className="p-4 border-2 border-dashed rounded-lg space-y-3 bg-primary/50">
                     <h4 className="font-semibold text-sm">{t("Novo Projeto Vencedor")}</h4>
                     <div className="grid grid-cols-2 gap-3">
                       <Input placeholder={t("Nome do projeto...")} value={newWinner.name} onChange={e => setNewWinner({...newWinner, name: e.target.value})} className="h-8 text-sm" />
@@ -475,7 +475,7 @@ export default function Gamma() {
                               {w.timeline.map((t, ti) => (
                                 <div key={ti} className="flex-1">
                                   <div className="flex items-center gap-1">
-                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${t.done ? "bg-green-500 border-green-500" : "border-border"}`}>
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${t.done ? "bg-primary border-primary" : "border-border"}`}>
                                       {t.done && <span className="text-white text-[8px]">✓</span>}
                                     </div>
                                     <span className="text-xs">{t.phase}</span>

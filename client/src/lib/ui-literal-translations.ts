@@ -1,5 +1,13 @@
 /* Generated fixed translations for historical static UI literals. */
 export const uiLiteralTranslations: Record<string, string> = {
+  "A fotografia aérea é a vista de engenharia. Clique num ponto para abrir a respetiva informação técnica, métricas, gráficos e documentação.": "The aerial photograph is the engineering view. Select a point to open its technical information, metrics, charts and documentation.",
+  "Aplique o mesmo período a telemetria, custos e análises.": "Apply the same period to telemetry, costs and analysis.",
+  "CENTRO DE OPERAÇÃO": "OPERATIONS CENTRE",
+  "Desempenho do NEST com contexto técnico, origem e qualidade do dado.": "NEST performance with technical context, data origin and quality.",
+  "Eficiência, energia, água do mar, custos e cenários usam a mesma janela temporal. Estimativas nunca se confundem com leituras medidas.": "Efficiency, energy, seawater, costs and scenarios use the same time window. Estimates are never confused with measured readings.",
+  "Gémeo digital espacial do NEST": "NEST spatial digital twin",
+  "START CAMPUS · GOVERNAÇÃO AMBIENTAL": "START CAMPUS · ENVIRONMENTAL GOVERNANCE",
+  "Visão operacional, documental e de conformidade no mesmo contexto de projeto.": "Operational, documentation and compliance views in the same project context.",
   "Abrir informação de": "Open information for",
   "Marcadores a configurar": "markers to configure",
   "Edifícios futuros · planeamento": "Future buildings · planning",
@@ -1043,5 +1051,22 @@ export const uiLiteralTranslations: Record<string, string> = {
   "Consulte obrigações ambientais, certificações e recomendações publicadas pela Administração.": "Consult environmental obligations, certifications and recommendations published by Administration.",
   "Consulte planos de monitorização, responsáveis, atualizações e prazos de reporting.": "Consult monitoring plans, responsible parties, updates and reporting deadlines.",
   "Consulte o estado de cumprimento.": "Review the compliance status.",
-  "Contacte apoioamb@startcampus.pt ou use Deixar Feedback.": "Contact apoioamb@startcampus.pt or use Leave Feedback."
+  "Contacte apoioamb@startcampus.pt ou use Deixar Feedback.": "Contact apoioamb@startcampus.pt or use Leave Feedback.",
+  "Fotografia operacional": "Operational photograph",
+  "Imagem técnica de": "Technical image of",
+  "Sem descrição configurada.": "No description configured.",
+  "Última leitura válida": "Latest valid reading",
+  "Sem dado no período": "No data in this period",
+  "Fonte:": "Source:",
+  "Fonte Excel configurada": "Configured Excel source",
+  "últimos valores válidos": "latest valid values",
+  "fatura(s) ligada(s)": "linked invoice(s)",
+  "valores provenientes do centro de reconciliação.": "values from the reconciliation centre.",
+  "Abrir documento associado": "Open associated document",
+  "Infraestrutura": "Infrastructure",
+  "Voltar à imagem": "Return to image",
+  "Vista institucional do campus Start Campus": "Start Campus institutional campus view",
+  "A Start Campus em movimento": "Start Campus in motion",
+  "Conheça a visão que liga campus, operação e sustentabilidade.": "Discover the vision connecting campus, operations and sustainability.",
+  "Abrir no fornecedor": "Open with provider"
 };

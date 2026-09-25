@@ -23,14 +23,14 @@ const SIN01_EVIDENCE_START_YEAR = 2026;
 
 // All project lifecycle phases (excluding construction which has its own weekly form)
 const ALL_PHASES = [
-  { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-purple-500" },
-  { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2, color: "bg-blue-500" },
-  { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3, color: "bg-cyan-500" },
-  { key: "Preparação Prévia", label: "Preparação Prévia à Construção", shortLabel: "Preparação Prévia", order: 4, color: "bg-teal-500" },
-  { key: "Execução da Obra", label: "Execução da Obra", shortLabel: "Execução", order: 5, color: "bg-amber-500" },
+  { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-[#F4F4FF]" },
+  { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2, color: "bg-[#0A3638]" },
+  { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3, color: "bg-[#0A3638]" },
+  { key: "Preparação Prévia", label: "Preparação Prévia à Construção", shortLabel: "Preparação Prévia", order: 4, color: "bg-primary" },
+  { key: "Execução da Obra", label: "Execução da Obra", shortLabel: "Execução", order: 5, color: "bg-[#EDEBEB]" },
   { key: "Fase Final", label: "Fase Final", shortLabel: "Fase Final", order: 6, color: "bg-rose-500" },
-  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 7, color: "bg-orange-500" },
-  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 8, color: "bg-green-500" },
+  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 7, color: "bg-[#EDEBEB]" },
+  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 8, color: "bg-primary" },
   { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-muted0" },
 ];
 
@@ -188,7 +188,7 @@ export default function PhaseMeasures(props: any) {
         </div>
         {isOperationOnly && (
           <div className="flex items-center gap-2">
-            <div className="text-lg font-bold text-emerald-700 border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
+            <div className="text-lg font-bold text-[#0A3638] border border-primary bg-primary dark:bg-primary/20 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
             <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
               <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -205,9 +205,9 @@ export default function PhaseMeasures(props: any) {
       </div>
 
       {!isAdminOrDono && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-[#0A3638] bg-[#0A3638]/50">
           <CardContent className="p-3">
-            <p className="text-sm text-blue-800">
+            <p className="text-sm text-[#0A3638]">
               <strong>{t("Modo de visualização.")}</strong> Apenas o Dono de Obra, Admin e RAA podem editar o estado das medidas.
             </p>
           </CardContent>
@@ -289,10 +289,10 @@ export default function PhaseMeasures(props: any) {
 
             {/* Admin Settings Panel */}
             {isAdmin && showSettings && (
-              <Card className="border-amber-200 bg-amber-50/30">
+              <Card className="border-[#6D7A70] bg-[#EDEBEB]/30">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <SettingsGear className="w-4 h-4 text-amber-600" />{t("Definições de Medidas (Admin)")}</CardTitle>
+                    <SettingsGear className="w-4 h-4 text-[#646461]" />{t("Definições de Medidas (Admin)")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <p className="text-xs text-muted-foreground mb-3">{t("Edite o número, descrição ou elimine medidas desta fase. Apenas visível para administradores.")}</p>
@@ -443,7 +443,7 @@ function MeasureCard({
     : trackingStatus === "bloqueado"
       ? "border-l-red-500"
       : trackingStatus !== "nao_iniciado"
-        ? "border-l-amber-500"
+        ? "border-l-[#6D7A70]"
         : "border-l-gray-300";
 
   return (
@@ -480,7 +480,7 @@ function MeasureCard({
           {/* Evidence sections */}
           {isOperationOnly && evidenceYear && (
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="text-base px-3 py-1 border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800">
+              <Badge variant="outline" className="text-base px-3 py-1 border-primary bg-primary dark:bg-primary/20 text-[#0A3638]">
                 📅 Evidências {evidenceYear}
               </Badge>
             </div>
@@ -635,10 +635,10 @@ function MeasureCard({
                           onDoubleClick={() => photoScale > 1 ? resetPhotoView() : setPhotoScale(2)}
                         />
                         <div className="absolute left-4 top-4 flex items-center gap-1 rounded-xl border border-white/15 bg-black/45 p-1 backdrop-blur">
-                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={() => setPhotoScale((value) => Math.min(4, value + 0.25))} aria-label={t("Ampliar fotografia")}><ZoomIn className="size-4" /></Button>
-                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={() => { const nextScale = Math.max(1, photoScale - 0.25); setPhotoScale(nextScale); if (nextScale === 1) setPhotoOffset({ x: 0, y: 0 }); }} aria-label={t("Reduzir fotografia")}><ZoomOut className="size-4" /></Button>
-                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-white/15 hover:text-white" onClick={resetPhotoView} aria-label={t("Repor visualização")}><RotateCcw className="size-4" /></Button>
-                          <a href={selectedPhoto.content} download={selectedPhoto.filename || "fotografia"} className="inline-flex size-8 items-center justify-center rounded-md text-white hover:bg-white/15" aria-label={t("Descarregar fotografia")}><Download className="size-4" /></a>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-card/15 hover:text-white" onClick={() => setPhotoScale((value) => Math.min(4, value + 0.25))} aria-label={t("Ampliar fotografia")}><ZoomIn className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-card/15 hover:text-white" onClick={() => { const nextScale = Math.max(1, photoScale - 0.25); setPhotoScale(nextScale); if (nextScale === 1) setPhotoOffset({ x: 0, y: 0 }); }} aria-label={t("Reduzir fotografia")}><ZoomOut className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" className="size-8 text-white hover:bg-card/15 hover:text-white" onClick={resetPhotoView} aria-label={t("Repor visualização")}><RotateCcw className="size-4" /></Button>
+                          <a href={selectedPhoto.content} download={selectedPhoto.filename || "fotografia"} className="inline-flex size-8 items-center justify-center rounded-md text-white hover:bg-card/15" aria-label={t("Descarregar fotografia")}><Download className="size-4" /></a>
                         </div>
                         {selectedPhotoIndex > 0 && (
                           <Button
@@ -743,14 +743,14 @@ function MeasureCard({
 
 function StatusBadge({ status }: { status?: string }) {
   const { t } = useLanguage();
-  if (!status || status === "nao_iniciado") return <Badge variant="outline" className="text-xs text-gray-500 px-1.5 py-0">{t("Não iniciado")}</Badge>;
+  if (!status || status === "nao_iniciado") return <Badge variant="outline" className="text-xs text-muted-foreground px-1.5 py-0">{t("Não iniciado")}</Badge>;
   switch (status) {
     case "concluido":
-      return <Badge className="text-xs bg-green-100 text-green-800 hover:bg-green-100 px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />{t("Reportado")}</Badge>;
+      return <Badge className="text-xs bg-primary text-[#0A3638] hover:bg-primary px-1.5 py-0"><CheckCircle2 className="w-3 h-3 mr-0.5" />{t("Reportado")}</Badge>;
     case "em_curso":
-      return <Badge className="text-xs bg-amber-100 text-amber-800 hover:bg-amber-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
+      return <Badge className="text-xs bg-[#EDEBEB] text-[#646461] hover:bg-[#EDEBEB] px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em Curso")}</Badge>;
     case "em_validacao":
-      return <Badge className="text-xs bg-blue-100 text-blue-800 hover:bg-blue-100 px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em validação")}</Badge>;
+      return <Badge className="text-xs bg-[#0A3638] text-white hover:bg-[#0A3638] px-1.5 py-0"><Clock className="w-3 h-3 mr-0.5" />{t("Em validação")}</Badge>;
     case "bloqueado":
       return <Badge className="text-xs bg-red-100 text-red-800 hover:bg-red-100 px-1.5 py-0"><AlertCircle className="w-3 h-3 mr-0.5" />{t("Bloqueado")}</Badge>;
     default:

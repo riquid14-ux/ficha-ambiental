@@ -91,8 +91,8 @@ describe("Operação — formulário manual de faturas", () => {
     await user.click(screen.getByRole("tab", { name: "Desempenho" }));
     expect(screen.getByText("WUE versus ciclos de arrefecimento")).toBeTruthy();
     expect(screen.getByText("COP versus caudal de captação")).toBeTruthy();
-    expect(screen.getByTestId("scatter-#059669").textContent).toBe("2");
-    expect(screen.getByTestId("scatter-#0284c7").textContent).toBe("2");
+    expect(screen.getByTestId("scatter-var(--ops-success)").textContent).toBe("2");
+    expect(screen.getByTestId("scatter-var(--chart-2)").textContent).toBe("2");
   });
 
   it("apresenta o cockpit premium com a análise WUE versus PUE e a visão do edifício", () => {

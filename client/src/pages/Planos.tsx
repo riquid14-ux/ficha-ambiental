@@ -158,10 +158,10 @@ function PlanCalendar({ plans }: { plans: any[] }) {
       aria-labelledby="plan-calendar-title"
       className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_14px_32px_hsl(var(--shadow-color)/0.055)]"
     >
-      <div className="border-b border-white/10 bg-gradient-to-br from-slate-950 via-emerald-950 to-teal-950 px-5 py-5 text-white sm:px-6">
+      <div className="border-b border-white/10 bg-gradient-to-br from-[#0A3638] via-[#0A3638] to-[#0A3638] px-5 py-5 text-white sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-2xl">
-            <p className="stand-kicker text-emerald-200">
+            <p className="stand-kicker text-primary">
               Calendário exclusivo dos planos
             </p>
             <h2
@@ -170,19 +170,19 @@ function PlanCalendar({ plans }: { plans: any[] }) {
             >
               Próximas entregas
             </h2>
-            <p className="mt-1 text-sm leading-6 text-emerald-50/75">
+            <p className="mt-1 text-sm leading-6 text-primary/75">
               Sincronizado automaticamente com o calendário global e com os
               alertas 30/15/7 dias.
             </p>
           </div>
           <div
-            className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-white/10 p-1.5 backdrop-blur sm:w-auto sm:justify-start"
+            className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-card/10 p-1.5 backdrop-blur sm:w-auto sm:justify-start"
             aria-label="Navegação do calendário"
           >
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/15 hover:text-white"
+              className="text-white hover:bg-card/15 hover:text-white"
               onClick={() => setMonth(new Date(year, monthIndex - 1, 1))}
               aria-label="Mês anterior"
             >
@@ -197,7 +197,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/15 hover:text-white"
+              className="text-white hover:bg-card/15 hover:text-white"
               onClick={() => setMonth(new Date(year, monthIndex + 1, 1))}
               aria-label="Mês seguinte"
             >
@@ -246,7 +246,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
                 {dayPlans.length > 0 && (
                   <div className="mt-1.5 min-w-0">
                     <div
-                      className={`mb-1 h-1.5 w-7 rounded-full ${overdue ? "bg-rose-500" : "bg-emerald-500"}`}
+                      className={`mb-1 h-1.5 w-7 rounded-full ${overdue ? "bg-rose-500" : "bg-primary"}`}
                     />
                     <p className="truncate text-xs font-semibold text-foreground">
                       {dayPlans[0].planNumber}
@@ -575,7 +575,7 @@ export default function Planos() {
             <>
               <Button
                 variant="outline"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                 onClick={exportUpdates}
               >
                 <Download className="mr-2 h-4 w-4" />
@@ -583,7 +583,7 @@ export default function Planos() {
               </Button>
               <Button
                 variant="outline"
-                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
                 disabled={!activeProject?.id}
                 title={
                   !activeProject?.id
@@ -605,7 +605,7 @@ export default function Planos() {
               {isAdminOrDono && (
                 <Dialog open={showCreate} onOpenChange={setShowCreate}>
                   <DialogTrigger asChild>
-                    <Button className="bg-white text-emerald-950 hover:bg-emerald-50">
+                    <Button className="bg-card text-primary hover:bg-primary">
                       <Plus className="mr-2 h-4 w-4" />
                       Novo plano
                     </Button>
@@ -1420,7 +1420,7 @@ function PlanCard({
                       className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition-colors hover:border-primary/35 hover:bg-primary/[0.035]"
                     >
                       {attachment.type === "photo" ? (
-                        <Image className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        <Image className="h-5 w-5 text-primary dark:text-primary" />
                       ) : (
                         <File className="h-5 w-5 text-muted-foreground" />
                       )}

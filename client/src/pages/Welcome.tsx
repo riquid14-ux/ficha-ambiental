@@ -9,6 +9,7 @@ import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { useLocation } from "wouter";
+import { useState } from "react";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -67,6 +68,7 @@ export default function Welcome() {
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const userRole = (user as any)?.role || "user";
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
@@ -79,11 +81,13 @@ export default function Welcome() {
   // substituí-lo por URL configurada, mas uma configuração vazia nunca troca o
   // conteúdo existente por um bloco de placeholder.
   const videoUrl = String((settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE").trim();
-  const embedUrl = (videoUrl.includes("watch?v=")
+  const normalizedVideoUrl = videoUrl.includes("watch?v=")
     ? videoUrl.replace("watch?v=", "embed/")
     : videoUrl.includes("youtu.be/")
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
-    : videoUrl) + "?autoplay=1&mute=1&loop=1&controls=1";
+    : videoUrl;
+  const embedUrl = `${normalizedVideoUrl}${normalizedVideoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&controls=1&playsinline=1&rel=0`;
+  const welcomeImage = String((settingsQuery.data as any)?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png");
 
   const visiblePaths = getVisibleNavigationPaths({
     role: userRole,
@@ -107,7 +111,7 @@ export default function Welcome() {
 
         {/* Inspirational quote */}
         <div className="flex items-start gap-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-5 dark:bg-primary/10">
-          <Leaf className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <Leaf className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-base italic text-foreground leading-relaxed">
               "Esta plataforma foi pensada para cada um de nós. Para que a informação esteja sempre atualizada, para que possamos tomar decisões mais conscientes e para que, juntos, consigamos reduzir ao máximo o nosso impacto ambiental. Cada dado que aqui registamos contribui para um futuro mais sustentável."
@@ -118,21 +122,33 @@ export default function Welcome() {
 
         {/* Video + Features side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Vídeo institucional — preservado; configuração administrativa tem prioridade. */}
+          {/* Vídeo institucional — preservado com poster fotográfico quando o fornecedor externo não responde. */}
           <Card className="stand-surface lg:col-span-2 overflow-hidden">
             <CardContent className="p-0">
-              <div className="photo-grade-frame relative aspect-video w-full bg-black">
-                <iframe
-                  className="photo-grade absolute inset-0 h-full w-full"
-                  src={embedUrl}
-                  title="Start Campus"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <div className="flex items-center gap-2 border-t border-border/70 bg-surface-dashboard/70 px-4 py-3 text-xs text-muted-foreground">
-                <Play className="size-3.5 text-primary" />
-                <span>{t("Vídeo institucional da Start Campus")}</span>
+              {videoPlaying ? (
+                <div className="photo-grade-frame relative aspect-video w-full bg-[#0A3638]">
+                  <iframe
+                    className="absolute inset-0 h-full w-full"
+                    src={embedUrl}
+                    title="Start Campus"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                  <button type="button" onClick={() => setVideoPlaying(false)} className="absolute right-3 top-3 z-10 rounded-lg border border-white/20 bg-[#0A3638]/85 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-[#0A3638]">{t("Voltar à imagem")}</button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setVideoPlaying(true)} className="group relative block aspect-video w-full overflow-hidden bg-[#0A3638] text-left">
+                  <img src={welcomeImage} alt={t("Vista institucional do campus Start Campus")} className="photo-grade absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.025]" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                  <span className="absolute inset-0 bg-[linear-gradient(120deg,rgba(10,54,56,.82),rgba(10,54,56,.2)_65%,rgba(10,54,56,.55))]" />
+                  <span className="absolute inset-0 flex items-end justify-between gap-4 p-5 text-white sm:p-6">
+                    <span><span className="stand-kicker text-primary">{t("A Start Campus em movimento")}</span><span className="mt-2 block max-w-xs text-lg font-semibold tracking-[-0.03em]">{t("Conheça a visão que liga campus, operação e sustentabilidade.")}</span></span>
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/30 bg-card/12 backdrop-blur transition group-hover:scale-105 group-hover:bg-primary group-hover:text-[#0A3638]"><Play className="ml-0.5 size-5 fill-current" /></span>
+                  </span>
+                </button>
+              )}
+              <div className="flex items-center justify-between gap-3 border-t border-border/70 bg-surface-dashboard/70 px-4 py-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2"><Play className="size-3.5 text-primary" />{t("Vídeo institucional da Start Campus")}</span>
+                <a href={videoUrl} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">{t("Abrir no fornecedor")}</a>
               </div>
             </CardContent>
           </Card>
@@ -141,7 +157,7 @@ export default function Welcome() {
           <Card className="stand-surface lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Info className="w-4 h-4 text-blue-600" />
+                <Info className="w-4 h-4 text-primary" />
                 {isAllProjects
                   ? t("O que pode fazer na visão global")
                   : `${t("O que pode fazer em")} ${projectName}`
@@ -183,26 +199,26 @@ export default function Welcome() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <BookOpen className="w-4 h-4 text-indigo-600" />
+                <BookOpen className="w-4 h-4 text-primary" />
                 {t("Fluxo de Submissão")}
               </CardTitle>
               <p className="text-xs text-muted-foreground">{t("Como funciona o processo de submissão e aprovação das fichas de controlo ambiental.")}</p>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center gap-0 py-2">
-                <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc="EE/RAP preenche a ficha semanal" color="blue" actor="EE / RAP" />
+                <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc="EE/RAP preenche a ficha semanal" color="submissao" actor="EE / RAP" />
                 <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
-                <WelcomeFlowStep icon={<Send className="w-4 h-4" />} title={t("2. Submissão")} desc={t("Ficha submetida para revisão")} color="indigo" actor="EE / RAP" />
+                <WelcomeFlowStep icon={<Send className="w-4 h-4" />} title={t("2. Submissão")} desc={t("Ficha submetida para revisão")} color="revisao" actor="EE / RAP" />
                 <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
-                <WelcomeFlowStep icon={<Eye className="w-4 h-4" />} title={t("3. Revisão pela RAA")} desc={t("RAA analisa e verifica conformidade")} color="amber" actor="RAA" />
+                <WelcomeFlowStep icon={<Eye className="w-4 h-4" />} title={t("3. Revisão pela RAA")} desc={t("RAA analisa e verifica conformidade")} color="decisao" actor="RAA" />
                 <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
                 <div className="w-full max-w-lg border-2 border-dashed border-muted-foreground/30 rounded-xl p-3 bg-muted/20">
                   <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Decisão da RAA")}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="text-center p-2 rounded-lg bg-green-50 border border-green-200">
-                      <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto mb-1" />
-                      <p className="text-xs font-semibold text-green-800">{t("Aprovada")}</p>
-                      <p className="text-[10px] text-green-700 mt-0.5">{t("Arquivada no histórico")}</p>
+                    <div className="text-center p-2 rounded-lg border border-primary/30 bg-primary/10">
+                      <CheckCircle2 className="w-5 h-5 text-primary mx-auto mb-1" />
+                      <p className="text-xs font-semibold text-[#0A3638]">{t("Aprovada")}</p>
+                      <p className="text-[10px] text-[#0A3638]/75 mt-0.5">{t("Arquivada no histórico")}</p>
                     </div>
                     <div className="text-center p-2 rounded-lg bg-red-50 border border-red-200">
                       <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
@@ -213,41 +229,41 @@ export default function Welcome() {
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> {t("Ação EE/RAP")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Ação RAA")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {t("Aprovado")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0A3638]" /> {t("Ação EE/RAP")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#6D7A70]" /> {t("Ação RAA")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" /> {t("Aprovado")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> {t("Rejeitado")}</span>
               </div>
               {/* Entity roles legend */}
               <div className="mt-4 pt-3 border-t">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Entidades no Processo")}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-50/50 border border-blue-100">
-                    <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded mt-0.5">EE</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#F4F4FF] border border-[#0A3638]/15">
+                    <span className="text-xs font-bold text-[#0A3638] bg-card px-1.5 py-0.5 rounded mt-0.5">EE</span>
                     <div>
-                      <p className="text-xs font-medium text-blue-900">{t("Entidade Executante")}</p>
-                      <p className="text-[10px] text-blue-700/70">{t("Cria e submete fichas semanais")}</p>
+                      <p className="text-xs font-medium text-[#272726]">{t("Entidade Executante")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("Cria e submete fichas semanais")}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100">
-                    <span className="text-xs font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded mt-0.5">RAP</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#F4F4FF] border border-[#0A3638]/15">
+                    <span className="text-xs font-bold text-[#0A3638] bg-card px-1.5 py-0.5 rounded mt-0.5">RAP</span>
                     <div>
-                      <p className="text-xs font-medium text-indigo-900">{t("Resp. Ambiental Projeto")}</p>
-                      <p className="text-[10px] text-indigo-700/70">{t("Submete fichas da sua responsabilidade")}</p>
+                      <p className="text-xs font-medium text-[#272726]">{t("Resp. Ambiental Projeto")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("Submete fichas da sua responsabilidade")}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50/50 border border-amber-100">
-                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded mt-0.5">RAA</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#EDEBEB] border border-border">
+                    <span className="text-xs font-bold text-[#272726] bg-card px-1.5 py-0.5 rounded mt-0.5">RAA</span>
                     <div>
-                      <p className="text-xs font-medium text-amber-900">{t("Resp. Ambiental Atividade")}</p>
-                      <p className="text-[10px] text-amber-700/70">{t("Revê, aprova ou rejeita fichas")}</p>
+                      <p className="text-xs font-medium text-[#272726]">{t("Resp. Ambiental Atividade")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("Revê, aprova ou rejeita fichas")}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-100">
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded mt-0.5">DO</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/25">
+                    <span className="text-xs font-bold text-[#0A3638] bg-primary px-1.5 py-0.5 rounded mt-0.5">DO</span>
                     <div>
-                      <p className="text-xs font-medium text-emerald-900">{t("Dono de Obra")}</p>
-                      <p className="text-[10px] text-emerald-700/70">{t("Visão completa e gestão de acessos")}</p>
+                      <p className="text-xs font-medium text-[#272726]">{t("Dono de Obra")}</p>
+                      <p className="text-[10px] text-muted-foreground">{t("Visão completa e gestão de acessos")}</p>
                     </div>
                   </div>
                 </div>
@@ -258,20 +274,20 @@ export default function Welcome() {
 
         {/* Quick tips */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/30 border border-blue-200/50 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-blue-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-[#F4F4FF] border border-[#0A3638]/15 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-[#0A3638] text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-0.5">{ t("Menu lateral") }</p>
-              <p className="text-xs text-blue-700">{t("Navegue entre as secções da plataforma usando o menu à esquerda.")}</p>
+              <p className="text-sm font-medium text-[#272726] mb-0.5">{ t("Menu lateral") }</p>
+              <p className="text-xs text-muted-foreground">{t("Navegue entre as secções da plataforma usando o menu à esquerda.")}</p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/30 border border-emerald-200/50 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-primary/10 border border-primary/25 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-primary text-[#0A3638] flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
             <div>
-              <p className="text-sm font-medium text-emerald-900 mb-0.5">
+              <p className="text-sm font-medium text-[#272726] mb-0.5">
                 {userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard"}
               </p>
-              <p className="text-xs text-emerald-700">
+              <p className="text-xs text-muted-foreground">
                 {userRole === "ee" || userRole === "rap"
                   ? "Submeta atempadamente para evitar alertas."
                   : userRole === "raa"
@@ -281,11 +297,11 @@ export default function Welcome() {
               </p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-100/30 border border-violet-200/50 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-violet-500 text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-[#EDEBEB] border border-border shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-[#6D7A70] text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
             <div>
-              <p className="text-sm font-medium text-violet-900 mb-0.5">{ t("Suporte") }</p>
-              <p className="text-xs text-violet-700">{t("Contacte apoioamb@startcampus.pt ou use Deixar Feedback.")}</p>
+              <p className="text-sm font-medium text-[#272726] mb-0.5">{ t("Suporte") }</p>
+              <p className="text-xs text-muted-foreground">{t("Contacte apoioamb@startcampus.pt ou use Deixar Feedback.")}</p>
             </div>
           </div>
         </div>
@@ -296,14 +312,14 @@ export default function Welcome() {
 
 function WelcomeFlowStep({ icon, title, desc, color, actor }: { icon: React.ReactNode; title: string; desc: string; color: string; actor: string }) {
   const colors: Record<string, string> = {
-    blue: "bg-blue-50 border-blue-200 text-blue-700",
-    indigo: "bg-indigo-50 border-indigo-200 text-indigo-700",
-    amber: "bg-amber-50 border-amber-200 text-amber-700",
+    submissao: "bg-[#F4F4FF] border-[#0A3638]/18 text-[#0A3638]",
+    revisao: "bg-[#EDEBEB] border-border text-[#272726]",
+    decisao: "bg-primary/10 border-primary/25 text-[#0A3638]",
   };
   const badges: Record<string, string> = {
-    blue: "bg-blue-100 text-blue-800",
-    indigo: "bg-indigo-100 text-indigo-800",
-    amber: "bg-amber-100 text-amber-800",
+    submissao: "bg-card text-[#0A3638]",
+    revisao: "bg-card text-[#272726]",
+    decisao: "bg-primary text-[#0A3638]",
   };
   return (
     <div className={`w-full max-w-lg p-3 rounded-lg border ${colors[color]} flex items-center gap-3`}>

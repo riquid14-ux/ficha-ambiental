@@ -128,27 +128,27 @@ export default function Certifications() {
           <Card className="border-l-4 border-l-green-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("leed")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-5 h-5 text-green-600" />
+                <FileText className="w-5 h-5 text-primary" />
                 <span className="font-semibold">LEED O&M v4.1</span>
               </div>
               <p className="text-xs text-muted-foreground">{ t("Edifícios existentes") } · 6 { t("categorias") }</p>
               <p className="text-xs text-muted-foreground mt-1">{t("Submissão contínua via Arc/LEED Online")}</p>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("eed")}>
+          <Card className="border-l-4 border-l-[#0A3638] cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("eed")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-5 h-5 text-blue-600" />
+                <FileText className="w-5 h-5 text-[#0A3638]" />
                 <span className="font-semibold">EED — Centros de Dados</span>
               </div>
               <p className="text-xs text-muted-foreground">Art. 12.º Dir. (UE) 2023/1791</p>
               <p className="text-xs text-muted-foreground mt-1">{t("Submissão à DGEG até 15 maio")}</p>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-orange-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("cele")}>
+          <Card className="border-l-4 border-l-[#6D7A70] cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("cele")}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-5 h-5 text-orange-600" />
+                <FileText className="w-5 h-5 text-[#646461]" />
                 <span className="font-semibold">CELE — EU ETS</span>
               </div>
               <p className="text-xs text-muted-foreground">{ t("Geradores de emergência") } · { t("Fontes de minimis") }</p>
@@ -172,10 +172,10 @@ export default function Certifications() {
               <CardHeader><CardTitle className="text-lg">{t("Próximos Prazos")}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-orange-100 text-orange-800 text-xs">CELE</Badge><span className="text-sm flex-1">{t("RAE — Relatório Anual de Emissões")}</span><span className="text-xs text-muted-foreground">{ t("31 março") }</span></div>
-                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-orange-100 text-orange-800 text-xs">CELE</Badge><span className="text-sm flex-1">{ t("Devolução de licenças de emissão") }</span><span className="text-xs text-muted-foreground">{ t("30 abril") }</span></div>
-                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-blue-100 text-blue-800 text-xs">EED</Badge><span className="text-sm flex-1">{ t("Relatório anual à DGEG") }</span><span className="text-xs text-muted-foreground">{ t("15 maio") }</span></div>
-                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-green-100 text-green-800 text-xs">LEED</Badge><span className="text-sm flex-1">{t("Submissão de dados de performance (Arc)")}</span><span className="text-xs text-muted-foreground">{ t("Contínuo") }</span></div>
+                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-[#EDEBEB] text-[#646461] text-xs">CELE</Badge><span className="text-sm flex-1">{t("RAE — Relatório Anual de Emissões")}</span><span className="text-xs text-muted-foreground">{ t("31 março") }</span></div>
+                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-[#EDEBEB] text-[#646461] text-xs">CELE</Badge><span className="text-sm flex-1">{ t("Devolução de licenças de emissão") }</span><span className="text-xs text-muted-foreground">{ t("30 abril") }</span></div>
+                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-[#0A3638] text-white text-xs">EED</Badge><span className="text-sm flex-1">{ t("Relatório anual à DGEG") }</span><span className="text-xs text-muted-foreground">{ t("15 maio") }</span></div>
+                  <div className="flex items-center gap-3 p-2 border rounded"><Badge className="bg-primary text-[#0A3638] text-xs">LEED</Badge><span className="text-sm flex-1">{t("Submissão de dados de performance (Arc)")}</span><span className="text-xs text-muted-foreground">{ t("Contínuo") }</span></div>
                 </div>
               </CardContent>
             </Card>
@@ -183,8 +183,8 @@ export default function Certifications() {
 
           {/* === CELE — Smart Installation-Level Input === */}
           <TabsContent value="cele" className="space-y-4">
-            <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 rounded-lg">
-              <p className="text-xs text-orange-800"><strong>{t("CELE — Comércio Europeu de Licenças de Emissão (EU ETS)")}</strong>{t("· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.")}</p>
+            <div className="p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70] rounded-lg">
+              <p className="text-xs text-[#646461]"><strong>{t("CELE — Comércio Europeu de Licenças de Emissão (EU ETS)")}</strong>{t("· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.")}</p>
             </div>
 
             {/* Section 1: Generator Inventory */}
@@ -298,13 +298,13 @@ export default function Certifications() {
                       <span className="text-xs text-muted-foreground">litros</span>
                     </div>
                   </div>
-                  <div className="md:col-span-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100">
-                    <label className="text-xs font-medium text-orange-800">{t("Emissões de CO2 Calculadas")}</label>
+                  <div className="md:col-span-2 p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 rounded-lg border border-[#6D7A70]">
+                    <label className="text-xs font-medium text-[#646461]">{t("Emissões de CO2 Calculadas")}</label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input className="h-9 bg-background" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
                       <span className="text-xs text-muted-foreground">tCO2</span>
                     </div>
-                    <p className="text-[10px] text-orange-700 mt-1">{t("Cálculo: total combustível × fator de emissão × densidade")}</p>
+                    <p className="text-[10px] text-[#646461] mt-1">{t("Cálculo: total combustível × fator de emissão × densidade")}</p>
                   </div>
                 </div>
               </CardContent>
@@ -339,13 +339,13 @@ export default function Certifications() {
             <div className="flex items-center gap-3">
               <Textarea placeholder={t("Notas adicionais sobre CELE...")} className="text-sm" value={celeData.notas} onChange={e => setCeleData(p => ({...p, notas: e.target.value}))} />
             </div>
-            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("CELE")}><Save className="w-4 h-4 mr-2" /> {t("Guardar CELE")}</Button>
+            <Button className="bg-primary hover:bg-primary" onClick={() => handleSave("CELE")}><Save className="w-4 h-4 mr-2" /> {t("Guardar CELE")}</Button>
           </TabsContent>
 
           {/* === EED — Grouped KPI Input === */}
           <TabsContent value="eed" className="space-y-4">
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.</p>
+            <div className="p-3 bg-[#0A3638] dark:bg-[#0A3638]/20 border border-[#0A3638] rounded-lg">
+              <p className="text-xs text-[#0A3638]"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.</p>
             </div>
 
             {/* Identification */}
@@ -384,20 +384,20 @@ export default function Certifications() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100">
-                    <label className="text-xs font-medium text-blue-800">PUE</label>
+                  <div className="p-3 bg-[#0A3638] dark:bg-[#0A3638]/20 rounded-lg border border-[#0A3638]">
+                    <label className="text-xs font-medium text-[#0A3638]">PUE</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
-                    <p className="text-[10px] text-blue-600 mt-0.5">Power Usage Effectiveness</p>
+                    <p className="text-[10px] text-[#0A3638] mt-0.5">Power Usage Effectiveness</p>
                   </div>
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100">
-                    <label className="text-xs font-medium text-green-800">REF (%)</label>
+                  <div className="p-3 bg-primary dark:bg-primary/20 rounded-lg border border-primary">
+                    <label className="text-xs font-medium text-primary">REF (%)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
-                    <p className="text-[10px] text-green-600 mt-0.5">Renewable Energy Factor</p>
+                    <p className="text-[10px] text-primary mt-0.5">Renewable Energy Factor</p>
                   </div>
-                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100">
-                    <label className="text-xs font-medium text-amber-800">ERF (%)</label>
+                  <div className="p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 rounded-lg border border-[#6D7A70]">
+                    <label className="text-xs font-medium text-[#646461]">ERF (%)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
-                    <p className="text-[10px] text-amber-600 mt-0.5">Energy Reuse Factor</p>
+                    <p className="text-[10px] text-[#646461] mt-0.5">Energy Reuse Factor</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg border border-border">
                     <label className="text-xs font-medium text-foreground">CUE</label>
@@ -418,10 +418,10 @@ export default function Certifications() {
               <CardHeader className="pb-3"><CardTitle className="text-base">{t("Água")}</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-100">
-                    <label className="text-xs font-medium text-cyan-800">WUE (L/kWh)</label>
+                  <div className="p-3 bg-[#0A3638] rounded-lg border border-[#0A3638]">
+                    <label className="text-xs font-medium text-[#0A3638]">WUE (L/kWh)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0.5" value={eedData.wue} onChange={e => setEedData(p => ({...p, wue: e.target.value}))} />
-                    <p className="text-[10px] text-cyan-600 mt-0.5">Water Usage Effectiveness</p>
+                    <p className="text-[10px] text-[#0A3638] mt-0.5">Water Usage Effectiveness</p>
                   </div>
                   <div><label className="text-xs font-medium text-muted-foreground">{t("Consumo Total de Água (m³/ano)")}</label><Input className="h-9 mt-1" value={eedData.consumoAgua} onChange={e => setEedData(p => ({...p, consumoAgua: e.target.value}))} /></div>
                   <div><label className="text-xs font-medium text-muted-foreground">{t("Fonte de Água")}</label><Input className="h-9 mt-1" placeholder="Rede, furo, reutilizada..." value={eedData.fonteAgua} onChange={e => setEedData(p => ({...p, fonteAgua: e.target.value}))} /></div>
@@ -446,13 +446,13 @@ export default function Certifications() {
             </Card>
 
             <Textarea placeholder={t("Notas adicionais sobre EED...")} className="text-sm" value={eedData.notas} onChange={e => setEedData(p => ({...p, notas: e.target.value}))} />
-            <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => handleSave("EED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar EED")}</Button>
+            <Button className="bg-[#0A3638] hover:bg-[#0A3638]" onClick={() => handleSave("EED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar EED")}</Button>
           </TabsContent>
 
           {/* === LEED — Smart Category Grouping === */}
           <TabsContent value="leed" className="space-y-4">
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg">
-              <p className="text-xs text-green-800"><strong>LEED O&M v4.1 — Existing Buildings</strong> · 90 pontos de performance + 10 pontos de créditos. Submissão contínua via plataforma Arc. Dados de 12 meses de operação.</p>
+            <div className="p-3 bg-primary dark:bg-primary/20 border border-primary rounded-lg">
+              <p className="text-xs text-primary"><strong>LEED O&M v4.1 — Existing Buildings</strong> · 90 pontos de performance + 10 pontos de créditos. Submissão contínua via plataforma Arc. Dados de 12 meses de operação.</p>
             </div>
 
             {/* Building Info - fill once */}
@@ -554,7 +554,7 @@ export default function Certifications() {
             </Card>
 
             <Textarea placeholder={t("Notas adicionais sobre LEED...")} className="text-sm" value={leedData.notas} onChange={e => setLeedData(p => ({...p, notas: e.target.value}))} />
-            <Button className="bg-green-700 hover:bg-green-800" onClick={() => handleSave("LEED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar LEED")}</Button>
+            <Button className="bg-primary hover:bg-primary" onClick={() => handleSave("LEED")}><Save className="w-4 h-4 mr-2" /> {t("Guardar LEED")}</Button>
           </TabsContent>
         </Tabs>
       </div>

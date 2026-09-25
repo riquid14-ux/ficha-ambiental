@@ -62,7 +62,7 @@ function statusVariant(status: Status): "default" | "secondary" | "destructive" 
 }
 
 function severityClass(severity: Severity) {
-  return severity === "critical" ? "border-red-200 bg-red-50 text-red-800" : severity === "high" ? "border-amber-200 bg-amber-50 text-amber-800" : severity === "medium" ? "border-sky-200 bg-sky-50 text-sky-800" : "border-slate-200 bg-slate-50 text-slate-700";
+  return severity === "critical" ? "border-red-200 bg-red-50 text-red-800" : severity === "high" ? "border-[#6D7A70] bg-[#EDEBEB] text-[#646461]" : severity === "medium" ? "border-[#0A3638] bg-[#0A3638] text-white" : "border-border bg-muted/40 text-foreground";
 }
 
 export default function AdminResilienceSection() {
@@ -110,20 +110,20 @@ export default function AdminResilienceSection() {
   const ready = healthQuery.data?.status === "ready";
   return (
     <div className="space-y-5">
-      <Card className="overflow-hidden border-teal-200 shadow-sm">
+      <Card className="overflow-hidden border-primary shadow-sm">
         <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="flex gap-4">
-            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ready ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"}`}>
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${ready ? "bg-primary text-primary-foreground" : "bg-[#EDEBEB] text-[#646461]"}`}>
               <Activity className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Centro de resiliência</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950">Saúde do serviço e recuperação</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">Área restrita a Administração para registar incidentes, documentar a retoma e acompanhar medidas de prevenção. Não guarda palavras-passe, tokens, ficheiros ou dados de sessão.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Centro de resiliência</p>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">Saúde do serviço e recuperação</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Área restrita a Administração para registar incidentes, documentar a retoma e acompanhar medidas de prevenção. Não guarda palavras-passe, tokens, ficheiros ou dados de sessão.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <Badge className={ready ? "bg-teal-700 hover:bg-teal-700" : "bg-amber-600 hover:bg-amber-600"}>{healthQuery.isLoading ? "A verificar" : ready ? "Aplicação e base de dados disponíveis" : "Verificação pendente"}</Badge>
+            <Badge className={ready ? "bg-primary hover:bg-primary" : "bg-[#EDEBEB] hover:bg-[#EDEBEB]"}>{healthQuery.isLoading ? "A verificar" : ready ? "Aplicação e base de dados disponíveis" : "Verificação pendente"}</Badge>
             <Button variant="outline" size="sm" onClick={() => { healthQuery.refetch(); utils.resilience.listIncidents.invalidate(); }}><RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Atualizar</Button>
           </div>
         </CardContent>
@@ -160,27 +160,27 @@ export default function AdminResilienceSection() {
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {incidentsQuery.isLoading && <p className="text-sm text-slate-500">A carregar o histórico de recuperação...</p>}
-            {!incidentsQuery.isLoading && (!incidentsQuery.data || incidentsQuery.data.length === 0) && <div className="rounded-xl border border-dashed bg-slate-50 p-8 text-center"><CheckCircle2 className="mx-auto mb-3 h-7 w-7 text-teal-600" /><p className="font-medium text-slate-800">Sem incidentes registados</p><p className="mt-1 text-sm text-slate-500">O feed está pronto para documentar qualquer falha e a respetiva recuperação.</p></div>}
+            {incidentsQuery.isLoading && <p className="text-sm text-muted-foreground">A carregar o histórico de recuperação...</p>}
+            {!incidentsQuery.isLoading && (!incidentsQuery.data || incidentsQuery.data.length === 0) && <div className="rounded-xl border border-dashed bg-muted/40 p-8 text-center"><CheckCircle2 className="mx-auto mb-3 h-7 w-7 text-primary" /><p className="font-medium text-foreground">Sem incidentes registados</p><p className="mt-1 text-sm text-muted-foreground">O feed está pronto para documentar qualquer falha e a respetiva recuperação.</p></div>}
             {incidentsQuery.data?.map((incident: any) => (
-              <div key={incident.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div key={incident.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-900">{incident.title}</p><Badge variant={statusVariant(incident.status as Status)}>{statusLabel[incident.status as Status]}</Badge><Badge variant="outline" className={severityClass(incident.severity as Severity)}>{severityLabel[incident.severity as Severity]}</Badge></div><p className="mt-1 text-xs text-slate-500">{incident.affectedServices} · {new Date(incident.occurredAt).toLocaleString("pt-PT")}</p></div>
+                  <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-foreground">{incident.title}</p><Badge variant={statusVariant(incident.status as Status)}>{statusLabel[incident.status as Status]}</Badge><Badge variant="outline" className={severityClass(incident.severity as Severity)}>{severityLabel[incident.severity as Severity]}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{incident.affectedServices} · {new Date(incident.occurredAt).toLocaleString("pt-PT")}</p></div>
                   {incident.status !== "resolved" && <Button size="sm" variant="outline" onClick={() => resolve(incident)} disabled={updateMutation.isPending}><CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Assinalar resolvido</Button>}
                 </div>
-                {(incident.impactSummary || incident.recoverySteps || incident.followUpActions) && <div className="mt-3 grid gap-2 text-sm leading-6 text-slate-600 md:grid-cols-3">{incident.impactSummary && <p><strong className="text-slate-800">Impacto:</strong> {incident.impactSummary}</p>}{incident.recoverySteps && <p><strong className="text-slate-800">Retoma:</strong> {incident.recoverySteps}</p>}{incident.followUpActions && <p><strong className="text-slate-800">Seguimento:</strong> {incident.followUpActions}</p>}</div>}
+                {(incident.impactSummary || incident.recoverySteps || incident.followUpActions) && <div className="mt-3 grid gap-2 text-sm leading-6 text-muted-foreground md:grid-cols-3">{incident.impactSummary && <p><strong className="text-foreground">Impacto:</strong> {incident.impactSummary}</p>}{incident.recoverySteps && <p><strong className="text-foreground">Retoma:</strong> {incident.recoverySteps}</p>}{incident.followUpActions && <p><strong className="text-foreground">Seguimento:</strong> {incident.followUpActions}</p>}</div>}
               </div>
             ))}
           </CardContent>
         </Card>
 
-        <Card className="h-fit bg-slate-950 text-white">
-          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><RotateCcw className="h-4 w-4 text-teal-300" /> Roteiro de retoma</CardTitle><CardDescription className="text-slate-300">Sequência curta para voltar a pôr o serviço sob controlo.</CardDescription></CardHeader>
+        <Card className="h-fit bg-[#0A3638] text-white">
+          <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><RotateCcw className="h-4 w-4 text-primary" /> Roteiro de retoma</CardTitle><CardDescription className="text-slate-300">Sequência curta para voltar a pôr o serviço sob controlo.</CardDescription></CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-200">
-            <div className="flex gap-3"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-300" /><p><strong className="text-white">1. Isolar e confirmar.</strong> Consulte a saúde do serviço e preserve os registos relevantes.</p></div>
-            <div className="flex gap-3"><Database className="mt-0.5 h-4 w-4 shrink-0 text-teal-300" /><p><strong className="text-white">2. Proteger dados.</strong> Antes de qualquer correção invasiva, confirme o ponto de restauro aplicável com a equipa de TI.</p></div>
-            <div className="flex gap-3"><ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-teal-300" /><p><strong className="text-white">3. Recuperar e validar.</strong> Reponha uma versão estável, teste login, leitura, carregamento e exportação, e só então feche o incidente.</p></div>
-            {openIncidents.length > 0 && <div className="rounded-lg border border-amber-400/30 bg-amber-300/10 p-3 text-amber-100"><AlertTriangle className="mr-1 inline h-4 w-4" /> {openIncidents.length} incidente{openIncidents.length === 1 ? " em acompanhamento" : "s em acompanhamento"}.</div>}
+            <div className="flex gap-3"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p><strong className="text-white">1. Isolar e confirmar.</strong> Consulte a saúde do serviço e preserve os registos relevantes.</p></div>
+            <div className="flex gap-3"><Database className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p><strong className="text-white">2. Proteger dados.</strong> Antes de qualquer correção invasiva, confirme o ponto de restauro aplicável com a equipa de TI.</p></div>
+            <div className="flex gap-3"><ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p><strong className="text-white">3. Recuperar e validar.</strong> Reponha uma versão estável, teste login, leitura, carregamento e exportação, e só então feche o incidente.</p></div>
+            {openIncidents.length > 0 && <div className="rounded-lg border border-[#6D7A70]/30 bg-[#EDEBEB]/10 p-3 text-[#646461]"><AlertTriangle className="mr-1 inline h-4 w-4" /> {openIncidents.length} incidente{openIncidents.length === 1 ? " em acompanhamento" : "s em acompanhamento"}.</div>}
           </CardContent>
         </Card>
       </div>

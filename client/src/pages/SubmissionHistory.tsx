@@ -691,7 +691,7 @@ function DeletionHistoryView() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-green-700 border-green-300 hover:bg-green-50"
+                      className="text-primary border-primary hover:bg-primary"
                       disabled={recoverMutation.isPending}
                       onClick={() => recoverMutation.mutate({ id: log.submissionId })}
                     >

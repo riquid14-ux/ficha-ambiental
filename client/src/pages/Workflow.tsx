@@ -169,8 +169,8 @@ export default function Workflow() {
           <CardContent className="space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
-                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <span className="text-blue-700 font-bold text-[10px]">EE</span>
+                <div className="w-6 h-6 rounded-full bg-[#0A3638] flex items-center justify-center shrink-0">
+                  <span className="text-[#0A3638] font-bold text-[10px]">EE</span>
                 </div>
                 <div>
                   <p className="font-medium">{t("Entidade Executante")}</p>
@@ -178,8 +178,8 @@ export default function Workflow() {
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
-                <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
-                  <span className="text-purple-700 font-bold text-[10px]">{t("RAP")}</span>
+                <div className="w-6 h-6 rounded-full bg-[#F4F4FF] flex items-center justify-center shrink-0">
+                  <span className="text-[#0A3638] font-bold text-[10px]">{t("RAP")}</span>
                 </div>
                 <div>
                   <p className="font-medium">{t("Resp. Acompanhamento do Projeto")}</p>
@@ -187,8 +187,8 @@ export default function Workflow() {
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
-                <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <span className="text-amber-700 font-bold text-[10px]">{t("RAA")}</span>
+                <div className="w-6 h-6 rounded-full bg-[#EDEBEB] flex items-center justify-center shrink-0">
+                  <span className="text-[#646461] font-bold text-[10px]">{t("RAA")}</span>
                 </div>
                 <div>
                   <p className="font-medium">{t("Resp. Acompanhamento Ambiental")}</p>
@@ -196,8 +196,8 @@ export default function Workflow() {
                 </div>
               </div>
               <div className="flex items-start gap-2 p-2 rounded-md bg-background border">
-                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                  <span className="text-green-700 font-bold text-[10px]">DO</span>
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <span className="text-primary font-bold text-[10px]">DO</span>
                 </div>
                 <div>
                   <p className="font-medium">{t("Dono de Obra")}</p>
@@ -255,15 +255,15 @@ function WorkflowDiagram() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Approved path */}
               <div className="flex flex-col items-center gap-2">
-                <div className="w-full p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 text-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400 mx-auto mb-1" />
-                  <p className="text-sm font-semibold text-green-800 dark:text-green-200">{t("Aprovada")}</p>
-                  <p className="text-xs text-green-700 dark:text-green-300 mt-1">{t("Ficha validada e arquivada no histórico")}</p>
+                <div className="w-full p-3 rounded-lg bg-primary dark:bg-primary/20 border border-primary text-center">
+                  <CheckCircle2 className="w-6 h-6 text-primary dark:text-primary mx-auto mb-1" />
+                  <p className="text-sm font-semibold text-primary dark:text-primary">{t("Aprovada")}</p>
+                  <p className="text-xs text-primary dark:text-primary mt-1">{t("Ficha validada e arquivada no histórico")}</p>
                 </div>
-                <ArrowDown className="w-4 h-4 text-green-500 dark:text-green-400" />
-                <div className="text-center px-2 py-1.5 rounded bg-green-100/50 dark:bg-green-900/30 border border-green-200 dark:border-green-700">
-                  <p className="text-xs text-green-800 dark:text-green-200 font-medium">{t("Disponível no Histórico")}</p>
-                  <p className="text-[10px] text-green-700 dark:text-green-300">{t("Exportável em PDF")}</p>
+                <ArrowDown className="w-4 h-4 text-primary dark:text-primary" />
+                <div className="text-center px-2 py-1.5 rounded bg-primary/50 dark:bg-primary/30 border border-primary dark:border-primary">
+                  <p className="text-xs text-primary dark:text-primary font-medium">{t("Disponível no Histórico")}</p>
+                  <p className="text-[10px] text-primary dark:text-primary">{t("Exportável em PDF")}</p>
                 </div>
               </div>
 
@@ -292,10 +292,10 @@ function WorkflowDiagram() {
 
       {/* Legend */}
       <div className="mt-6 pt-4 border-t flex flex-wrap gap-4 justify-center text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />{t("Ação EE/RAP")}</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" /> {t("Ação EE/RAP")}</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> {t("Ação RAA")}</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /> {t("Aprovado")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0A3638]" />{t("Ação EE/RAP")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0A3638]" /> {t("Ação EE/RAP")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#EDEBEB]" /> {t("Ação RAA")}</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" /> {t("Aprovado")}</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> {t("Rejeitado")}</span>
       </div>
     </div>
@@ -304,16 +304,16 @@ function WorkflowDiagram() {
 
 function FlowStep({ icon, title, description, color, actor }: { icon: React.ReactNode; title: string; description: string; color: string; actor: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-200",
-    indigo: "bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-200",
-    amber: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-200",
-    green: "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-200",
+    blue: "bg-[#0A3638] dark:bg-[#0A3638]/30 border-[#0A3638] dark:border-[#0A3638] text-[#0A3638] dark:text-[#0A3638]",
+    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/30 border-[#0A3638] dark:border-[#0A3638] text-[#0A3638] dark:text-[#0A3638]",
+    amber: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/30 border-[#6D7A70] dark:border-[#6D7A70] text-[#646461] dark:text-[#646461]",
+    green: "bg-primary dark:bg-primary/30 border-primary dark:border-primary text-primary dark:text-primary",
   };
   const badgeClasses: Record<string, string> = {
-    blue: "bg-blue-100 dark:bg-blue-800/40 text-blue-800 dark:text-blue-200",
-    indigo: "bg-indigo-100 dark:bg-indigo-800/40 text-indigo-800 dark:text-indigo-200",
-    amber: "bg-amber-100 dark:bg-amber-800/40 text-amber-800 dark:text-amber-200",
-    green: "bg-green-100 dark:bg-green-800/40 text-green-800 dark:text-green-200",
+    blue: "bg-[#0A3638] dark:bg-[#0A3638]/40 text-[#0A3638] dark:text-[#0A3638]",
+    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/40 text-[#0A3638] dark:text-[#0A3638]",
+    amber: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/40 text-[#646461] dark:text-[#646461]",
+    green: "bg-primary dark:bg-primary/40 text-primary dark:text-primary",
   };
 
   return (

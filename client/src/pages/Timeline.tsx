@@ -38,6 +38,7 @@ type PhaseDef = (typeof PHASE_DEFS)[number];
 type PhaseDataItem = PhaseDef & {
   total: number;
   elements: number;
+  measures: number;
   concluido: number;
   emCurso: number;
   pendente: number;
@@ -69,6 +70,10 @@ export default function Timeline() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects, projects } = useProject();
+  const phaseLabel = (phase: (typeof PHASE_DEFS)[number]) =>
+    language === "en" ? phase.nameEn : phase.name;
+  const phaseShortLabel = (phase: (typeof PHASE_DEFS)[number]) =>
+    language === "en" ? phase.shortNameEn : phase.shortName;
 
   const [showSettings, setShowSettings] = useState(false);
   const updatePhaseMutation = trpc.projectPhases.updateSettings.useMutation({
@@ -80,6 +85,7 @@ export default function Timeline() {
   const [activeSubTab, setActiveSubTab] = useState<"timeline" | "fases">(
     "timeline"
   );
+  const [selectedPhaseKey, setSelectedPhaseKey] = useState<DcapePhaseKey | undefined>();
   const projectId = activeProject?.id;
 
   // Fetch the isolated catalogue for the active project.
@@ -195,6 +201,7 @@ export default function Timeline() {
           ...phaseDef,
           total,
           elements: summary.elements.length,
+          measures: summary.measures.length,
           concluido,
           emCurso,
           pendente,
@@ -305,7 +312,7 @@ export default function Timeline() {
                               <div
                                 key={phase.key}
                                 className={`h-2.5 flex-1 rounded-full ${phase.color} ${isComplete ? "opacity-100" : isCurrent ? "opacity-60" : "opacity-15"}`}
-                                title={`${t(phase.label)}: ${phaseProgress}%`}
+                                title={`${phaseLabel(phase)}: ${phaseProgress}%`}
                               />
                             );
                           })}
@@ -401,7 +408,7 @@ export default function Timeline() {
         </nav>
 
         {/* Render PhaseMeasures inline when Fases tab is active */}
-        {activeSubTab === "fases" && <PhaseMeasures embedded />}
+        {activeSubTab === "fases" && <PhaseMeasures embedded initialPhase={selectedPhaseKey} />}
 
         {activeSubTab === "timeline" && (
           <>
@@ -428,7 +435,7 @@ export default function Timeline() {
                       >
                         <button
                           type="button"
-                          aria-label={`${phase.hidden ? "Mostrar" : "Ocultar"} ${t(phase.label)}`}
+                          aria-label={`${t(phase.hidden ? "Mostrar" : "Ocultar")} ${phaseLabel(phase)}`}
                           onClick={() =>
                             updatePhaseMutation.mutate({
                               id: phase.dbId || 0,
@@ -446,7 +453,7 @@ export default function Timeline() {
                         <span
                           className={`flex-1 font-medium ${phase.hidden ? "line-through text-muted-foreground" : ""}`}
                         >
-                          {t(phase.label)}
+                          {phaseLabel(phase)}
                         </span>
                         <Input
                           type="date"
@@ -492,7 +499,9 @@ export default function Timeline() {
               <StandMetricCard
                 label={t("Concluídas")}
                 value={totalConcluido}
-                detail={`${totalMeasures ? Math.round((totalConcluido / totalMeasures) * 100) : 0}% do total`}
+                detail={language === "en"
+                  ? `${totalMeasures ? Math.round((totalConcluido / totalMeasures) * 100) : 0}% of total`
+                  : `${totalMeasures ? Math.round((totalConcluido / totalMeasures) * 100) : 0}% do total`}
                 icon={CheckCircle2}
                 tone="success"
               />
@@ -546,7 +555,7 @@ export default function Timeline() {
             >
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="stand-kicker text-primary">Planeamento</p>
+                  <p className="stand-kicker text-primary">{t("Planeamento")}</p>
                   <h2
                     id="pipeline-title"
                     className="mt-1 text-base font-semibold tracking-tight"
@@ -555,7 +564,7 @@ export default function Timeline() {
                   </h2>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {visiblePhaseData.length} fases visíveis
+                  {visiblePhaseData.length} {t("fases visíveis")}
                 </span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -569,7 +578,7 @@ export default function Timeline() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="truncate text-xs font-semibold">
-                          {t(phase.shortLabel)}
+                          {phaseShortLabel(phase)}
                         </p>
                         {phase.isComplete && (
                           <CheckCircle2 className="h-4 w-4 shrink-0 text-primary dark:text-primary" />
@@ -579,7 +588,7 @@ export default function Timeline() {
                         {phase.progress}%
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {phase.concluido}/{phase.total} {t("medidas")}
+                        {phase.concluido}/{phase.total} {t("obrigações")}
                       </p>
                     </div>
                     {idx < visiblePhaseData.length - 1 && (
@@ -635,7 +644,7 @@ export default function Timeline() {
                 ))}
               </div>
               <div className="px-1">
-                <p className="stand-kicker text-primary">Execução</p>
+                <p className="stand-kicker text-primary">{t("Execução")}</p>
                 <h2
                   id="phase-detail-title"
                   className="mt-1 text-base font-semibold tracking-tight"
@@ -661,7 +670,7 @@ export default function Timeline() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <h3 className="text-sm font-semibold">
-                                {t(phase.label)}
+                                {phaseLabel(phase)}
                               </h3>
                               <StandStatusBadge
                                 label={phaseStatus.label}
@@ -669,7 +678,8 @@ export default function Timeline() {
                               />
                             </div>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {phase.total} {t("medidas")} {t("associadas")}
+                              {phase.total} {t("obrigações")} {t("associadas")}
+                              {phase.measures > 0 ? ` · ${phase.measures} ${t("medidas")}` : ""}
                               {phase.elements > 0 ? ` · ${phase.elements} ${t("elementos documentais")}` : ""}
                             </p>
                           </div>
@@ -702,16 +712,18 @@ export default function Timeline() {
                         </div>
                         <div className="mt-4 flex flex-col gap-3 rounded-xl border border-primary/15 bg-primary/[0.045] p-3 sm:flex-row sm:items-center sm:justify-between dark:bg-primary/10">
                           <p className="text-xs leading-5 text-primary dark:text-primary">
-                            Responsável, suporte e status updates são definidos
-                            individualmente em cada medida.
+                            {t("Responsável, suporte e atualizações de estado são definidos individualmente em cada medida.")}
                           </p>
                           <Button
                             size="sm"
                             variant="outline"
                             className="shrink-0 text-xs"
-                            onClick={() => setActiveSubTab("fases")}
+                            onClick={() => {
+                              setSelectedPhaseKey(phase.key);
+                              setActiveSubTab("fases");
+                            }}
                           >
-                            Ver medidas e responsáveis
+                            {t("Ver medidas e responsáveis")}
                           </Button>
                         </div>
                       </div>

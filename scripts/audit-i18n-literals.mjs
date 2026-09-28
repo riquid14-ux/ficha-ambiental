@@ -6,6 +6,10 @@ const ROOT = process.cwd();
 const SOURCE_ROOTS = ["client/src/pages", "client/src/components"];
 const PORTUGUESE_MARKERS = /[ãõáéíóúâêôç]|\b(não|está|são|também|através|ficha|medida|projeto|resíduos|ficheiro|carregar)\b/i;
 const IGNORE_PATHS = ["/components/ui/"];
+const bridgeTranslations = fs.readFileSync(path.join(ROOT, "client/src/lib/ui-literal-translations.ts"), "utf8");
+const bridgeKeys = new Set(
+  [...bridgeTranslations.matchAll(/^\s*"((?:\\.|[^"\\])*)"\s*:/gm)].map((match) => JSON.parse(`"${match[1]}"`)),
+);
 
 function listFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -25,6 +29,10 @@ function isInsideTranslationCall(node) {
   return false;
 }
 
+function isCoveredByLanguageBridge(text) {
+  return bridgeKeys.has(text);
+}
+
 const findings = [];
 for (const root of SOURCE_ROOTS) {
   const absoluteRoot = path.join(ROOT, root);
@@ -36,7 +44,7 @@ for (const root of SOURCE_ROOTS) {
     const visit = (node) => {
       if (ts.isJsxText(node)) {
         const text = node.text.replace(/\s+/g, " ").trim();
-        if (text.length > 2 && PORTUGUESE_MARKERS.test(text) && !isInsideTranslationCall(node)) {
+        if (text.length > 2 && PORTUGUESE_MARKERS.test(text) && !isInsideTranslationCall(node) && !isCoveredByLanguageBridge(text)) {
           const position = ast.getLineAndCharacterOfPosition(node.getStart(ast));
           findings.push({ file: path.relative(ROOT, file), line: position.line + 1, text });
         }

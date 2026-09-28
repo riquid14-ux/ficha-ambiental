@@ -19,7 +19,8 @@ import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image,
 import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 import { groupsWithMeasures } from "@/lib/phase-measure-presentation";
 import { DCAPE_PHASES } from "@shared/phases";
-import { isTimelinePhaseApplicable, logicalDcapeItems, phaseKeyForCatalogueItem } from "@/lib/dcape-presentation";
+import { isTimelinePhaseApplicable, phaseKeyForCatalogueItem, phaseLogicalSummary } from "@/lib/dcape-presentation";
+import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
@@ -34,7 +35,8 @@ const ALL_PHASES = DCAPE_PHASES.map((phase) => ({
 
 export default function PhaseMeasures(props: any) {
   const embedded = props?.embedded ?? false;
-  const { t } = useLanguage();
+  const initialPhase = props?.initialPhase as string | undefined;
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
   const phasesImage = useBrandImage("fases");
@@ -80,6 +82,10 @@ export default function PhaseMeasures(props: any) {
   const visiblePhases = ALL_PHASES
     .filter((phase) => isTimelinePhaseApplicable(activeProject?.code, phase.key))
     .filter((phase) => !hiddenPhaseKeys.has(phase.key) && !hiddenPhaseKeys.has(phase.label));
+  const phaseLabel = (phase: (typeof ALL_PHASES)[number]) =>
+    language === "en" ? phase.nameEn : phase.name;
+  const phaseShortLabel = (phase: (typeof ALL_PHASES)[number]) =>
+    language === "en" ? phase.shortNameEn : phase.shortName;
 
   const [evidenceYear, setEvidenceYear] = useState(() => Math.max(SIN01_EVIDENCE_START_YEAR, new Date().getFullYear()));
   const [activePhase, setActivePhase] = useState<string>(visiblePhases[0]?.key || ALL_PHASES[0].key);
@@ -99,6 +105,13 @@ export default function PhaseMeasures(props: any) {
   const isAdmin = user?.role === "admin";
 
   const [expandedMeasures, setExpandedMeasures] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (initialPhase && visiblePhases.some((phase) => phase.key === initialPhase)) {
+      setActivePhase(initialPhase);
+      setExpandedMeasures(new Set());
+    }
+  }, [initialPhase, visiblePhases]);
 
   function toggleMeasure(measureId: number) {
     setExpandedMeasures(prev => {
@@ -149,19 +162,20 @@ export default function PhaseMeasures(props: any) {
 
   // Calculate compliance overview
   const complianceOverview = useMemo(() => {
-    const overview: Record<string, { total: number; concluido: number; em_curso: number; pendente: number; elements: number }> = {};
+    const overview: Record<string, { total: number; concluido: number; em_curso: number; pendente: number; elements: number; measures: number }> = {};
     for (const phase of ALL_PHASES) {
-      const summary = logicalDcapeItems(measuresQuery.data || [], phase.key);
-      const measures = summary.filter((item) => item.kind === "measure");
-      const concluded = measures.filter((item) => item.items.every((child) => trackingByMeasure[child.id]?.trackingStatus === "concluido")).length;
-      const inProgress = measures.filter((item) => item.items.some((child) => {
-        const status = trackingByMeasure[child.id]?.trackingStatus;
-        return status && status !== "nao_iniciado" && status !== "concluido";
-      })).length;
-      overview[phase.key] = { total: measures.length, concluido: concluded, em_curso: inProgress, pendente: measures.length - concluded - inProgress, elements: summary.filter((item) => item.kind === "element").length };
+      const summary = phaseLogicalSummary(measuresQuery.data || [], phase.key, trackingByMeasure);
+      overview[phase.key] = {
+        total: summary.total,
+        concluido: summary.concluded,
+        em_curso: summary.inProgress,
+        pendente: summary.pending,
+        elements: summary.elementTotal,
+        measures: summary.measureTotal,
+      };
     }
     return overview;
-  }, [phaseData, trackingByMeasure]);
+  }, [measuresQuery.data, trackingByMeasure]);
 
   if (!sectionsQuery.data || !measuresQuery.data) {
     const loadingContent = (
@@ -226,7 +240,7 @@ export default function PhaseMeasures(props: any) {
                 <div className="flex flex-col items-center gap-0.5">
                   <div className="flex items-center gap-1.5">
                     <span className={`w-2 h-2 rounded-full ${phase.color}`} />
-                    <span className="text-xs font-medium">{phase.shortLabel}</span>
+                    <span className="text-xs font-medium">{phaseShortLabel(phase)}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">{pct}% ({ov.concluido}/{ov.total})</span>
                 </div>
@@ -240,14 +254,15 @@ export default function PhaseMeasures(props: any) {
             {/* Phase header with add button */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">{phase.label}</h2>
+                <h2 className="text-lg font-semibold">{phaseLabel(phase)}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {(complianceOverview[phase.key]?.total || 0)} medidas nesta fase
-                  {(complianceOverview[phase.key]?.elements || 0) > 0 ? ` · ${complianceOverview[phase.key]?.elements} elementos documentais` : ""}
+                  {t("{count} obrigações nesta fase").replace("{count}", String(complianceOverview[phase.key]?.total || 0))}
+                  {(complianceOverview[phase.key]?.measures || 0) > 0 ? ` · ${t("{count} medidas").replace("{count}", String(complianceOverview[phase.key]?.measures))}` : ""}
+                  {(complianceOverview[phase.key]?.elements || 0) > 0 ? ` · ${t("{count} elementos documentais").replace("{count}", String(complianceOverview[phase.key]?.elements))}` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {currentProjectPhase && <Button size="sm" variant="outline" onClick={() => window.open(`/api/pdf/fases/${projectId}?phaseId=${currentProjectPhase.id}`, "_blank", "noopener,noreferrer")}><Download className="w-4 h-4 mr-1" /> PDF desta fase</Button>}
+                {currentProjectPhase && <Button size="sm" variant="outline" onClick={() => window.open(`/api/pdf/fases/${projectId}?phaseId=${currentProjectPhase.id}`, "_blank", "noopener,noreferrer")}><Download className="w-4 h-4 mr-1" /> {t("PDF desta fase")}</Button>}
                 {isAdminOrDono && (
                   <Dialog open={showAdd && activePhase === phase.key} onOpenChange={setShowAdd}>
                     <DialogTrigger asChild>
@@ -255,7 +270,7 @@ export default function PhaseMeasures(props: any) {
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Nova Medida — {phase.label}</DialogTitle>
+                        <DialogTitle>{t("Nova Medida")} — {phaseLabel(phase)}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-3">
                         <Input placeholder={t("Número (ex: PL-4)")} value={newMeasure.number} onChange={e => setNewMeasure(p => ({ ...p, number: e.target.value }))} />
@@ -311,7 +326,7 @@ export default function PhaseMeasures(props: any) {
                         ) : (
                           <>
                             <Badge variant="outline" className="text-xs font-mono shrink-0">{m.number}</Badge>
-                            <span className="text-xs flex-1">{m.description}</span>
+                            <span className="text-xs flex-1">{localizeDcapeDescription(m.description, language)}</span>
                             <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditingMeasure({ id: m.id, number: m.number, description: m.description, responsible: m.responsible })}>
                               <Pencil className="w-3 h-3" />
                             </Button>
@@ -406,7 +421,7 @@ function MeasureCard({
   isOperationOnly?: boolean;
   evidenceYear?: number;
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [commentText, setCommentText] = useState("");
   const [photoCategory, setPhotoCategory] = useState("");
   const [photoFilter, setPhotoFilter] = useState("all");
@@ -454,10 +469,10 @@ function MeasureCard({
         {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
         <Badge variant="outline" className="text-xs shrink-0 font-mono">{measure.number}</Badge>
         <div className="min-w-0 flex-1">
-          <p className="text-sm">{measure.description}</p>
+          <p className="text-sm">{localizeDcapeDescription(measure.description, language)}</p>
           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span><strong>Responsável:</strong> {tracking?.ownerName || "Por definir"}</span>
-            <span><strong>Suporte:</strong> {[tracking?.supportName, tracking?.supportCompany].filter(Boolean).join(" — ") || "Por definir"}</span>
+            <span><strong>{t("Responsável:")}</strong> {tracking?.ownerName || t("Por definir")}</span>
+            <span><strong>{t("Suporte:")}</strong> {[tracking?.supportName, tracking?.supportCompany].filter(Boolean).join(" — ") || t("Por definir")}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">

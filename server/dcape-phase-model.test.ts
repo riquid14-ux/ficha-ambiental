@@ -9,6 +9,7 @@ import {
   getDcapePhaseForItem,
   isDcapeMeasure,
 } from "@shared/phases";
+import { logicalDcapeItems, phaseLogicalSummary } from "../client/src/lib/dcape-presentation";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -38,6 +39,76 @@ describe("modelo canónico de fases DCAPE", () => {
     expect(getDcapePhaseForItem("SL-2")?.key).toBe("licenciamento");
     expect(getDcapePhaseForItem("PC-18")?.key).toBe("pre_construcao");
     expect(getDcapePhaseForItem("CC-24")?.key).toBe("construcao");
+    expect(getDcapePhaseForItem("EX-1")?.key).toBe("exploracao");
+    expect(isDcapeMeasure("EX-19")).toBe(true);
+  });
+
+  it("inclui elementos documentais no progresso sem os confundir com medidas", () => {
+    const items = [
+      { id: 1, number: "PL-1", description: "Elemento PL", sectionId: 1 },
+      { id: 2, number: "PL-2", description: "Elemento PL", sectionId: 1 },
+      { id: 3, number: "1", description: "Medida", sectionId: 2 },
+    ];
+    const summary = phaseLogicalSummary(items, "pre_licenciamento", {
+      1: { trackingStatus: "concluido" },
+      2: { trackingStatus: "concluido" },
+    });
+    expect(summary.total).toBe(2);
+    expect(summary.measureTotal).toBe(0);
+    expect(summary.elementTotal).toBe(2);
+    expect(summary.concluded).toBe(2);
+    expect(summary.pending).toBe(0);
+  });
+
+  it("atribui as 136 obrigações SIN02 a uma e uma só fase, com os totais regulamentares", () => {
+    const elements = [
+      ...Array.from({ length: 3 }, (_, index) => `PL-${index + 1}`),
+      ...Array.from({ length: 2 }, (_, index) => `SL-${index + 4}`),
+      ...Array.from({ length: 18 }, (_, index) => `PC-${index + 6}`),
+      ...Array.from({ length: 2 }, (_, index) => `CC-${index + 24}`),
+    ];
+    const catalogue = [
+      ...elements,
+      ...Array.from({ length: 111 }, (_, index) => String(index + 1)),
+      // Linhas históricas preservadas no catálogo de obra; as medidas
+      // canónicas 92–110 prevalecem e a Timeline não as duplica.
+      ...Array.from({ length: 19 }, (_, index) => `EX-${index + 1}`),
+    ].map((number, index) => ({ id: index + 1, number, description: `Obrigação ${number}`, sectionId: 1 }));
+
+    const expected = {
+      pre_licenciamento: { total: 3, elements: 3, measures: 0 },
+      licenciamento: { total: 2, elements: 2, measures: 0 },
+      pre_construcao: { total: 34, elements: 18, measures: 16 },
+      construcao: { total: 72, elements: 2, measures: 70 },
+      final_construcao: { total: 5, elements: 0, measures: 5 },
+      exploracao: { total: 19, elements: 0, measures: 19 },
+      desativacao: { total: 1, elements: 0, measures: 1 },
+    } as const;
+
+    const occurrences = new Map<string, number>();
+    for (const phase of DCAPE_PHASES) {
+      const items = logicalDcapeItems(catalogue, phase.key);
+      const summary = phaseLogicalSummary(catalogue, phase.key);
+      expect(summary.total).toBe(expected[phase.key].total);
+      expect(summary.elementTotal).toBe(expected[phase.key].elements);
+      expect(summary.measureTotal).toBe(expected[phase.key].measures);
+      for (const item of items) occurrences.set(item.key, (occurrences.get(item.key) || 0) + 1);
+    }
+
+    expect(occurrences.size).toBe(136);
+    expect(Array.from(occurrences.values())).toEqual(Array.from({ length: 136 }, () => 1));
+  });
+
+  it("preserva as 19 medidas EX como exploração quando SIN01 não tem a numeração 92–110", () => {
+    const sin01 = [
+      ...Array.from({ length: 19 }, (_, index) => `EX-${index + 1}`),
+      "111",
+      "111.1",
+      "DA-1",
+    ].map((number, index) => ({ id: index + 1, number, description: `Obrigação ${number}`, sectionId: 1 }));
+
+    expect(phaseLogicalSummary(sin01, "exploracao").total).toBe(19);
+    expect(phaseLogicalSummary(sin01, "desativacao").total).toBe(1);
   });
 
   it("preserva os dois quadrados finais da DCAPE", () => {

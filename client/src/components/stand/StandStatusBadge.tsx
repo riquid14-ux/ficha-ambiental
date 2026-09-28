@@ -6,9 +6,9 @@ export type StandStatusTone = "success" | "warning" | "danger" | "info" | "neutr
 
 const styles: Record<StandStatusTone, string> = {
   success: "border-primary/20 bg-primary/10 text-primary dark:text-primary",
-  warning: "border-[#6D7A70]/25 bg-[#EDEBEB]/10 text-[#646461] dark:text-[#646461]",
+  warning: "border-[#6D7A70]/25 bg-[#EDEBEB]/10 text-[#646461] dark:text-muted-foreground",
   danger: "border-rose-600/25 bg-rose-600/10 text-rose-800 dark:text-rose-200",
-  info: "border-[#0A3638]/20 bg-[#0A3638]/10 text-[#0A3638] dark:text-[#0A3638]",
+  info: "border-[#0A3638]/20 bg-[#0A3638]/10 text-[#0A3638] dark:text-primary",
   neutral: "border-border bg-muted text-muted-foreground",
 };
 

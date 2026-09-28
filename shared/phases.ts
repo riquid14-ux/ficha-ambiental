@@ -176,6 +176,12 @@ export function getDcapePhaseForItem(value: string | number | null | undefined) 
   if (/^SL-/.test(token)) return getDcapePhaseByKey("licenciamento");
   if (/^PC-/.test(token)) return getDcapePhaseByKey("pre_construcao");
   if (/^CC-/.test(token)) return getDcapePhaseByKey("construcao");
+  // O catálogo operativo histórico de SIN01 conserva as 19 obrigações da
+  // exploração como EX-1…EX-19. São medidas reais (não linhas auxiliares) e
+  // não podem desaparecer do resumo lógico, da Timeline ou do Dashboard.
+  // Nos projetos de obra estas linhas coexistem com a numeração DCAPE 92–110
+  // e ficam excluídas pelo contexto de catálogo, em dcape-presentation.ts.
+  if (/^EX-/.test(token)) return getDcapePhaseByKey("exploracao");
   return getDcapePhaseForNumber(token);
 }
 
@@ -189,7 +195,7 @@ export function isLegacySupportingItem(value: string | number | null | undefined
 }
 
 export function isDcapeMeasure(value: string | number | null | undefined) {
-  return !isDcapeElement(value) && !isLegacySupportingItem(value) && getDcapePhaseForNumber(value) !== undefined;
+  return !isDcapeElement(value) && !isLegacySupportingItem(value) && getDcapePhaseForItem(value) !== undefined;
 }
 
 function normalized(value: string | null | undefined) {

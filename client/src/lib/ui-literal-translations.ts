@@ -63,6 +63,18 @@ export const uiLiteralTranslations: Record<string, string> = {
   "Separado entre demonstração e valores aprovados": "Separated between demonstration and approved values",
   "Cobertura de dados": "Data coverage",
   "Qualidade dos dados do período": "Data quality for the period",
+  "RAA analisa e verifica conformidade": "RAA reviews and verifies compliance",
+  "Rejeitada": "Rejected",
+  "Volta para rascunhos": "Returns to drafts",
+  "Desempenho do edifício": "Building performance",
+  "Fonte: leituras operacionais e parâmetros de cálculo aprovados.": "Source: operational readings and approved calculation parameters.",
+  "Dados demonstrativos": "Demonstration data",
+  "Registe leituras na Operação": "Record readings in Operations",
+  "Registe água e energia TI": "Record water and IT energy",
+  "última leitura válida": "latest valid reading",
+  "Defina fator de carbono em Operação": "Set the carbon factor in Operations",
+  "Sem período com leituras válidas": "No period with valid readings",
+  "Qualidade do período selecionado": "Quality of the selected period",
   "Energia e carga": "Energy and load",
   "Energia diária do site e TI": "Daily site and IT energy",
   "Use a granularidade para perceber a procura do edifício.": "Use the granularity to understand building demand.",
@@ -1128,5 +1140,35 @@ export const uiLiteralTranslations: Record<string, string> = {
   "Estratégia:": "Strategy:",
   "água do mar": "seawater",
   "A iniciar vídeo institucional": "Starting institutional video",
-  "Programas de monitorização": "Monitoring programmes"
+  "Programas de monitorização": "Monitoring programmes",
+  "{count} obrigações nesta fase": "{count} obligations in this phase",
+  "A carregar progresso regulatório por projeto...": "Loading regulatory progress by project...",
+  "Abrir obrigações desta fase": "Open obligations for this phase",
+  "Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.": "Article 12 of Directive (EU) 2023/1791. Applies to data centres with IT capacity of at least 500 kW. Annual submission to DGEG by 15 May.",
+  "obrigações": "obligations",
+  "Sem progresso regulamentar disponível para os projetos acessíveis.": "No regulatory progress is available for the accessible projects."
+  ,"EE/RAP preenche a ficha semanal": "EE/RAP completes the weekly form"
+  ,"Submeta atempadamente para evitar alertas.": "Submit on time to avoid alerts."
+  ,"Reveja e forneça feedback detalhado.": "Review and provide detailed feedback."
+  ,"NEST · Operação": "NEST · Operations"
+  ,"Medidas sem atividade registada": "Measures with no recorded activity"
+  ,"Pré-licenciamento": "Pre-licensing"
+  ,"Pré-construção": "Pre-construction"
+  ,"Fase de construção": "Construction phase"
+  ,"Fase final da construção": "Final construction phase"
+  ,"Fase de exploração": "Operational phase"
+  ,"Fase de desativação": "Decommissioning phase"
+  ,"obrigações associadas": "linked obligations"
+  ,"elementos documentais": "documentary items"
+  ,"Responsável, suporte e atualizações de estado são definidos individualmente em cada medida.": "Responsible person, support and status updates are defined individually for each measure."
+  ,"Planeamento": "Planning"
+  ,"PDF desta fase": "Phase PDF"
+  ,"Nova Medida": "New measure"
+  ,"Suporte": "Support"
+  ,"Acompanhamento das medidas ambientais por fase do ciclo de vida": "Environmental measure tracking by lifecycle phase"
+  ,"Gerir em Planos": "Manage in Plans"
+  ,"Outros Planos/Projetos": "Other plans/projects"
+  ,"Arqueologia": "Archaeology"
+  ,"associadas": "associated"
+  ,"Suporte:": "Support:"
 };

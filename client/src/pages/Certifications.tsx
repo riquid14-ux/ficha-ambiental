@@ -183,7 +183,7 @@ export default function Certifications() {
 
           {/* === CELE — Smart Installation-Level Input === */}
           <TabsContent value="cele" className="space-y-4">
-            <div className="p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70] rounded-lg">
+            <div className="p-3 bg-[#EDEBEB] dark:bg-muted/45 border border-[#6D7A70] rounded-lg">
               <p className="text-xs text-[#646461]"><strong>{t("CELE — Comércio Europeu de Licenças de Emissão (EU ETS)")}</strong>{t("· Geradores de emergência qualificam-se como fontes de minimis. RAE submetido via SIRAPA até 31 de março.")}</p>
             </div>
 
@@ -298,7 +298,7 @@ export default function Certifications() {
                       <span className="text-xs text-muted-foreground">litros</span>
                     </div>
                   </div>
-                  <div className="md:col-span-2 p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 rounded-lg border border-[#6D7A70]">
+                  <div className="md:col-span-2 p-3 bg-[#EDEBEB] dark:bg-muted/45 rounded-lg border border-[#6D7A70]">
                     <label className="text-xs font-medium text-[#646461]">{t("Emissões de CO2 Calculadas")}</label>
                     <div className="flex items-center gap-2 mt-1">
                       <Input className="h-9 bg-background" placeholder="Litros × FE × Densidade" value={celeData.emissoesCO2} onChange={e => setCeleData(p => ({...p, emissoesCO2: e.target.value}))} />
@@ -344,8 +344,8 @@ export default function Certifications() {
 
           {/* === EED — Grouped KPI Input === */}
           <TabsContent value="eed" className="space-y-4">
-            <div className="p-3 bg-[#0A3638] dark:bg-[#0A3638]/20 border border-[#0A3638] rounded-lg">
-              <p className="text-xs text-[#0A3638]"><strong>EED — Relato de Sustentabilidade de Centros de Dados</strong> · Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.</p>
+            <div className="p-3 bg-[#0A3638] dark:bg-primary/15 border border-[#0A3638] rounded-lg">
+              <p className="text-xs text-[#0A3638]"><strong>{t("EED — Relato de Sustentabilidade de Centros de Dados")}</strong> · {t("Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.")}</p>
             </div>
 
             {/* Identification */}
@@ -384,7 +384,7 @@ export default function Certifications() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-[#0A3638] dark:bg-[#0A3638]/20 rounded-lg border border-[#0A3638]">
+                  <div className="p-3 bg-[#0A3638] dark:bg-primary/15 rounded-lg border border-[#0A3638]">
                     <label className="text-xs font-medium text-[#0A3638]">PUE</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 1.25" value={eedData.pue} onChange={e => setEedData(p => ({...p, pue: e.target.value}))} />
                     <p className="text-[10px] text-[#0A3638] mt-0.5">Power Usage Effectiveness</p>
@@ -394,7 +394,7 @@ export default function Certifications() {
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 95" value={eedData.ref} onChange={e => setEedData(p => ({...p, ref: e.target.value}))} />
                     <p className="text-[10px] text-primary mt-0.5">Renewable Energy Factor</p>
                   </div>
-                  <div className="p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 rounded-lg border border-[#6D7A70]">
+                  <div className="p-3 bg-[#EDEBEB] dark:bg-muted/45 rounded-lg border border-[#6D7A70]">
                     <label className="text-xs font-medium text-[#646461]">ERF (%)</label>
                     <Input className="h-9 mt-1 bg-background" placeholder="Ex: 0" value={eedData.erf} onChange={e => setEedData(p => ({...p, erf: e.target.value}))} />
                     <p className="text-[10px] text-[#646461] mt-0.5">Energy Reuse Factor</p>

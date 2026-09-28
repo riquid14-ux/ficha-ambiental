@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import {
@@ -67,6 +68,7 @@ export default function Welcome() {
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
+  const welcomeHeaderImage = useBrandImage("welcome");
   const [, setLocation] = useLocation();
   // Autoplay é permitido de forma fiável em browsers quando o vídeo inicia sem som.
   // A fotografia institucional permanece disponível no controlo "Voltar à imagem".
@@ -90,7 +92,7 @@ export default function Welcome() {
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
     : videoUrl).replace("www.youtube.com/embed/", "www.youtube-nocookie.com/embed/");
   const embedUrl = `${normalizedVideoUrl}${normalizedVideoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&controls=1&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-  const welcomeImage = String((settingsQuery.data as any)?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png");
+  const welcomeImage = String((settingsQuery.data as any)?.image_welcome || welcomeHeaderImage.url);
 
   const visiblePaths = getVisibleNavigationPaths({
     role: userRole,
@@ -101,8 +103,8 @@ export default function Welcome() {
     partnerAccess,
   });
   const features = getFeatures(userRole, visiblePaths);
-  const roleLabel = ROLE_LABELS[userRole] || userRole;
-  const projectName = isAllProjects ? "Todos os Projetos" : (activeProject?.name || projectCode);
+  const roleLabel = t(ROLE_LABELS[userRole] || userRole);
+  const projectName = isAllProjects ? t("Todos os Projetos") : (activeProject?.name || projectCode);
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
 
   useEffect(() => {
@@ -124,8 +126,8 @@ export default function Welcome() {
   return (
     <AppLayout>
       <div className="space-y-6 pb-8">
-        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName}>
-          <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={isNest ? "NEST · Operação" : "Conformidade ambiental"} tone="success" /></div>
+        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName} image={welcomeHeaderImage.url} imagePosition={welcomeHeaderImage.position} imageMode={welcomeHeaderImage.mode}>
+          <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={t(isNest ? "NEST · Operação" : "Conformidade ambiental")} tone="success" /></div>
         </StandPageHeader>
 
         {/* Inspirational quote */}
@@ -228,7 +230,7 @@ export default function Welcome() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col items-center gap-0 py-2">
-                <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc="EE/RAP preenche a ficha semanal" color="submissao" actor="EE / RAP" />
+                <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc={t("EE/RAP preenche a ficha semanal")} color="submissao" actor="EE / RAP" />
                 <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
                 <WelcomeFlowStep icon={<Send className="w-4 h-4" />} title={t("2. Submissão")} desc={t("Ficha submetida para revisão")} color="revisao" actor="EE / RAP" />
                 <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
@@ -307,14 +309,14 @@ export default function Welcome() {
             <div className="w-9 h-9 rounded-lg bg-primary text-[#0A3638] flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
             <div>
               <p className="text-sm font-medium text-[#272726] mb-0.5">
-                {userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard"}
+                {t(userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard")}
               </p>
               <p className="text-xs text-muted-foreground">
                 {userRole === "ee" || userRole === "rap"
-                  ? "Submeta atempadamente para evitar alertas."
+                  ? t("Submeta atempadamente para evitar alertas.")
                   : userRole === "raa"
-                  ? "Reveja e forneça feedback detalhado."
-                  : "Consulte o estado de cumprimento."
+                  ? t("Reveja e forneça feedback detalhado.")
+                  : t("Consulte o estado de cumprimento.")
                 }
               </p>
             </div>

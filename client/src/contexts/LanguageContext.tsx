@@ -1196,6 +1196,14 @@ export const translations: Record<string, Record<Lang, string>> = {
   "Não iniciado": { pt: "Não iniciado", en: "Not started" },
   "Em validação": { pt: "Em validação", en: "Under validation" },
   "Bloqueado": { pt: "Bloqueado", en: "Blocked" },
+  "{count} obrigações nesta fase": { pt: "{count} obrigações nesta fase", en: "{count} obligations in this phase" },
+  "{count} medidas": { pt: "{count} medidas", en: "{count} mitigation measures" },
+  "{count} elementos documentais": { pt: "{count} elementos documentais", en: "{count} documentary items" },
+  "Abrir obrigações desta fase": { pt: "Abrir obrigações desta fase", en: "Open obligations for this phase" },
+  "A carregar progresso regulatório por projeto...": { pt: "A carregar progresso regulatório por projeto...", en: "Loading regulatory progress by project..." },
+  "Sem progresso regulamentar disponível para os projetos acessíveis.": { pt: "Sem progresso regulamentar disponível para os projetos acessíveis.", en: "No regulatory progress is available for the accessible projects." },
+  "EED — Relato de Sustentabilidade de Centros de Dados": { pt: "EED — Relato de Sustentabilidade de Centros de Dados", en: "EED — Data Centre Sustainability Reporting" },
+  "Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.": { pt: "Art. 12.º da Diretiva (UE) 2023/1791. Aplica-se a centros de dados com potência TI ≥ 500 kW. Submissão anual à DGEG até 15 de maio.", en: "Article 12 of Directive (EU) 2023/1791. Applies to data centres with IT capacity of at least 500 kW. Annual submission to DGEG by 15 May." },
 };
 interface LanguageContextType {
   language: Lang;

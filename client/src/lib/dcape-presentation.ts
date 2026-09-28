@@ -44,9 +44,22 @@ export function logicalDcapeItems(
   phaseKey: DcapePhaseKey,
   sectionNames: Record<number, string> = {},
 ): LogicalDcapeItem[] {
-  const visible = items
+  const inPhase = items
     .filter(item => phaseKeyForCatalogueItem(item) === phaseKey)
     .filter(item => !isLegacySupportingItem(item.number));
+
+  // Alguns catálogos de obra preservam as linhas históricas EX-1…EX-19 para
+  // auditoria, além da numeração DCAPE canónica 92…110. Quando a fonte
+  // canónica existe, EX é a mesma obrigação com outro identificador e não pode
+  // duplicar a Timeline. SIN01 não possui 92…110, pelo que as suas 19 linhas EX
+  // permanecem visíveis como o catálogo operacional efetivo.
+  const hasCanonicalExploration = phaseKey === "exploracao" && inPhase.some(item => {
+    const number = baseDcapeNumber(item.number);
+    return number !== null && number >= 92 && number <= 110;
+  });
+  const visible = hasCanonicalExploration
+    ? inPhase.filter(item => !/^EX-/i.test(String(item.number).trim()))
+    : inPhase;
 
   const groups = new Map<string, CatalogueItem[]>();
   for (const item of visible) {
@@ -98,13 +111,23 @@ export function phaseLogicalSummary(
 ) {
   const logical = logicalDcapeItems(items, phaseKey);
   const measures = logical.filter(item => item.kind === "measure");
-  const count = (status: string) => measures.filter(item => logicalStatus(item, statuses) === status).length;
+  const elements = logical.filter(item => item.kind === "element");
+  // Medidas e elementos documentais (PL, SL, PC e CC) são obrigações
+  // regulamentares. Incluir ambos impede que fases documentais surjam como
+  // "0/0" quando têm itens efectivamente acompanhados.
+  const count = (status: string) => logical.filter(item => logicalStatus(item, statuses) === status).length;
+  const concluded = count("concluido");
+  const inProgress = logical.filter(item => ["em_curso", "em_validacao", "bloqueado"].includes(logicalStatus(item, statuses))).length;
   return {
-    elements: logical.filter(item => item.kind === "element"),
+    elements,
     measures,
-    total: measures.length,
-    concluded: count("concluido"),
-    inProgress: measures.filter(item => ["em_curso", "em_validacao", "bloqueado"].includes(logicalStatus(item, statuses))).length,
+    obligations: logical,
+    total: logical.length,
+    measureTotal: measures.length,
+    elementTotal: elements.length,
+    concluded,
+    inProgress,
+    pending: Math.max(0, logical.length - concluded - inProgress),
   };
 }
 

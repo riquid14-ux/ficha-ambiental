@@ -304,15 +304,15 @@ function WorkflowDiagram() {
 
 function FlowStep({ icon, title, description, color, actor }: { icon: React.ReactNode; title: string; description: string; color: string; actor: string }) {
   const colorClasses: Record<string, string> = {
-    blue: "bg-[#0A3638] dark:bg-[#0A3638]/30 border-[#0A3638] dark:border-[#0A3638] text-[#0A3638] dark:text-[#0A3638]",
-    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/30 border-[#0A3638] dark:border-[#0A3638] text-[#0A3638] dark:text-[#0A3638]",
-    amber: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/30 border-[#6D7A70] dark:border-[#6D7A70] text-[#646461] dark:text-[#646461]",
+    blue: "bg-[#0A3638] dark:bg-[#0A3638]/30 border-[#0A3638] dark:border-primary/40 text-[#0A3638] dark:text-primary",
+    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/30 border-[#0A3638] dark:border-primary/40 text-[#0A3638] dark:text-primary",
+    amber: "bg-[#EDEBEB] dark:bg-muted/50 border-[#6D7A70] dark:border-border text-[#646461] dark:text-muted-foreground",
     green: "bg-primary dark:bg-primary/30 border-primary dark:border-primary text-primary dark:text-primary",
   };
   const badgeClasses: Record<string, string> = {
-    blue: "bg-[#0A3638] dark:bg-[#0A3638]/40 text-[#0A3638] dark:text-[#0A3638]",
-    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/40 text-[#0A3638] dark:text-[#0A3638]",
-    amber: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/40 text-[#646461] dark:text-[#646461]",
+    blue: "bg-[#0A3638] dark:bg-[#0A3638]/40 text-[#0A3638] dark:text-primary",
+    indigo: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/40 text-[#0A3638] dark:text-primary",
+    amber: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/40 text-[#646461] dark:text-muted-foreground",
     green: "bg-primary dark:bg-primary/40 text-primary dark:text-primary",
   };
 

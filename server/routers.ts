@@ -19,7 +19,7 @@ import { sanitizeFile } from "./file-sanitizer";
 import { canReadDocumentLibrary } from "./document-library";
 import { checkReadiness } from "./health";
 import ExcelJS from "exceljs";
-import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeMeasure } from "@shared/phases";
+import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeMeasure, isLegacySupportingItem } from "@shared/phases";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -3906,8 +3906,11 @@ export const appRouter = router({
           for (const phase of applicablePhases) {
             const logicalMeasures = new Map<string, any[]>();
             for (const measure of projectMeasures) {
-              if (!isDcapeMeasure(measure.number) || getDcapePhaseForItem(measure.number)?.key !== phase.key) continue;
-              const key = String(baseDcapeNumber(measure.number));
+              const itemPhase = getDcapePhaseForItem(measure.number);
+              if (!itemPhase || itemPhase.key !== phase.key || isLegacySupportingItem(measure.number)) continue;
+              const key = isDcapeMeasure(measure.number)
+                ? `measure-${baseDcapeNumber(measure.number)}`
+                : `element-${measure.number}`;
               logicalMeasures.set(key, [...(logicalMeasures.get(key) || []), measure]);
             }
             const total = logicalMeasures.size;

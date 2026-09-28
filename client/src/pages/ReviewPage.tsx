@@ -17,6 +17,7 @@ import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Se
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
+import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
@@ -46,7 +47,7 @@ type MeasureVerdict = "ok" | "nok" | null;
 type VerdictMap = Record<number, { verdict: MeasureVerdict; comment: string }>;
 
 export default function ReviewPage(props: any) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const embedded = props?.embedded;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -367,7 +368,7 @@ export default function ReviewPage(props: any) {
                                 {/* Measure info */}
                                 <div className="flex items-start gap-2">
                                   <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
-                                  <p className="text-sm flex-1">{m.description}</p>
+                                  <p className="text-sm flex-1">{localizeDcapeDescription(m.description, language)}</p>
                                   {m.response?.status && (
                                     <Badge className={`text-xs shrink-0 ${MEASURE_STATUS_COLORS[m.response.status]}`}>
                                       {m.response.status}
@@ -426,7 +427,7 @@ export default function ReviewPage(props: any) {
                   <div className="flex gap-3">
                     {/* FLOW-04: Block self-approval in UI */}
                     {(selectedSubmission?.createdBy === user?.id || selectedSubmission?.submittedBy === user?.id) ? (
-                      <div className="w-full text-center p-3 bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border border-[#6D7A70] rounded-md">
+                      <div className="w-full text-center p-3 bg-[#EDEBEB] dark:bg-muted/45 border border-[#6D7A70] rounded-md">
                         <p className="text-sm text-[#646461] font-medium">{t("Não pode aprovar/rejeitar uma ficha que criou ou submeteu.")}</p>
                         <p className="text-xs text-[#646461] mt-1">{t("Separação de funções: peça a outro revisor para avaliar esta ficha.")}</p>
                       </div>
@@ -495,7 +496,7 @@ export default function ReviewPage(props: any) {
                             <div key={m.id} className="p-3 border rounded bg-card space-y-1">
                               <div className="flex items-start gap-2">
                                 <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
-                                <p className="text-sm flex-1">{m.description}</p>
+                                <p className="text-sm flex-1">{localizeDcapeDescription(m.description, language)}</p>
                                 {m.response?.status && (
                                   <Badge className={`text-xs shrink-0 ${MEASURE_STATUS_COLORS[m.response.status]}`}>
                                     {m.response.status}

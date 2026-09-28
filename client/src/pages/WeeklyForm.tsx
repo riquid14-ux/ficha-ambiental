@@ -26,6 +26,7 @@ import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandMetricCard } from "@/components/stand/StandMetricCard";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
+import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
 function getWeekOptions() {
   const now = new Date();
   const year = now.getFullYear();
@@ -59,7 +60,7 @@ type ResponseMap = Record<number, { status: "I" | "C" | "NC" | "NA" | null; obse
 
 export default function WeeklyForm() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects } = useProject();
@@ -629,7 +630,7 @@ export default function WeeklyForm() {
                 </div>
               </div>
               {isAllProjects && !params.id ? (
-                <div className="rounded-xl border border-[#6D7A70]/25 bg-[#EDEBEB]/[0.08] p-4 text-sm text-[#646461] dark:text-[#646461]">
+                <div className="rounded-xl border border-[#6D7A70]/25 bg-[#EDEBEB]/[0.08] p-4 text-sm text-[#646461] dark:text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>{t("Selecione um projeto específico no menu lateral para criar uma ficha de controlo.")}</span>
@@ -769,7 +770,7 @@ export default function WeeklyForm() {
                             {measure.number}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-6 text-foreground">{measure.description}</p>
+                            <p className="text-sm leading-6 text-foreground">{localizeDcapeDescription(measure.description, language)}</p>
                             <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
                               Responsável: {measure.responsible.replace(/\|/g, " / ").replace(/\bDO\b/g, "Dono de Obra").replace(/\bEE\b/g, "Entidade Executante").replace(/\bRAP\b/g, "Resp. Acomp. Patrimonial").replace(/\bRAA\b/g, "Resp. Acomp. Ambiental")}
                             </p>

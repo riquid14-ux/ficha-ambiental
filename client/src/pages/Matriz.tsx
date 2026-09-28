@@ -1,6 +1,8 @@
 import AppLayout from "@/components/AppLayout";
 import { useProject } from "@/contexts/ProjectContext";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Grid3X3, Info } from "lucide-react";
@@ -19,6 +21,7 @@ export default function Matriz(props: any) {
   const { t } = useLanguage();
   const embedded = props?.embedded;
   const { activeProject, isAllProjects } = useProject();
+  const matrixImage = useBrandImage("matriz");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const matrixQuery = trpc.matrix.getData.useQuery(
@@ -132,20 +135,7 @@ export default function Matriz(props: any) {
 
   const inner = (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Grid3X3 className="w-6 h-6 text-primary" />
-              {t("Matriz de Acompanhamento")}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t("Visão geral do estado das fichas por empresa e semana")}
-              {!isAllProjects && activeProject && (
-                <span className="ml-1 font-medium text-foreground">— {activeProject.code}</span>
-              )}
-            </p>
-          </div>
-          {!isAllProjects && <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+        <div className="space-y-3"><StandPageHeader eyebrow="GOVERNAÇÃO · SUBMISSÕES" title={t("Matriz de Acompanhamento")} description={t("Visão geral do estado das fichas por empresa e semana")} context={!isAllProjects && activeProject ? activeProject.code : t("Todos os Projetos")} tone="operations" image={matrixImage.url} imagePosition={matrixImage.position} imageMode={matrixImage.mode} /><div className="flex justify-end">{!isAllProjects && <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Ano" />
             </SelectTrigger>
@@ -154,8 +144,7 @@ export default function Matriz(props: any) {
                 <SelectItem key={y} value={String(y)}>{y}</SelectItem>
               ))}
             </SelectContent>
-          </Select>}
-        </div>
+          </Select>}</div></div>
 
         {isAllProjects ? (
           <Card>

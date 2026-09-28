@@ -1068,5 +1068,18 @@ export const uiLiteralTranslations: Record<string, string> = {
   "Vista institucional do campus Start Campus": "Start Campus institutional campus view",
   "A Start Campus em movimento": "Start Campus in motion",
   "Conheça a visão que liga campus, operação e sustentabilidade.": "Discover the vision connecting campus, operations and sustainability.",
-  "Abrir no fornecedor": "Open with provider"
+  "Abrir no fornecedor": "Open with provider",
+  "A imagem não pode ultrapassar 5 MB.": "The image cannot exceed 5 MB.",
+  "Adicionar localização personalizada": "Add custom location",
+  "Atribua uma fotografia a cada superfície. As imagens oficiais são a referência inicial e podem ser substituídas por upload seguro ou URL HTTPS.": "Assign a photograph to each surface. Official images are the initial reference and can be replaced by a secure upload or HTTPS URL.",
+  "Carregar ficheiro": "Upload file",
+  "Eliminar localização": "Delete location",
+  "Ex.: Área de parceiros": "E.g. Partner area",
+  "Não foi possível ler a imagem.": "The image could not be read.",
+  "Selecione a página": "Select the page",
+  "OPS — Medidas de Operação DCAPE": "OPS — DCAPE operational measures",
+  "LEED O&M — Submissão de Performance (Arc)": "LEED O&M — Performance submission (Arc)",
+  "MIRR — Mapa Integrado de Registo de Resíduos": "MIRR — Integrated Waste Register",
+  "RAA — Relatório Ambiental Anual": "RAA — Annual Environmental Report",
+  "CELE — Relatório Anual de Emissões (RAE)": "CELE — Annual Emissions Report (RAE)"
 };

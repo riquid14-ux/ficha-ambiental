@@ -4,7 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import AppLayout from "@/components/AppLayout";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,7 @@ export default function PhaseMeasures(props: any) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
+  const phasesImage = useBrandImage("fases");
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa";
 
   const projectId = activeProject?.id || 1;
@@ -176,33 +179,31 @@ export default function PhaseMeasures(props: any) {
 
   const mainContent = (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${currentPhaseInfo?.color || "bg-gray-400"}`} />
-            Fases do Projeto
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Acompanhamento das medidas ambientais por fase do ciclo de vida — {activeProject?.name || "Projeto"}
-          </p>
-        </div>
-        {isOperationOnly && (
-          <div className="flex items-center gap-2">
-            <div className="text-lg font-bold text-[#0A3638] border border-primary bg-primary dark:bg-primary/20 rounded-lg px-4 py-1.5">Evidências {evidenceYear}</div>
+      <StandPageHeader
+        eyebrow="DCAPE · ACOMPANHAMENTO"
+        title={t("Fases do Projeto")}
+        description={`${t("Acompanhamento das medidas ambientais por fase do ciclo de vida")} — ${activeProject?.name || t("Projeto")}`}
+        context={activeProject?.code || t("Projeto")}
+        tone="operations"
+        image={phasesImage.url}
+        imagePosition={phasesImage.position}
+        imageMode={phasesImage.mode}
+        actions={isOperationOnly ? (
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={String(evidenceYear)} onValueChange={v => setEvidenceYear(parseInt(v))}>
-              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[144px] border-white/20 bg-card/10 text-white"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 11 }, (_, i) => SIN01_EVIDENCE_START_YEAR + i).map(y => (
                   <SelectItem key={y} value={String(y)}>{t("Evidências")} {y}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => toast.info(t("Exportação Word em desenvolvimento"))}>
-              <Download className="w-4 h-4 mr-1" /> Criar Doc {evidenceYear}
+            <Button variant="outline" size="sm" className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={() => toast.info(t("Exportação Word em desenvolvimento"))}>
+              <Download className="mr-1.5 h-4 w-4" /> {t("Criar Doc")} {evidenceYear}
             </Button>
           </div>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {!isAdminOrDono && (
         <Card className="border-[#0A3638] bg-[#0A3638]/50">

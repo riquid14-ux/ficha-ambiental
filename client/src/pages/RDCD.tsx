@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
@@ -43,6 +44,7 @@ function rdcdTable(headers: string[], rows: string[][]) {
 
 export default function RDCD() {
   const { t } = useLanguage();
+  const rdcdImage = useBrandImage("rdcd");
   const { user } = useAuth();
   const { projects, activeProject } = useProject();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
@@ -401,7 +403,7 @@ export default function RDCD() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl space-y-5 pb-8">
-        <StandPageHeader tone="governance" eyebrow="COMPLIANCE REPORTING" title={t("RDCD — Relatório de Demonstração de Cumprimento")} description={t("Organize o período, reveja as evidências e prepare o documento antes da validação técnica.")} context={selectedProject?.code || t("Por configurar")} actions={<StandStatusBadge label={step === 4 ? t("Pronto para revisão") : `${t("Passo")} ${step} ${t("de")} ${STEPS.length}`} tone={step === 4 ? "success" : "info"} />}>
+        <StandPageHeader tone="governance" eyebrow="COMPLIANCE REPORTING" title={t("RDCD — Relatório de Demonstração de Cumprimento")} description={t("Organize o período, reveja as evidências e prepare o documento antes da validação técnica.")} context={selectedProject?.code || t("Por configurar")} image={rdcdImage.url} imagePosition={rdcdImage.position} imageMode={rdcdImage.mode} actions={<StandStatusBadge label={step === 4 ? t("Pronto para revisão") : `${t("Passo")} ${step} ${t("de")} ${STEPS.length}`} tone={step === 4 ? "success" : "info"} />}>
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span>1 relatório = 1 projeto</span><span>•</span><span>{t("Dados aprovados e rastreáveis")}</span><span>•</span><span>{t("Geração Word sob controlo humano")}</span></div>
         </StandPageHeader>
 

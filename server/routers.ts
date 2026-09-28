@@ -1162,6 +1162,35 @@ export const appRouter = router({
         await database.execute(sql`INSERT INTO app_settings (\`key\`, value) VALUES (${input.key}, ${input.value}) ON DUPLICATE KEY UPDATE value = ${input.value}`);
         return { success: true };
       }),
+    uploadImage: protectedProcedure
+      .input(z.object({
+        key: z.string().regex(/^image_[a-z0-9_]{1,80}$/),
+        filename: z.string().min(1).max(180),
+        mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        data: z.string().min(4),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
+        if (/[/\\\r\n\0]/.test(input.filename) || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A imagem selecionada é inválida." });
+        }
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 5 * 1024 * 1024) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A imagem deve ter no máximo 5 MB." });
+        }
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "branding-image");
+        if (!sanitization.safe) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A imagem foi rejeitada pela verificação de segurança." });
+        }
+        const extension = input.mimeType === "image/png" ? "png" : input.mimeType === "image/webp" ? "webp" : "jpg";
+        const stored = await storagePut(`branding/${Date.now()}-${ctx.user.id}.${extension}`, buffer, input.mimeType);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await database.execute(sql`INSERT INTO app_settings (\`key\`, value) VALUES (${input.key}, ${stored.url}) ON DUPLICATE KEY UPDATE value = ${stored.url}`);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "branding_image_uploaded", "app_settings", null, null, JSON.stringify({ key: input.key, filename: input.filename, mimeType: input.mimeType, storageKey: stored.key }));
+        return { success: true, url: stored.url, key: stored.key };
+      }),
     delete: protectedProcedure
       .input(z.object({ key: z.string() }))
       .mutation(async ({ ctx, input }) => {
@@ -1170,8 +1199,8 @@ export const appRouter = router({
         }
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        // Delete the key and its associated _position and _page keys
-        await database.execute(sql`DELETE FROM app_settings WHERE \`key\` IN (${input.key}, ${input.key + "_position"}, ${input.key + "_page"})`);
+        // Delete the key and all its associated presentation settings.
+        await database.execute(sql`DELETE FROM app_settings WHERE \`key\` IN (${input.key}, ${input.key + "_position"}, ${input.key + "_mode"}, ${input.key + "_page"})`);
         return { success: true };
       }),
   }),

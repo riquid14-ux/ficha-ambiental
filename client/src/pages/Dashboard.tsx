@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -36,7 +37,7 @@ type StatusFilter = "all" | "I" | "C" | "NC" | "NA";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects, projects } = useProject();
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
@@ -97,7 +98,7 @@ export default function Dashboard() {
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
-  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
+  const dashboardImage = useBrandImage("dashboard");
 
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
@@ -247,15 +248,9 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <Button variant="outline" size="sm" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button> : undefined} />
-
-        {/* Fotografia institucional: o grading é partilhado com Login, Timeline e Calendário. */}
-        <div className="stand-photo-panel h-52">
-          <img src={brandImages?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png"} alt="Start Campus em Sines" className="photo-grade absolute inset-0 h-full w-full object-cover" style={{ objectPosition: brandImages?.image_dashboard_position || "center" }} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-          <div className="flex h-full items-end p-6 sm:p-7">
-            <div className="max-w-xl text-white"><p className="stand-kicker text-primary">START CAMPUS · GOVERNAÇÃO AMBIENTAL</p><p className="mt-2 text-xl font-semibold tracking-[-0.03em] sm:text-2xl">{t("Plataforma de Gestão Ambiental — Start Campus")}</p><p className="mt-1 text-sm leading-6 text-white/75">Visão operacional, documental e de conformidade no mesmo contexto de projeto.</p></div>
-          </div>
-        </div>
+        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button> : undefined}>
+          <p className="text-xs font-medium text-white/80">{t("Visão operacional, documental e de conformidade no mesmo contexto de projeto.")}</p>
+        </StandPageHeader>
 
         <section aria-label={t("Resumo executivo")} className="grid gap-3 md:grid-cols-3">
           <StandMetricCard label={t("Âmbito ativo")} value={decisionSnapshot.scope} detail={isAllProjects ? t("Leitura consolidada para priorização transversal.") : t("Indicadores e ações filtrados pelo projeto selecionado.")} icon={FolderKanban} tone="brand" />
@@ -280,7 +275,7 @@ export default function Dashboard() {
                 <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-white/65">{t("Catálogo DCAPE ativo")}</p></div>
                   <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-white/65">{t("Medidas pós-exploração")}</p></div>
-                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-primary" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-white/65">{nextOperationReport?.name || t("Sem entrega agendada")}</p></button>
+                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-primary" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString(language === "en" ? "en-GB" : "pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-white/65">{nextOperationReport?.name ? t(nextOperationReport.name) : t("Sem entrega agendada")}</p></button>
                   <button onClick={() => setLocation("/mirr")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-white/65">{t("Registos ambientais no MIRR")}</p></button>
                 </div>
               </div>
@@ -288,7 +283,7 @@ export default function Dashboard() {
 
             <div className="grid gap-5 xl:grid-cols-12">
               <Card className="xl:col-span-8 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary dark:text-primary">{t("Agenda de controlo")}</p><CardTitle className="mt-1 text-lg">{t("Próximos Reportings")}</CardTitle></div><button onClick={() => setLocation("/calendario")} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline dark:text-primary">{t("Gerir prazos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-3">
-                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-primary hover:bg-primary/50 dark:hover:border-primary dark:hover:bg-primary/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{evt.name}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString("pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
+                {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-primary hover:bg-primary/50 dark:hover:border-primary dark:hover:bg-primary/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{t(evt.name)}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString(language === "en" ? "en-GB" : "pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
               </CardContent></Card>
               <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0A3638] dark:text-[#0A3638]">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
                 {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents) return null; const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {}); if (Object.keys(owners).length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Atribua responsáveis no Calendário → Gerir.")}</p>; return <div className="space-y-2">{Object.entries(owners).map(([name, events]) => <div key={name} className="rounded-xl border border-border/70 bg-muted/20 p-3"><p className="truncate text-sm font-semibold">{name}</p><p className="mt-1 text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p></div>)}</div>; })()}

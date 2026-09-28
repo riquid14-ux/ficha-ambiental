@@ -10,6 +10,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { StandMetricCard, type StandMetricTone } from "@/components/stand/StandMetricCard";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { aggregateOperationReadings, pairOperationReadings, type OperationGrouping } from "@/lib/operation-time-series";
@@ -33,6 +34,7 @@ export default function Operation() {
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const operationImage = useBrandImage("operacao");
   const projectId = activeProject?.id || 0;
   const today = new Date();
   const [startDate, setStartDate] = useState(() => isoDate(new Date(today.getFullYear(), today.getMonth(), 1)));
@@ -158,6 +160,9 @@ export default function Operation() {
       title="Cockpit de sustentabilidade e desempenho do edifício."
       description="Leituras do NEST, eficiência do arrefecimento, água, energia, custos e cenários num único ponto de decisão."
       context={`${startDate} — ${endDate}`}
+      image={operationImage.url}
+      imagePosition={operationImage.position}
+      imageMode={operationImage.mode}
       actions={<div className="flex flex-wrap gap-2"><Button onClick={() => reportInput.current?.click()} className="border border-white/15 bg-card text-foreground hover:bg-card/90" disabled={importMutation.isPending}><Upload className="mr-2 size-4" />{importMutation.isPending ? "A importar..." : "Atualizar leituras"}</Button><Button variant="outline" onClick={exportForPowerBi} disabled={!readings.length} className="border-white/15 bg-card/5 text-white hover:bg-card/10 hover:text-white"><Download className="mr-2 size-4" />Exportar dados</Button>{canConfigureInfrastructure && <Button variant="outline" onClick={() => window.location.assign("/admin?tab=operacao&section=fontes")} className="border-white/15 bg-card/5 text-white hover:bg-card/10 hover:text-white"><Settings2 className="mr-2 size-4" />Fontes e cálculos</Button>}{canWrite && <Button variant="outline" onClick={() => { setCockpitTab("cenarios"); setScenarioOpen(true); }} className="border-primary/40 bg-primary/15 text-white hover:bg-primary/25 hover:text-white"><BrainCircuit className="mr-2 size-4" />Simular futuro</Button>}</div>}
     >
       <div className="flex flex-wrap items-center gap-2"><Badge className="ops-chip border-white/15 bg-card/5 text-primary">NEST · SIN01</Badge><Badge className={isIllustrative ? "ops-chip border-[color:var(--ops-warning)]/50 bg-card/5 text-white/82" : "ops-chip border-primary/40 bg-card/5 text-white/82"}>{isIllustrative ? "Modo de demonstração" : "Parâmetros aprovados"}</Badge><span className="flex items-center gap-2 text-xs text-white/75"><span className={`status-dot ${isIllustrative ? "warning" : "success"}`} />{quality?.valid || 0} leituras válidas</span></div>

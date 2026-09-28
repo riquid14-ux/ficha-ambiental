@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
@@ -306,6 +307,7 @@ export default function Planos() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
+  const plansImage = useBrandImage("planos");
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const [showCreate, setShowCreate] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -571,6 +573,9 @@ export default function Planos() {
             activeProject?.code || activeProject?.name || "Visão consolidada"
           }
           tone="operations"
+          image={plansImage.url}
+          imagePosition={plansImage.position}
+          imageMode={plansImage.mode}
           actions={
             <>
               <Button

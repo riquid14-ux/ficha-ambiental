@@ -1,3 +1,5 @@
+import { useBrandImage } from "@/hooks/useBrandImage";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AppLayout from "@/components/AppLayout";
@@ -23,6 +25,7 @@ type Generator = {
 export default function Certifications() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const certificationsImage = useBrandImage("certificacoes");
   const [activeTab, setActiveTab] = useState("overview");
   const isAdmin = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "pm";
 
@@ -118,10 +121,7 @@ export default function Certifications() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">{t("Certificações — SIN01 NEST")}</h1>
-          <p className="text-muted-foreground">LEED O&M v4.1 · EED (Art. 12.º Dir. 2023/1791) · CELE (EU ETS)</p>
-        </div>
+        <StandPageHeader eyebrow="NEST · CONFORMIDADE E REPORTE" title={t("Certificações — SIN01 NEST")} description="LEED O&M v4.1 · EED (Art. 12.º Dir. 2023/1791) · CELE (EU ETS)" context="SIN01" tone="operations" image={certificationsImage.url} imagePosition={certificationsImage.position} imageMode={certificationsImage.mode} />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

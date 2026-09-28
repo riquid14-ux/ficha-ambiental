@@ -25,7 +25,7 @@ Aplicação web para monitorização e compliance ambiental em projectos de cons
 - **Timeline** — Fases de projecto (Pré-licenciamento → Operação)
 - **Calendário** — Prazos regulatórios e internos de reporting
 - **Importação PDF** — Fichas históricas com extracção automática via LLM
-- **7 Roles** — admin, dono_obra, pm, raa, ee, rap, observador
+- **9 papéis com permissões** — admin, dono_obra, pm, raa, ee, ee_partner, rap, observador e user
 - **Segurança** — 2FA obrigatório, sanitização de ficheiros, 292 testes automatizados
 - **Resiliência operacional** — health checks, vigia PM2, backup pré-deployment, alertas redundantes e rollback automático
 
@@ -64,7 +64,9 @@ pm2 startOrReload ecosystem.config.cjs --env production
 ## Testes
 
 ```bash
-pnpm test    # segurança, roles, funcionalidade e resiliência operacional
+pnpm check   # tipos TypeScript
+pnpm test    # segurança, perfis, funcionalidade e resiliência operacional
+pnpm build   # compilação de produção
 ```
 
 ## Estrutura

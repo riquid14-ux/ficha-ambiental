@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
@@ -161,7 +162,8 @@ export default function Timeline() {
     { projectId: catalogueProjectId },
     { enabled: catalogueProjectId > 0 }
   );
-  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
+  const timelineImage = useBrandImage("timeline");
+  const portfolioImage = useBrandImage("timeline_portfolio");
   const { data: allMeasures } = trpc.measures.list.useQuery(
     { projectId: catalogueProjectId },
     { enabled: catalogueProjectId > 0 }
@@ -351,18 +353,11 @@ export default function Timeline() {
             )}
             context={t("Todos os Projetos")}
             tone="governance"
+            image={portfolioImage.url}
+            imagePosition={portfolioImage.position}
+            imageMode={portfolioImage.mode}
           >
-            <div className="relative h-16 overflow-hidden rounded-xl border border-primary/10">
-              <img
-                src="https://www.startcampus.pt/hubfs/Images/Webiste/Start_Campus__%20(17).jpg"
-                alt=""
-                className="h-full w-full object-cover opacity-35"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-card/90 via-card/55 to-transparent" />
-              <p className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-foreground">
-                {t("Ciclo de vida dos projetos Start Campus")}
-              </p>
-            </div>
+            <p className="text-xs font-medium text-white/80">{t("Ciclo de vida dos projetos Start Campus")}</p>
           </StandPageHeader>
 
           {projects && projects.length > 0 && (
@@ -462,6 +457,9 @@ export default function Timeline() {
           context={activeProject?.name}
           description={t("Visão geral do cumprimento de medidas por fase")}
           tone="operations"
+          image={timelineImage.url}
+          imagePosition={timelineImage.position}
+          imageMode={timelineImage.mode}
           actions={
             <>
               <Button
@@ -494,27 +492,7 @@ export default function Timeline() {
             </>
           }
         >
-          <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 bg-primary/25">
-            <img
-              src={
-                brandImages?.image_timeline ||
-                "/manus-storage/sc-datacenter-1_78c8d65f.jpg"
-              }
-              alt=""
-              className="h-full w-full object-cover opacity-40"
-              style={{
-                objectPosition:
-                  brandImages?.image_timeline_position || "center",
-              }}
-              onError={e => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-[#0A3638]/20 to-transparent" />
-            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-primary">
-              Acompanhamento de execução por fase do projeto
-            </span>
-          </div>
+          <p className="text-xs font-medium text-white/80">{t("Acompanhamento de execução por fase do projeto")}</p>
         </StandPageHeader>
         {/* Sub-navigation: Vista Geral | Fases */}
         <nav

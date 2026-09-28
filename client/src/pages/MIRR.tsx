@@ -3,6 +3,7 @@ import React from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useProject } from "@/contexts/ProjectContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
@@ -133,6 +134,7 @@ export default function MIRR() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject } = useProject();
+  const mirrImage = useBrandImage("mirr");
   const [location] = useLocation();
   const isMIRRPage = location === "/mirr";
   const pageTitle = isMIRRPage ? "MIRR" : t("Gestão de Resíduos");
@@ -583,6 +585,9 @@ export default function MIRR() {
           description={`${pageSubtitle} — ${activeProject?.name || "Projeto"}`}
           context={`Ano de reporte ${selectedYear}`}
           tone="operations"
+          image={mirrImage.url}
+          imagePosition={mirrImage.position}
+          imageMode={mirrImage.mode}
           actions={
             <div className="flex max-w-4xl flex-wrap items-center justify-start gap-2 lg:justify-end">
               {!isMIRRPage && (subProjects?.length ?? 0) > 0 && (

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -26,6 +27,7 @@ export default function KPI() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects } = useProject();
+  const kpiImage = useBrandImage("kpi");
   const [activeTab, setActiveTab] = useState("overview");
   const [showSettings, setShowSettings] = useState(false);
   const [formWeek, setFormWeek] = useState(String(getISOWeek(new Date())));
@@ -317,6 +319,9 @@ export default function KPI() {
           description={`Indicadores de sustentabilidade — ${activeProject?.name || "—"}`}
           context={activeProject?.code || activeProject?.name || "Projeto"}
           tone="operations"
+          image={kpiImage.url}
+          imagePosition={kpiImage.position}
+          imageMode={kpiImage.mode}
           actions={<>
             <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleExportExcel}><Download className="mr-1.5 h-4 w-4" /> Exportar dados</Button>
             <Button variant="secondary" size="sm" className="min-h-9 border border-white/15 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={downloadKpiImportTemplate}><FileSpreadsheet className="mr-1.5 h-4 w-4" /> Modelo Excel</Button>

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -23,6 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default function Profile() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const profileImage = useBrandImage("perfil");
   const profileQuery = trpc.profile.get.useQuery();
   const utils = trpc.useUtils();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -92,10 +95,7 @@ export default function Profile() {
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Perfil")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t("Gerir as suas informações pessoais")}</p>
-        </div>
+        <StandPageHeader eyebrow="CONTA E SEGURANÇA" title={t("Perfil")} description={t("Gerir as suas informações pessoais")} context={ROLE_LABELS[user?.role || "user"] || t("Utilizador")} tone="governance" image={profileImage.url} imagePosition={profileImage.position} imageMode={profileImage.mode} />
 
         <Card>
           <CardHeader>

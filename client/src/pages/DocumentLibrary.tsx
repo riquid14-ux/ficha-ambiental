@@ -11,6 +11,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getDocumentLibraryView } from "@/lib/document-library-view";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { Award, BookOpen, ClipboardCheck, ExternalLink, FileText, Leaf, ShieldAlert, ShieldCheck } from "lucide-react";
 
 const TOPICS = {
@@ -99,10 +100,11 @@ function CentralDocumentCard({ document, projectId }: { document: LibraryItem; p
 
 export function DocumentLibraryReadOnlyContent({ role, documents, projectId, projectContext }: { role: Parameters<typeof getDocumentLibraryView>[0]; documents: LibraryItem[]; projectId: number; projectContext?: string }) {
   const { centralDocuments, showManagementControls } = getDocumentLibraryView(role, documents);
+  const libraryImage = useBrandImage("biblioteca");
   const mandatoryDocuments = documents.filter(document => document.isMandatoryRead === 1).length;
   return (
     <div className="space-y-6 pb-8">
-      <StandPageHeader eyebrow="STAND · REPOSITÓRIO CENTRAL" title="Documentação Ambiental" description="Consulte a documentação publicada pela Start Campus para apoiar o cumprimento ambiental, as certificações e as decisões no projecto." context={projectContext || "Projeto ativo"} tone="governance">
+      <StandPageHeader eyebrow="STAND · REPOSITÓRIO CENTRAL" title="Documentação Ambiental" description="Consulte a documentação publicada pela Start Campus para apoiar o cumprimento ambiental, as certificações e as decisões no projecto." context={projectContext || "Projeto ativo"} tone="governance" image={libraryImage.url} imagePosition={libraryImage.position} imageMode={libraryImage.mode}>
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground"><BookOpen className="h-3.5 w-3.5 text-primary" />Fonte documental controlada para consulta operacional.</div>
       </StandPageHeader>
 

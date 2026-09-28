@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useLocation } from "wouter";
@@ -62,6 +63,7 @@ export default function WeeklyForm() {
   const params = useParams<{ id?: string }>();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects } = useProject();
+  const weeklyImage = useBrandImage("ficha_semanal");
   const [responses, setResponses] = useState<ResponseMap>({});
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -503,6 +505,9 @@ export default function WeeklyForm() {
             description={t("Registe evidências, acompanhe medidas e submeta o controlo semanal para revisão ambiental.")}
             context={activeProject?.code || "STAND"}
             tone="operations"
+            image={weeklyImage.url}
+            imagePosition={weeklyImage.position}
+            imageMode={weeklyImage.mode}
             actions={
               <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-card/10 px-3 py-2 text-left backdrop-blur-sm">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-card/10"><Building2 className="h-4 w-4 text-primary" /></div>

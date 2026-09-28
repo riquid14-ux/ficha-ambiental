@@ -8,6 +8,24 @@ const PUBLIC_BRANDING_KEYS = new Set([
   "sc-aerial-2_18fcfe53.png",
   "sc-datacenter-1_78c8d65f.jpg",
   "sc-sin01_2c20c2d5.png",
+  "start-campus-1_fdbe2fde.jpg",
+  "start-campus-2_23725165.jpg",
+  "start-campus-4_9ce4d2bc.jpg",
+  "start-campus-5_5d8e4400.jpg",
+  "start-campus-6_49846847.jpg",
+  "start-campus-7_9876e6c3.jpg",
+  "start-campus-8_1bdb1eb1.jpg",
+  "start-campus-9_0e9ab8b0.jpg",
+  "start-campus-10_f1d3919f.jpg",
+  "start-campus-11_fced6e75.jpg",
+  "start-campus-12_e458c914.jpg",
+  "start-campus-13_c68ebb45.jpg",
+  "start-campus-14_ed04207a.jpg",
+  "start-campus-15_72f83746.jpg",
+  "start-campus-16_e7622842.jpg",
+  "start-campus-17_de17c18d.jpg",
+  "start-campus-18_9a4385f8.jpg",
+  "start-campus-19_1fd1e617.jpg",
 ]);
 
 const ADMIN_ROLES = new Set(["admin", "dono_obra"]);
@@ -16,7 +34,10 @@ const OPERATION_PROJECT_CODE = "SIN01";
 type ProjectModule = "ficha" | "timeline" | "planos" | "operacao";
 
 export function isPublicBrandingKey(key: string) {
-  return PUBLIC_BRANDING_KEYS.has(key);
+  // Apenas administradores podem criar objetos com o prefixo branding/. O
+  // conteúdo é fotografia institucional, deliberadamente pública para poder
+  // aparecer antes da autenticação no login e na entrada da plataforma.
+  return PUBLIC_BRANDING_KEYS.has(key) || key.startsWith("branding/");
 }
 
 export function isSafeStorageKey(key: string) {

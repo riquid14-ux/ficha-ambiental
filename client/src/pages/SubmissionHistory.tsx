@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
@@ -43,6 +45,7 @@ export default function SubmissionHistory(props: any) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects } = useProject();
+  const historyImage = useBrandImage("historico");
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("all");
   const [filterValue, setFilterValue] = useState<string>("all");
   const [exporting, setExporting] = useState(false);
@@ -244,10 +247,7 @@ export default function SubmissionHistory(props: any) {
 
   const inner = (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t("Histórico de Submissões")}</h1>
-          <p className="text-muted-foreground text-sm mt-1">{t("Consulte e exporte fichas por período ou por medida")}</p>
-        </div>
+        <StandPageHeader eyebrow="ARQUIVO E AUDITORIA" title={t("Histórico de Submissões")} description={t("Consulte e exporte fichas por período ou por medida")} context={activeProject?.code || t("Todos os Projetos")} image={historyImage.url} imagePosition={historyImage.position} imageMode={historyImage.mode} />
 
         {/* Year selector + View mode toggle */}
         <div className="flex gap-2 items-center">

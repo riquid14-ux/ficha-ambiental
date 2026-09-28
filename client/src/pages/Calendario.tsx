@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
 import { useProject } from "@/contexts/ProjectContext";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -312,7 +313,7 @@ export default function Calendario() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const { data: brandImages } = trpc.appSettings.getAll.useQuery();
+  const calendarImage = useBrandImage("calendario");
   // Fetch users for owner assignment
   const { data: users } = trpc.users.list.useQuery();
 
@@ -433,6 +434,9 @@ export default function Calendario() {
           }
           description={t("Datas de entrega de reportings")}
           tone="operations"
+          image={calendarImage.url}
+          imagePosition={calendarImage.position}
+          imageMode={calendarImage.mode}
           actions={
             <>
               {isAdminOrDono && (
@@ -466,27 +470,7 @@ export default function Calendario() {
             </>
           }
         >
-          <div className="relative mt-1 h-14 overflow-hidden rounded-xl border border-white/10 bg-primary/25">
-            <img
-              src={
-                brandImages?.image_calendario ||
-                "/manus-storage/sc-sin01_2c20c2d5.png"
-              }
-              alt=""
-              className="h-full w-full object-cover opacity-45"
-              style={{
-                objectPosition:
-                  brandImages?.image_calendario_position || "center",
-              }}
-              onError={e => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/70 via-[#0A3638]/20 to-transparent" />
-            <span className="absolute inset-y-0 left-3 flex items-center text-xs font-medium text-primary">
-              Visão operacional de prazos, responsáveis e submissões
-            </span>
-          </div>
+          <p className="text-xs font-medium text-white/80">{t("Visão operacional de prazos, responsáveis e submissões")}</p>
         </StandPageHeader>
 
         <section

@@ -439,6 +439,83 @@ export function calculateOperationEnvironmentalMetrics(readings: Array<{ metricC
   };
 }
 
+/**
+ * Estado da réplica operacional do NEST. Não representa um modelo CAD/3D:
+ * traduz as leituras, limites e qualidade já registados numa vista de sistemas
+ * explicável. Uma conclusão de operação só é emitida no modo aprovado; no modo
+ * ilustrativo, os mesmos sinais permanecem visíveis mas são referências.
+ */
+export function buildOperationDigitalTwin(
+  readings: Array<{ metricCode: string; value: number; measuredAt?: number; dataQuality: string }>,
+  environmental: ReturnType<typeof calculateOperationEnvironmentalMetrics>,
+  quality: { coveragePercent: number | null; valid: number; total: number },
+) {
+  const usable = readings.filter(reading => reading.dataQuality !== "invalid" && Number.isFinite(Number(reading.value)));
+  const latest = new Map<string, { value: number; measuredAt: number | null }>();
+  for (const reading of usable) latest.set(reading.metricCode, { value: Number(reading.value), measuredAt: Number.isFinite(reading.measuredAt) ? Number(reading.measuredAt) : null });
+  const latestValue = (...codes: string[]) => codes.map(code => latest.get(code)).find(Boolean) || null;
+  const check = (id: string) => environmental.thresholdChecks.find(item => item.id === id);
+  const mode = environmental.configurationMode === "illustrative" ? "reference" : "approved";
+  const statusForChecks = (checks: Array<{ status: string }>, hasReading: boolean) => {
+    if (!hasReading) return "data_gap" as const;
+    if (mode === "reference") return "reference" as const;
+    if (checks.some(item => item.status === "desvio")) return "alert" as const;
+    if (checks.some(item => item.status === "por_configurar" || item.status === "sem_leitura")) return "attention" as const;
+    return "normal" as const;
+  };
+  const pue = latestValue("pue", "pue_15m");
+  const itLoad = latestValue("it_power_avg_kw", "it_power_15m_kw");
+  const seawaterFlow = latestValue("seawater_flow_lps", "seawater_flow_15m_lps");
+  const seawaterReturn = latestValue("seawater_return_temp_c", "pcw_return_temp_c", "pcw_return_15m_c");
+  const cop = latestValue("seawater_pumping_cop");
+  const wue = latestValue("wue_calculated_daily", "wue_reportado", "wue_15m");
+  const observedAt = Math.max(0, ...Array.from(latest.values()).map(item => item.measuredAt || 0)) || null;
+  const systems = [
+    {
+      id: "power_it",
+      label: "Energia e carga TI",
+      status: statusForChecks([check("pue")].filter(Boolean) as Array<{ status: string }>, Boolean(pue || itLoad)),
+      metrics: [
+        { id: "pue", label: "PUE", value: pue?.value ?? null, unit: "rácio", source: pue ? "leitura" : "em_falta" },
+        { id: "it_load", label: "Carga TI", value: itLoad?.value ?? null, unit: "kW", source: itLoad ? "leitura" : "em_falta" },
+      ],
+      checks: [check("pue")].filter(Boolean),
+    },
+    {
+      id: "seawater",
+      label: "Circuito de água do mar",
+      status: statusForChecks([check("seawater_return_temp"), check("seawater_flow_min"), check("seawater_flow_max"), check("seawater_delta_t")].filter(Boolean) as Array<{ status: string }>, Boolean(seawaterFlow || seawaterReturn)),
+      metrics: [
+        { id: "flow", label: "Caudal", value: seawaterFlow?.value ?? null, unit: "L/s", source: seawaterFlow ? "leitura" : "em_falta" },
+        { id: "discharge", label: "Descarga", value: seawaterReturn?.value ?? null, unit: "°C", source: seawaterReturn ? "leitura" : "em_falta" },
+      ],
+      checks: [check("seawater_return_temp"), check("seawater_flow_min"), check("seawater_flow_max"), check("seawater_delta_t")].filter(Boolean),
+    },
+    {
+      id: "thermal",
+      label: "Arrefecimento e permuta",
+      status: !cop ? "data_gap" as const : mode === "reference" ? "reference" as const : "normal" as const,
+      metrics: [
+        { id: "cop", label: "COP de bombagem", value: cop?.value ?? null, unit: "térmico/elétrico", source: cop ? "leitura" : "em_falta" },
+        { id: "wue", label: "WUE", value: wue?.value ?? null, unit: "L/kWh TI", source: wue ? "leitura" : "em_falta" },
+      ],
+      checks: [],
+    },
+    {
+      id: "sustainability",
+      label: "Sustentabilidade e carbono",
+      status: environmental.cueKgKwh === null ? "data_gap" as const : mode === "reference" ? "reference" as const : "normal" as const,
+      metrics: [
+        { id: "cue", label: "CUE", value: environmental.cueKgKwh, unit: "kg CO₂e/kWh TI", source: environmental.cueKgKwh === null ? "em_falta" : mode === "reference" ? "estimativa" : "calculado" },
+        { id: "carbon", label: "Carbono elétrico", value: environmental.electricityCarbonKg, unit: "kg CO₂e", source: environmental.electricityCarbonKg === null ? "em_falta" : mode === "reference" ? "estimativa" : "calculado" },
+      ],
+      checks: [],
+    },
+  ];
+  const counts = systems.reduce((acc, system) => ({ ...acc, [system.status]: (acc[system.status] || 0) + 1 }), {} as Record<string, number>);
+  return { mode, observedAt, dataCoveragePercent: quality.coveragePercent, validReadings: quality.valid, totalReadings: quality.total, systems, counts };
+}
+
 type OperationForecastReading = { metricCode: string; value: number; measuredAt: number; dataQuality: string };
 
 function buildDailyAverageSeries(readings: OperationForecastReading[], metricCode: string) {
@@ -4854,7 +4931,8 @@ export const appRouter = router({
         const settings = (settingsResult as any)[0]?.[0] || null;
         const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
         const forecast = buildOperationTrendForecast(readings, settings);
-        return { readings, hasDemoData: rawReadings.some((row: any) => row.isDemo), latest: Object.fromEntries(latest), quality, settings, environmental, forecast, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
+        const digitalTwin = buildOperationDigitalTwin(readings, environmental, quality);
+        return { readings, hasDemoData: rawReadings.some((row: any) => row.isDemo), latest: Object.fromEntries(latest), quality, settings, environmental, digitalTwin, forecast, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
       }),
     settings: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))

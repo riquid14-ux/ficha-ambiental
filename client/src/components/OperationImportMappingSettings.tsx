@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { FileInput, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -22,36 +23,27 @@ const mappingFields = [
 
 type MappingKey = typeof mappingFields[number]["key"];
 type MappingDraft = Record<MappingKey, string>;
-
 function defaults(): MappingDraft { return Object.fromEntries(mappingFields.map(field => [field.key, field.initial])) as MappingDraft; }
 function parseStoredMapping(value: string | null | undefined): MappingDraft {
   const next = defaults();
   if (!value) return next;
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    for (const field of mappingFields) {
-      const aliases = parsed[field.key];
-      if (Array.isArray(aliases)) {
-        const clean = aliases.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map(item => item.trim()).slice(0, 12);
-        if (clean.length) next[field.key] = clean.join(", ");
-      }
-    }
-  } catch { /* A configuração vazia ou antiga mantém os aliases de referência. */ }
+  try { const parsed = JSON.parse(value) as Record<string, unknown>; for (const field of mappingFields) { const aliases = parsed[field.key]; if (Array.isArray(aliases)) { const clean = aliases.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map(item => item.trim()).slice(0, 12); if (clean.length) next[field.key] = clean.join(", "); } } } catch { /* Empty or legacy mapping retains reference aliases. */ }
   return next;
 }
 
 export default function OperationImportMappingSettings({ projectId, mappingJson, onSaved }: { projectId: number; mappingJson?: string | null; onSaved: () => void }) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState<MappingDraft>(() => parseStoredMapping(mappingJson));
-  const update = trpc.operation.updateImportMapping.useMutation({ onSuccess: () => { toast.success("Mapeamento de importação guardado e auditado."); onSaved(); }, onError: error => toast.error(error.message) });
+  const update = trpc.operation.updateImportMapping.useMutation({ onSuccess: () => { toast.success(t("Mapeamento de importação guardado e auditado.")); onSaved(); }, onError: error => toast.error(error.message) });
   useEffect(() => { setDraft(parseStoredMapping(mappingJson)); }, [mappingJson]);
   const save = () => {
     const mapping = {} as Record<MappingKey, string[]>;
     for (const field of mappingFields) {
       const aliases = Array.from(new Set(draft[field.key].split(",").map(item => item.trim()).filter(item => item && item.length <= 80 && !/[<>\r\n]/.test(item)))).slice(0, 12);
-      if (!aliases.length) { toast.error(`Indique pelo menos um cabeçalho para ${field.label.toLowerCase()}.`); return; }
+      if (!aliases.length) { toast.error(t("Indique pelo menos um cabeçalho para") + ` ${t(field.label).toLowerCase()}.`); return; }
       mapping[field.key] = aliases;
     }
     update.mutate({ projectId, mapping });
   };
-  return <Card className="border-border shadow-sm"><CardContent className="p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="flex gap-3"><span className="rounded-xl bg-[#0A3638] p-2 text-white"><FileInput className="size-5" /></span><div><h3 className="font-semibold text-foreground">Mapeamento de cabeçalhos do relatório</h3><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Quando o BMS alterar nomes de colunas, indique abaixo os cabeçalhos que correspondem a cada métrica. O mapeamento aplica-se apenas a <strong>novas importações</strong>; não reescreve leituras históricas.</p></div></div><Button type="button" onClick={save} disabled={update.isPending} className="shrink-0"><Save className="mr-2 size-4" />{update.isPending ? "A guardar..." : "Guardar mapeamento"}</Button></div><div className="mt-5 grid gap-4 md:grid-cols-2">{mappingFields.map(field => <div key={field.key} className="rounded-xl border border-border bg-muted/40 p-4"><Label htmlFor={`mapping-${field.key}`} className="text-sm font-medium text-foreground">{field.label}</Label><Input id={`mapping-${field.key}`} className="mt-2 bg-card" value={draft[field.key]} onChange={event => setDraft(current => ({ ...current, [field.key]: event.target.value }))} placeholder={field.initial} /><p className="mt-2 text-xs leading-5 text-muted-foreground">{field.help} Se houver alternativas, separe-as por vírgula.</p></div>)}</div><p className="mt-4 rounded-xl border border-[#6D7A70] bg-[#EDEBEB] p-3 text-xs leading-5 text-[#646461]"><strong>Regra de segurança:</strong> valide o primeiro relatório novo na aba Dados. A importação guarda sempre a fonte, a data, a unidade, a qualidade e o lote de origem para auditoria.</p></CardContent></Card>;
+  return <Card className="border-border bg-card shadow-sm"><CardContent className="p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="flex gap-3"><span className="rounded-xl bg-surface-contrast p-2 text-white"><FileInput className="size-5" /></span><div><h3 className="font-semibold text-foreground">{t("Mapeamento de cabeçalhos do relatório")}</h3><p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("Quando o BMS alterar nomes de colunas, indique abaixo os cabeçalhos que correspondem a cada métrica. O mapeamento aplica-se apenas a novas importações; não reescreve leituras históricas.")}</p></div></div><Button type="button" onClick={save} disabled={update.isPending} className="shrink-0"><Save className="mr-2 size-4" />{update.isPending ? t("A guardar...") : t("Guardar mapeamento")}</Button></div><div className="mt-5 grid gap-4 md:grid-cols-2">{mappingFields.map(field => <div key={field.key} className="rounded-xl border border-border bg-muted/40 p-4"><Label htmlFor={`mapping-${field.key}`} className="text-sm font-medium text-foreground">{t(field.label)}</Label><Input id={`mapping-${field.key}`} className="mt-2 bg-card" value={draft[field.key]} onChange={event => setDraft(current => ({ ...current, [field.key]: event.target.value }))} placeholder={field.initial} /><p className="mt-2 text-xs leading-5 text-muted-foreground">{t(field.help)} {t("Se houver alternativas, separe-as por vírgula.")}</p></div>)}</div><p className="mt-4 rounded-xl border border-secondary bg-secondary/70 p-3 text-xs leading-5 text-muted-foreground"><strong className="text-foreground">{t("Regra de segurança:")}</strong> {t("valide o primeiro relatório novo na aba Dados. A importação guarda sempre a fonte, a data, a unidade, a qualidade e o lote de origem para auditoria.")}</p></CardContent></Card>;
 }

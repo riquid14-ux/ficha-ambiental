@@ -28,6 +28,23 @@
 | Próximo reporting | `calendarEvents.list` do projeto ativo | Primeiro evento pendente futuro ordenado por data | “Sem entrega agendada” | Fonte/owner/data mostrados sem metas inventadas |
 | MIRR no SIN01 | `wasteEgars.list` do projeto/ano | Contagem de registos e estado vazio quando não existirem e-GARs | Ligação para MIRR | 0 registos na demonstração |
 
+## Operação NEST — extensão de decisão
+
+> A fotografia aérea continua a ser a **vista de infraestrutura**. Não é apresentada como um gémeo digital. O gémeo operacional é uma camada calculada, explicável e separada, que usa apenas leituras, parâmetros e qualidade já autorizados.
+
+| Vista/indicador | Fonte autorizada | Regra de cálculo e sinal | Salvaguarda |
+|---|---|---|---|
+| Gémeo operacional — energia e TI | Leituras de energia do site, energia/potência TI, PUE e `operation.settings` | Compara PUE/valores recebidos com limites configurados; apresenta `normal`, `atenção`, `desvio`, `referência` ou `dados em falta` | Em modo ilustrativo, qualquer sinal é **referência**, nunca alerta de conformidade |
+| Gémeo operacional — água do mar | Caudal, temperatura de descarga, ΔT, COP e limites de captação/descarga | Avalia limites mínimo/máximo e reúne o último valor válido por sistema | Falta de leitura devolve lacuna, nunca estado saudável |
+| Gémeo operacional — sustentabilidade | `environmental` de `operation.overview` (CUE, carbono, WUE) | Mostra CUE apenas se houver energia TI e fator; carbono elétrico fica explicitamente marcado conforme origem | Inventário físico, faturas e telemetria permanecem conceitos separados |
+| Sustentabilidade operacional | Leituras, inventário de HVO/gasóleo/CO₂, inventário químico e fonte EED | Painel de intensidade, recursos e prontidão de reporte; série temporal só existe com pelo menos duas observações | Não substitui formulário EED nem deduz submissão regulatória |
+| Roldana de operação | `operation.settings`, mapeamento de importação e auditoria existente | Expõe modo, metas, limites, fatores, preços, estratégia, horizonte e aliases de colunas BMS | Alterar parâmetros não reescreve leituras históricas; guardar passa pelo procedimento protegido e auditado |
+
+### Regressões acrescentadas
+
+- `server/operation-digital-twin.test.ts` valida estados de desvio de PUE/caudal, modo ilustrativo e lacunas sem classificação indevida.
+- `server/operation-sustainability.test.ts` mantém as regras de inventário e separação entre dados físicos, faturação e telemetria.
+
 ## Distribuição DCAPE confirmada
 
 | Fase | Obrigações lógicas SIN02 | Composição |
@@ -51,6 +68,8 @@ Os caminhos seguintes são artefactos efémeros da sessão de validação, não 
 | Dashboard SIN02, EN/claro | Fases 3/2/34/72/5/19/1 e cartões de dados reais do projeto |
 | Timeline SIN02, EN/claro | Sete fases, cartões por fase e programas/planos separados |
 | Fases SIN02, EN/claro | Pré-licenciamento com apenas PL-1, PL-2 e PL-3; descrições regulamentares em inglês |
+| Operação SIN01, EN/escuro | Gémeo operacional com PUE/WUE/CUE/COP/cobertura, fotografia de infraestrutura preservada e separação entre referência/demonstração |
+| Definições de Operação SIN01, EN/escuro | Fontes, fórmulas, limites e mapeamento BMS em superfícies sem fundos claros rígidos |
 
 ## Limites conhecidos desta ronda
 

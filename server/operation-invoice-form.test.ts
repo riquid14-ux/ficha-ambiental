@@ -95,12 +95,12 @@ describe("Operação — formulário manual de faturas", () => {
     expect(screen.getByTestId("scatter-var(--chart-2)").textContent).toBe("2");
   });
 
-  it("apresenta o cockpit premium com a análise WUE versus PUE e a visão do edifício", async () => {
+  it("apresenta o cockpit premium com o gémeo operacional, análise WUE versus PUE e vista de infraestrutura", async () => {
     mocks.overview = { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" }, environmental: { configurationMode: "illustrative", carbonStatus: "demonstracao", thresholdChecks: [] } };
     const user = userEvent.setup();
     render(createElement(Operation));
-    expect(screen.getByText("Gémeo digital do edifício")).toBeTruthy();
-    expect(screen.getByText("Infraestrutura do NEST")).toBeTruthy();
+    expect(screen.getByText("Gémeo operacional a aguardar dados")).toBeTruthy();
+    expect(screen.getByText("Vista de infraestrutura do NEST")).toBeTruthy();
     await user.click(screen.getByRole("tab", { name: "Desempenho" }));
     expect(screen.getByText("WUE versus PUE")).toBeTruthy();
     expect(screen.getByText("Relação central de sustentabilidade")).toBeTruthy();

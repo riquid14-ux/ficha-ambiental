@@ -4791,21 +4791,33 @@ export const appRouter = router({
   // ─── Operação do edifício — SIN01 / NEST ─────────────────────────────────
   operation: router({
     overview: protectedProcedure
-      .input(z.object({ projectId: z.number().int().positive(), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }))
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        // A resolução de quinze minutos só é necessária para análises de
+        // desempenho. O resumo diário mantém o cockpit rápido por defeito.
+        includeDetailed: z.boolean().default(false),
+        detailWindowDays: z.number().int().min(1).max(31).default(3),
+      }))
       .query(async ({ ctx, input }) => {
         await assertOperationAccess(ctx.user, input.projectId);
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
         const start = input.startDate ? Date.parse(`${input.startDate}T00:00:00Z`) : 0;
         const end = input.endDate ? Date.parse(`${input.endDate}T23:59:59Z`) : Date.now() + 86_400_000;
+        const detailStart = Math.max(start, end - ((input.detailWindowDays - 1) * 86_400_000));
+        const detailFilter = input.includeDetailed
+          ? sql`AND (granularity <> 'quinze_minutos' OR measuredAt >= ${detailStart})`
+          : sql`AND granularity <> 'quinze_minutos'`;
         const result = await database.execute(sql`
-          SELECT metricCode, metricLabel, category, unit, value, measuredAt, granularity, source, dataQuality, qualityNote
+          SELECT metricCode, metricLabel, category, unit, value, measuredAt, granularity, source, dataQuality, qualityNote, isDemo
           FROM operation_readings
-          WHERE projectId = ${input.projectId} AND measuredAt >= ${start} AND measuredAt <= ${end}
+          WHERE projectId = ${input.projectId} AND measuredAt >= ${start} AND measuredAt <= ${end} ${detailFilter}
           ORDER BY measuredAt ASC, metricCode ASC
           LIMIT 12000
         `);
-        const rawReadings = ((result as any)[0] || []).map((row: any) => ({ ...row, measuredAt: Number(row.measuredAt), value: Number(row.value) }));
+        const rawReadings = ((result as any)[0] || []).map((row: any) => ({ ...row, measuredAt: Number(row.measuredAt), value: Number(row.value), isDemo: Boolean(row.isDemo) }));
         const readings = [...rawReadings, ...buildCalculatedWueReadings(rawReadings)];
         const usable = readings.filter((row: any) => row.dataQuality !== "invalid");
         const latest = new Map<string, any>();
@@ -4821,7 +4833,7 @@ export const appRouter = router({
         const settings = (settingsResult as any)[0]?.[0] || null;
         const environmental = calculateOperationEnvironmentalMetrics(readings, settings);
         const forecast = buildOperationTrendForecast(readings, settings);
-        return { readings, latest: Object.fromEntries(latest), quality, settings, environmental, forecast, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
+        return { readings, hasDemoData: rawReadings.some((row: any) => row.isDemo), latest: Object.fromEntries(latest), quality, settings, environmental, forecast, financial: { invoiceCount: Number(invoiceSummary.invoiceCount || 0), totalCostEur: Number(invoiceSummary.totalCostEur || 0), carbonStatus: environmental.carbonStatus } };
       }),
     settings: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))

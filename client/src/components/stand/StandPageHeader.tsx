@@ -38,10 +38,16 @@ export function StandPageHeader({
 }: StandPageHeaderProps) {
   const isOperations = tone === "operations";
   const hasBackgroundImage = Boolean(image) && imageMode === "background";
-  const useLightText = isOperations || hasBackgroundImage;
+  // A fotografia é o suporte visual do cabeçalho. Em claro, o texto é lido sobre
+  // uma película clara; no tema escuro a película torna-se verde-profunda.
+  const useLightText = isOperations && !hasBackgroundImage;
 
   return (
-    <section className={`stand-page-header relative isolate overflow-hidden ${toneClasses[tone]}`}>
+    <section
+      data-photographic={hasBackgroundImage ? "true" : "false"}
+      data-operations={isOperations ? "true" : "false"}
+      className={`stand-page-header relative isolate overflow-hidden ${toneClasses[tone]}`}
+    >
       {hasBackgroundImage && (
         <>
           <img
@@ -51,7 +57,7 @@ export function StandPageHeader({
             style={{ objectPosition: imagePosition }}
             onError={(event) => { event.currentTarget.style.display = "none"; }}
           />
-          <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(6,43,45,0.96)_0%,rgba(10,54,56,0.88)_46%,rgba(10,54,56,0.58)_100%)]" />
+          <div className="stand-page-header-photo-overlay absolute inset-0" />
         </>
       )}
       {image && imageMode === "side" && (

@@ -19,6 +19,9 @@ describe("cobertura de tradução da interface", () => {
     const bridge = fs.readFileSync(path.join(root, "client/src/components/UiLanguageBridge.tsx"), "utf8");
     expect(bridge).toContain("uiLiteralTranslations[value]");
     expect(bridge).toContain("Dynamic domain content, user input and regulatory text are untouched");
+    expect(bridge).toContain("Só preservamos uma origem quando a substituição é uma");
+    expect(bridge).toContain("textOrigins.current.delete(node)");
+    expect(bridge).toContain("translated !== source");
     expect(bridge).toContain("placeholder");
     expect(bridge).toContain("aria-label");
   });

@@ -29,10 +29,23 @@ export function UiLanguageBridge() {
     if (!root) return;
 
     const translateText = (node: Text) => {
+      const remembered = textOrigins.current.get(node);
+      const expected = remembered ? translateLiteral(remembered, language) : null;
+
+      // A React pode atualizar contadores, métricas e resultados dentro de um
+      // nó existente. Só preservamos uma origem quando a substituição é uma
+      // tradução efetiva; assim, nunca reescrevemos dados de negócio com o
+      // valor inicial que existia antes da consulta terminar.
+      if (remembered && node.data !== expected) {
+        textOrigins.current.delete(node);
+      }
+
       const source = textOrigins.current.get(node) ?? node.data;
-      if (!textOrigins.current.has(node)) textOrigins.current.set(node, source);
       const translated = translateLiteral(source, language);
-      if (node.data !== translated) node.data = translated;
+      if (translated !== source) {
+        textOrigins.current.set(node, source);
+        if (node.data !== translated) node.data = translated;
+      }
     };
 
     const translateAttributes = (element: Element) => {
@@ -42,12 +55,14 @@ export function UiLanguageBridge() {
         const current = element.getAttribute(name);
         if (current === null) continue;
         const source = saved[name] ?? current;
-        if (saved[name] === undefined) {
-          saved[name] = source;
-          changed = true;
-        }
         const translated = translateLiteral(source, language);
-        if (current !== translated) element.setAttribute(name, translated);
+        if (translated !== source) {
+          if (saved[name] === undefined) {
+            saved[name] = source;
+            changed = true;
+          }
+          if (current !== translated) element.setAttribute(name, translated);
+        }
       }
       if (changed) attributeOrigins.current.set(element, saved);
     };

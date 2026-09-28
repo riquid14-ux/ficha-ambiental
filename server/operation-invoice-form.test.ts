@@ -50,7 +50,7 @@ describe("Operação — formulário manual de faturas", () => {
     const user = userEvent.setup();
     mocks.createInvoice.mockClear();
     render(createElement(Operation));
-    await user.click(screen.getByRole("tab", { name: /Faturas e reconciliação/i }));
+    await user.click(screen.getByRole("tab", { name: "Gestão" }));
     await user.click(screen.getByRole("button", { name: /Registar fatura/i }));
     await user.type(screen.getByLabelText("Fornecedor"), "QA fornecedor");
     await user.type(screen.getByLabelText("N.º da fatura"), "QA-UI-1");
@@ -67,7 +67,7 @@ describe("Operação — formulário manual de faturas", () => {
     ];
     const user = userEvent.setup();
     render(createElement(Operation));
-    await user.click(screen.getByRole("tab", { name: /Faturas e reconciliação/i }));
+    await user.click(screen.getByRole("tab", { name: "Gestão" }));
     expect(screen.getByText("Conforme")).toBeTruthy();
     expect(screen.getByText("Incompleta")).toBeTruthy();
     expect(screen.getByText("Sem medição")).toBeTruthy();
@@ -95,15 +95,15 @@ describe("Operação — formulário manual de faturas", () => {
     expect(screen.getByTestId("scatter-var(--chart-2)").textContent).toBe("2");
   });
 
-  it("apresenta o cockpit premium com a análise WUE versus PUE e a visão do edifício", () => {
+  it("apresenta o cockpit premium com a análise WUE versus PUE e a visão do edifício", async () => {
     mocks.overview = { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" }, environmental: { configurationMode: "illustrative", carbonStatus: "demonstracao", thresholdChecks: [] } };
+    const user = userEvent.setup();
     render(createElement(Operation));
-    expect(screen.getByText("Cockpit de sustentabilidade e desempenho do edifício.")).toBeTruthy();
     expect(screen.getByText("Gémeo digital do edifício")).toBeTruthy();
+    expect(screen.getByText("Infraestrutura do NEST")).toBeTruthy();
+    await user.click(screen.getByRole("tab", { name: "Desempenho" }));
     expect(screen.getByText("WUE versus PUE")).toBeTruthy();
     expect(screen.getByText("Relação central de sustentabilidade")).toBeTruthy();
-    expect(screen.getByText("Infraestrutura do NEST")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Fontes e cálculos/i })).toBeTruthy();
   });
 
   it("abre um cartão de infraestrutura de referência sem criar dados persistentes", async () => {
@@ -128,7 +128,7 @@ describe("Operação — formulário manual de faturas", () => {
     const user = userEvent.setup();
     render(createElement(Operation));
     await user.click(screen.getByRole("button", { name: /Simular futuro/i }));
-    expect(screen.getByRole("tab", { name: /Previsões e cenários/i }).getAttribute("data-state")).toBe("active");
+    expect(screen.getByRole("tab", { name: "Gestão" }).getAttribute("data-state")).toBe("active");
     expect(screen.getByText("Laboratório de decisão")).toBeTruthy();
   });
 
@@ -136,8 +136,9 @@ describe("Operação — formulário manual de faturas", () => {
     const user = userEvent.setup();
     mocks.overview = { readings: [], latest: {}, quality: { total: 0, valid: 0, invalid: 0, coveragePercent: 0 }, financial: { invoiceCount: 0, totalCostEur: 0, carbonStatus: "factor_pendente" }, forecast: { minimumDays: 7, horizonDays: 30, pue: { status: "histórico_insuficiente" }, wue: { status: "histórico_insuficiente" }, cost: { status: "preço_pendente" } } };
     render(createElement(Operation));
-    await user.click(screen.getByRole("tab", { name: /Previsões e cenários/i }));
+    await user.click(screen.getByRole("tab", { name: "Desempenho" }));
     expect(screen.getByText("Previsão automática ainda em preparação")).toBeTruthy();
+    await user.click(screen.getByRole("tab", { name: "Gestão" }));
     expect(screen.getByText("Laboratório de decisão")).toBeTruthy();
   });
 
@@ -145,7 +146,8 @@ describe("Operação — formulário manual de faturas", () => {
     const user = userEvent.setup();
     mocks.createWaterReading.mockClear();
     render(createElement(Operation));
-    await user.click(screen.getByRole("button", { name: /Registar água medida/i }));
+    await user.click(screen.getByRole("tab", { name: "Desempenho" }));
+    await user.click(screen.getAllByRole("button", { name: /Registar água medida/i })[0]);
     await user.clear(screen.getByLabelText("Consumo (m³)"));
     await user.type(screen.getByLabelText("Consumo (m³)"), "12.5");
     await user.click(screen.getByRole("button", { name: "Atualizar WUE" }));

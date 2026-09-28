@@ -414,6 +414,13 @@
       "when": 1790342339982,
       "tag": "0058_fancy_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1790593480799,
+      "tag": "0059_powerful_doomsday",
+      "breakpoints": true
     }
   ]
 }

@@ -244,3 +244,22 @@ main { animation: stand-rise 0.18s var(--ease-out); }
 .stand-status-success { color: #087a3d; background: rgb(0 193 89 / .1); border-color: rgb(0 193 89 / .28); }
 .stand-status-neutral { color: #272726; background: #f4f4ff; border-color: #dedddd; }
 .stand-status-critical { color: #7d2b26; background: rgb(159 60 53 / .08); border-color: rgb(159 60 53 / .24); }
+
+/* Photographic headers — the photo must remain a visible part of the identity.
+   Clear mode favours a bright editorial read; dark mode preserves the NEST
+   control-room atmosphere without burying the photography under opaque green. */
+.stand-page-header { min-height: 172px; border-radius: 1.25rem; border: 1px solid var(--border); box-shadow: 0 18px 45px -34px rgb(10 54 56 / .45); }
+.stand-page-header[data-photographic="true"] { border-color: rgb(10 54 56 / .24); }
+.stand-page-header[data-photographic="true"] > img { filter: saturate(.92) contrast(1.04) brightness(1.06); }
+.stand-page-header-photo-overlay { background: linear-gradient(100deg, rgb(255 255 255 / .93) 0%, rgb(255 255 255 / .78) 38%, rgb(255 255 255 / .25) 72%, rgb(10 54 56 / .1) 100%); }
+.stand-page-header[data-photographic="true"] .stand-kicker { color: #087a3d; }
+.stand-page-header[data-photographic="true"] .stand-page-title { color: #102221; }
+.stand-page-header[data-photographic="true"] .text-muted-foreground { color: rgb(16 34 33 / .76); }
+.stand-page-header[data-photographic="true"] [data-slot="badge"] { border-color: rgb(10 54 56 / .25); background: rgb(255 255 255 / .58); color: #0a3638; backdrop-filter: blur(10px); }
+.dark .stand-page-header[data-photographic="true"] > img { filter: saturate(.86) contrast(1.08) brightness(.78); }
+.dark .stand-page-header-photo-overlay { background: linear-gradient(102deg, rgb(5 32 33 / .92) 0%, rgb(8 49 50 / .78) 43%, rgb(8 49 50 / .33) 76%, rgb(8 49 50 / .16) 100%); }
+.dark .stand-page-header[data-photographic="true"] .stand-kicker { color: var(--primary); }
+.dark .stand-page-header[data-photographic="true"] .stand-page-title { color: #fff; }
+.dark .stand-page-header[data-photographic="true"] .text-muted-foreground { color: rgb(255 255 255 / .74); }
+.dark .stand-page-header[data-photographic="true"] [data-slot="badge"] { border-color: rgb(255 255 255 / .25); background: rgb(255 255 255 / .1); color: #fff; }
+@media (max-width: 640px) { .stand-page-header { min-height: 196px; } .stand-page-header-photo-overlay { background: linear-gradient(135deg, rgb(255 255 255 / .94), rgb(255 255 255 / .58) 74%, rgb(255 255 255 / .42)); } .dark .stand-page-header-photo-overlay { background: linear-gradient(135deg, rgb(5 32 33 / .94), rgb(8 49 50 / .6) 74%, rgb(8 49 50 / .42)); } }

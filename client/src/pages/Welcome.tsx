@@ -9,7 +9,7 @@ import { getVisibleNavigationPaths } from "@/lib/role-navigation";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -68,7 +68,10 @@ export default function Welcome() {
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
   const [, setLocation] = useLocation();
-  const [videoPlaying, setVideoPlaying] = useState(false);
+  // Autoplay é permitido de forma fiável em browsers quando o vídeo inicia sem som.
+  // A fotografia institucional permanece disponível no controlo "Voltar à imagem".
+  const [videoPlaying, setVideoPlaying] = useState(true);
+  const [videoReady, setVideoReady] = useState(false);
   const userRole = (user as any)?.role || "user";
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
@@ -81,12 +84,12 @@ export default function Welcome() {
   // substituí-lo por URL configurada, mas uma configuração vazia nunca troca o
   // conteúdo existente por um bloco de placeholder.
   const videoUrl = String((settingsQuery.data as any)?.welcomeVideoUrl || "https://www.youtube.com/embed/IsjSfMUIWzE").trim();
-  const normalizedVideoUrl = videoUrl.includes("watch?v=")
+  const normalizedVideoUrl = (videoUrl.includes("watch?v=")
     ? videoUrl.replace("watch?v=", "embed/")
     : videoUrl.includes("youtu.be/")
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
-    : videoUrl;
-  const embedUrl = `${normalizedVideoUrl}${normalizedVideoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&controls=1&playsinline=1&rel=0`;
+    : videoUrl).replace("www.youtube.com/embed/", "www.youtube-nocookie.com/embed/");
+  const embedUrl = `${normalizedVideoUrl}${normalizedVideoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&controls=1&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
   const welcomeImage = String((settingsQuery.data as any)?.image_dashboard || "/manus-storage/sc-aerial-2_18fcfe53.png");
 
   const visiblePaths = getVisibleNavigationPaths({
@@ -101,6 +104,22 @@ export default function Welcome() {
   const roleLabel = ROLE_LABELS[userRole] || userRole;
   const projectName = isAllProjects ? "Todos os Projetos" : (activeProject?.name || projectCode);
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
+
+  useEffect(() => {
+    if (!videoPlaying) return;
+    setVideoReady(false);
+    const handlePlayerMessage = (event: MessageEvent) => {
+      if (!/youtube(?:-nocookie)?\.com$/.test(new URL(event.origin).hostname)) return;
+      try {
+        const payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (payload?.event === "onStateChange" && [1, 3].includes(payload?.info)) setVideoReady(true);
+      } catch {
+        // Mensagens não estruturadas do fornecedor são ignoradas.
+      }
+    };
+    window.addEventListener("message", handlePlayerMessage);
+    return () => window.removeEventListener("message", handlePlayerMessage);
+  }, [videoPlaying, embedUrl]);
 
   return (
     <AppLayout>
@@ -127,12 +146,15 @@ export default function Welcome() {
             <CardContent className="p-0">
               {videoPlaying ? (
                 <div className="photo-grade-frame relative aspect-video w-full bg-[#0A3638]">
+                  <img src={welcomeImage} alt="" aria-hidden="true" className="photo-grade absolute inset-0 size-full object-cover" />
+                  <span className={`absolute inset-0 bg-[linear-gradient(120deg,rgba(10,54,56,.7),rgba(10,54,56,.12)_65%,rgba(10,54,56,.55))] transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`} />
                   <iframe
-                    className="absolute inset-0 h-full w-full"
+                    className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${videoReady ? "opacity-100" : "opacity-0"}`}
                     src={embedUrl}
                     title="Start Campus"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    onLoad={() => setVideoReady(true)}
                   />
                   <button type="button" onClick={() => setVideoPlaying(false)} className="absolute right-3 top-3 z-10 rounded-lg border border-white/20 bg-[#0A3638]/85 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-[#0A3638]">{t("Voltar à imagem")}</button>
                 </div>

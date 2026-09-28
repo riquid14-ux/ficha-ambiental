@@ -25,10 +25,19 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { StandMetricCard } from "@/components/stand/StandMetricCard";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
+import {
+  DCAPE_MONITORING_PROGRAMMES,
+  DCAPE_OTHER_PLANS,
+  DCAPE_PHASES,
+  getDcapePhaseForLegacyValue,
+  type DcapePhaseKey,
+} from "@shared/phases";
+import { isTimelinePhaseApplicable, phaseLogicalSummary } from "@/lib/dcape-presentation";
 
 type PhaseDef = (typeof PHASE_DEFS)[number];
 type PhaseDataItem = PhaseDef & {
   total: number;
+  elements: number;
   concluido: number;
   emCurso: number;
   pendente: number;
@@ -37,110 +46,27 @@ type PhaseDataItem = PhaseDef & {
   hasActivity: boolean;
 };
 
-// Phase definitions matching the database
-// Construction sub-phases that should be labelled "Construção" in the all-projects view
-const CONSTRUCTION_PHASE_KEYS = [
-  "Preparação Prévia",
-  "Execução da Obra",
-  "Fase Final",
-];
-
-// Simplified phase labels for the all-projects badge
-function getSimplifiedPhaseLabel(phaseKey: string): string {
-  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey)) return "Construção";
-  const def = PHASE_DEFS.find(p => p.key === phaseKey);
-  return def?.label || phaseKey; // will be wrapped with t() at render
-}
+const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
+const PHASE_DEFS = DCAPE_PHASES.map((phase) => ({
+  ...phase,
+  label: phase.name,
+  shortLabel: phase.shortName,
+  color: phase.key === "construcao" ? "bg-primary" : "bg-[#6D7A70]",
+  lightColor: phase.key === "construcao"
+    ? "border-primary/30 bg-primary/10"
+    : "border-[#6D7A70]/30 bg-[#EDEBEB]/60",
+  textColor: "text-foreground",
+}));
 
 function getPhaseColor(phaseKey: string): string {
-  if (CONSTRUCTION_PHASE_KEYS.includes(phaseKey))
-    return "bg-primary text-primary-foreground border-primary";
-  const def = PHASE_DEFS.find(p => p.key === phaseKey);
-  if (!def) return "bg-muted text-foreground";
-  return def.lightColor + " " + def.textColor;
+  const canonicalKey = PHASE_DEFS.find((phase) => phase.key === phaseKey || phase.label === phaseKey)?.key;
+  return canonicalKey === "construcao"
+    ? "bg-primary text-primary-foreground border-primary"
+    : "bg-muted text-foreground border-border";
 }
 
-// Projects that are operation-only (no construction phase)
-const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
-const OPERATION_PHASES = ["Exploração", "Desativação (Pós-Exploração)"];
-
-const PHASE_DEFS = [
-  {
-    key: "Prévias Licenciamento",
-    label: "Pré-Licenciamento",
-    shortLabel: "Pré-Lic.",
-    color: "bg-[#F4F4FF]",
-    lightColor: "bg-[#F4F4FF] dark:bg-[#F4F4FF]/20 border-[#0A3638]",
-    textColor: "text-[#0A3638]",
-  },
-  {
-    key: "Em Sede de Licenciamento",
-    label: "Licenciamento",
-    shortLabel: "Lic.",
-    color: "bg-[#0A3638]",
-    lightColor: "bg-[#0A3638] dark:bg-[#0A3638]/20 border-[#0A3638]",
-    textColor: "text-[#0A3638]",
-  },
-  {
-    key: "Pré-Construção",
-    label: "Pré-Construção",
-    shortLabel: "Pré-Const.",
-    color: "bg-[#0A3638]",
-    lightColor: "bg-[#0A3638] border-[#0A3638]",
-    textColor: "text-[#0A3638]",
-  },
-  {
-    key: "Preparação Prévia",
-    label: "Construção (Preparação)",
-    shortLabel: "Prep.",
-    color: "bg-primary",
-    lightColor: "bg-primary dark:bg-primary/20 border-primary",
-    textColor: "text-primary",
-  },
-  {
-    key: "Execução da Obra",
-    label: "Construção (Execução)",
-    shortLabel: "Exec.",
-    color: "bg-primary",
-    lightColor: "bg-primary dark:bg-primary/20 border-primary",
-    textColor: "text-primary",
-  },
-  {
-    key: "Fase Final",
-    label: "Construção (Final)",
-    shortLabel: "Final",
-    color: "bg-primary",
-    lightColor: "bg-primary dark:bg-primary/20 border-primary",
-    textColor: "text-primary",
-  },
-  {
-    key: "Fase Final Construção",
-    label: "Final da Construção",
-    shortLabel: "Final Const.",
-    color: "bg-[#EDEBEB]",
-    lightColor: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border-[#6D7A70]",
-    textColor: "text-[#646461]",
-  },
-  {
-    key: "Exploração",
-    label: "Exploração",
-    shortLabel: "Expl.",
-    color: "bg-[#EDEBEB]",
-    lightColor: "bg-[#EDEBEB] dark:bg-[#EDEBEB]/20 border-[#6D7A70]",
-    textColor: "text-[#646461]",
-  },
-  {
-    key: "Desativação (Pós-Exploração)",
-    label: "Desativação",
-    shortLabel: "Desat.",
-    color: "bg-muted0",
-    lightColor: "bg-muted border-border",
-    textColor: "text-foreground",
-  },
-];
-
 export default function Timeline() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { activeProject, isAllProjects, projects } = useProject();
 
@@ -195,7 +121,7 @@ export default function Timeline() {
         if (OPERATION_ONLY_PROJECT_CODES.includes(proj.code)) {
           result.set(proj.id, "Operação");
         } else {
-          result.set(proj.id, "Pré-Licenciamento");
+          result.set(proj.id, "Previamente ao licenciamento");
         }
       }
       return result;
@@ -207,11 +133,11 @@ export default function Timeline() {
         continue;
       }
       // Find the first phase that is NOT at 100%
-      let currentPhase = "Operação"; // if all are 100%, project is in operation
+      let currentPhase = "Fase de exploração";
       for (const phase of proj.phases) {
-        if (phase.key === "Desativação (Pós-Exploração)") continue;
+        if (phase.key === "desativacao") continue;
         if (phase.progress < 100) {
-          currentPhase = getSimplifiedPhaseLabel(phase.key);
+          currentPhase = PHASE_DEFS.find((definition) => definition.key === phase.key)?.label || phase.key;
           break;
         }
       }
@@ -238,79 +164,37 @@ export default function Timeline() {
   const phaseData = useMemo(() => {
     if (!allSections || !allMeasures) return [];
 
-    const statusMap = new Map<number, string>();
-    (phaseStatuses || []).forEach(s => statusMap.set(s.measureId, s.status));
+    const statusMap: Record<number, { status?: string | null; trackingStatus?: string | null }> = {};
+    (phaseStatuses || []).forEach((status: any) => {
+      statusMap[status.measureId] = status;
+    });
 
     // Filter phases for operation-only projects
     const isOperationOnly =
       activeProject &&
       OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
-    const applicablePhases = isOperationOnly
-      ? PHASE_DEFS.filter(p => OPERATION_PHASES.includes(p.key))
-      : PHASE_DEFS;
+    const applicablePhases = PHASE_DEFS.filter((phase) =>
+      isTimelinePhaseApplicable(activeProject?.code, phase.key),
+    );
 
     return applicablePhases
       .map(phaseDef => {
-        // Find sections matching this phase
-        const phaseSections = allSections.filter(s => s.phase === phaseDef.key);
-        const sectionIds = new Set(phaseSections.map(s => s.id));
+        const summary = phaseLogicalSummary(allMeasures, phaseDef.key, statusMap);
+        const total = summary.total;
 
-        // Find measures in those sections
-        const phaseMeasures = allMeasures.filter(m =>
-          sectionIds.has(m.sectionId)
-        );
-        const total = phaseMeasures.length;
-
-        if (total === 0) return null;
-
-        // Count statuses
-        let concluido = 0;
-        let emCurso = 0;
-        let pendente = 0;
-
-        phaseMeasures.forEach(m => {
-          const status = statusMap.get(m.id) || "pendente";
-          if (status === "concluido") concluido++;
-          else if (status === "em_curso") emCurso++;
-          else pendente++;
-        });
+        const concluido = summary.concluded;
+        const emCurso = summary.inProgress;
+        const pendente = total - concluido - emCurso;
 
         const progress = total > 0 ? Math.round((concluido / total) * 100) : 0;
         const isComplete = concluido === total;
         const hasActivity = concluido > 0 || emCurso > 0;
 
-        // Merge DB data (hidden, dates, dbId)
-        // Match DB phase using multiple strategies (phaseKey, phaseName, or normalized comparison)
-        const normalizeKey = (s: string) =>
-          s
-            .toLowerCase()
-            .replace(/[áàã]/g, "a")
-            .replace(/[éè]/g, "e")
-            .replace(/[íì]/g, "i")
-            .replace(/[óòõ]/g, "o")
-            .replace(/[úù]/g, "u")
-            .replace(/[^a-z0-9]/g, "");
-        const defNorm = normalizeKey(phaseDef.key);
-        const dbPhase = projectPhasesData.find(
-          (pp: any) =>
-            pp.phaseName === phaseDef.key ||
-            pp.phaseKey === phaseDef.key ||
-            normalizeKey(pp.phaseName) === defNorm ||
-            normalizeKey(pp.phaseKey) === defNorm ||
-            // Handle specific mismatches
-            (phaseDef.key === "Prévias Licenciamento" &&
-              (pp.phaseKey === "previas_licenciamento" ||
-                (pp.phaseName?.includes("Licenciamento") &&
-                  pp.phaseName?.includes("Previamente")))) ||
-            (phaseDef.key === "Desativação (Pós-Exploração)" &&
-              (pp.phaseKey === "desativacao" ||
-                pp.phaseName === "Desativação")) ||
-            (phaseDef.key === "Execução da Obra" &&
-              (pp.phaseKey === "execucao_obra" || pp.phaseKey === "construcao"))
-        );
+        const dbPhase = projectPhasesData.find((projectPhase: any) => projectPhase.phaseKey === phaseDef.key);
         return {
           ...phaseDef,
           total,
+          elements: summary.elements.length,
           concluido,
           emCurso,
           pendente,
@@ -367,7 +251,8 @@ export default function Timeline() {
             >
               {projects.map(p => {
                 const currentPhase =
-                  projectCurrentPhases.get(p.id) || "Pré-Licenciamento";
+                  projectCurrentPhases.get(p.id) || "Previamente ao licenciamento";
+                const canonicalPhase = getDcapePhaseForLegacyValue(currentPhase)?.name || currentPhase;
                 return (
                   <article
                     key={p.id}
@@ -393,7 +278,7 @@ export default function Timeline() {
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getPhaseColor(currentPhase)}`}
                       >
-                        {currentPhase}
+                        {t(canonicalPhase)}
                       </span>
                     </div>
                     {OPERATION_ONLY_PROJECT_CODES.includes(p.code) ? (
@@ -409,9 +294,7 @@ export default function Timeline() {
                           className="flex gap-1"
                           aria-label={`Progresso das fases de ${p.name}`}
                         >
-                          {PHASE_DEFS.filter(
-                            ph => ph.key !== "Desativação (Pós-Exploração)"
-                          ).map(phase => {
+                          {PHASE_DEFS.map(phase => {
                             const phaseProgress =
                               projectPhaseProgress.get(p.id)?.get(phase.key) ??
                               0;
@@ -711,6 +594,46 @@ export default function Timeline() {
             </section>
 
             <section aria-labelledby="phase-detail-title" className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {[
+                  {
+                    key: "programas-monitorizacao",
+                    title: t("Programas de monitorização"),
+                    items: DCAPE_MONITORING_PROGRAMMES,
+                    countLabel: "1–7",
+                  },
+                  {
+                    key: "outros-planos-projetos",
+                    title: t("Outros Planos/Projetos"),
+                    items: DCAPE_OTHER_PLANS,
+                    countLabel: "1–13",
+                  },
+                ].map((group) => (
+                  <article
+                    key={group.key}
+                    className="rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_10px_28px_hsl(var(--shadow-color)/0.035)] sm:p-5"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="stand-kicker text-primary">DCAPE · {group.countLabel}</p>
+                        <h2 className="mt-1 text-base font-semibold tracking-tight">{group.title}</h2>
+                      </div>
+                      <a className="shrink-0 text-xs font-semibold text-primary hover:underline" href="/planos">
+                        {t("Gerir em Planos")} →
+                      </a>
+                    </div>
+                    <ol className="grid gap-1.5 sm:grid-cols-2">
+                      {group.items.map((item) => (
+                        <li key={item.number} className="flex min-w-0 items-start gap-2 rounded-lg bg-muted/45 px-2.5 py-2 text-xs">
+                          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{item.number}</span>
+                          <span className="min-w-0 leading-5">{language === "en" ? item.nameEn : item.name}</span>
+                          {item.archaeology && <span className="rounded bg-primary/10 px-1 py-0.5 text-[9px] font-semibold text-primary">{t("Arqueologia")}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                  </article>
+                ))}
+              </div>
               <div className="px-1">
                 <p className="stand-kicker text-primary">Execução</p>
                 <h2
@@ -747,6 +670,7 @@ export default function Timeline() {
                             </div>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {phase.total} {t("medidas")} {t("associadas")}
+                              {phase.elements > 0 ? ` · ${phase.elements} ${t("elementos documentais")}` : ""}
                             </p>
                           </div>
                           <div className="text-right">

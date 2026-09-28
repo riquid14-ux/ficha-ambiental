@@ -19,6 +19,7 @@ import { sanitizeFile } from "./file-sanitizer";
 import { canReadDocumentLibrary } from "./document-library";
 import { checkReadiness } from "./health";
 import ExcelJS from "exceljs";
+import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeMeasure } from "@shared/phases";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -3876,13 +3877,18 @@ export const appRouter = router({
 
   phaseMeasures: router({
     getAllProjectsProgress: protectedProcedure
-      .query(async () => {
+      .query(async ({ ctx }) => {
         // Get all projects
         const allProjects = await db.getAllProjects();
         // Get all phase measure statuses for all projects
         const results: any[] = [];
         const ppDb = await db.getDb(); const allProjectPhases = ppDb ? await ppDb.select().from(schema.projectPhases) : [];
         for (const proj of allProjects) {
+          try {
+            await assertProjectModuleAccess(ctx.user, proj.id, "timeline");
+          } catch {
+            continue;
+          }
           const [statuses, projectSections, projectMeasures] = await Promise.all([
             db.getPhaseMeasureStatuses(proj.id),
             db.getProjectSections(proj.id),
@@ -3892,18 +3898,30 @@ export const appRouter = router({
           const statusMap = new Map<number, string>();
           statuses.forEach((s: any) => statusMap.set(s.measureId, s.trackingStatus));
 
+          const applicablePhases = proj.code === "SIN01"
+            ? DCAPE_PHASES.filter((phase) => phase.key === "exploracao" || phase.key === "desativacao")
+            : DCAPE_PHASES;
           const phases: any[] = [];
-          const PHASE_KEYS = ["Prévias Licenciamento", "Em Sede de Licenciamento", "Pré-Construção", "Preparação Prévia", "Execução da Obra", "Fase Final", "Fase Final Construção", "Exploração", "Desativação (Pós-Exploração)"];
 
-          for (const phaseKey of PHASE_KEYS) {
-            const phaseSections = projectSections.filter((s: any) => s.phase === phaseKey);
-            const sectionIds = new Set(phaseSections.map((s: any) => s.id));
-            const phaseMeasures = projectMeasures.filter((m: any) => sectionIds.has(m.sectionId));
-            const total = phaseMeasures.length;
-            if (total === 0) continue;
-            const concluido = phaseMeasures.filter((m: any) => statusMap.get(m.id) === "concluido").length;
-            const ppMatch = projPhases.find((pp: any) => pp.phaseKey === phaseKey || pp.phaseName === phaseKey);
-            phases.push({ key: phaseKey, total, concluido, progress: Math.round((concluido / total) * 100), endDate: ppMatch?.endDate || null });
+          for (const phase of applicablePhases) {
+            const logicalMeasures = new Map<string, any[]>();
+            for (const measure of projectMeasures) {
+              if (!isDcapeMeasure(measure.number) || getDcapePhaseForItem(measure.number)?.key !== phase.key) continue;
+              const key = String(baseDcapeNumber(measure.number));
+              logicalMeasures.set(key, [...(logicalMeasures.get(key) || []), measure]);
+            }
+            const total = logicalMeasures.size;
+            const concluido = Array.from(logicalMeasures.values()).filter((items) =>
+              items.length > 0 && items.every((item) => statusMap.get(item.id) === "concluido"),
+            ).length;
+            const ppMatch = projPhases.find((pp: any) => pp.active && pp.phaseKey === phase.key);
+            phases.push({
+              key: phase.key,
+              total,
+              concluido,
+              progress: total > 0 ? Math.round((concluido / total) * 100) : 0,
+              endDate: ppMatch?.endDate || null,
+            });
           }
           results.push({ projectId: proj.id, code: proj.code, phases });
         }

@@ -18,23 +18,19 @@ import { toast } from "sonner";
 import { Plus, FileText, CheckCircle2, AlertCircle, Clock, MessageSquare, Image, Paperclip, Send, Trash2, Download, ChevronDown, ChevronRight, ChevronLeft, X, ZoomIn, ZoomOut, RotateCcw, Images } from "lucide-react";
 import MeasureTrackingPanel from "@/components/MeasureTrackingPanel";
 import { groupsWithMeasures } from "@/lib/phase-measure-presentation";
+import { DCAPE_PHASES } from "@shared/phases";
+import { isTimelinePhaseApplicable, logicalDcapeItems, phaseKeyForCatalogueItem } from "@/lib/dcape-presentation";
 
 // Projects that are operation-only (no construction phase)
 const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
 const SIN01_EVIDENCE_START_YEAR = 2026;
 
-// All project lifecycle phases (excluding construction which has its own weekly form)
-const ALL_PHASES = [
-  { key: "Prévias Licenciamento", label: "Previamente ao Licenciamento", shortLabel: "Pré-Licenciamento", order: 1, color: "bg-[#F4F4FF]" },
-  { key: "Em Sede de Licenciamento", label: "Em Sede de Licenciamento", shortLabel: "Licenciamento", order: 2, color: "bg-[#0A3638]" },
-  { key: "Pré-Construção", label: "Previamente ao Início da Construção", shortLabel: "Pré-Construção", order: 3, color: "bg-[#0A3638]" },
-  { key: "Preparação Prévia", label: "Preparação Prévia à Construção", shortLabel: "Preparação Prévia", order: 4, color: "bg-primary" },
-  { key: "Execução da Obra", label: "Execução da Obra", shortLabel: "Execução", order: 5, color: "bg-[#EDEBEB]" },
-  { key: "Fase Final", label: "Fase Final", shortLabel: "Fase Final", order: 6, color: "bg-rose-500" },
-  { key: "Fase Final Construção", label: "Fase Final da Construção", shortLabel: "Final Construção", order: 7, color: "bg-[#EDEBEB]" },
-  { key: "Exploração", label: "Fase de Exploração", shortLabel: "Exploração", order: 8, color: "bg-primary" },
-  { key: "Desativação (Pós-Exploração)", label: "Fase de Desativação", shortLabel: "Desativação", order: 9, color: "bg-muted0" },
-];
+const ALL_PHASES = DCAPE_PHASES.map((phase) => ({
+  ...phase,
+  label: phase.name,
+  shortLabel: phase.shortName,
+  color: phase.key === "construcao" ? "bg-primary" : "bg-[#6D7A70]",
+}));
 
 export default function PhaseMeasures(props: any) {
   const embedded = props?.embedded ?? false;
@@ -81,12 +77,12 @@ export default function PhaseMeasures(props: any) {
   const [showAdd, setShowAdd] = useState(false);
   // Filter phases based on project type
   const isOperationOnly = activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
-  const visiblePhases = (isOperationOnly
-    ? ALL_PHASES.filter(p => p.key === "Exploração" || p.key === "Desativação (Pós-Exploração)")
-    : ALL_PHASES).filter(p => !hiddenPhaseKeys.has(p.key) && !hiddenPhaseKeys.has(p.label));
+  const visiblePhases = ALL_PHASES
+    .filter((phase) => isTimelinePhaseApplicable(activeProject?.code, phase.key))
+    .filter((phase) => !hiddenPhaseKeys.has(phase.key) && !hiddenPhaseKeys.has(phase.label));
 
   const [evidenceYear, setEvidenceYear] = useState(() => Math.max(SIN01_EVIDENCE_START_YEAR, new Date().getFullYear()));
-  const [activePhase, setActivePhase] = useState(visiblePhases[0]?.key || ALL_PHASES[0].key);
+  const [activePhase, setActivePhase] = useState<string>(visiblePhases[0]?.key || ALL_PHASES[0].key);
   const [newMeasure, setNewMeasure] = useState({ number: "", description: "", sectionId: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [editingMeasure, setEditingMeasure] = useState<{ id: number; number: string; description: string; responsible: string } | null>(null);
@@ -118,10 +114,12 @@ export default function PhaseMeasures(props: any) {
     if (!sectionsQuery.data || !measuresQuery.data) return {};
     const result: Record<string, { section: any; measures: any[] }[]> = {};
     for (const phase of ALL_PHASES) {
-      const phaseSections = sectionsQuery.data.filter((s: any) => s.phase === phase.key);
+      const phaseSections = sectionsQuery.data.filter((section: any) =>
+        measuresQuery.data.some((measure: any) => measure.sectionId === section.id && phaseKeyForCatalogueItem(measure) === phase.key),
+      );
       result[phase.key] = phaseSections.map((s: any) => ({
         section: s,
-        measures: measuresQuery.data.filter((m: any) => m.sectionId === s.id),
+        measures: measuresQuery.data.filter((m: any) => m.sectionId === s.id && phaseKeyForCatalogueItem(m) === phase.key),
       }));
     }
     return result;
@@ -151,18 +149,16 @@ export default function PhaseMeasures(props: any) {
 
   // Calculate compliance overview
   const complianceOverview = useMemo(() => {
-    const overview: Record<string, { total: number; concluido: number; em_curso: number; pendente: number }> = {};
+    const overview: Record<string, { total: number; concluido: number; em_curso: number; pendente: number; elements: number }> = {};
     for (const phase of ALL_PHASES) {
-      const data = phaseData[phase.key] || [];
-      const total = data.reduce((acc: number, d: any) => acc + d.measures.length, 0);
-      let concluido = 0, em_curso = 0, pendente = 0;
-      data.forEach((d: any) => d.measures.forEach((m: any) => {
-        const s = trackingByMeasure[m.id]?.trackingStatus || "nao_iniciado";
-        if (s === "concluido") concluido++;
-        else if (s !== "nao_iniciado") em_curso++;
-        else pendente++;
-      }));
-      overview[phase.key] = { total, concluido, em_curso, pendente };
+      const summary = logicalDcapeItems(measuresQuery.data || [], phase.key);
+      const measures = summary.filter((item) => item.kind === "measure");
+      const concluded = measures.filter((item) => item.items.every((child) => trackingByMeasure[child.id]?.trackingStatus === "concluido")).length;
+      const inProgress = measures.filter((item) => item.items.some((child) => {
+        const status = trackingByMeasure[child.id]?.trackingStatus;
+        return status && status !== "nao_iniciado" && status !== "concluido";
+      })).length;
+      overview[phase.key] = { total: measures.length, concluido: concluded, em_curso: inProgress, pendente: measures.length - concluded - inProgress, elements: summary.filter((item) => item.kind === "element").length };
     }
     return overview;
   }, [phaseData, trackingByMeasure]);
@@ -247,6 +243,7 @@ export default function PhaseMeasures(props: any) {
                 <h2 className="text-lg font-semibold">{phase.label}</h2>
                 <p className="text-sm text-muted-foreground">
                   {(complianceOverview[phase.key]?.total || 0)} medidas nesta fase
+                  {(complianceOverview[phase.key]?.elements || 0) > 0 ? ` · ${complianceOverview[phase.key]?.elements} elementos documentais` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">

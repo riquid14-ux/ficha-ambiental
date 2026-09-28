@@ -141,7 +141,7 @@ describe("Acompanhamento por medida — interface e calendário", () => {
   it("consolida Reportado no status update e elimina o editor superior duplicado", () => {
     expect(panelSource).toContain('concluido: "Reportado"');
     expect(panelSource).toContain("Novo status update desta medida");
-    expect(phasesSource).toContain('trackingByMeasure[m.id]?.trackingStatus || "nao_iniciado"');
+    expect(phasesSource).toContain('const trackingStatus = tracking?.trackingStatus || "nao_iniciado"');
     expect(phasesSource).not.toContain("Notas rápidas");
     expect(phasesSource).not.toContain("<RadioGroup");
     expect(phasesSource).not.toContain("onStatusChange");

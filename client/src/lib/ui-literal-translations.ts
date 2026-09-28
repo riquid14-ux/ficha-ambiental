@@ -1126,5 +1126,7 @@ export const uiLiteralTranslations: Record<string, string> = {
   "Meta PUE:": "PUE target:",
   "por definir": "to define",
   "Estratégia:": "Strategy:",
-  "água do mar": "seawater"
+  "água do mar": "seawater",
+  "A iniciar vídeo institucional": "Starting institutional video",
+  "Programas de monitorização": "Monitoring programmes"
 };

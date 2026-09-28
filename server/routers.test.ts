@@ -115,8 +115,8 @@ describe("measures.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.measures.list({ projectId: 1 });
     expect(Array.isArray(result)).toBe(true);
-    // Catálogo atual: 156 medidas de construção + 48 medidas de fases.
-    expect(result.length).toBe(204);
+    // Catálogo atual: 204 linhas existentes + 2 elementos documentais da construção (CC-24 e CC-25).
+    expect(result.length).toBe(206);
   });
 });
 

@@ -71,7 +71,7 @@ async function startServer() {
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         fontSrc: ["'self'", "data:"],
         connectSrc: ["'self'", "https://api.manus.im"],
-        frameSrc: ["'self'", "https://www.youtube.com"],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
         frameAncestors: ["'self'", "https://*.autodesk.com", "https://*.autodesk.io", "https://acc.autodesk.com", "https://construction.autodesk.com"],
         formAction: ["'self'"],
       },

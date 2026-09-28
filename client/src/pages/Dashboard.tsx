@@ -12,6 +12,8 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandMetricCard } from "@/components/stand/StandMetricCard";
+import { DCAPE_PHASES } from "@shared/phases";
+import { isTimelinePhaseApplicable, phaseLogicalSummary } from "@/lib/dcape-presentation";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
@@ -110,6 +112,7 @@ export default function Dashboard() {
   const catalogueProjectId = activeProject?.id ?? 0;
   const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
   const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const phaseStatusesQuery = trpc.phaseMeasures.getStatuses.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
 
   const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador";
   const submissionsQuery = canSeeAll
@@ -155,6 +158,22 @@ export default function Dashboard() {
       decommissioning: measuresForPhase("Desativação (Pós-Exploração)"),
     };
   }, [measuresQuery.data, sectionsQuery.data]);
+
+  const dashboardPhaseProgress = useMemo(() => {
+    const statuses: Record<number, { trackingStatus?: string | null }> = {};
+    for (const status of phaseStatusesQuery.data || []) statuses[status.measureId] = status;
+    return DCAPE_PHASES
+      .filter((phase) => isTimelinePhaseApplicable(activeProject?.code, phase.key))
+      .map((phase) => {
+        const summary = phaseLogicalSummary(measuresQuery.data || [], phase.key, statuses);
+        return {
+          ...phase,
+          total: summary.total,
+          completed: summary.concluded,
+          progress: summary.total > 0 ? Math.round((summary.concluded / summary.total) * 100) : 0,
+        };
+      });
+  }, [activeProject?.code, measuresQuery.data, phaseStatusesQuery.data]);
 
   const nextOperationReport = useMemo(() => {
     const pending = (calendarEventsQuery.data || [])
@@ -656,31 +675,30 @@ export default function Dashboard() {
                 </p>
                 <a href="/timeline" className="text-[10px] text-primary hover:underline">{t("Ver timeline")} →</a>
               </div>
-              {(() => {
-                const phases = ["Pré-Licenciamento", "Licenciamento", "Pré-Construção", "Preparação", "Execução da Obra", "Finalização", "Final Construção", "Exploração", "Operação"].map(p => t(p));
-                return (
-                  <div className="space-y-1">
-                    {phases.map((phase, i) => {
-                      const isActive = i === 3;
-                      const isDone = i < 3;
-                      return (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isDone ? "bg-primary text-white" : isActive ? "bg-[#EDEBEB] text-[#646461] ring-2 ring-amber-200" : "bg-muted text-muted-foreground"}`}>
-                            {isDone ? "✓" : i + 1}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[11px] ${isActive ? "font-semibold text-[#646461]" : isDone ? "text-primary" : "text-muted-foreground"}`}>{phase}</span>
-                              {isActive && <span className="text-[8px] bg-[#EDEBEB] text-[#646461] px-1.5 py-0.5 rounded-full font-medium">{t("Em curso")}</span>}
-                            </div>
-                          </div>
-                          {isDone && <span className="text-[9px] text-primary">100%</span>}
+              {dashboardPhaseProgress.length === 0 ? (
+                <p className="py-4 text-center text-xs text-muted-foreground">{t("Sem medidas DCAPE carregadas")}</p>
+              ) : (
+                <div className="space-y-1">
+                  {dashboardPhaseProgress.map((phase) => {
+                    const isDone = phase.total > 0 && phase.progress === 100;
+                    const isActive = phase.total > 0 && !isDone && phase === dashboardPhaseProgress.find((item) => item.total > 0 && item.progress < 100);
+                    return (
+                      <div key={phase.key} className="flex items-center gap-2">
+                        <div className={`grid size-5 place-items-center rounded-full text-[8px] font-bold ${isDone ? "bg-primary text-primary-foreground" : isActive ? "bg-primary/15 text-primary ring-2 ring-primary/25" : "bg-muted text-muted-foreground"}`}>
+                          {isDone ? "✓" : phase.order}
                         </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`truncate text-[11px] ${isActive ? "font-semibold text-foreground" : isDone ? "text-primary" : "text-muted-foreground"}`}>{t(phase.name)}</span>
+                            {isActive && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-medium text-primary">{t("Em curso")}</span>}
+                          </div>
+                        </div>
+                        <span className={`shrink-0 text-[9px] ${isDone ? "text-primary" : "text-muted-foreground"}`}>{phase.total > 0 ? `${phase.progress}%` : "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

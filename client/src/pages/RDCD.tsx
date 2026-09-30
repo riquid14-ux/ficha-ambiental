@@ -15,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2, Save, FileText, Database } from "lucide-react";
+import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2, Save, FileText, Database, BookOpen, ClipboardList, Wrench, ListChecks, CalendarDays, MessageSquareText, Flag, FileCheck2, Images, ListTodo } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun } from "docx";
 import { saveAs } from "file-saver";
 import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows, RDCD_BRAND_PROFILES, SIN02_RDCD_METADATA, type RdcdBrandProfileId } from "@/lib/rdcd-template";
@@ -51,6 +53,24 @@ const EMPTY_CONTENT: RdcdContent = {
   publicContacts: "",
   conclusions: "",
 };
+
+type EditorialSection = {
+  key: keyof RdcdContent;
+  label: string;
+  prompt: string;
+  source: string;
+  icon: LucideIcon;
+};
+
+const EDITORIAL_SECTIONS: EditorialSection[] = [
+  { key: "introduction", label: "1. Introdução", prompt: "Contextualize o período, objetivo do relatório e fontes consultadas.", source: "Redação técnica do responsável pelo relatório.", icon: BookOpen },
+  { key: "projectStatus", label: "3. Ponto de Situação do Desenvolvimento da Obra", prompt: "Registe atividades, frentes de obra e alterações relevantes.", source: "Redação técnica e evidência das fichas aprovadas.", icon: ClipboardList },
+  { key: "correctiveActions", label: "6. Ações Corretivas e Seguimento", prompt: "Indique medidas corretivas, responsáveis e situação atual.", source: "Não conformidades e decisões de seguimento confirmadas pela equipa.", icon: Wrench },
+  { key: "openIssues", label: "8. Questões em Aberto de Períodos Anteriores", prompt: "Identifique pendências e o respetivo seguimento.", source: "Histórico de reportes e validação do responsável técnico.", icon: ListChecks },
+  { key: "worksProgramme", label: "9. Programa de Trabalhos", prompt: "Descreva os trabalhos previstos ou a referência controlada no repositório.", source: "Programa de trabalhos em vigor ou referência documental controlada.", icon: CalendarDays },
+  { key: "publicContacts", label: "10. Reclamações e Contactos com o Público", prompt: "Registe contactos, reclamações ou confirme a inexistência.", source: "Registo de contactos do período, confirmado antes da emissão.", icon: MessageSquareText },
+  { key: "conclusions", label: "11. Conclusões", prompt: "Apresente a conclusão técnica, condicionada a revisão e aprovação humana.", source: "Síntese técnica sujeita a revisão e aprovação humana.", icon: Flag },
+];
 
 function getIsoWeekDate(year: number, week: number, endOfWeek: boolean) {
   const jan4 = new Date(Date.UTC(year, 0, 4));
@@ -104,6 +124,7 @@ export default function RDCD() {
   const [preparedBy, setPreparedBy] = useState("");
   const [reviewedBy, setReviewedBy] = useState("");
   const [revision, setRevision] = useState("00");
+  const [activeEditorialSection, setActiveEditorialSection] = useState<keyof RdcdContent>("introduction");
   const [projectWasChosen, setProjectWasChosen] = useState(false);
   // Em Todos os Projectos, o contexto pode ainda estar a actualizar a selecção global.
   // A consulta própria preserva a lista autorizada para o wizard não ficar vazio.
@@ -543,6 +564,10 @@ export default function RDCD() {
     partial: "Parcial",
     no_data: "Sem dados",
   };
+  const activeEditorial = EDITORIAL_SECTIONS.find(section => section.key === activeEditorialSection) || EDITORIAL_SECTIONS[0];
+  const completedEditorialSections = EDITORIAL_SECTIONS.filter(section => content[section.key].trim().length > 0).length;
+  const selectedMeasureCount = Object.values(measureSelections).filter(selection => selection.selectedWeeks.length > 0).length;
+  const selectedPhotoCount = Object.values(measureSelections).reduce((total, selection) => total + selection.selectedImageUrls.length, 0);
 
   return (
     <AppLayout>
@@ -836,46 +861,101 @@ export default function RDCD() {
           </Card>
         )}
 
-        {/* Step 4: Editorial content and report identity */}
+        {/* Step 4: Editorial studio and report identity */}
         {step === 4 && (
-          <Card className="stand-surface">
-            <CardContent className="p-6">
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div><h2 className="text-lg font-semibold">{t("Conteúdo e identidade do RDCD")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Complete os capítulos narrativos. Estes campos ficam em rascunho auditável e nunca alteram fichas, e-GARs ou anexos de origem.")}</p></div>
-                {draftId && <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{t("Rascunho")} #{draftId}</Badge>}
-              </div>
-              <section className="mb-5 overflow-hidden rounded-2xl border border-primary/18 bg-primary/[0.035]">
-                <div className="border-b border-primary/12 px-4 py-3 sm:px-5"><p className="stand-kicker text-primary">{t("CONTROLO DE EMISSÃO")}</p><p className="mt-1 text-sm font-semibold text-foreground">{t("Ficha técnica e perfis institucionais")}</p></div>
-                <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
-                  <div><Label>{t("N.º do relatório")}</Label><Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-card" /></div>
-                  <div><Label>{t("Fase da obra reportada")}</Label><Select value={reportPhase} onValueChange={setReportPhase}><SelectTrigger className="mt-1 bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Preparação prévia">{t("Preparação prévia")}</SelectItem><SelectItem value="Execução da obra">{t("Execução da obra")}</SelectItem><SelectItem value="Fase final">{t("Fase final")}</SelectItem><SelectItem value="Desativação">{t("Desativação")}</SelectItem></SelectContent></Select></div>
-                  <div><Label>{t("Elaborado por")}</Label><Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder={t("Nome / função — Equipa Ambiental Start Campus")} className="mt-1 bg-card" /></div>
-                  <div><Label>{t("Revisto / aprovado por")}</Label><Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder={t("Nome / função")} className="mt-1 bg-card" /></div>
-                  <div><Label>{t("Revisão")}</Label><Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 max-w-32 bg-card" /></div>
-                  <div><Label>{t("Identidades do relatório")}</Label><Select value={brandProfile} onValueChange={(value) => setBrandProfile(value as RdcdBrandProfileId)}><SelectTrigger className="mt-1 bg-card"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(RDCD_BRAND_PROFILES).map(([id, profile]) => <SelectItem key={id} value={id}>{profile.label}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-xs text-muted-foreground">{RDCD_BRAND_PROFILES[brandProfile].description}</p></div>
+          <div className="space-y-5">
+            <Card className="stand-surface overflow-hidden">
+              <CardContent className="p-0">
+                <div className="border-b border-border bg-muted/20 px-5 py-5 sm:px-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="max-w-3xl">
+                      <div className="flex items-center gap-2"><FileCheck2 className="size-5 text-primary" /><p className="stand-kicker text-primary">{t("ESTÚDIO EDITORIAL")}</p></div>
+                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">{t("Construa o relatório, não apenas um formulário")}</h2>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("Escreva capítulo a capítulo com contexto, fontes e controlo de emissão. As fontes operacionais continuam protegidas nos respetivos módulos e este rascunho não altera qualquer registo de origem.")}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {draftId && <Badge variant="outline" className="border-primary/30 bg-primary/5 px-3 py-1.5 text-primary"><Save className="mr-1.5 size-3.5" />{t("Rascunho")} #{draftId}</Badge>}
+                      <Badge variant="outline" className="border-border bg-card px-3 py-1.5 text-foreground"><Check className="mr-1.5 size-3.5 text-primary" />{completedEditorialSections}/{EDITORIAL_SECTIONS.length} {t("capítulos com conteúdo")}</Badge>
+                    </div>
+                  </div>
                 </div>
-              </section>
-              {usesSin02Template && <p className="mb-5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-foreground">{t("O modelo SIN02 pré-preenche dados institucionais do template. Confirme sempre TUA, licenças e vigência antes da emissão.")}</p>}
-              <div className="grid gap-4 lg:grid-cols-2">
-                {([
-                  ["introduction", "1. Introdução", "Contextualize o período, objetivo do relatório e fontes consultadas."],
-                  ["projectStatus", "3. Ponto de Situação do Desenvolvimento da Obra", "Registe atividades, frentes de obra e alterações relevantes."],
-                  ["correctiveActions", "6. Ações Corretivas e Seguimento", "Indique medidas corretivas, responsáveis e situação atual."],
-                  ["openIssues", "8. Questões em Aberto de Períodos Anteriores", "Identifique pendências e o respetivo seguimento."],
-                  ["worksProgramme", "9. Programa de Trabalhos", "Descreva os trabalhos previstos ou a referência controlada no repositório."],
-                  ["publicContacts", "10. Reclamações e Contactos com o Público", "Registe contactos, reclamações ou confirme a inexistência."],
-                  ["conclusions", "11. Conclusões", "Apresente a conclusão técnica, condicionada a revisão e aprovação humana."],
-                ] as Array<[keyof RdcdContent, string, string]>).map(([key, label, placeholder]) => <div key={key} className="rounded-xl border border-border/80 bg-card p-4"><Label className="text-sm font-semibold">{t(label)}</Label><Textarea value={content[key]} onChange={(event) => setContent(current => ({ ...current, [key]: event.target.value }))} placeholder={t(placeholder)} className="mt-2 min-h-28 bg-background" /></div>)}
+
+                <div className="grid gap-0 xl:grid-cols-[270px_minmax(0,1fr)_270px]">
+                  <aside className="border-b border-border bg-muted/10 p-3 xl:border-r xl:border-b-0">
+                    <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t("Estrutura do relatório")}</p>
+                    <nav className="grid gap-1" aria-label={t("Capítulos editáveis do RDCD")}>
+                      {EDITORIAL_SECTIONS.map(section => {
+                        const Icon = section.icon;
+                        const isActive = activeEditorialSection === section.key;
+                        const isComplete = content[section.key].trim().length > 0;
+                        return <button key={section.key} type="button" onClick={() => setActiveEditorialSection(section.key)} className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-foreground hover:bg-accent"}`}>
+                          <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${isActive ? "bg-primary-foreground/15" : "bg-primary/10 text-primary"}`}><Icon className="size-4" /></span>
+                          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold leading-4">{t(section.label)}</span><span className={`mt-0.5 block text-[11px] ${isActive ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{isComplete ? t("Conteúdo registado") : t("Por completar")}</span></span>
+                          {isComplete && <Check className={`size-4 ${isActive ? "text-primary-foreground" : "text-primary"}`} />}
+                        </button>;
+                      })}
+                    </nav>
+                  </aside>
+
+                  <main className="min-w-0 p-5 sm:p-6">
+                    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><activeEditorial.icon className="size-5" /></span>
+                        <div><h3 className="text-lg font-semibold text-foreground">{t(activeEditorial.label)}</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">{t(activeEditorial.prompt)}</p></div>
+                      </div>
+                      <Badge variant="outline" className="border-border bg-card text-muted-foreground">{content[activeEditorial.key].trim().length} {t("caracteres")}</Badge>
+                    </div>
+                    <Textarea value={content[activeEditorial.key]} onChange={(event) => setContent(current => ({ ...current, [activeEditorial.key]: event.target.value }))} placeholder={t(activeEditorial.prompt)} className="min-h-[330px] resize-y border-border bg-card p-4 text-sm leading-7 shadow-sm placeholder:text-muted-foreground/80" aria-label={t(activeEditorial.label)} />
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground"><span className="flex items-center gap-2"><FileText className="size-4 text-primary" />{t(activeEditorial.source)}</span><span>{t("Guardado no rascunho apenas quando escolher Guardar rascunho.")}</span></div>
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
+                      <Button variant="ghost" size="sm" disabled={EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key) === 0} onClick={() => { const index = EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key); setActiveEditorialSection(EDITORIAL_SECTIONS[Math.max(0, index - 1)].key); }}><ChevronLeft className="mr-1 size-4" />{t("Capítulo anterior")}</Button>
+                      <Button variant="outline" size="sm" disabled={EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key) === EDITORIAL_SECTIONS.length - 1} onClick={() => { const index = EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key); setActiveEditorialSection(EDITORIAL_SECTIONS[Math.min(EDITORIAL_SECTIONS.length - 1, index + 1)].key); }}>{t("Próximo capítulo")}<ChevronRight className="ml-1 size-4" /></Button>
+                    </div>
+                  </main>
+
+                  <aside className="border-t border-border bg-muted/10 p-4 xl:border-t-0 xl:border-l">
+                    <p className="stand-kicker text-primary">{t("PRÉ-VISUALIZAÇÃO DE EMISSÃO")}</p>
+                    <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+                      <p className="text-xs font-semibold text-foreground">{reportNumber.trim() || `RDCD-${selectedProject?.code || "PROJ"}-001`}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{selectedProject ? `${selectedProject.code} — ${selectedProject.name}` : t("Projeto por confirmar")}</p>
+                      <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs"><div className="flex justify-between gap-3"><span className="text-muted-foreground">{t("Período")}</span><span className="font-medium text-foreground">{startWeek && endWeek ? `S${startWeek.split("-W")[1]}–S${endWeek.split("-W")[1]}/${selectedYear}` : "—"}</span></div><div className="flex justify-between gap-3"><span className="text-muted-foreground">{t("Revisão")}</span><span className="font-medium text-foreground">{revision || "00"}</span></div><div className="flex justify-between gap-3"><span className="text-muted-foreground">{t("Perfil")}</span><span className="text-right font-medium text-foreground">{RDCD_BRAND_PROFILES[brandProfile].label}</span></div></div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="rounded-xl border border-border bg-card p-3"><div className="flex items-center justify-between"><span className="flex items-center gap-2 text-xs font-medium text-foreground"><ListTodo className="size-4 text-primary" />{t("Medidas selecionadas")}</span><span className="text-lg font-semibold text-foreground">{selectedMeasureCount}</span></div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("Com semanas escolhidas para o capítulo 5.")}</p></div>
+                      <div className="rounded-xl border border-border bg-card p-3"><div className="flex items-center justify-between"><span className="flex items-center gap-2 text-xs font-medium text-foreground"><Images className="size-4 text-primary" />{t("Fotografias")}</span><span className="text-lg font-semibold text-foreground">{selectedPhotoCount}</span></div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("Selecionadas para o anexo fotográfico.")}</p></div>
+                      <div className="rounded-xl border border-border bg-card p-3"><div className="flex items-center justify-between"><span className="flex items-center gap-2 text-xs font-medium text-foreground"><Database className="size-4 text-primary" />{t("e-GARs")}</span><span className="text-lg font-semibold text-foreground">{includeWaste ? wasteRows.length : "—"}</span></div><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{includeWaste ? t("Serão listados no Anexo III.") : t("Anexo de resíduos desativado.")}</p></div>
+                    </div>
+                  </aside>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <Card className="stand-surface">
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="size-5" /></span><div><p className="stand-kicker text-primary">{t("CONTROLO DE EMISSÃO")}</p><h3 className="mt-1 text-base font-semibold text-foreground">{t("Ficha técnica e identidades institucionais")}</h3><p className="mt-1 text-sm text-muted-foreground">{t("Defina os elementos que identificam a versão do Word. Estes dados são guardados no rascunho e aparecem na ficha técnica do relatório.")}</p></div></div>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div><Label>{t("N.º do relatório")}</Label><Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1.5 bg-card" /></div>
+                    <div><Label>{t("Fase da obra reportada")}</Label><Select value={reportPhase} onValueChange={setReportPhase}><SelectTrigger className="mt-1.5 bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Preparação prévia">{t("Preparação prévia")}</SelectItem><SelectItem value="Execução da obra">{t("Execução da obra")}</SelectItem><SelectItem value="Fase final">{t("Fase final")}</SelectItem><SelectItem value="Desativação">{t("Desativação")}</SelectItem></SelectContent></Select></div>
+                    <div><Label>{t("Revisão")}</Label><Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1.5 bg-card" /></div>
+                    <div><Label>{t("Elaborado por")}</Label><Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder={t("Nome / função — Equipa Ambiental Start Campus")} className="mt-1.5 bg-card" /></div>
+                    <div><Label>{t("Revisto / aprovado por")}</Label><Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder={t("Nome / função")} className="mt-1.5 bg-card" /></div>
+                    <div><Label>{t("Identidades do relatório")}</Label><Select value={brandProfile} onValueChange={(value) => setBrandProfile(value as RdcdBrandProfileId)}><SelectTrigger className="mt-1.5 bg-card"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(RDCD_BRAND_PROFILES).map(([id, profile]) => <SelectItem key={id} value={id}>{profile.label}</SelectItem>)}</SelectContent></Select><p className="mt-1.5 text-xs text-muted-foreground">{RDCD_BRAND_PROFILES[brandProfile].description}</p></div>
+                  </div>
+                  {usesSin02Template && <p className="mt-5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-foreground">{t("O modelo SIN02 pré-preenche dados institucionais do template. Confirme sempre TUA, licenças e vigência antes da emissão.")}</p>}
+                </CardContent>
+              </Card>
+
+              <div className="space-y-5">
+                <Card className="stand-surface">
+                  <CardContent className="p-5"><div className="flex items-start gap-3"><Database className="mt-0.5 size-5 text-primary" /><div><h3 className="text-sm font-semibold text-foreground">{t("Anexo e-GAR do período")}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{includeWaste ? t("O anexo usará os registos atuais e-GAR para este projeto e período. Dados ausentes não são estimados.") : t("O anexo de resíduos está desativado neste rascunho.")}</p>{includeWaste && <p className="mt-3 text-sm font-semibold text-foreground">{wasteRows.length} {t("e-GAR(s) encontrados no período")}</p>}</div></div></CardContent>
+                </Card>
+                {savedDrafts.length > 0 && <Card className="stand-surface"><CardContent className="p-5"><div className="flex items-center gap-2"><FileText className="size-4 text-primary" /><h3 className="text-sm font-semibold">{t("Rascunhos deste projeto")}</h3></div><div className="mt-3 flex flex-wrap gap-2">{savedDrafts.slice(0, 8).map((draft: any) => <Button key={draft.id} size="sm" variant={draft.id === draftId ? "default" : "outline"} onClick={() => loadDraft(draft)}>{draft.reportNumber || `RDCD #${draft.id}`} · S{draft.startWeek}–S{draft.endWeek}/{draft.reportYear}</Button>)}</div></CardContent></Card>}
               </div>
-              <section className="mt-5 rounded-xl border border-border bg-muted/20 p-4">
-                <div className="flex items-center gap-2"><Database className="size-4 text-primary" /><h3 className="text-sm font-semibold">{t("Anexo e-GAR do período")}</h3></div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{includeWaste ? t("O anexo usará os registos atuais e-GAR para este projeto e período. Dados ausentes não são estimados.") : t("O anexo de resíduos está desativado neste rascunho.")}</p>
-                {includeWaste && <p className="mt-2 text-sm font-medium text-foreground">{wasteRows.length} {t("e-GAR(s) encontrados no período")}</p>}
-              </section>
-              {savedDrafts.length > 0 && <section className="mt-5 rounded-xl border border-dashed border-border p-4"><div className="flex items-center gap-2"><FileText className="size-4 text-primary" /><h3 className="text-sm font-semibold">{t("Rascunhos deste projeto")}</h3></div><div className="mt-3 flex flex-wrap gap-2">{savedDrafts.slice(0, 8).map((draft: any) => <Button key={draft.id} size="sm" variant={draft.id === draftId ? "default" : "outline"} onClick={() => loadDraft(draft)}>{draft.reportNumber || `RDCD #${draft.id}`} · S{draft.startWeek}–S{draft.endWeek}/{draft.reportYear}</Button>)}</div></section>}
-              <div className="mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" onClick={() => setStep(3)}><ChevronLeft className="mr-1 size-4" />{t("Anterior")}</Button><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void saveDraft()} disabled={isSavingDraft}><Save className="mr-1.5 size-4" />{isSavingDraft ? t("A guardar...") : t("Guardar rascunho")}</Button><Button onClick={() => setStep(5)}>{t("Rever emissão")}<Eye className="ml-1 size-4" /></Button></div></div>
-            </CardContent>
-          </Card>
+            </div>
+
+            <div className="flex flex-wrap justify-between gap-3"><Button variant="outline" onClick={() => setStep(3)}><ChevronLeft className="mr-1 size-4" />{t("Anterior")}</Button><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void saveDraft()} disabled={isSavingDraft}><Save className="mr-1.5 size-4" />{isSavingDraft ? t("A guardar...") : t("Guardar rascunho")}</Button><Button onClick={() => setStep(5)}>{t("Rever emissão")}<Eye className="ml-1 size-4" /></Button></div></div>
+          </div>
         )}
 
         {/* Step 5: review and generation */}

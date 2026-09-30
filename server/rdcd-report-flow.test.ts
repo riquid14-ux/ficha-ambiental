@@ -9,6 +9,8 @@ const routerSource = read("server/routers.ts");
 const schemaSource = read("drizzle/schema.ts");
 const migrationSource = read("drizzle/0062_rdcd_reports.sql");
 const pageSource = read("client/src/pages/RDCD.tsx");
+const storageAuthorizationSource = read("server/storage-authorization.ts");
+const rdcdMediaSource = read("server/rdcd-media.ts");
 
 describe("RDCD — relatório estruturado e rastreável", () => {
   it("mantém o rascunho editorial separado de ficheiros e fontes de origem", () => {
@@ -48,6 +50,10 @@ describe("RDCD — relatório estruturado e rastreável", () => {
     for (const profile of Object.values(RDCD_BRAND_PROFILES)) {
       for (const logo of profile.logos) expect(logo.url).toMatch(/^\/manus-storage\//);
     }
+    expect(storageAuthorizationSource).toContain('"start-campus-rdcd_d271a631.png"');
+    expect(storageAuthorizationSource).toContain('key.match(/^rdcd-branding');
+    expect(rdcdMediaSource).toContain('app.get("/api/rdcd/media/logo"');
+    expect(rdcdMediaSource).toContain("user.role !== \"admin\" && user.role !== \"dono_obra\"");
   });
 
   it("preserva a seleção individual de semanas por medida na compilação", () => {
@@ -74,5 +80,12 @@ describe("RDCD — relatório estruturado e rastreável", () => {
     expect(pageSource).toContain("trpc.rdcd.wasteRows.useQuery");
     expect(pageSource).toContain("Anexo III — Registo de Resíduos e-GAR do Período");
     expect(pageSource).toContain("A geração não aprova, assina nem arquiva o relatório");
+    expect(pageSource).toContain("RELATÓRIO DE DEMONSTRAÇÃO");
+    expect(pageSource).toContain("ÍNDICE GERAL");
+    expect(pageSource).toContain("chapterDetails");
+    expect(pageSource).toContain("Ações, responsabilidades e prazos");
+    expect(pageSource).toContain("uploadLogoMutation");
+    expect(pageSource).toContain("reportLogos");
+    expect(pageSource).toContain("/api/rdcd/media/logo?projectId=");
   });
 });

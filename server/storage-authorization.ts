@@ -26,6 +26,9 @@ const PUBLIC_BRANDING_KEYS = new Set([
   "start-campus-17_de17c18d.jpg",
   "start-campus-18_9a4385f8.jpg",
   "start-campus-19_1fd1e617.jpg",
+  "start-campus-rdcd_d271a631.png",
+  "gleeds-rdcd_56c50b11.png",
+  "quadrante-rdcd_c9e7bf7d.jpg",
 ]);
 
 const ADMIN_ROLES = new Set(["admin", "dono_obra"]);
@@ -143,6 +146,14 @@ export async function authorizeStorageRead(user: User, key: string) {
     SELECT projectId FROM operation_infrastructure_points WHERE chartFileKey = ${key} OR cardImageKey = ${key}
   `);
   if (operationRows.length > 0) return operationRows.length === 1 && canAccessProject(user, Number(operationRows[0].projectId), "operacao");
+
+  // As marcas escolhidas para um RDCD não são ativos públicos: a chave contém
+  // o projeto e só é disponibilizada a quem pode elaborar o relatório desse
+  // projeto. Isto também cobre rascunhos ainda não guardados na base de dados.
+  const rdcdBrandMatch = key.match(/^rdcd-branding\/(\d+)\/[A-Za-z0-9._-]+$/);
+  if (rdcdBrandMatch) {
+    return ADMIN_ROLES.has(user.role) && canAccessProject(user, Number(rdcdBrandMatch[1]), "timeline");
+  }
 
   // A Biblioteca Documental e as pré-visualizações de importação têm rotas ou
   // ciclos de vida próprios; uma chave avulsa nunca pode autorizar a descarga.

@@ -68,7 +68,7 @@ O editor permite escolher, por rascunho, três perfis:
 - **Start Campus · Gleeds**;
 - **Start Campus**.
 
-As três marcas foram extraídas do template fornecido e colocadas em armazenamento da aplicação; não foram introduzidas em `client/public` nem nos assets compilados. A escolha do perfil é guardada no rascunho e é incorporada apenas no Word gerado.
+As três marcas foram extraídas do template fornecido e colocadas em armazenamento da aplicação; não foram introduzidas em `client/public` nem nos assets compilados. A escolha do perfil é guardada no rascunho e é incorporada apenas no Word gerado. O gerador lê as marcas através de uma rota interna autenticada, com controlo de papel e projeto, e incorpora os binários no `.docx`; não depende de redirecionamentos públicos de storage.
 
 ## Rascunhos, RBAC e auditoria
 
@@ -92,3 +92,4 @@ As três marcas foram extraídas do template fornecido e colocadas em armazename
 - Verificação TypeScript;
 - Auditoria estática de traduções PT/EN;
 - Inspeção visual do wizard em claro e escuro.
+- Exportação de controlo renderizada em PDF: capa com as marcas Start Campus, Gleeds e Quadrante efetivamente incorporadas no `.docx`.

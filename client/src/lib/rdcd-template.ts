@@ -139,24 +139,24 @@ export const RDCD_BRAND_PROFILES: Record<RdcdBrandProfileId, {
     label: "Start Campus · Gleeds · Quadrante",
     description: "Modelo completo do rascunho institucional recebido.",
     logos: [
-      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 140, height: 46 },
-      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_1e64824f.png", type: "png", width: 108, height: 52 },
-      { name: "Quadrante", url: "/manus-storage/quadrante-rdcd_91ebdbd2.jpg", type: "jpg", width: 80, height: 68 },
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_d271a631.png", type: "png", width: 140, height: 46 },
+      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_56c50b11.png", type: "png", width: 108, height: 52 },
+      { name: "Quadrante", url: "/manus-storage/quadrante-rdcd_c9e7bf7d.jpg", type: "jpg", width: 80, height: 68 },
     ],
   },
   startcampus_gleeds: {
     label: "Start Campus · Gleeds",
     description: "Preparação pela Start Campus com consultoria ambiental Gleeds.",
     logos: [
-      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 155, height: 50 },
-      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_1e64824f.png", type: "png", width: 120, height: 58 },
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_d271a631.png", type: "png", width: 155, height: 50 },
+      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_56c50b11.png", type: "png", width: 120, height: 58 },
     ],
   },
   startcampus: {
     label: "Start Campus",
     description: "Emissão institucional Start Campus.",
     logos: [
-      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 190, height: 62 },
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_d271a631.png", type: "png", width: 190, height: 62 },
     ],
   },
 };

@@ -17,11 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
-import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2, Save, FileText, Database, BookOpen, ClipboardList, Wrench, ListChecks, CalendarDays, MessageSquareText, Flag, FileCheck2, Images, ListTodo } from "lucide-react";
+import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2, Save, FileText, Database, BookOpen, ClipboardList, Wrench, ListChecks, CalendarDays, MessageSquareText, Flag, FileCheck2, Images, ListTodo, Plus, Trash2, Link2, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun } from "docx";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun, Header, Footer, PageBreak, PageNumber } from "docx";
 import { saveAs } from "file-saver";
 import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows, RDCD_BRAND_PROFILES, SIN02_RDCD_METADATA, type RdcdBrandProfileId } from "@/lib/rdcd-template";
+import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
 
 // Wizard steps
 const STEPS = [
@@ -42,7 +43,44 @@ type RdcdContent = {
   conclusions: string;
 };
 
+type ChapterAction = {
+  action: string;
+  owner: string;
+  dueDate: string;
+  status: string;
+};
+
+type ChapterBlock = {
+  summary: string;
+  keyPoints: string[];
+  sourceReferences: string[];
+  actions: ChapterAction[];
+};
+
+type ChapterBlocks = Record<keyof RdcdContent, ChapterBlock>;
+
 type MeasureSelection = { selectedWeeks: string[]; selectedImageUrls: string[]; notes: string };
+
+type ReportLogo = {
+  name: string;
+  url: string;
+  type: "png" | "jpg";
+  width: number;
+  height: number;
+};
+
+function defaultReportLogos(profileId: RdcdBrandProfileId): ReportLogo[] {
+  return RDCD_BRAND_PROFILES[profileId].logos.map(logo => ({ ...logo }));
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Não foi possível ler o ficheiro."));
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.readAsDataURL(file);
+  });
+}
 
 const EMPTY_CONTENT: RdcdContent = {
   introduction: "",
@@ -53,6 +91,17 @@ const EMPTY_CONTENT: RdcdContent = {
   publicContacts: "",
   conclusions: "",
 };
+
+const EMPTY_CHAPTER_BLOCK: ChapterBlock = {
+  summary: "",
+  keyPoints: [],
+  sourceReferences: [],
+  actions: [],
+};
+
+const EMPTY_CHAPTER_BLOCKS: ChapterBlocks = Object.fromEntries(
+  Object.keys(EMPTY_CONTENT).map(key => [key, { ...EMPTY_CHAPTER_BLOCK, keyPoints: [], sourceReferences: [], actions: [] }]),
+) as unknown as ChapterBlocks;
 
 type EditorialSection = {
   key: keyof RdcdContent;
@@ -98,7 +147,7 @@ function rdcdTable(headers: string[], rows: string[][]) {
 }
 
 export default function RDCD() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const rdcdImage = useBrandImage("rdcd");
   const { user } = useAuth();
   const { projects, activeProject } = useProject();
@@ -115,7 +164,9 @@ export default function RDCD() {
   const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const [measureSelections, setMeasureSelections] = useState<Record<number, MeasureSelection>>({});
   const [content, setContent] = useState<RdcdContent>(EMPTY_CONTENT);
+  const [chapterBlocks, setChapterBlocks] = useState<ChapterBlocks>(EMPTY_CHAPTER_BLOCKS);
   const [brandProfile, setBrandProfile] = useState<RdcdBrandProfileId>("startcampus_gleeds_quadrante");
+  const [reportLogos, setReportLogos] = useState<ReportLogo[]>(() => defaultReportLogos("startcampus_gleeds_quadrante"));
   const [draftId, setDraftId] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -152,6 +203,7 @@ export default function RDCD() {
     { enabled: includeWaste && catalogueProjectId > 0 && !!periodBounds },
   );
   const saveDraftMutation = trpc.rdcd.save.useMutation();
+  const uploadLogoMutation = trpc.rdcd.uploadLogo.useMutation();
 
   // Filter submissions by selected projects and period
   const filteredSubmissions = useMemo(() => {
@@ -208,7 +260,10 @@ export default function RDCD() {
       }
     }
 
-    return measures.map((m: any) => {
+    // O capítulo 5 não é um espelho do catálogo DCAPE. Só pode apresentar
+    // medidas que tenham sido efetivamente registadas numa ficha semanal
+    // aprovada, dentro do período escolhido pelo responsável.
+    return measures.filter((m: any) => (responseMap[m.id] || []).length > 0).map((m: any) => {
       const responses = responseMap[m.id] || [];
       const statuses = responses.map(r => r.status).filter(Boolean);
       
@@ -245,10 +300,25 @@ export default function RDCD() {
     })).filter(s => s.measures.length > 0);
   }, [sections, compiledMeasures]);
 
+  const weeklyFormsForRdcd = useMemo(() => {
+    if (!filteredSubmissions.length || !allResponses || !measures) return [];
+    const measureById = new Map((measures as any[]).map(measure => [measure.id, measure]));
+    return filteredSubmissions.map((submission: any) => ({
+      submission,
+      responses: (allResponses as any[])
+        .filter(response => response.submissionId === submission.id)
+        .map(response => ({ ...response, measure: measureById.get(response.measureId) }))
+        .filter(response => response.measure),
+    })).filter(item => item.responses.length > 0);
+  }, [filteredSubmissions, allResponses, measures]);
+
   // O modelo oficial é produzido projecto a projecto; SIN01 permanece fora deste workflow de construção.
   const projectChoices = projects.length > 0 ? projects : authorisedProjects;
   const availableProjects = projectChoices.filter(p => p.code !== "SIN01");
   const selectedProject = projectChoices.find(project => project.id === selectedProjects[0]) || null;
+  const reportLogoMediaUrl = (logoUrl: string) => selectedProject
+    ? `/api/rdcd/media/logo?projectId=${selectedProject.id}&key=${encodeURIComponent(logoUrl.replace(/^\/manus-storage\//, ""))}`
+    : logoUrl;
   const usesSin02Template = selectedProject?.code === "SIN02";
 
   useEffect(() => {
@@ -285,6 +355,25 @@ export default function RDCD() {
     }]));
   }
 
+  async function replaceReportLogo(index: number, file: File) {
+    if (!selectedProject) {
+      toast.error(t("Selecione um projeto antes de alterar os logótipos."));
+      return;
+    }
+    if (file.type !== "image/png" && file.type !== "image/jpeg") {
+      toast.error(t("O logótipo deve ser PNG ou JPG."));
+      return;
+    }
+    try {
+      const data = await fileToBase64(file);
+      const uploaded = await uploadLogoMutation.mutateAsync({ projectId: selectedProject.id, filename: file.name, mimeType: file.type, data });
+      setReportLogos(current => current.map((logo, logoIndex) => logoIndex === index ? { ...logo, url: uploaded.url, type: uploaded.type } : logo));
+      toast.success(t("Logótipo atualizado para este RDCD."));
+    } catch (error: any) {
+      toast.error(error?.message || t("Não foi possível atualizar o logótipo."));
+    }
+  }
+
   async function saveDraft() {
     if (!selectedProject || !startWeek || !endWeek) {
       toast.error(t("Selecione um projeto e um período antes de guardar o rascunho."));
@@ -313,7 +402,7 @@ export default function RDCD() {
         includePlans,
         includeWaste,
         planIds: selectedPlanIds,
-        content,
+        content: { ...content, chapterBlocks, reportLogos },
         selections: serialiseSelections(),
       });
       setDraftId(result.id);
@@ -339,10 +428,23 @@ export default function RDCD() {
     setPreparedBy(draft.preparedBy || "");
     setReviewedBy(draft.reviewedBy || "");
     setBrandProfile(Object.prototype.hasOwnProperty.call(RDCD_BRAND_PROFILES, draft.brandProfile) ? draft.brandProfile : "startcampus_gleeds_quadrante");
+    const restoredLogos = Array.isArray(draft.content?.reportLogos) ? draft.content.reportLogos.filter((logo: any) => logo && typeof logo.name === "string" && typeof logo.url === "string" && (logo.type === "png" || logo.type === "jpg")).slice(0, 4).map((logo: any) => ({ name: logo.name, url: logo.url, type: logo.type, width: Number.isFinite(Number(logo.width)) ? Math.max(40, Math.min(240, Number(logo.width))) : 120, height: Number.isFinite(Number(logo.height)) ? Math.max(24, Math.min(120, Number(logo.height))) : 50 })) : [];
+    setReportLogos(restoredLogos.length > 0 ? restoredLogos : defaultReportLogos(Object.prototype.hasOwnProperty.call(RDCD_BRAND_PROFILES, draft.brandProfile) ? draft.brandProfile : "startcampus_gleeds_quadrante"));
     setIncludePlans(Boolean(draft.includePlans));
     setIncludeWaste(Boolean(draft.includeWaste));
     setSelectedPlanIds(Array.isArray(draft.planIds) ? draft.planIds.map(Number).filter(Number.isFinite) : []);
     setContent({ ...EMPTY_CONTENT, ...(draft.content || {}) });
+    const restoredBlocks: ChapterBlocks = { ...EMPTY_CHAPTER_BLOCKS };
+    for (const key of Object.keys(EMPTY_CONTENT) as Array<keyof RdcdContent>) {
+      const raw = draft.content?.chapterBlocks?.[key];
+      restoredBlocks[key] = {
+        summary: typeof raw?.summary === "string" ? raw.summary : typeof draft.content?.[key] === "string" ? draft.content[key] : "",
+        keyPoints: Array.isArray(raw?.keyPoints) ? raw.keyPoints.filter((value: unknown) => typeof value === "string").slice(0, 20) : [],
+        sourceReferences: Array.isArray(raw?.sourceReferences) ? raw.sourceReferences.filter((value: unknown) => typeof value === "string").slice(0, 30) : [],
+        actions: Array.isArray(raw?.actions) ? raw.actions.filter((value: any) => value && typeof value.action === "string").slice(0, 20).map((value: any) => ({ action: value.action, owner: typeof value.owner === "string" ? value.owner : "", dueDate: typeof value.dueDate === "string" ? value.dueDate : "", status: typeof value.status === "string" ? value.status : "" })) : [],
+      };
+    }
+    setChapterBlocks(restoredBlocks);
     const restored: Record<number, MeasureSelection> = {};
     for (const [measureId, selection] of Object.entries(draft.selections || {})) {
       const item: any = selection;
@@ -371,9 +473,10 @@ export default function RDCD() {
       const periodLabel = `Semana ${startWeek.split("-W")[1]} a Semana ${endWeek.split("-W")[1]} de ${selectedYear}`;
       const totals = weeklyRows.reduce((acc, row) => ({ i: acc.i + row.i, c: acc.c + row.c, nc: acc.nc + row.nc, na: acc.na + row.na }), { i: 0, c: 0, nc: 0, na: 0 });
       const metadata = usesSin02Template ? SIN02_RDCD_METADATA : null;
-      const resolvedReportNumber = reportNumber.trim() || `RDCD-${selectedProject.code}-[n.º]`;
+      const resolvedReportNumber = reportNumber.trim() || `RDCD-${selectedProject.code}-001`;
       const selectedPlans = (plans || []).filter((plan: any) => selectedPlanIds.includes(plan.id));
       const profile = RDCD_BRAND_PROFILES[brandProfile];
+      const reportIdentityLogos = reportLogos.length > 0 ? reportLogos : profile.logos;
       const submissionById = new Map(filteredSubmissions.map((submission: any) => [submission.id, submission]));
       const selectedMeasures = compiledMeasures.map((measure: any) => {
         const selection = measureSelections[measure.id];
@@ -385,9 +488,31 @@ export default function RDCD() {
         return { measure, selection, responses, images };
       }).filter(Boolean) as Array<{ measure: any; selection: MeasureSelection; responses: any[]; images: Array<{ url: string; filename: string; mimeType?: string | null }> }>;
 
+      const chapterDetails = (key: keyof RdcdContent) => {
+        const block = chapterBlocks[key];
+        if (!block) return [] as any[];
+        const parts: any[] = [];
+        const keyPoints = block.keyPoints.map(value => value.trim()).filter(Boolean);
+        const sources = block.sourceReferences.map(value => value.trim()).filter(Boolean);
+        const actions = block.actions.filter(item => item.action.trim() || item.owner.trim() || item.dueDate.trim() || item.status.trim());
+        if (keyPoints.length > 0) {
+          parts.push(new Paragraph({ text: "Pontos-chave", heading: HeadingLevel.HEADING_2 }));
+          parts.push(...keyPoints.map(point => new Paragraph({ text: `• ${point}` })));
+        }
+        if (sources.length > 0) {
+          parts.push(new Paragraph({ text: "Fontes e referências", heading: HeadingLevel.HEADING_2 }));
+          parts.push(rdcdTable(["Referência"], sources.map(source => [source])));
+        }
+        if (actions.length > 0) {
+          parts.push(new Paragraph({ text: "Ações, responsabilidades e prazos", heading: HeadingLevel.HEADING_2 }));
+          parts.push(rdcdTable(["Ação", "Responsável", "Prazo", "Estado"], actions.map(item => [item.action || "—", item.owner || "—", item.dueDate || "—", item.status || "—"])));
+        }
+        return parts;
+      };
+
       const assets = new Map<string, { data: ArrayBuffer; type: "png" | "jpg" }>();
       const assetRequests = [
-        ...profile.logos.map(logo => ({ url: logo.url, type: logo.type })),
+        ...reportIdentityLogos.map(logo => ({ url: reportLogoMediaUrl(logo.url), type: logo.type })),
         ...selectedMeasures.flatMap(item => item.images.map(image => ({
           url: image.url,
           type: image.mimeType === "image/png" || image.url.toLowerCase().endsWith(".png") ? "png" as const : "jpg" as const,
@@ -447,28 +572,66 @@ export default function RDCD() {
           );
         }
       }
-      const coverLogos = profile.logos.flatMap((logo, index) => {
-        const asset = assets.get(logo.url);
+      const logoRuns = (scale = 1) => reportIdentityLogos.flatMap((logo, index) => {
+        const asset = assets.get(reportLogoMediaUrl(logo.url));
         if (!asset) return [new TextRun({ text: index ? `   ${logo.name}` : logo.name, bold: true, color: "0A3638" })];
-        return [new ImageRun({ data: asset.data, transformation: { width: logo.width, height: logo.height }, type: asset.type }), new TextRun({ text: "   " })];
+        return [new ImageRun({ data: asset.data, transformation: { width: Math.round(logo.width * scale), height: Math.round(logo.height * scale) }, type: asset.type }), new TextRun({ text: "   " })];
       });
+      const coverLogos = logoRuns();
+      const headerLogos = logoRuns(0.52);
+      const indexLines = [
+        "1 Introdução",
+        "2 Breve descrição do projeto",
+        "3 Ponto de situação do desenvolvimento do projeto",
+        "4 Demonstração do cumprimento das condições ambientais",
+        "5 Compilação das fichas semanais aprovadas",
+        "6 Ações corretivas e seguimento",
+        "7 Monitorização",
+        "8 Questões em aberto de períodos anteriores",
+        "9 Programa de trabalhos",
+        "10 Reclamações e contactos com o público",
+        "11 Conclusões",
+        "12 Anexos",
+      ];
 
       const document = new Document({
         sections: [{
+          properties: { titlePage: true },
+          headers: {
+            first: new Header({ children: [] }),
+            default: new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: headerLogos })] }),
+          },
+          footers: {
+            first: new Footer({ children: [] }),
+            default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Start Campus  |  info@startcampus.pt  |  RDCD  |  Página " }), new TextRun({ children: [PageNumber.CURRENT] })] })] }),
+          },
           children: [
             new Paragraph({ alignment: AlignmentType.CENTER, children: coverLogos }),
+            new Paragraph({ text: "" }), new Paragraph({ text: "" }), new Paragraph({ text: "" }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: metadata?.projectName || projNames, size: 28, bold: true })] }),
             new Paragraph({ text: "" }),
-            new Paragraph({ alignment: AlignmentType.CENTER, text: "RDCD", heading: HeadingLevel.TITLE }),
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Relatório de Demonstração do Cumprimento da DCAPE", size: 28, bold: true, color: "0A3638" })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "RELATÓRIO DE DEMONSTRAÇÃO", size: 30, bold: true, color: "0A3638" })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "DO CUMPRIMENTO DA DECISÃO (DCAPE)", size: 30, bold: true, color: "0A3638" })] }),
             new Paragraph({ text: "" }),
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: metadata?.projectName || projNames, size: 24, bold: true })] }),
-            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: periodLabel, size: 22 })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: reportPhase, size: 24, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${resolvedReportNumber} — ${periodLabel}`, size: 24, bold: true, color: "08A56A" })] }),
             new Paragraph({ text: "" }),
+            rdcdTable(["REVISÃO", "DATA", "DESCRIÇÃO"], [[revision.trim() || "00", new Date().toLocaleDateString("pt-PT"), "Emissão para revisão técnica e aprovação humana"]]),
+            new Paragraph({ children: [new PageBreak()] }),
+            new Paragraph({ text: "ÍNDICE GERAL", heading: HeadingLevel.HEADING_1 }),
+            ...indexLines.map((line, index) => new Paragraph({ text: `${line} ................................................................ ${index + 1}` })),
+            new Paragraph({ text: "" }),
+            new Paragraph({ text: "ÍNDICE DE TABELAS", heading: HeadingLevel.HEADING_2 }),
+            new Paragraph({ text: "Tabela 1 — Fichas semanais aprovadas incluídas" }),
+            new Paragraph({ text: "Tabela 2 — Matriz demonstrativa do cumprimento das condições da DCAPE" }),
+            new Paragraph({ text: "Tabela 3 — Registo de resíduos e-GAR do período" }),
+            new Paragraph({ children: [new PageBreak()] }),
             new Paragraph({ text: "Ficha Técnica do Relatório", heading: HeadingLevel.HEADING_1 }),
             rdcdTable(["Campo", "Informação"], technicalRows),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "1. Introdução", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.introduction, `O presente Relatório de Demonstração do Cumprimento da DCAPE é elaborado para ${metadata?.projectName || projNames}, no período ${periodLabel}. Consolida ${weeklyRows.length} ficha(s) de controlo semanal aprovada(s). A emissão e assinatura permanecem sujeitas a revisão humana.`) }),
+            ...chapterDetails("introduction"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "2. Enquadramento do Projeto no TUA", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: metadata ? `${metadata.projectName} encontra-se enquadrado no TUA n.º ${metadata.tua}, com código APA ${metadata.apaCode}. A confirmação final de números de processo, datas e vigência deve ser feita face ao TUA em vigor na data de emissão.` : "[A completar pelo responsável com os elementos do TUA, AIA/RECAPE, DIA, DCAPE e entidade licenciadora.]" }),
@@ -476,6 +639,7 @@ export default function RDCD() {
             new Paragraph({ text: "3. Ponto de Situação do Desenvolvimento da Obra", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.projectStatus, "Descreva as atividades, frentes de obra e alterações relevantes ocorridas no período de reporte.") }),
             rdcdTable(["Sem.", "Período", "Ficha aprovada", "I", "C", "NC", "NA"], weeklyRows.length > 0 ? weeklyRows.map(row => [String(row.week), row.period, row.reference, String(row.i), String(row.c), String(row.nc), String(row.na)]) : [["—", "—", "Sem fichas aprovadas no período", "0", "0", "0", "0"]]),
+            ...chapterDetails("projectStatus"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "4. Resumo do Estado das Medidas da DCAPE", heading: HeadingLevel.HEADING_1 }),
             rdcdTable(["Fase / grupo DCAPE", "N.º de medidas", "I", "C", "NC", "NA"], phaseRows.map(row => [row.section, String(row.totalMeasures), String(row.i), String(row.c), String(row.nc), String(row.na)])),
@@ -493,21 +657,26 @@ export default function RDCD() {
             new Paragraph({ text: "" }),
             new Paragraph({ text: "6. Ações Corretivas e Seguimento", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.correctiveActions, nonConformityRows.length > 0 ? "As ações corretivas associadas às não conformidades devem ser confirmadas e completadas pelo responsável técnico antes da emissão." : "Não foram identificadas não conformidades no conjunto de fichas aprovado selecionado.") }),
+            ...chapterDetails("correctiveActions"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "7. Relatórios de Monitorização", heading: HeadingLevel.HEADING_1 }),
             rdcdTable(["Tipo de monitorização", "Periodicidade", "Situação / resultado", "Referência de anexo"], includePlans && selectedPlans.length > 0 ? selectedPlans.map((plan: any) => [plan.name, plan.periodicity || "—", plan.submissionStatus === "delivered" ? "Entregue" : plan.submissionStatus === "submitted" ? "Submetido" : "Pendente", plan.submittedFileUrl ? "Registo no repositório documental" : "A completar"]) : [["Sem planos selecionados", "—", "Não incluído neste relatório", "—"]]),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "8. Questões em Aberto Relativas a Períodos Anteriores", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.openIssues, "Sem questões anteriores registadas neste rascunho. Confirmar com o responsável técnico antes de emissão.") }),
+            ...chapterDetails("openIssues"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "9. Programa de Trabalhos", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.worksProgramme, "Indicar o programa de trabalhos aplicável ao período e anexar a versão controlada no repositório documental.") }),
+            ...chapterDetails("worksProgramme"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "10. Reclamações e Contactos com o Público", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.publicContacts, "Sem contactos ou reclamações registados neste rascunho. Confirmar antes da emissão.") }),
+            ...chapterDetails("publicContacts"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "11. Conclusões", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: textOr(content.conclusions, `No período ${periodLabel}, foram consolidadas ${weeklyRows.length} ficha(s) aprovada(s), com ${totals.i} registo(s) Implementada(s), ${totals.c} Conforme(s), ${totals.nc} Não Conforme(s) e ${totals.na} Não Aplicável(eis). O conteúdo deve ser revisto e aprovado pelo responsável técnico antes da emissão.`) }),
+            ...chapterDetails("conclusions"),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "Anexo I — Referência às Fichas de Controlo de Medidas", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: weeklyRows.length > 0 ? `Fichas aprovadas do período, mantidas no repositório documental: ${weeklyRows.map(row => row.reference).join(", ")}.` : "Sem fichas aprovadas selecionadas." }),
@@ -564,10 +733,24 @@ export default function RDCD() {
     partial: "Parcial",
     no_data: "Sem dados",
   };
+  const responseStatusLabels: Record<string, string> = {
+    I: t("Implementada"),
+    C: t("Conforme"),
+    NC: t("Não Conforme"),
+    NA: t("N/A"),
+  };
   const activeEditorial = EDITORIAL_SECTIONS.find(section => section.key === activeEditorialSection) || EDITORIAL_SECTIONS[0];
   const completedEditorialSections = EDITORIAL_SECTIONS.filter(section => content[section.key].trim().length > 0).length;
   const selectedMeasureCount = Object.values(measureSelections).filter(selection => selection.selectedWeeks.length > 0).length;
   const selectedPhotoCount = Object.values(measureSelections).reduce((total, selection) => total + selection.selectedImageUrls.length, 0);
+  const activeChapterBlock = chapterBlocks[activeEditorialSection] || EMPTY_CHAPTER_BLOCK;
+  const updateActiveChapterBlock = (update: (current: ChapterBlock) => ChapterBlock) => {
+    setChapterBlocks(current => ({ ...current, [activeEditorialSection]: update(current[activeEditorialSection] || EMPTY_CHAPTER_BLOCK) }));
+  };
+  const updateChapterSummary = (summary: string) => {
+    updateActiveChapterBlock(current => ({ ...current, summary }));
+    setContent(current => ({ ...current, [activeEditorialSection]: summary }));
+  };
 
   return (
     <AppLayout>
@@ -738,117 +921,47 @@ export default function RDCD() {
         {step === 3 && (
           <Card className="stand-surface">
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">{t("Compilação de Medidas")}</h2>
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="stand-kicker text-primary">{t("FONTE DO CAPÍTULO 5")}</p>
+                  <h2 className="mt-1 text-lg font-semibold">{t("Fichas semanais aprovadas")}</h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{t("Este capítulo só usa respostas submetidas e aprovadas nas fichas semanais do período. Medidas sem resposta não são apresentadas nem entram no relatório.")}</p>
+                </div>
+                <Badge variant="outline" className="border-primary/25 bg-primary/5 px-3 py-1.5 text-primary"><FileText className="mr-1.5 size-3.5" />{filteredSubmissions.length} {t("fichas aprovadas no período")}</Badge>
+              </div>
               {(loadingSubs || loadingResponses) ? (
-                <div className="flex items-center gap-2 py-8 justify-center">
+                <div className="flex items-center gap-2 py-12 justify-center">
                   <Loader2 className="w-5 h-5 animate-spin" />
                   <span className="text-sm text-muted-foreground">{t("A carregar dados das fichas semanais...")}</span>
                 </div>
+              ) : filteredSubmissions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
+                  <FileText className="mx-auto size-9 text-muted-foreground" />
+                  <h3 className="mt-3 text-sm font-semibold text-foreground">{t("Não existem fichas aprovadas neste período")}</h3>
+                  <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">{t("O RDCD não cria dados em falta. Altere o período ou volte quando as fichas semanais estiverem aprovadas.")}</p>
+                </div>
               ) : (
                 <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {t("O sistema analisou")} {filteredSubmissions.length} {t("fichas aprovadas no período.")} {t("Reveja o estado de cada medida.")}
-                  </p>
-                  {/* Summary */}
-                  <div className="grid grid-cols-5 gap-3 mb-4">
-                    <div className="bg-primary border border-primary rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-primary-foreground">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
-                      <p className="text-xs text-primary-foreground/85">{t("Conforme")}</p>
-                    </div>
-                    <div className="bg-destructive/10 border border-destructive/25 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-destructive">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
-                      <p className="text-xs text-destructive">{t("Não Conforme")}</p>
-                    </div>
-                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-primary">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
-                      <p className="text-xs text-primary">{t("Parcial")}</p>
-                    </div>
-                    <div className="bg-muted border border-border rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
-                      <p className="text-xs text-muted-foreground">{t("N/A")}</p>
-                    </div>
-                    <div className="bg-muted/40 border border-border rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-muted-foreground">{compiledMeasures.filter(m => m.autoStatus === "no_data").length}</p>
-                      <p className="text-xs text-muted-foreground">{t("Sem dados")}</p>
-                    </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl border border-primary/25 bg-primary/10 p-4"><p className="text-2xl font-semibold text-primary">{filteredSubmissions.length}</p><p className="mt-1 text-xs font-medium text-foreground">{t("Fichas aprovadas")}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("Incluídas automaticamente como fonte rastreável.")}</p></div>
+                    <div className="rounded-xl border border-primary/25 bg-primary/10 p-4"><p className="text-2xl font-semibold text-primary">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p><p className="mt-1 text-xs font-medium text-foreground">{t("Medidas cumpridas")}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("Com estado Conforme ou Implementada.")}</p></div>
+                    <div className="rounded-xl border border-destructive/25 bg-destructive/[0.06] p-4"><p className="text-2xl font-semibold text-destructive">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p><p className="mt-1 text-xs font-medium text-foreground">{t("Não conformidades")}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("A rever no seguimento técnico.")}</p></div>
+                    <div className="rounded-xl border border-border bg-card p-4"><p className="text-2xl font-semibold text-foreground">{compiledMeasures.length}</p><p className="mt-1 text-xs font-medium text-foreground">{t("Medidas com registo")}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("Apenas as medidas efetivamente preenchidas.")}</p></div>
                   </div>
-                  {/* Measures grouped by section */}
-                  <div className="max-h-[500px] overflow-y-auto space-y-4">
-                    {measuresBySection.map(sec => (
-                      <div key={sec.id}>
-                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 sticky top-0 bg-background py-1 border-b">
-                          {sec.name}
-                        </h3>
-                        <div className="space-y-1.5">
-                          {sec.measures.filter((m: any) => m.totalResponses > 0).map((m: any) => (
-                            <div key={m.id} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium">{t("Medida")} {m.number}: {(m.description || "").substring(0, 100)}{(m.description || "").length > 100 ? "..." : ""}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {m.totalResponses} {t("respostas")} · {m.conformCount} {t("conformes")} · {m.ncCount} NC · {m.naCount} NA
-                                    {m.latestObservation && <span className="ml-2 italic">— {m.latestObservation.substring(0, 60)}...</span>}
-                                  </p>
-                                </div>
-                                <Badge className={`ml-2 text-[10px] ${statusColors[m.autoStatus] || ""}`}>
-                                  {statusLabels[m.autoStatus] || m.autoStatus}
-                                </Badge>
-                              </div>
-                              {m.responses.length > 0 && (
-                                <div className="mt-2 pl-3 border-l-2 border-primary">
-                                  <p className="text-xs text-muted-foreground mb-1">{t("Selecione as semanas a compilar neste ponto do RDCD:")}</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {m.responses.slice(0, 10).map((r: any, i: number) => {
-                                      const weekKey = `${r.year}-W${String(r.week).padStart(2, "0")}`;
-                                      const sel = measureSelections[m.id];
-                                      const isSelected = sel?.selectedWeeks?.includes(weekKey);
-                                      return (
-                                        <button
-                                          key={i}
-                                          className={`px-2 py-0.5 rounded text-[10px] border ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border hover:border-primary"}`}
-                                          onClick={() => {
-                                            const current = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
-                                            const weeks = current.selectedWeeks.includes(weekKey)
-                                              ? current.selectedWeeks.filter((w: string) => w !== weekKey)
-                                              : [...current.selectedWeeks, weekKey];
-                                            setMeasureSelections(prev => ({ ...prev, [m.id]: { ...current, selectedWeeks: weeks } }));
-                                          }}
-                                        >
-                                          S{r.week} [{r.status}] {r.observations ? "📝" : ""}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  {(() => {
-                                    const selection = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
-                                    const selectedSubmissionIds = new Set(m.responses.filter((response: any) => selection.selectedWeeks.includes(`${response.year}-W${String(response.week).padStart(2, "0")}`)).map((response: any) => response.submissionId));
-                                    const images = (evidenceByMeasure[m.id] || []).filter(image => selectedSubmissionIds.has(image.submissionId));
-                                    return <>
-                                      {images.length > 0 && <div className="mt-3"><p className="mb-1.5 text-xs text-muted-foreground">{t("Fotografias disponíveis nas semanas selecionadas (clique para incluir):")}</p><div className="flex flex-wrap gap-2">{images.map((image) => {
-                                        const selected = selection.selectedImageUrls.includes(image.url);
-                                        return <button type="button" key={image.url} onClick={() => setMeasureSelections(current => {
-                                          const item = current[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
-                                          const selectedImageUrls = item.selectedImageUrls.includes(image.url) ? item.selectedImageUrls.filter(url => url !== image.url) : [...item.selectedImageUrls, image.url];
-                                          return { ...current, [m.id]: { ...item, selectedImageUrls } };
-                                        })} className={`overflow-hidden rounded-lg border text-left transition-colors ${selected ? "border-primary ring-2 ring-primary/25" : "border-border hover:border-primary/60"}`}><img src={image.url} alt={image.filename} className="h-16 w-20 object-cover" /><span className="block max-w-20 truncate px-1 py-0.5 text-[9px] text-muted-foreground">{image.filename}</span></button>;
-                                      })}</div></div>}
-                                      <Textarea value={selection.notes} onChange={(event) => setMeasureSelections(current => ({ ...current, [m.id]: { ...selection, notes: event.target.value } }))} className="mt-3 min-h-16 bg-card text-xs" placeholder={t("Nota editorial opcional para esta medida no RDCD")} />
-                                    </>;
-                                  })()}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          {sec.measures.filter((m: any) => m.totalResponses > 0).length === 0 && (
-                            <p className="text-xs text-muted-foreground italic pl-2">{t("Sem dados nesta secção para o período selecionado.")}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {filteredSubmissions.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">{t("Nenhuma ficha aprovada encontrada no período selecionado. Verifique os projetos e semanas escolhidos.")}</p>
-                    )}
-                  </div>
+
+                  <section className="mt-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-foreground">{t("Fichas de controlo que alimentam o relatório")}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Abra cada ficha para verificar a origem das medidas, os estados e as observações antes de escolher o que entra no capítulo 5.")}</p></div><Badge variant="outline" className="border-border bg-muted/20 text-muted-foreground">{weeklyFormsForRdcd.length} {t("fichas com respostas")}</Badge></div>
+                    <Accordion type="single" collapsible className="divide-y divide-border rounded-xl border border-border px-3">
+                      {weeklyFormsForRdcd.map(({ submission, responses }: any) => <AccordionItem key={submission.id} value={`submission-${submission.id}`} className="border-0"><AccordionTrigger className="py-3 no-underline hover:no-underline"><div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 pr-2"><span className="font-semibold text-foreground">S{submission.weekNumber}/{submission.weekYear}</span><span className="text-xs text-muted-foreground">{t("Ficha")} #{submission.id}</span><span className="text-xs text-muted-foreground">{responses.length} {t("medidas registadas")}</span></div></AccordionTrigger><AccordionContent className="pb-4"><div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[620px] text-left text-xs"><thead className="bg-muted/40 text-muted-foreground"><tr><th className="px-3 py-2 font-medium">{t("Medida")}</th><th className="px-3 py-2 font-medium">{t("Descrição")}</th><th className="px-3 py-2 font-medium">{t("Estado")}</th><th className="px-3 py-2 font-medium">{t("Observação")}</th></tr></thead><tbody>{responses.map((response: any) => <tr key={response.id} className="border-t border-border"><td className="px-3 py-2 align-top font-medium text-foreground">{response.measure.number || response.measure.id}</td><td className="max-w-md px-3 py-2 align-top leading-5 text-foreground">{localizeDcapeDescription(response.measure.description, language)}</td><td className="px-3 py-2 align-top"><Badge variant="outline" className={statusColors[response.status === "NC" ? "nc" : response.status === "NA" ? "na" : "conform"]}>{responseStatusLabels[response.status] || response.status || "—"}</Badge></td><td className="max-w-xs px-3 py-2 align-top leading-5 text-muted-foreground">{response.observations || "—"}</td></tr>)}</tbody></table></div></AccordionContent></AccordionItem>)}
+                    </Accordion>
+                  </section>
+
+                  <section className="mt-5 rounded-2xl border border-primary/15 bg-primary/[0.025] p-4 sm:p-5">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3"><div><p className="stand-kicker text-primary">{t("CURADORIA DO CAPÍTULO 5")}</p><h3 className="mt-1 text-sm font-semibold text-foreground">{t("Escolha semanas, fotografias e notas a incluir")}</h3><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">{t("Cada medida apresenta exclusivamente as semanas em que foi respondida numa ficha aprovada. Pode escolher semanas diferentes para cada medida e reduzir a seleção fotográfica ao essencial.")}</p></div><Button type="button" variant="outline" size="sm" onClick={() => setMeasureSelections(current => Object.fromEntries(compiledMeasures.map((measure: any) => [measure.id, { ...(current[measure.id] || { selectedImageUrls: [], notes: "" }), selectedWeeks: measure.responses.map((response: any) => `${response.year}-W${String(response.week).padStart(2, "0")}`) }])))}>{t("Selecionar todas as semanas disponíveis")}</Button></div>
+                    <div className="space-y-4">
+                      {measuresBySection.map(sec => <div key={sec.id} className="rounded-xl border border-border bg-card"><div className="border-b border-border bg-muted/20 px-4 py-3"><p className="text-xs font-semibold uppercase tracking-wide text-foreground">{sec.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{sec.measures.length} {t("medidas com registo nas fichas aprovadas")}</p></div><div className="divide-y divide-border">{sec.measures.map((m: any) => { const selection = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" }; const selectedSubmissionIds = new Set(m.responses.filter((response: any) => selection.selectedWeeks.includes(`${response.year}-W${String(response.week).padStart(2, "0")}`)).map((response: any) => response.submissionId)); const images = (evidenceByMeasure[m.id] || []).filter(image => selectedSubmissionIds.has(image.submissionId)); return <div key={m.id} className="p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-foreground">{t("Medida")} {m.number}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{localizeDcapeDescription(m.description, language)}</p></div><Badge variant="outline" className={statusColors[m.autoStatus] || ""}>{t(statusLabels[m.autoStatus] || m.autoStatus)}</Badge></div><div className="mt-3"><p className="text-xs font-medium text-foreground">{t("Semanas respondidas nesta medida")}</p><div className="mt-2 flex flex-wrap gap-2">{m.responses.map((response: any) => { const weekKey = `${response.year}-W${String(response.week).padStart(2, "0")}`; const selected = selection.selectedWeeks.includes(weekKey); return <Button type="button" key={`${response.submissionId}-${weekKey}`} size="sm" variant={selected ? "default" : "outline"} className="h-8 text-xs" onClick={() => { const current = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" }; const selectedWeeks = current.selectedWeeks.includes(weekKey) ? current.selectedWeeks.filter((week: string) => week !== weekKey) : [...current.selectedWeeks, weekKey]; setMeasureSelections(previous => ({ ...previous, [m.id]: { ...current, selectedWeeks } })); }}>S{response.week}/{response.year} · {responseStatusLabels[response.status] || response.status}</Button>})}</div></div>{images.length > 0 && <div className="mt-4"><p className="text-xs font-medium text-foreground">{t("Fotografias disponíveis nas semanas selecionadas")}</p><div className="mt-2 flex flex-wrap gap-2">{images.map((image) => { const selected = selection.selectedImageUrls.includes(image.url); return <button type="button" key={image.url} onClick={() => setMeasureSelections(current => { const item = current[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" }; const selectedImageUrls = item.selectedImageUrls.includes(image.url) ? item.selectedImageUrls.filter(url => url !== image.url) : [...item.selectedImageUrls, image.url]; return { ...current, [m.id]: { ...item, selectedImageUrls } }; })} className={`overflow-hidden rounded-lg border text-left transition-colors ${selected ? "border-primary ring-2 ring-primary/25" : "border-border hover:border-primary/60"}`}><img src={image.url} alt={image.filename} className="h-20 w-28 object-cover" /><span className="block max-w-28 truncate px-1.5 py-1 text-[10px] text-muted-foreground">{image.filename}</span></button>})}</div></div>}<Textarea value={selection.notes} onChange={(event) => setMeasureSelections(current => ({ ...current, [m.id]: { ...selection, notes: event.target.value } }))} className="mt-4 min-h-20 bg-background text-xs" placeholder={t("Nota editorial opcional para esta medida no RDCD")} /></div>})}</div></div>)}
+                    </div>
+                  </section>
                 </>
               )}
               <div className="flex justify-between mt-6">
@@ -905,7 +1018,30 @@ export default function RDCD() {
                       </div>
                       <Badge variant="outline" className="border-border bg-card text-muted-foreground">{content[activeEditorial.key].trim().length} {t("caracteres")}</Badge>
                     </div>
-                    <Textarea value={content[activeEditorial.key]} onChange={(event) => setContent(current => ({ ...current, [activeEditorial.key]: event.target.value }))} placeholder={t(activeEditorial.prompt)} className="min-h-[330px] resize-y border-border bg-card p-4 text-sm leading-7 shadow-sm placeholder:text-muted-foreground/80" aria-label={t(activeEditorial.label)} />
+                    <div className="space-y-5">
+                      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-foreground">{t("Síntese técnica")}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Escreva a interpretação técnica do capítulo. Esta síntese será colocada no corpo do Word, sem alterar qualquer registo de origem.")}</p></div><Badge variant="outline" className="border-border bg-muted/20 text-muted-foreground">{activeChapterBlock.summary.length} {t("caracteres")}</Badge></div>
+                        <Textarea value={activeChapterBlock.summary} onChange={(event) => updateChapterSummary(event.target.value)} placeholder={t(activeEditorial.prompt)} className="mt-4 min-h-[190px] resize-y border-border bg-background p-4 text-sm leading-7 shadow-sm placeholder:text-muted-foreground/80" aria-label={t(activeEditorial.label)} />
+                      </section>
+
+                      <div className="grid gap-5 lg:grid-cols-2">
+                        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-foreground">{t("Pontos-chave")}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Estruture a leitura do capítulo em conclusões, decisões ou factos verificáveis.")}</p></div><Button type="button" variant="outline" size="sm" onClick={() => updateActiveChapterBlock(current => ({ ...current, keyPoints: [...current.keyPoints, ""] }))}><Plus className="mr-1 size-3.5" />{t("Adicionar")}</Button></div>
+                          <div className="mt-4 space-y-2">{activeChapterBlock.keyPoints.length === 0 ? <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-xs text-muted-foreground">{t("Ainda não foram adicionados pontos-chave.")}</p> : activeChapterBlock.keyPoints.map((point, index) => <div key={`${activeEditorial.key}-point-${index}`} className="flex items-start gap-2"><span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" /><Input value={point} onChange={event => updateActiveChapterBlock(current => ({ ...current, keyPoints: current.keyPoints.map((value, itemIndex) => itemIndex === index ? event.target.value : value) }))} placeholder={t("Ex.: alteração relevante, decisão ou conclusão a destacar")} className="bg-background text-xs" /><Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => updateActiveChapterBlock(current => ({ ...current, keyPoints: current.keyPoints.filter((_, itemIndex) => itemIndex !== index) }))} aria-label={t("Remover")}><Trash2 className="size-4" /></Button></div>)}</div>
+                        </section>
+
+                        <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-foreground">{t("Fontes e referências")}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Registe as fontes documentais, fichas ou decisões que suportam este capítulo.")}</p></div><Button type="button" variant="outline" size="sm" onClick={() => updateActiveChapterBlock(current => ({ ...current, sourceReferences: [...current.sourceReferences, ""] }))}><Plus className="mr-1 size-3.5" />{t("Adicionar")}</Button></div>
+                          <div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="secondary" size="sm" className="h-8 text-[11px]" onClick={() => updateActiveChapterBlock(current => ({ ...current, sourceReferences: [...current.sourceReferences, `${filteredSubmissions.length} ${t("fichas semanais aprovadas")} (${startWeek || "—"}–${endWeek || "—"})`] }))}><FileText className="mr-1.5 size-3.5" />{t("Usar fichas aprovadas")}</Button><Button type="button" variant="secondary" size="sm" className="h-8 text-[11px]" onClick={() => updateActiveChapterBlock(current => ({ ...current, sourceReferences: [...current.sourceReferences, `${selectedMeasureCount} ${t("medidas selecionadas para o capítulo 5")}`] }))}><ListTodo className="mr-1.5 size-3.5" />{t("Usar medidas selecionadas")}</Button>{includeWaste && <Button type="button" variant="secondary" size="sm" className="h-8 text-[11px]" onClick={() => updateActiveChapterBlock(current => ({ ...current, sourceReferences: [...current.sourceReferences, `${wasteRows.length} e-GAR(s) ${t("no período")}`] }))}><Database className="mr-1.5 size-3.5" />{t("Usar e-GARs")}</Button>}</div>
+                          <div className="mt-3 space-y-2">{activeChapterBlock.sourceReferences.length === 0 ? <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-xs text-muted-foreground">{t("Ainda não foram registadas fontes para este capítulo.")}</p> : activeChapterBlock.sourceReferences.map((reference, index) => <div key={`${activeEditorial.key}-source-${index}`} className="flex items-center gap-2"><Link2 className="size-3.5 shrink-0 text-primary" /><Input value={reference} onChange={event => updateActiveChapterBlock(current => ({ ...current, sourceReferences: current.sourceReferences.map((value, itemIndex) => itemIndex === index ? event.target.value : value) }))} placeholder={t("Referência documental, ficheiro, decisão ou registo") } className="bg-background text-xs" /><Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => updateActiveChapterBlock(current => ({ ...current, sourceReferences: current.sourceReferences.filter((_, itemIndex) => itemIndex !== index) }))} aria-label={t("Remover")}><Trash2 className="size-4" /></Button></div>)}</div>
+                        </section>
+                      </div>
+
+                      <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-foreground">{t("Ações, responsabilidades e prazos")}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Inclua ações de seguimento apenas quando forem confirmadas. A tabela segue para o capítulo e permite revisão antes da emissão.")}</p></div><Button type="button" variant="outline" size="sm" onClick={() => updateActiveChapterBlock(current => ({ ...current, actions: [...current.actions, { action: "", owner: "", dueDate: "", status: "" }] }))}><Plus className="mr-1 size-3.5" />{t("Adicionar ação")}</Button></div>
+                        {activeChapterBlock.actions.length === 0 ? <div className="mt-4 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-5 text-xs leading-5 text-muted-foreground">{t("Não existem ações ou prazos registados neste capítulo.")}</div> : <div className="mt-4 overflow-x-auto rounded-xl border border-border"><table className="w-full min-w-[760px] text-left text-xs"><thead className="bg-muted/40 text-muted-foreground"><tr><th className="px-3 py-2 font-medium">{t("Ação")}</th><th className="px-3 py-2 font-medium">{t("Responsável")}</th><th className="px-3 py-2 font-medium">{t("Prazo")}</th><th className="px-3 py-2 font-medium">{t("Estado")}</th><th className="w-10 px-2 py-2"><span className="sr-only">{t("Remover")}</span></th></tr></thead><tbody>{activeChapterBlock.actions.map((action, index) => <tr key={`${activeEditorial.key}-action-${index}`} className="border-t border-border"><td className="p-2"><Input value={action.action} onChange={event => updateActiveChapterBlock(current => ({ ...current, actions: current.actions.map((item, itemIndex) => itemIndex === index ? { ...item, action: event.target.value } : item) }))} placeholder={t("Ação de seguimento")} className="h-8 bg-background text-xs" /></td><td className="p-2"><Input value={action.owner} onChange={event => updateActiveChapterBlock(current => ({ ...current, actions: current.actions.map((item, itemIndex) => itemIndex === index ? { ...item, owner: event.target.value } : item) }))} placeholder={t("Entidade ou pessoa")} className="h-8 bg-background text-xs" /></td><td className="p-2"><Input value={action.dueDate} onChange={event => updateActiveChapterBlock(current => ({ ...current, actions: current.actions.map((item, itemIndex) => itemIndex === index ? { ...item, dueDate: event.target.value } : item) }))} placeholder="dd/mm/aaaa" className="h-8 bg-background text-xs" /></td><td className="p-2"><Input value={action.status} onChange={event => updateActiveChapterBlock(current => ({ ...current, actions: current.actions.map((item, itemIndex) => itemIndex === index ? { ...item, status: event.target.value } : item) }))} placeholder={t("Ex.: em curso")} className="h-8 bg-background text-xs" /></td><td className="p-2"><Button type="button" variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => updateActiveChapterBlock(current => ({ ...current, actions: current.actions.filter((_, itemIndex) => itemIndex !== index) }))} aria-label={t("Remover")}><Trash2 className="size-4" /></Button></td></tr>)}</tbody></table></div>}
+                      </section>
+                    </div>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground"><span className="flex items-center gap-2"><FileText className="size-4 text-primary" />{t(activeEditorial.source)}</span><span>{t("Guardado no rascunho apenas quando escolher Guardar rascunho.")}</span></div>
                     <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
                       <Button variant="ghost" size="sm" disabled={EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key) === 0} onClick={() => { const index = EDITORIAL_SECTIONS.findIndex(section => section.key === activeEditorial.key); setActiveEditorialSection(EDITORIAL_SECTIONS[Math.max(0, index - 1)].key); }}><ChevronLeft className="mr-1 size-4" />{t("Capítulo anterior")}</Button>
@@ -940,8 +1076,9 @@ export default function RDCD() {
                     <div><Label>{t("Revisão")}</Label><Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1.5 bg-card" /></div>
                     <div><Label>{t("Elaborado por")}</Label><Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder={t("Nome / função — Equipa Ambiental Start Campus")} className="mt-1.5 bg-card" /></div>
                     <div><Label>{t("Revisto / aprovado por")}</Label><Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder={t("Nome / função")} className="mt-1.5 bg-card" /></div>
-                    <div><Label>{t("Identidades do relatório")}</Label><Select value={brandProfile} onValueChange={(value) => setBrandProfile(value as RdcdBrandProfileId)}><SelectTrigger className="mt-1.5 bg-card"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(RDCD_BRAND_PROFILES).map(([id, profile]) => <SelectItem key={id} value={id}>{profile.label}</SelectItem>)}</SelectContent></Select><p className="mt-1.5 text-xs text-muted-foreground">{RDCD_BRAND_PROFILES[brandProfile].description}</p></div>
+                    <div><Label>{t("Base de identidades")}</Label><Select value={brandProfile} onValueChange={(value) => { const profileId = value as RdcdBrandProfileId; setBrandProfile(profileId); setReportLogos(defaultReportLogos(profileId)); }}><SelectTrigger className="mt-1.5 bg-card"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(RDCD_BRAND_PROFILES).map(([id, profile]) => <SelectItem key={id} value={id}>{profile.label}</SelectItem>)}</SelectContent></Select><p className="mt-1.5 text-xs text-muted-foreground">{t("A base repõe os logótipos predefinidos; pode depois personalizar cada entidade apenas para este relatório.")}</p></div>
                   </div>
+                  <div className="mt-5 rounded-2xl border border-border bg-muted/10 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-foreground">{t("Logótipos deste RDCD")}</h4><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Altere o nome ou substitua o logótipo de cada entidade. As alterações ficam apenas neste rascunho e são auditadas.")}</p></div><Badge variant="outline" className="border-border bg-card text-muted-foreground">{reportLogos.length}/4</Badge></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{reportLogos.map((logo, index) => <div key={`${logo.url}-${index}`} className="rounded-xl border border-border bg-card p-3"><div className="flex h-14 items-center justify-center rounded-lg border border-dashed border-border bg-background p-2"><img src={reportLogoMediaUrl(logo.url)} alt={logo.name} className="max-h-10 max-w-full object-contain" /></div><Label className="mt-3 block text-xs">{t("Entidade")}</Label><Input value={logo.name} onChange={event => setReportLogos(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} className="mt-1 h-8 bg-background text-xs" /><div className="mt-2 flex items-center justify-between gap-2"><label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary hover:underline"><input type="file" accept="image/png,image/jpeg" className="sr-only" disabled={uploadLogoMutation.isPending} onChange={event => { const file = event.target.files?.[0]; if (file) void replaceReportLogo(index, file); event.currentTarget.value = ""; }} />{uploadLogoMutation.isPending ? t("A carregar...") : t("Substituir logótipo")}</label><Button type="button" variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" disabled={reportLogos.length <= 1} onClick={() => setReportLogos(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={t("Remover")}><Trash2 className="size-3.5" /></Button></div></div>)}</div>{reportLogos.length < 4 && <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setReportLogos(current => [...current, { name: t("Nova entidade"), url: "/manus-storage/start-campus-rdcd_d271a631.png", type: "png", width: 120, height: 48 }])}><Plus className="mr-1.5 size-3.5" />{t("Adicionar entidade")}</Button>}</div>
                   {usesSin02Template && <p className="mt-5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-foreground">{t("O modelo SIN02 pré-preenche dados institucionais do template. Confirme sempre TUA, licenças e vigência antes da emissão.")}</p>}
                 </CardContent>
               </Card>

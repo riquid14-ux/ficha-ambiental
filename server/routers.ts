@@ -68,6 +68,46 @@ function parseJsonSafely<T>(value: string | null | undefined, fallback: T): T {
   }
 }
 
+const rdcdChapterActionInput = z.object({
+  action: z.string().trim().max(1_000),
+  owner: z.string().trim().max(300),
+  dueDate: z.string().trim().max(80),
+  status: z.string().trim().max(120),
+});
+
+const rdcdChapterBlockInput = z.object({
+  summary: z.string().trim().max(12_000).optional(),
+  keyPoints: z.array(z.string().trim().max(1_500)).max(20).optional(),
+  sourceReferences: z.array(z.string().trim().max(500)).max(30).optional(),
+  actions: z.array(rdcdChapterActionInput).max(20).optional(),
+});
+
+const rdcdContentInput = z.object({
+  introduction: z.string().trim().max(12_000).optional(),
+  projectStatus: z.string().trim().max(12_000).optional(),
+  correctiveActions: z.string().trim().max(12_000).optional(),
+  openIssues: z.string().trim().max(12_000).optional(),
+  worksProgramme: z.string().trim().max(12_000).optional(),
+  publicContacts: z.string().trim().max(12_000).optional(),
+  conclusions: z.string().trim().max(12_000).optional(),
+  chapterBlocks: z.object({
+    introduction: rdcdChapterBlockInput.optional(),
+    projectStatus: rdcdChapterBlockInput.optional(),
+    correctiveActions: rdcdChapterBlockInput.optional(),
+    openIssues: rdcdChapterBlockInput.optional(),
+    worksProgramme: rdcdChapterBlockInput.optional(),
+    publicContacts: rdcdChapterBlockInput.optional(),
+    conclusions: rdcdChapterBlockInput.optional(),
+  }).optional(),
+  reportLogos: z.array(z.object({
+    name: z.string().trim().min(1).max(120),
+    url: z.string().trim().min(1).max(1_000),
+    type: z.enum(["png", "jpg"]),
+    width: z.number().int().min(40).max(240),
+    height: z.number().int().min(24).max(120),
+  })).max(4).optional(),
+});
+
 export function shouldArchiveWasteEgar(egarId?: string | null) {
   return !egarId?.startsWith("QA-TEMP-");
 }
@@ -5403,6 +5443,29 @@ export const appRouter = router({
   // Não armazena cópias de documentos ou fotografias: preserva exclusivamente a
   // configuração editorial e referências às fontes já autorizadas na plataforma.
   rdcd: router({
+    uploadLogo: protectedProcedure
+      .input(z.object({
+        projectId: z.number().int().positive(),
+        filename: z.string().trim().min(1).max(180),
+        mimeType: z.enum(["image/jpeg", "image/png"]),
+        data: z.string().min(4).max(4 * 1024 * 1024),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem definir marcas de um RDCD." });
+        await assertProjectAccess(ctx.user, input.projectId);
+        if (/[/\\\r\n\0]/.test(input.filename) || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) || input.data.length % 4 !== 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O logótipo selecionado é inválido." });
+        }
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 2 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O logótipo deve ter no máximo 2 MB." });
+        const sanitization = await sanitizeFile(buffer, input.mimeType, input.filename);
+        await logFileUpload(ctx.user.id, input.filename, input.mimeType, sanitization.safe, sanitization.threats, "rdcd-brand-logo");
+        if (!sanitization.safe) throw new TRPCError({ code: "BAD_REQUEST", message: "O logótipo foi rejeitado pela verificação de segurança." });
+        const extension = input.mimeType === "image/png" ? "png" : "jpg";
+        const stored = await storagePut(`rdcd-branding/${input.projectId}/${Date.now()}-${ctx.user.id}.${extension}`, buffer, input.mimeType);
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "rdcd_logo_uploaded", "rdcd_reports", null, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, mimeType: input.mimeType, storageKey: stored.key }));
+        return { url: stored.url, type: extension as "png" | "jpg" };
+      }),
     list: protectedProcedure
       .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -5437,20 +5500,12 @@ export const appRouter = router({
         includePlans: z.boolean(),
         includeWaste: z.boolean(),
         planIds: z.array(z.number().int().positive()).max(40),
-        content: z.object({
-          introduction: z.string().trim().max(12_000).optional(),
-          projectStatus: z.string().trim().max(12_000).optional(),
-          correctiveActions: z.string().trim().max(12_000).optional(),
-          openIssues: z.string().trim().max(12_000).optional(),
-          worksProgramme: z.string().trim().max(12_000).optional(),
-          publicContacts: z.string().trim().max(12_000).optional(),
-          conclusions: z.string().trim().max(12_000).optional(),
-        }),
+        content: rdcdContentInput,
         selections: z.record(z.string(), z.object({
           selectedWeeks: z.array(z.string().regex(/^\d{4}-W\d{1,2}$/)).max(80),
           selectedImageUrls: z.array(z.string().max(1_000)).max(30),
           notes: z.string().trim().max(4_000).optional(),
-        })),
+        })).refine(value => Object.keys(value).length <= 250, { message: "Foram selecionadas demasiadas medidas para um único RDCD." }),
       }).superRefine((value, issue) => {
         if (value.endWeek < value.startWeek) issue.addIssue({ code: "custom", path: ["endWeek"], message: "A semana de fim não pode ser anterior à semana de início." });
       }))

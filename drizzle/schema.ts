@@ -1093,6 +1093,38 @@ export const operationInfrastructurePoints = mysqlTable("operation_infrastructur
 export type OperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferSelect;
 export type InsertOperationInfrastructurePoint = typeof operationInfrastructurePoints.$inferInsert;
 
+// ─── RDCD (Relatório de Demonstração do Cumprimento da Decisão) ───────────────
+// O relatório é um rascunho editorial auditável: mantém apenas parâmetros,
+// textos de enquadramento e referências às fontes corporativas. As fichas,
+// evidências e anexos continuam nas respetivas fontes autorizadas.
+export const rdcdReports = mysqlTable("rdcd_reports", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  reportNumber: varchar("reportNumber", { length: 160 }),
+  reportYear: int("reportYear").notNull(),
+  startWeek: int("startWeek").notNull(),
+  endWeek: int("endWeek").notNull(),
+  reportPhase: varchar("reportPhase", { length: 160 }).notNull(),
+  revision: varchar("revision", { length: 40 }).notNull().default("draft"),
+  brandProfile: varchar("brandProfile", { length: 80 }).notNull().default("startcampus_gleeds_quadrante"),
+  preparedBy: varchar("preparedBy", { length: 500 }),
+  reviewedBy: varchar("reviewedBy", { length: 500 }),
+  contentJson: text("contentJson").notNull(),
+  selectionJson: text("selectionJson").notNull(),
+  planIdsJson: text("planIdsJson").notNull(),
+  includePlans: boolean("includePlans").notNull().default(true),
+  includeWaste: boolean("includeWaste").notNull().default(true),
+  createdBy: int("createdBy").notNull(),
+  updatedBy: int("updatedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  projectPeriodIdx: index("rdcd_reports_project_period_idx").on(table.projectId, table.reportYear, table.startWeek, table.endWeek),
+  updatedIdx: index("rdcd_reports_updated_idx").on(table.updatedAt),
+}));
+export type RdcdReport = typeof rdcdReports.$inferSelect;
+export type InsertRdcdReport = typeof rdcdReports.$inferInsert;
+
 // Audit log for admin actions
 export const auditLog = mysqlTable("audit_log", {
   id: int("id").primaryKey().autoincrement(),

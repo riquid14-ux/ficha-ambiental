@@ -59,6 +59,15 @@ function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
 }
 
+function parseJsonSafely<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export function shouldArchiveWasteEgar(egarId?: string | null) {
   return !egarId?.startsWith("QA-TEMP-");
 }
@@ -5387,6 +5396,126 @@ export const appRouter = router({
         await database.execute(sql`DELETE FROM operation_scenarios WHERE id = ${input.id} AND projectId = ${input.projectId}`);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "operation_scenario_delete", "operation_scenarios", input.id, null, JSON.stringify({ projectId: input.projectId }));
         return { success: true };
+      }),
+  }),
+
+  // ─── RDCD — rascunhos editoriais e anexo e-GAR ─────────────────────────────
+  // Não armazena cópias de documentos ou fotografias: preserva exclusivamente a
+  // configuração editorial e referências às fontes já autorizadas na plataforma.
+  rdcd: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar rascunhos RDCD." });
+        await assertProjectAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const result = await database.select().from(schema.rdcdReports).where(eq(schema.rdcdReports.projectId, input.projectId)).orderBy(sql`${schema.rdcdReports.updatedAt} DESC`);
+        return result.map((report: any) => ({
+          ...report,
+          content: parseJsonSafely(report.contentJson, {}),
+          selections: parseJsonSafely(report.selectionJson, {}),
+          planIds: parseJsonSafely(report.planIdsJson, []),
+          contentJson: undefined,
+          selectionJson: undefined,
+          planIdsJson: undefined,
+        }));
+      }),
+    save: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        projectId: z.number().int().positive(),
+        reportNumber: z.string().trim().max(160).optional(),
+        reportYear: z.number().int().min(2020).max(2100),
+        startWeek: z.number().int().min(1).max(53),
+        endWeek: z.number().int().min(1).max(53),
+        reportPhase: z.string().trim().min(2).max(160),
+        revision: z.string().trim().min(1).max(40),
+        brandProfile: z.enum(["startcampus_gleeds_quadrante", "startcampus_gleeds", "startcampus"]),
+        preparedBy: z.string().trim().max(500).optional(),
+        reviewedBy: z.string().trim().max(500).optional(),
+        includePlans: z.boolean(),
+        includeWaste: z.boolean(),
+        planIds: z.array(z.number().int().positive()).max(40),
+        content: z.object({
+          introduction: z.string().trim().max(12_000).optional(),
+          projectStatus: z.string().trim().max(12_000).optional(),
+          correctiveActions: z.string().trim().max(12_000).optional(),
+          openIssues: z.string().trim().max(12_000).optional(),
+          worksProgramme: z.string().trim().max(12_000).optional(),
+          publicContacts: z.string().trim().max(12_000).optional(),
+          conclusions: z.string().trim().max(12_000).optional(),
+        }),
+        selections: z.record(z.string(), z.object({
+          selectedWeeks: z.array(z.string().regex(/^\d{4}-W\d{1,2}$/)).max(80),
+          selectedImageUrls: z.array(z.string().max(1_000)).max(30),
+          notes: z.string().trim().max(4_000).optional(),
+        })),
+      }).superRefine((value, issue) => {
+        if (value.endWeek < value.startWeek) issue.addIssue({ code: "custom", path: ["endWeek"], message: "A semana de fim não pode ser anterior à semana de início." });
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem guardar rascunhos RDCD." });
+        await assertProjectAccess(ctx.user, input.projectId);
+        const database = await db.getDb();
+        if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const payload = {
+          projectId: input.projectId,
+          reportNumber: input.reportNumber?.trim() || null,
+          reportYear: input.reportYear,
+          startWeek: input.startWeek,
+          endWeek: input.endWeek,
+          reportPhase: input.reportPhase,
+          revision: input.revision,
+          brandProfile: input.brandProfile,
+          preparedBy: input.preparedBy?.trim() || null,
+          reviewedBy: input.reviewedBy?.trim() || null,
+          includePlans: input.includePlans,
+          includeWaste: input.includeWaste,
+          planIdsJson: JSON.stringify(Array.from(new Set(input.planIds))),
+          contentJson: JSON.stringify(input.content),
+          selectionJson: JSON.stringify(input.selections),
+          updatedBy: ctx.user.id,
+        };
+        const auditSummary = JSON.stringify({
+          projectId: input.projectId,
+          reportYear: input.reportYear,
+          startWeek: input.startWeek,
+          endWeek: input.endWeek,
+          reportNumber: input.reportNumber?.trim() || null,
+          selectedPlans: input.planIds.length,
+          selectedMeasures: Object.keys(input.selections).length,
+          selectedImages: Object.values(input.selections).reduce((total, selection) => total + selection.selectedImageUrls.length, 0),
+          includeWaste: input.includeWaste,
+        });
+        if (input.id) {
+          const existing = await database.select().from(schema.rdcdReports).where(eq(schema.rdcdReports.id, input.id)).limit(1);
+          if (!existing[0] || existing[0].projectId !== input.projectId) throw new TRPCError({ code: "NOT_FOUND", message: "Rascunho RDCD não encontrado." });
+          await database.update(schema.rdcdReports).set(payload).where(eq(schema.rdcdReports.id, input.id));
+          await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "rdcd_draft_updated", "rdcd_reports", input.id, JSON.stringify({ reportNumber: existing[0].reportNumber, updatedAt: existing[0].updatedAt }), auditSummary);
+          return { id: input.id, created: false };
+        }
+        const [created] = await database.insert(schema.rdcdReports).values({ ...payload, createdBy: ctx.user.id }).$returningId();
+        await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "rdcd_draft_created", "rdcd_reports", created.id, null, auditSummary);
+        return { id: created.id, created: true };
+      }),
+    wasteRows: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive(), startAt: z.number().int().positive(), endAt: z.number().int().positive() }).refine(value => value.endAt >= value.startAt, { message: "Período e-GAR inválido.", path: ["endAt"] }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar o anexo e-GAR do RDCD." });
+        await assertProjectAccess(ctx.user, input.projectId);
+        const egars = await db.getWasteEgars(input.projectId);
+        return egars.filter((egar: any) => Number(egar.date) >= input.startAt && Number(egar.date) <= input.endAt).map((egar: any) => ({
+          id: egar.id,
+          egarId: egar.egarId || "—",
+          date: Number(egar.date),
+          lerCode: egar.lerCode,
+          designation: egar.designation,
+          quantity: egar.correctedQuantity || egar.quantity,
+          destination: egar.destination,
+          companyName: egar.companyName || "—",
+          subProjectName: egar.subProjectName || "—",
+        }));
       }),
   }),
 

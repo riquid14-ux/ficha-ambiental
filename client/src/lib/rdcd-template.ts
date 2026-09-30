@@ -125,3 +125,38 @@ export const SIN02_RDCD_METADATA = {
   dcape: "11/11/2024",
   licensingEntity: "Direção-Geral de Energia e Geologia (DGEG)",
 } as const;
+
+export type RdcdBrandProfileId = "startcampus_gleeds_quadrante" | "startcampus_gleeds" | "startcampus";
+
+// Marcas extraídas do template RDCD fornecido e colocadas em storage privado.
+// O perfil pode ser alterado por relatório; não altera as marcas corporativas da aplicação.
+export const RDCD_BRAND_PROFILES: Record<RdcdBrandProfileId, {
+  label: string;
+  description: string;
+  logos: Array<{ name: string; url: string; type: "png" | "jpg"; width: number; height: number }>;
+}> = {
+  startcampus_gleeds_quadrante: {
+    label: "Start Campus · Gleeds · Quadrante",
+    description: "Modelo completo do rascunho institucional recebido.",
+    logos: [
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 140, height: 46 },
+      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_1e64824f.png", type: "png", width: 108, height: 52 },
+      { name: "Quadrante", url: "/manus-storage/quadrante-rdcd_91ebdbd2.jpg", type: "jpg", width: 80, height: 68 },
+    ],
+  },
+  startcampus_gleeds: {
+    label: "Start Campus · Gleeds",
+    description: "Preparação pela Start Campus com consultoria ambiental Gleeds.",
+    logos: [
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 155, height: 50 },
+      { name: "Gleeds", url: "/manus-storage/gleeds-rdcd_1e64824f.png", type: "png", width: 120, height: 58 },
+    ],
+  },
+  startcampus: {
+    label: "Start Campus",
+    description: "Emissão institucional Start Campus.",
+    logos: [
+      { name: "Start Campus", url: "/manus-storage/start-campus-rdcd_7fc79075.png", type: "png", width: 190, height: 62 },
+    ],
+  },
+};

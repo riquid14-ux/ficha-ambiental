@@ -12,19 +12,54 @@ import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2 } from "lucide-react";
+import { FileBarChart, ChevronRight, ChevronLeft, Check, Download, Eye, Loader2, Save, FileText, Database } from "lucide-react";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, AlignmentType, ImageRun } from "docx";
 import { saveAs } from "file-saver";
-import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows, SIN02_RDCD_METADATA } from "@/lib/rdcd-template";
+import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows, RDCD_BRAND_PROFILES, SIN02_RDCD_METADATA, type RdcdBrandProfileId } from "@/lib/rdcd-template";
 
 // Wizard steps
 const STEPS = [
   { id: 1, labelKey: "Projeto", descKey: "Selecionar projeto" },
   { id: 2, labelKey: "Período", descKey: "Definir semanas do relatório" },
-  { id: 3, labelKey: "Medidas", descKey: "Compilar e selecionar evidências" },
-  { id: 4, labelKey: "Pré-visualização", descKey: "Rever e gerar Word" },
+  { id: 3, labelKey: "Fichas", descKey: "Compilar medidas e evidências" },
+  { id: 4, labelKey: "Conteúdo", descKey: "Completar capítulos do relatório" },
+  { id: 5, labelKey: "Revisão", descKey: "Rever e gerar Word" },
 ];
+
+type RdcdContent = {
+  introduction: string;
+  projectStatus: string;
+  correctiveActions: string;
+  openIssues: string;
+  worksProgramme: string;
+  publicContacts: string;
+  conclusions: string;
+};
+
+type MeasureSelection = { selectedWeeks: string[]; selectedImageUrls: string[]; notes: string };
+
+const EMPTY_CONTENT: RdcdContent = {
+  introduction: "",
+  projectStatus: "",
+  correctiveActions: "",
+  openIssues: "",
+  worksProgramme: "",
+  publicContacts: "",
+  conclusions: "",
+};
+
+function getIsoWeekDate(year: number, week: number, endOfWeek: boolean) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (week - 1) * 7 + (endOfWeek ? 6 : 0));
+  if (endOfWeek) monday.setUTCHours(23, 59, 59, 999);
+  return monday;
+}
 
 function rdcdCell(value: string, bold = false) {
   return new TableCell({
@@ -47,6 +82,7 @@ export default function RDCD() {
   const rdcdImage = useBrandImage("rdcd");
   const { user } = useAuth();
   const { projects, activeProject } = useProject();
+  const utils = trpc.useUtils();
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
 
   const [step, setStep] = useState(1);
@@ -55,9 +91,14 @@ export default function RDCD() {
   const [endWeek, setEndWeek] = useState("");
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [includePlans, setIncludePlans] = useState(true);
+  const [includeWaste, setIncludeWaste] = useState(true);
   const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
-  const [measureSelections, setMeasureSelections] = useState<Record<number, { status: string; selectedWeeks: string[]; notes: string }>>({});
+  const [measureSelections, setMeasureSelections] = useState<Record<number, MeasureSelection>>({});
+  const [content, setContent] = useState<RdcdContent>(EMPTY_CONTENT);
+  const [brandProfile, setBrandProfile] = useState<RdcdBrandProfileId>("startcampus_gleeds_quadrante");
+  const [draftId, setDraftId] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [reportNumber, setReportNumber] = useState("");
   const [reportPhase, setReportPhase] = useState("Execução da obra");
   const [preparedBy, setPreparedBy] = useState("");
@@ -71,9 +112,25 @@ export default function RDCD() {
   // Fetch submissions for selected projects and period
   const { data: allSubmissions, isLoading: loadingSubs } = trpc.submissions.listAll.useQuery(undefined, { enabled: step >= 3 });
   const catalogueProjectId = selectedProjects[0] ?? 0;
+  const { data: savedDrafts = [] } = trpc.rdcd.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
   const { data: sections } = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: step >= 3 && catalogueProjectId > 0 });
   const { data: measures } = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: step >= 3 && catalogueProjectId > 0 });
   const { data: plans } = trpc.monitoringPlans.list.useQuery(undefined, { enabled: step >= 2 && includePlans });
+
+  const periodBounds = useMemo(() => {
+    if (!startWeek || !endWeek) return null;
+    const start = Number(startWeek.split("-W")[1]);
+    const end = Number(endWeek.split("-W")[1]);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+    const startDate = getIsoWeekDate(selectedYear, start, false);
+    const endDate = getIsoWeekDate(selectedYear, end, true);
+    return { startAt: startDate.getTime(), endAt: endDate.getTime() };
+  }, [startWeek, endWeek, selectedYear]);
+  const { data: wasteRows = [] } = trpc.rdcd.wasteRows.useQuery(
+    { projectId: catalogueProjectId, startAt: periodBounds?.startAt || 1, endAt: periodBounds?.endAt || 1 },
+    { enabled: includeWaste && catalogueProjectId > 0 && !!periodBounds },
+  );
+  const saveDraftMutation = trpc.rdcd.save.useMutation();
 
   // Filter submissions by selected projects and period
   const filteredSubmissions = useMemo(() => {
@@ -98,11 +155,11 @@ export default function RDCD() {
   );
   // Build evidence map: measureId -> array of image URLs
   const evidenceByMeasure = useMemo(() => {
-    if (!allEvidence) return {} as Record<number, Array<{ url: string; filename: string }>>;
-    const map: Record<number, Array<{ url: string; filename: string }>> = {};
+    if (!allEvidence) return {} as Record<number, Array<{ url: string; filename: string; submissionId: number; mimeType?: string | null }>>;
+    const map: Record<number, Array<{ url: string; filename: string; submissionId: number; mimeType?: string | null }>> = {};
     for (const img of allEvidence as any[]) {
       if (!map[img.measureId]) map[img.measureId] = [];
-      map[img.measureId].push({ url: img.url, filename: img.filename || "evidência" });
+      map[img.measureId].push({ url: img.url, filename: img.filename || "evidência", submissionId: img.submissionId, mimeType: img.mimeType });
     }
     return map;
   }, [allEvidence]);
@@ -199,11 +256,91 @@ export default function RDCD() {
     return { mon, sun, label: `S${week} — ${fmt(mon)} a ${fmt(sun)}` };
   }
 
+  function serialiseSelections() {
+    return Object.fromEntries(Object.entries(measureSelections).map(([measureId, selection]) => [measureId, {
+      selectedWeeks: Array.from(new Set(selection.selectedWeeks)),
+      selectedImageUrls: Array.from(new Set(selection.selectedImageUrls)),
+      notes: selection.notes.trim(),
+    }]));
+  }
+
+  async function saveDraft() {
+    if (!selectedProject || !startWeek || !endWeek) {
+      toast.error(t("Selecione um projeto e um período antes de guardar o rascunho."));
+      return;
+    }
+    const start = Number(startWeek.split("-W")[1]);
+    const end = Number(endWeek.split("-W")[1]);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+      toast.error(t("O período do RDCD é inválido."));
+      return;
+    }
+    setIsSavingDraft(true);
+    try {
+      const result = await saveDraftMutation.mutateAsync({
+        id: draftId || undefined,
+        projectId: selectedProject.id,
+        reportNumber,
+        reportYear: selectedYear,
+        startWeek: start,
+        endWeek: end,
+        reportPhase,
+        revision: revision.trim() || "00",
+        brandProfile,
+        preparedBy,
+        reviewedBy,
+        includePlans,
+        includeWaste,
+        planIds: selectedPlanIds,
+        content,
+        selections: serialiseSelections(),
+      });
+      setDraftId(result.id);
+      await utils.rdcd.list.invalidate({ projectId: selectedProject.id });
+      toast.success(result.created ? t("Rascunho RDCD criado") : t("Rascunho RDCD atualizado"));
+    } catch (error: any) {
+      toast.error(error?.message || t("Não foi possível guardar o rascunho RDCD."));
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }
+
+  function loadDraft(draft: any) {
+    setDraftId(draft.id);
+    setSelectedProjects([draft.projectId]);
+    setProjectWasChosen(true);
+    setSelectedYear(Number(draft.reportYear));
+    setStartWeek(`${draft.reportYear}-W${String(draft.startWeek).padStart(2, "0")}`);
+    setEndWeek(`${draft.reportYear}-W${String(draft.endWeek).padStart(2, "0")}`);
+    setReportNumber(draft.reportNumber || "");
+    setReportPhase(draft.reportPhase || "Execução da obra");
+    setRevision(draft.revision || "00");
+    setPreparedBy(draft.preparedBy || "");
+    setReviewedBy(draft.reviewedBy || "");
+    setBrandProfile(Object.prototype.hasOwnProperty.call(RDCD_BRAND_PROFILES, draft.brandProfile) ? draft.brandProfile : "startcampus_gleeds_quadrante");
+    setIncludePlans(Boolean(draft.includePlans));
+    setIncludeWaste(Boolean(draft.includeWaste));
+    setSelectedPlanIds(Array.isArray(draft.planIds) ? draft.planIds.map(Number).filter(Number.isFinite) : []);
+    setContent({ ...EMPTY_CONTENT, ...(draft.content || {}) });
+    const restored: Record<number, MeasureSelection> = {};
+    for (const [measureId, selection] of Object.entries(draft.selections || {})) {
+      const item: any = selection;
+      restored[Number(measureId)] = {
+        selectedWeeks: Array.isArray(item.selectedWeeks) ? item.selectedWeeks.filter((value: unknown) => typeof value === "string") : [],
+        selectedImageUrls: Array.isArray(item.selectedImageUrls) ? item.selectedImageUrls.filter((value: unknown) => typeof value === "string") : [],
+        notes: typeof item.notes === "string" ? item.notes : "",
+      };
+    }
+    setMeasureSelections(restored);
+    setStep(3);
+    toast.success(t("Rascunho RDCD carregado"));
+  }
+
   async function generateWord() {
     setIsGenerating(true);
     try {
-      if (!selectedProject || !startWeek || !endWeek) {
-        toast.error("Seleccione um projecto e um período válidos antes de gerar o RDCD.");
+      if (!selectedProject || !startWeek || !endWeek || !periodBounds) {
+        toast.error(t("Selecione um projeto e um período válidos antes de gerar o RDCD."));
         return;
       }
       const projNames = `${selectedProject.code} — ${selectedProject.name}`;
@@ -214,40 +351,42 @@ export default function RDCD() {
       const totals = weeklyRows.reduce((acc, row) => ({ i: acc.i + row.i, c: acc.c + row.c, nc: acc.nc + row.nc, na: acc.na + row.na }), { i: 0, c: 0, nc: 0, na: 0 });
       const metadata = usesSin02Template ? SIN02_RDCD_METADATA : null;
       const resolvedReportNumber = reportNumber.trim() || `RDCD-${selectedProject.code}-[n.º]`;
+      const selectedPlans = (plans || []).filter((plan: any) => selectedPlanIds.includes(plan.id));
+      const profile = RDCD_BRAND_PROFILES[brandProfile];
+      const submissionById = new Map(filteredSubmissions.map((submission: any) => [submission.id, submission]));
+      const selectedMeasures = compiledMeasures.map((measure: any) => {
+        const selection = measureSelections[measure.id];
+        if (!selection) return null;
+        const selectedWeeks = new Set(selection.selectedWeeks);
+        const responses = measure.responses.filter((response: any) => selectedWeeks.has(`${response.year}-W${String(response.week).padStart(2, "0")}`));
+        const images = (evidenceByMeasure[measure.id] || []).filter(image => selection.selectedImageUrls.includes(image.url));
+        if (responses.length === 0 && images.length === 0 && !selection.notes.trim()) return null;
+        return { measure, selection, responses, images };
+      }).filter(Boolean) as Array<{ measure: any; selection: MeasureSelection; responses: any[]; images: Array<{ url: string; filename: string; mimeType?: string | null }> }>;
 
-      const measuresWithData = compiledMeasures.filter(m => m.totalResponses > 0);
-
-      // Download evidence images as ArrayBuffers for embedding in Word
-      const imageCache: Record<string, ArrayBuffer> = {};
-      const allImageUrls: Array<{ measureId: number; url: string; filename: string }> = [];
-      for (const m of measuresWithData) {
-        const imgs = evidenceByMeasure[m.id] || [];
-        for (const img of imgs.slice(0, 4)) {
-          allImageUrls.push({ measureId: m.id, url: img.url, filename: img.filename });
-        }
-      }
-      if (allImageUrls.length > 0) {
-        toast.info(t("A descarregar") + ` ${allImageUrls.length} ` + t("imagens de evidência..."));
-        const batchSize = 8;
-        for (let i = 0; i < allImageUrls.length; i += batchSize) {
-          const batch = allImageUrls.slice(i, i + batchSize);
-          const results = await Promise.allSettled(
-            batch.map(async (img) => {
-              try {
-                const resp = await fetch(img.url);
-                if (!resp.ok) return null;
-                return { url: img.url, buf: await resp.arrayBuffer() };
-              } catch { return null; }
-            })
-          );
-          for (const r of results) {
-            if (r.status === "fulfilled" && r.value) imageCache[r.value.url] = r.value.buf;
+      const assets = new Map<string, { data: ArrayBuffer; type: "png" | "jpg" }>();
+      const assetRequests = [
+        ...profile.logos.map(logo => ({ url: logo.url, type: logo.type })),
+        ...selectedMeasures.flatMap(item => item.images.map(image => ({
+          url: image.url,
+          type: image.mimeType === "image/png" || image.url.toLowerCase().endsWith(".png") ? "png" as const : "jpg" as const,
+        }))),
+      ].filter((item, index, values) => values.findIndex(value => value.url === item.url) === index);
+      if (assetRequests.length > 0) {
+        toast.info(`${t("A descarregar")} ${assetRequests.length} ${t("imagem(ns) selecionada(s)...")}`);
+        for (let index = 0; index < assetRequests.length; index += 8) {
+          const batch = assetRequests.slice(index, index + 8);
+          const results = await Promise.allSettled(batch.map(async (asset) => {
+            const response = await fetch(asset.url);
+            if (!response.ok) return null;
+            return { ...asset, data: await response.arrayBuffer() };
+          }));
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value) assets.set(result.value.url, { data: result.value.data, type: result.value.type });
           }
         }
       }
 
-      // Build selected plans content
-      const selectedPlans = (plans || []).filter((p: any) => selectedPlanIds.includes(p.id));
       const technicalRows = [
         ["Designação do relatório", "RDCD – Relatório de Demonstração do Cumprimento da DCAPE"],
         ["Projeto", metadata?.projectName || projNames],
@@ -261,113 +400,118 @@ export default function RDCD() {
         ["Fase da obra reportada", reportPhase],
         ["N.º do relatório", resolvedReportNumber],
         ["Período de reporte", periodLabel],
-        ["Fichas incluídas", weeklyRows.length > 0 ? weeklyRows.map(row => `S${row.week} (${row.period})`).join("; ") : "Sem fichas aprovadas no período"],
+        ["Fichas aprovadas incluídas", weeklyRows.length > 0 ? weeklyRows.map(row => `S${row.week} (${row.period})`).join("; ") : "Sem fichas aprovadas no período"],
         ["Elaborado por", preparedBy.trim() || "[Nome / função — Equipa Ambiental Start Campus]"],
-        ["Revisto / Aprovado por", reviewedBy.trim() || "[Nome / função]"],
+        ["Revisto / aprovado por", reviewedBy.trim() || "[Nome / função]"],
         ["Data de elaboração", new Date().toLocaleDateString("pt-PT")],
         ["Revisão", revision.trim() || "00"],
+        ["Perfil institucional", profile.label],
       ];
+      const textOr = (entered: string, fallback: string) => entered.trim() || fallback;
+      const selectedPhotoAnnex: any[] = [];
+      for (const item of selectedMeasures) {
+        if (item.images.length === 0) continue;
+        selectedPhotoAnnex.push(
+          new Paragraph({ text: `Medida ${item.measure.number || item.measure.id} — ${(item.measure.description || "").slice(0, 160)}`, heading: HeadingLevel.HEADING_2 }),
+        );
+        for (const image of item.images) {
+          const asset = assets.get(image.url);
+          if (!asset) {
+            selectedPhotoAnnex.push(new Paragraph({ text: `[Fotografia não incorporada: ${image.filename}]` }));
+            continue;
+          }
+          selectedPhotoAnnex.push(
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ data: asset.data, transformation: { width: 450, height: 320 }, type: asset.type })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: image.filename, size: 16, italics: true, color: "666666" })] }),
+          );
+        }
+      }
+      const coverLogos = profile.logos.flatMap((logo, index) => {
+        const asset = assets.get(logo.url);
+        if (!asset) return [new TextRun({ text: index ? `   ${logo.name}` : logo.name, bold: true, color: "0A3638" })];
+        return [new ImageRun({ data: asset.data, transformation: { width: logo.width, height: logo.height }, type: asset.type }), new TextRun({ text: "   " })];
+      });
 
-      const doc = new Document({
+      const document = new Document({
         sections: [{
           children: [
-            new Paragraph({ text: "RDCD — Relatório de Demonstração de Cumprimento da DCAPE", heading: HeadingLevel.TITLE }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: coverLogos }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ alignment: AlignmentType.CENTER, text: "RDCD", heading: HeadingLevel.TITLE }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Relatório de Demonstração do Cumprimento da DCAPE", size: 28, bold: true, color: "0A3638" })] }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: metadata?.projectName || projNames, size: 24, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: periodLabel, size: 22 })] }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "Ficha Técnica do Relatório", heading: HeadingLevel.HEADING_1 }),
             rdcdTable(["Campo", "Informação"], technicalRows),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "1. Introdução", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: `O presente Relatório de Demonstração do Cumprimento da DCAPE é elaborado para ${metadata?.projectName || projNames}, no período ${periodLabel}. Consolida ${weeklyRows.length} ficha(s) de controlo semanal aprovada(s), classificando as medidas como Implementada (I), Conforme (C), Não Conforme (NC) ou Não Aplicável (NA). As fichas integrais são referidas no Anexo I.` }),
+            new Paragraph({ text: textOr(content.introduction, `O presente Relatório de Demonstração do Cumprimento da DCAPE é elaborado para ${metadata?.projectName || projNames}, no período ${periodLabel}. Consolida ${weeklyRows.length} ficha(s) de controlo semanal aprovada(s). A emissão e assinatura permanecem sujeitas a revisão humana.`) }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "2. Enquadramento do Projeto no TUA", heading: HeadingLevel.HEADING_1 }),
             new Paragraph({ text: metadata ? `${metadata.projectName} encontra-se enquadrado no TUA n.º ${metadata.tua}, com código APA ${metadata.apaCode}. A confirmação final de números de processo, datas e vigência deve ser feita face ao TUA em vigor na data de emissão.` : "[A completar pelo responsável com os elementos do TUA, AIA/RECAPE, DIA, DCAPE e entidade licenciadora.]" }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "3. Ponto de Situação do Desenvolvimento da Obra", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "Uma linha por ficha aprovada incluída no período. As actividades e frentes de obra devem ser confirmadas pelo responsável antes da emissão." }),
-            rdcdTable(["Sem.", "Período", "Principais atividades", "Frentes de obra", "Ficha SIN02 n.º"], weeklyRows.length > 0
-              ? weeklyRows.map(row => [String(row.week), row.period, "[A confirmar na ficha semanal]", "[A confirmar na ficha semanal]", row.reference])
-              : [["—", "—", "Sem fichas aprovadas no período seleccionado.", "—", "—"]]),
+            new Paragraph({ text: textOr(content.projectStatus, "Descreva as atividades, frentes de obra e alterações relevantes ocorridas no período de reporte.") }),
+            rdcdTable(["Sem.", "Período", "Ficha aprovada", "I", "C", "NC", "NA"], weeklyRows.length > 0 ? weeklyRows.map(row => [String(row.week), row.period, row.reference, String(row.i), String(row.c), String(row.nc), String(row.na)]) : [["—", "—", "Sem fichas aprovadas no período", "0", "0", "0", "0"]]),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "4. Resumo das Fichas de Controlo de Medidas", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "O presente ponto consolida as Fichas de Controlo de Medidas de Gestão Ambiental Semanal incluídas no período. A classificação é apresentada por ficha e por semana; as fichas originais constam do Anexo I." }),
-            rdcdTable(["Ficha n.º", "Semana", "Período", "Fase(s) da obra", "I", "C", "NC", "NA", "Observações relevantes"], [
-              ...(weeklyRows.length > 0 ? weeklyRows.map(row => [row.reference, String(row.week), row.period, row.phases, String(row.i), String(row.c), String(row.nc), String(row.na), row.observations]) : [["—", "—", "—", "—", "0", "0", "0", "0", "Sem fichas aprovadas no período seleccionado."]]),
-              ["TOTAL", "—", periodLabel, "—", String(totals.i), String(totals.c), String(totals.nc), String(totals.na), "—"],
-            ]),
-            new Paragraph({ text: "" }),
-            new Paragraph({ text: "5. Resumo do Estado das Medidas da DCAPE", heading: HeadingLevel.HEADING_1 }),
-            rdcdTable(["Fase da DCAPE", "N.º de medidas", "I", "C", "NC", "NA"], phaseRows.map(row => [row.section, String(row.totalMeasures), String(row.i), String(row.c), String(row.nc), String(row.na)])),
-            new Paragraph({ text: "" }),
+            new Paragraph({ text: "4. Resumo do Estado das Medidas da DCAPE", heading: HeadingLevel.HEADING_1 }),
+            rdcdTable(["Fase / grupo DCAPE", "N.º de medidas", "I", "C", "NC", "NA"], phaseRows.map(row => [row.section, String(row.totalMeasures), String(row.i), String(row.c), String(row.nc), String(row.na)])),
             new Paragraph({ text: "Medidas com registo de Não Conformidade ou observações relevantes", heading: HeadingLevel.HEADING_2 }),
-            rdcdTable(["N.º Medida", "Medida / grupo temático", "Semana / Ficha", "Registo", "Seguimento"], nonConformityRows.length > 0
-              ? nonConformityRows.map(row => [String(row.number), row.description.slice(0, 180), row.reference, `${row.finding}: ${row.observation}`, "A validar pelo responsável no ponto 6"])
-              : [["—", "Sem não conformidades ou observações relevantes registadas.", "—", "—", "—"]]),
+            rdcdTable(["N.º", "Medida / grupo", "Semana / ficha", "Registo", "Seguimento"], nonConformityRows.length > 0 ? nonConformityRows.map(row => [String(row.number), row.description.slice(0, 180), row.reference, `${row.finding}: ${row.observation}`, "A confirmar no ponto 6"]) : [["—", "Sem não conformidades ou observações relevantes registadas.", "—", "—", "—"]]),
+            new Paragraph({ text: "" }),
+            new Paragraph({ text: "5. Compilação das Fichas Semanais", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: "Inclui exclusivamente as semanas, notas e evidências selecionadas pelo responsável na aplicação. A seleção não altera as fichas de origem nem substitui a validação técnica." }),
+            rdcdTable(["Medida", "Semanas selecionadas", "Estados", "Atualização / nota editorial"], selectedMeasures.length > 0 ? selectedMeasures.map(item => [
+              `${item.measure.number || item.measure.id} — ${(item.measure.description || "").slice(0, 140)}`,
+              item.responses.length > 0 ? item.responses.map(response => `S${response.week}/${response.year}`).join(", ") : "Sem semanas selecionadas",
+              item.responses.length > 0 ? item.responses.map(response => response.status || "—").join(", ") : "—",
+              item.selection.notes.trim() || "—",
+            ]) : [["—", "Nenhuma medida/semana foi selecionada para compilar.", "—", "—"]]),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "6. Ações Corretivas e Seguimento", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: nonConformityRows.length > 0 ? "As ações corretivas associadas às não conformidades devem ser confirmadas e completadas pelo responsável técnico antes da emissão." : "Não foram identificadas não conformidades no conjunto de fichas seleccionado." }),
+            new Paragraph({ text: textOr(content.correctiveActions, nonConformityRows.length > 0 ? "As ações corretivas associadas às não conformidades devem ser confirmadas e completadas pelo responsável técnico antes da emissão." : "Não foram identificadas não conformidades no conjunto de fichas aprovado selecionado.") }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "7. Relatórios de Monitorização", heading: HeadingLevel.HEADING_1 }),
-            rdcdTable(["Tipo de monitorização", "Periodicidade", "Situação / resultado", "Ref. Anexo"], includePlans && selectedPlans.length > 0
-              ? selectedPlans.map((plan: any) => [plan.name, plan.periodicity || "—", plan.submissionStatus === "delivered" ? "Entregue" : plan.submissionStatus === "submitted" ? "Submetido" : "Pendente", "A completar"])
-              : [["Sem planos seleccionados", "—", "Não incluído neste relatório", "—"]]),
+            rdcdTable(["Tipo de monitorização", "Periodicidade", "Situação / resultado", "Referência de anexo"], includePlans && selectedPlans.length > 0 ? selectedPlans.map((plan: any) => [plan.name, plan.periodicity || "—", plan.submissionStatus === "delivered" ? "Entregue" : plan.submissionStatus === "submitted" ? "Submetido" : "Pendente", plan.submittedFileUrl ? "Registo no repositório documental" : "A completar"]) : [["Sem planos selecionados", "—", "Não incluído neste relatório", "—"]]),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "8. Questões em Aberto Relativas a Períodos Anteriores", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A completar pelo responsável: o registo estruturado de questões de RDCD anteriores ainda não está disponível na plataforma.]" }),
+            new Paragraph({ text: textOr(content.openIssues, "Sem questões anteriores registadas neste rascunho. Confirmar com o responsável técnico antes de emissão.") }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "9. Programa de Trabalhos", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A completar pelo responsável: o programa de trabalhos aplicável ao período deve ser confirmado e anexado antes da emissão.]" }),
+            new Paragraph({ text: textOr(content.worksProgramme, "Indicar o programa de trabalhos aplicável ao período e anexar a versão controlada no repositório documental.") }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "10. Reclamações e Contactos com o Público", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: "[A completar pelo responsável: o registo estruturado de reclamações não está disponível na plataforma.]" }),
+            new Paragraph({ text: textOr(content.publicContacts, "Sem contactos ou reclamações registados neste rascunho. Confirmar antes da emissão.") }),
             new Paragraph({ text: "" }),
             new Paragraph({ text: "11. Conclusões", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: `No período ${periodLabel}, foram consolidadas ${weeklyRows.length} ficha(s) aprovada(s), com ${totals.i} registo(s) Implementada(s), ${totals.c} Conforme(s), ${totals.nc} Não Conforme(s) e ${totals.na} Não Aplicável(eis). Esta síntese deve ser revista e completada pelo responsável técnico antes da emissão.` }),
+            new Paragraph({ text: textOr(content.conclusions, `No período ${periodLabel}, foram consolidadas ${weeklyRows.length} ficha(s) aprovada(s), com ${totals.i} registo(s) Implementada(s), ${totals.c} Conforme(s), ${totals.nc} Não Conforme(s) e ${totals.na} Não Aplicável(eis). O conteúdo deve ser revisto e aprovado pelo responsável técnico antes da emissão.`) }),
             new Paragraph({ text: "" }),
-            new Paragraph({ text: "Anexo I — Fichas de Controlo de Medidas (Modelo SIN02) do período", heading: HeadingLevel.HEADING_1 }),
-            new Paragraph({ text: weeklyRows.length > 0 ? `Fichas a anexar a partir do arquivo documental: ${weeklyRows.map(row => row.reference).join(", ")}.` : "Sem fichas aprovadas seleccionadas." }),
-            // Annex: Evidence Photos (embedded)
-            ...(() => {
-              const annexItems: any[] = [];
-              let hasPhotos = false;
-              for (const m of measuresWithData) {
-                const imgs = (evidenceByMeasure[m.id] || []).filter(img => imageCache[img.url]).slice(0, 4);
-                if (imgs.length > 0) {
-                  if (!hasPhotos) {
-                    annexItems.push(
-                      new Paragraph({ text: "" }),
-                      new Paragraph({ text: "Anexo II — Registo Fotográfico", heading: HeadingLevel.HEADING_1 }),
-                      new Paragraph({ text: "As seguintes fotografias foram recolhidas durante o período de análise e documentam o cumprimento das medidas ambientais." }),
-                    );
-                    hasPhotos = true;
-                  }
-                  annexItems.push(
-                    new Paragraph({ text: "" }),
-                    new Paragraph({ children: [new TextRun({ text: `Medida ${m.number || m.id}: `, bold: true, size: 22 }), new TextRun({ text: (m.description || "").substring(0, 120), size: 20 })] }),
-                  );
-                  for (const img of imgs) {
-                    try {
-                      annexItems.push(
-                        new Paragraph({ children: [new ImageRun({ data: imageCache[img.url], transformation: { width: 450, height: 340 }, type: "jpg" })] }),
-                        new Paragraph({ children: [new TextRun({ text: img.filename, size: 16, italics: true, color: "666666" })] }),
-                      );
-                    } catch {
-                      annexItems.push(new Paragraph({ children: [new TextRun({ text: `[Imagem: ${img.filename}]`, size: 18, italics: true })] }));
-                    }
-                  }
-                }
-              }
-              return annexItems;
-            })(),
+            new Paragraph({ text: "Anexo I — Referência às Fichas de Controlo de Medidas", heading: HeadingLevel.HEADING_1 }),
+            new Paragraph({ text: weeklyRows.length > 0 ? `Fichas aprovadas do período, mantidas no repositório documental: ${weeklyRows.map(row => row.reference).join(", ")}.` : "Sem fichas aprovadas selecionadas." }),
+            ...(selectedPhotoAnnex.length > 0 ? [
+              new Paragraph({ text: "" }),
+              new Paragraph({ text: "Anexo II — Registo Fotográfico Selecionado", heading: HeadingLevel.HEADING_1 }),
+              new Paragraph({ text: "Fotografias selecionadas por medida e semana no rascunho RDCD. As imagens originais permanecem associadas às fichas de controlo de origem." }),
+              ...selectedPhotoAnnex,
+            ] : []),
+            ...(includeWaste ? [
+              new Paragraph({ text: "" }),
+              new Paragraph({ text: "Anexo III — Registo de Resíduos e-GAR do Período", heading: HeadingLevel.HEADING_1 }),
+              new Paragraph({ text: "Tabela gerada a partir dos e-GARs registados na plataforma no período. A quantidade corrigida, quando existente, prevalece sobre a quantidade inicial." }),
+              rdcdTable(["ID e-GAR", "Data de recolha", "Código LER", "Tipo de resíduo", "Quantidade (t)", "Destino", "Empresa"], wasteRows.length > 0 ? wasteRows.map((row: any) => [row.egarId, new Date(Number(row.date)).toLocaleDateString("pt-PT"), row.lerCode, row.designation, String(row.quantity), row.destination, row.companyName]) : [["—", "—", "—", "Sem e-GARs registados no período selecionado.", "—", "—", "—"]]),
+            ] : []),
           ],
         }],
       });
 
-      const blob = await Packer.toBlob(doc);
+      const blob = await Packer.toBlob(document);
       const filename = `RDCD_${projNames.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30)}_S${startWeek.split("-W")[1]}-S${endWeek.split("-W")[1]}_${selectedYear}.docx`;
       saveAs(blob, filename);
       toast.success(t("RDCD gerado com sucesso!"));
-    } catch (err: any) {
-      toast.error(t("Erro ao gerar RDCD") + ": " + err.message);
+    } catch (error: any) {
+      toast.error(`${t("Erro ao gerar RDCD")}: ${error?.message || t("Erro inesperado")}`);
     } finally {
       setIsGenerating(false);
     }
@@ -385,10 +529,10 @@ export default function RDCD() {
 
   const statusColors: Record<string, string> = {
     conform: "bg-primary text-primary-foreground border-primary",
-    nc: "bg-red-100 text-red-800 border-red-200",
+    nc: "bg-destructive/10 text-destructive border-destructive/25",
     na: "bg-muted text-foreground border-border",
-    pending: "bg-[#EDEBEB] text-[#646461] border-[#6D7A70]",
-    partial: "bg-[#0A3638] text-white border-[#0A3638]",
+    pending: "bg-muted text-muted-foreground border-border",
+    partial: "bg-primary/10 text-primary border-primary/20",
     no_data: "bg-muted/40 text-muted-foreground border-border",
   };
   const statusLabels: Record<string, string> = {
@@ -403,7 +547,7 @@ export default function RDCD() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl space-y-5 pb-8">
-        <StandPageHeader tone="governance" eyebrow="COMPLIANCE REPORTING" title={t("RDCD — Relatório de Demonstração de Cumprimento")} description={t("Organize o período, reveja as evidências e prepare o documento antes da validação técnica.")} context={selectedProject?.code || t("Por configurar")} image={rdcdImage.url} imagePosition={rdcdImage.position} imageMode={rdcdImage.mode} actions={<StandStatusBadge label={step === 4 ? t("Pronto para revisão") : `${t("Passo")} ${step} ${t("de")} ${STEPS.length}`} tone={step === 4 ? "success" : "info"} />}>
+        <StandPageHeader tone="governance" eyebrow="COMPLIANCE REPORTING" title={t("RDCD — Relatório de Demonstração de Cumprimento")} description={t("Organize o período, selecione evidências e complete os capítulos antes da validação técnica.")} context={selectedProject?.code || t("Por configurar")} image={rdcdImage.url} imagePosition={rdcdImage.position} imageMode={rdcdImage.mode} actions={<StandStatusBadge label={step === 5 ? t("Pronto para revisão") : `${t("Passo")} ${step} ${t("de")} ${STEPS.length}`} tone={step === 5 ? "success" : "info"} />}>
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground"><span>1 relatório = 1 projeto</span><span>•</span><span>{t("Dados aprovados e rastreáveis")}</span><span>•</span><span>{t("Geração Word sob controlo humano")}</span></div>
         </StandPageHeader>
 
@@ -517,7 +661,7 @@ export default function RDCD() {
                   <div className="ml-6 space-y-1.5">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-muted-foreground">{t("Selecione os planos a incluir:")}</p>
-                      <button className="text-[10px] text-[#0A3638] hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
+                      <button className="text-[10px] text-primary hover:underline" onClick={() => setSelectedPlanIds(selectedPlanIds.length === plans.length ? [] : plans.map((p: any) => p.id))}>
                         {selectedPlanIds.length === plans.length ? t("Desselecionar todos") : t("Selecionar todos")}
                       </button>
                     </div>
@@ -527,10 +671,10 @@ export default function RDCD() {
                           checked={selectedPlanIds.includes(p.id)}
                           onCheckedChange={(v) => setSelectedPlanIds(v ? [...selectedPlanIds, p.id] : selectedPlanIds.filter(id => id !== p.id))}
                         />
-                        <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-primary" : p.submissionStatus === "submitted" ? "bg-[#0A3638]" : "bg-[#EDEBEB]"}`} />
+                        <span className={`w-2 h-2 rounded-full ${p.submissionStatus === "delivered" ? "bg-primary" : p.submissionStatus === "submitted" ? "bg-secondary" : "bg-muted-foreground/45"}`} />
                         <span className="font-medium">{p.name}</span>
                         <span className="text-muted-foreground">— {p.periodicity || "—"}</span>
-                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-primary text-primary-foreground" : p.submissionStatus === "submitted" ? "bg-[#0A3638] text-white" : "bg-[#EDEBEB] text-[#646461]"}`}>
+                        <span className={`ml-auto px-1.5 py-0.5 rounded text-[10px] ${p.submissionStatus === "delivered" ? "bg-primary text-primary-foreground" : p.submissionStatus === "submitted" ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>
                           {p.submissionStatus === "delivered" ? t("Entregue") : p.submissionStatus === "submitted" ? t("Submetido") : t("Pendente")}
                         </span>
                       </div>
@@ -543,6 +687,15 @@ export default function RDCD() {
                 {includePlans && (!plans || plans.length === 0) && (
                   <p className="ml-6 text-xs text-muted-foreground">{t("Nenhum plano encontrado. Crie planos na tab Planos.")}</p>
                 )}
+              </div>
+              <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox checked={includeWaste} onCheckedChange={(value) => setIncludeWaste(Boolean(value))} id="include-waste" />
+                  <div>
+                    <label htmlFor="include-waste" className="cursor-pointer text-sm font-medium">{t("Incluir anexo de resíduos e-GAR")}</label>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("A tabela será gerada apenas com os e-GARs registados no projeto e no período escolhido: ID, data de recolha, código LER, tipo de resíduo, quantidade e destino.")}</p>
+                  </div>
+                </div>
               </div>
               <div className="flex justify-between mt-6">
                 <Button variant="outline" onClick={() => setStep(1)}>
@@ -574,22 +727,22 @@ export default function RDCD() {
                   {/* Summary */}
                   <div className="grid grid-cols-5 gap-3 mb-4">
                     <div className="bg-primary border border-primary rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-primary">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
-                      <p className="text-xs text-primary">{t("Conforme")}</p>
+                      <p className="text-lg font-bold text-primary-foreground">{compiledMeasures.filter(m => m.autoStatus === "conform").length}</p>
+                      <p className="text-xs text-primary-foreground/85">{t("Conforme")}</p>
                     </div>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-red-700">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
-                      <p className="text-xs text-red-600">{t("Não Conforme")}</p>
+                    <div className="bg-destructive/10 border border-destructive/25 rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-destructive">{compiledMeasures.filter(m => m.autoStatus === "nc").length}</p>
+                      <p className="text-xs text-destructive">{t("Não Conforme")}</p>
                     </div>
-                    <div className="bg-[#0A3638] border border-[#0A3638] rounded-lg p-3 text-center">
-                      <p className="text-lg font-bold text-[#0A3638]">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
-                      <p className="text-xs text-[#0A3638]">{t("Parcial")}</p>
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-primary">{compiledMeasures.filter(m => m.autoStatus === "partial").length}</p>
+                      <p className="text-xs text-primary">{t("Parcial")}</p>
                     </div>
                     <div className="bg-muted border border-border rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-foreground">{compiledMeasures.filter(m => m.autoStatus === "na").length}</p>
                       <p className="text-xs text-muted-foreground">{t("N/A")}</p>
                     </div>
-                    <div className="bg-gray-50 border border-border rounded-lg p-3 text-center">
+                    <div className="bg-muted/40 border border-border rounded-lg p-3 text-center">
                       <p className="text-lg font-bold text-muted-foreground">{compiledMeasures.filter(m => m.autoStatus === "no_data").length}</p>
                       <p className="text-xs text-muted-foreground">{t("Sem dados")}</p>
                     </div>
@@ -616,12 +769,12 @@ export default function RDCD() {
                                   {statusLabels[m.autoStatus] || m.autoStatus}
                                 </Badge>
                               </div>
-                              {(m.autoStatus === "conform" || m.autoStatus === "partial") && m.responses.length > 0 && (
+                              {m.responses.length > 0 && (
                                 <div className="mt-2 pl-3 border-l-2 border-primary">
-                                  <p className="text-xs text-muted-foreground mb-1">{t("Selecione semanas a incluir como evidência:")}</p>
+                                  <p className="text-xs text-muted-foreground mb-1">{t("Selecione as semanas a compilar neste ponto do RDCD:")}</p>
                                   <div className="flex flex-wrap gap-1">
                                     {m.responses.slice(0, 10).map((r: any, i: number) => {
-                                      const weekKey = `${r.year}-W${r.week}`;
+                                      const weekKey = `${r.year}-W${String(r.week).padStart(2, "0")}`;
                                       const sel = measureSelections[m.id];
                                       const isSelected = sel?.selectedWeeks?.includes(weekKey);
                                       return (
@@ -629,7 +782,7 @@ export default function RDCD() {
                                           key={i}
                                           className={`px-2 py-0.5 rounded text-[10px] border ${isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border hover:border-primary"}`}
                                           onClick={() => {
-                                            const current = measureSelections[m.id] || { status: m.autoStatus, selectedWeeks: [], notes: "" };
+                                            const current = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
                                             const weeks = current.selectedWeeks.includes(weekKey)
                                               ? current.selectedWeeks.filter((w: string) => w !== weekKey)
                                               : [...current.selectedWeeks, weekKey];
@@ -641,6 +794,22 @@ export default function RDCD() {
                                       );
                                     })}
                                   </div>
+                                  {(() => {
+                                    const selection = measureSelections[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
+                                    const selectedSubmissionIds = new Set(m.responses.filter((response: any) => selection.selectedWeeks.includes(`${response.year}-W${String(response.week).padStart(2, "0")}`)).map((response: any) => response.submissionId));
+                                    const images = (evidenceByMeasure[m.id] || []).filter(image => selectedSubmissionIds.has(image.submissionId));
+                                    return <>
+                                      {images.length > 0 && <div className="mt-3"><p className="mb-1.5 text-xs text-muted-foreground">{t("Fotografias disponíveis nas semanas selecionadas (clique para incluir):")}</p><div className="flex flex-wrap gap-2">{images.map((image) => {
+                                        const selected = selection.selectedImageUrls.includes(image.url);
+                                        return <button type="button" key={image.url} onClick={() => setMeasureSelections(current => {
+                                          const item = current[m.id] || { selectedWeeks: [], selectedImageUrls: [], notes: "" };
+                                          const selectedImageUrls = item.selectedImageUrls.includes(image.url) ? item.selectedImageUrls.filter(url => url !== image.url) : [...item.selectedImageUrls, image.url];
+                                          return { ...current, [m.id]: { ...item, selectedImageUrls } };
+                                        })} className={`overflow-hidden rounded-lg border text-left transition-colors ${selected ? "border-primary ring-2 ring-primary/25" : "border-border hover:border-primary/60"}`}><img src={image.url} alt={image.filename} className="h-16 w-20 object-cover" /><span className="block max-w-20 truncate px-1 py-0.5 text-[9px] text-muted-foreground">{image.filename}</span></button>;
+                                      })}</div></div>}
+                                      <Textarea value={selection.notes} onChange={(event) => setMeasureSelections(current => ({ ...current, [m.id]: { ...selection, notes: event.target.value } }))} className="mt-3 min-h-16 bg-card text-xs" placeholder={t("Nota editorial opcional para esta medida no RDCD")} />
+                                    </>;
+                                  })()}
                                 </div>
                               )}
                             </div>
@@ -661,87 +830,68 @@ export default function RDCD() {
                 <Button variant="outline" onClick={() => setStep(2)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> {t("Anterior")}
                 </Button>
-                <Button onClick={() => setStep(4)}>{t("Pré-visualizar")}<Eye className="w-4 h-4 ml-1" /></Button>
+                <Button onClick={() => setStep(4)}>{t("Completar capítulos")}<ChevronRight className="w-4 h-4 ml-1" /></Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 4: Preview & Generate */}
+        {/* Step 4: Editorial content and report identity */}
         {step === 4 && (
           <Card className="stand-surface">
             <CardContent className="p-6">
-              <h2 className="text-lg font-semibold mb-1">{t("Pré-visualização do RDCD")}</h2>
-              <p className="text-sm text-muted-foreground mb-4">{t("Reveja o resumo e complete a ficha técnica antes de gerar o documento Word.")}</p>
-              <div className="mb-5 overflow-hidden rounded-2xl border border-primary/18 bg-primary/[0.035]">
-                <div className="border-b border-primary/12 px-4 py-3 sm:px-5"><p className="stand-kicker text-primary">CONTROLO DE EMISSÃO</p><p className="mt-1 text-sm font-semibold text-foreground">Ficha técnica do relatório</p></div>
-                <div className="p-4 sm:p-5">
-                  {usesSin02Template && <p className="mb-4 rounded-xl border border-[#6D7A70]/20 bg-[#EDEBEB]/[0.08] p-3 text-xs leading-5 text-foreground">O modelo SIN02 pré-preenche os dados institucionais constantes no template. Confirme-os sempre com o TUA em vigor antes da emissão.</p>}
-                  <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="text-xs font-medium text-foreground">N.º do relatório</label>
-                    <Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-card" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground">Fase da obra reportada</label>
-                    <select value={reportPhase} onChange={event => setReportPhase(event.target.value)} className="mt-1 h-9 w-full rounded-md border border-input bg-card px-3 text-sm">
-                      <option>Preparação prévia</option><option>Execução da obra</option><option>Fase final</option><option>Desativação</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground">Elaborado por</label>
-                    <Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder="Nome / função — Equipa Ambiental Start Campus" className="mt-1 bg-card" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground">Revisto / aprovado por</label>
-                    <Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder="Nome / função" className="mt-1 bg-card" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-foreground">Revisão</label>
-                    <Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 bg-card md:max-w-32" />
-                  </div>
-                  </div>
-                </div>
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                <div><h2 className="text-lg font-semibold">{t("Conteúdo e identidade do RDCD")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Complete os capítulos narrativos. Estes campos ficam em rascunho auditável e nunca alteram fichas, e-GARs ou anexos de origem.")}</p></div>
+                {draftId && <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{t("Rascunho")} #{draftId}</Badge>}
               </div>
-              
-              <div className="border rounded-lg p-4 space-y-4 bg-muted/20 mb-6">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Projetos")}</p>
-                  <p className="text-sm">{selectedProject ? `${selectedProject.code} — ${selectedProject.name}` : "—"}</p>
+              <section className="mb-5 overflow-hidden rounded-2xl border border-primary/18 bg-primary/[0.035]">
+                <div className="border-b border-primary/12 px-4 py-3 sm:px-5"><p className="stand-kicker text-primary">{t("CONTROLO DE EMISSÃO")}</p><p className="mt-1 text-sm font-semibold text-foreground">{t("Ficha técnica e perfis institucionais")}</p></div>
+                <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+                  <div><Label>{t("N.º do relatório")}</Label><Input value={reportNumber} onChange={event => setReportNumber(event.target.value)} placeholder={`RDCD-${selectedProject?.code || "PROJ"}-001`} className="mt-1 bg-card" /></div>
+                  <div><Label>{t("Fase da obra reportada")}</Label><Select value={reportPhase} onValueChange={setReportPhase}><SelectTrigger className="mt-1 bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Preparação prévia">{t("Preparação prévia")}</SelectItem><SelectItem value="Execução da obra">{t("Execução da obra")}</SelectItem><SelectItem value="Fase final">{t("Fase final")}</SelectItem><SelectItem value="Desativação">{t("Desativação")}</SelectItem></SelectContent></Select></div>
+                  <div><Label>{t("Elaborado por")}</Label><Input value={preparedBy} onChange={event => setPreparedBy(event.target.value)} placeholder={t("Nome / função — Equipa Ambiental Start Campus")} className="mt-1 bg-card" /></div>
+                  <div><Label>{t("Revisto / aprovado por")}</Label><Input value={reviewedBy} onChange={event => setReviewedBy(event.target.value)} placeholder={t("Nome / função")} className="mt-1 bg-card" /></div>
+                  <div><Label>{t("Revisão")}</Label><Input value={revision} onChange={event => setRevision(event.target.value)} placeholder="00" className="mt-1 max-w-32 bg-card" /></div>
+                  <div><Label>{t("Identidades do relatório")}</Label><Select value={brandProfile} onValueChange={(value) => setBrandProfile(value as RdcdBrandProfileId)}><SelectTrigger className="mt-1 bg-card"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(RDCD_BRAND_PROFILES).map(([id, profile]) => <SelectItem key={id} value={id}>{profile.label}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-xs text-muted-foreground">{RDCD_BRAND_PROFILES[brandProfile].description}</p></div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Período")}</p>
-                  <p className="text-sm">{t("Semana")} {startWeek.split("-W")[1]} {t("a")} {t("Semana")} {endWeek.split("-W")[1]} {t("de")} {selectedYear}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Fichas analisadas")}</p>
-                  <p className="text-sm">{filteredSubmissions.length} {t("fichas aprovadas")}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Medidas no relatório")}</p>
-                  <p className="text-sm">
-                    {compiledMeasures.filter(m => m.totalResponses > 0).length} {t("medidas")} ·
-                    <span className="text-primary ml-1">{compiledMeasures.filter(m => m.autoStatus === "conform").length} {t("conformes")}</span> ·
-                    <span className="text-red-600 ml-1">{compiledMeasures.filter(m => m.autoStatus === "nc").length} NC</span> ·
-                    <span className="text-[#0A3638] ml-1">{compiledMeasures.filter(m => m.autoStatus === "partial").length} {t("parciais")}</span> ·
-                    <span className="text-muted-foreground ml-1">{compiledMeasures.filter(m => m.autoStatus === "na").length} N/A</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase font-medium">{t("Planos de Monitorização")}</p>
-                  <p className="text-sm">{includePlans ? `${t("Incluídos")} (${selectedPlanIds.length} ${t("de")} ${plans?.length || 0} ${t("planos")})` : t("Não incluídos")}</p>
-                </div>
+              </section>
+              {usesSin02Template && <p className="mb-5 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-5 text-foreground">{t("O modelo SIN02 pré-preenche dados institucionais do template. Confirme sempre TUA, licenças e vigência antes da emissão.")}</p>}
+              <div className="grid gap-4 lg:grid-cols-2">
+                {([
+                  ["introduction", "1. Introdução", "Contextualize o período, objetivo do relatório e fontes consultadas."],
+                  ["projectStatus", "3. Ponto de Situação do Desenvolvimento da Obra", "Registe atividades, frentes de obra e alterações relevantes."],
+                  ["correctiveActions", "6. Ações Corretivas e Seguimento", "Indique medidas corretivas, responsáveis e situação atual."],
+                  ["openIssues", "8. Questões em Aberto de Períodos Anteriores", "Identifique pendências e o respetivo seguimento."],
+                  ["worksProgramme", "9. Programa de Trabalhos", "Descreva os trabalhos previstos ou a referência controlada no repositório."],
+                  ["publicContacts", "10. Reclamações e Contactos com o Público", "Registe contactos, reclamações ou confirme a inexistência."],
+                  ["conclusions", "11. Conclusões", "Apresente a conclusão técnica, condicionada a revisão e aprovação humana."],
+                ] as Array<[keyof RdcdContent, string, string]>).map(([key, label, placeholder]) => <div key={key} className="rounded-xl border border-border/80 bg-card p-4"><Label className="text-sm font-semibold">{t(label)}</Label><Textarea value={content[key]} onChange={(event) => setContent(current => ({ ...current, [key]: event.target.value }))} placeholder={t(placeholder)} className="mt-2 min-h-28 bg-background" /></div>)}
               </div>
+              <section className="mt-5 rounded-xl border border-border bg-muted/20 p-4">
+                <div className="flex items-center gap-2"><Database className="size-4 text-primary" /><h3 className="text-sm font-semibold">{t("Anexo e-GAR do período")}</h3></div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{includeWaste ? t("O anexo usará os registos atuais e-GAR para este projeto e período. Dados ausentes não são estimados.") : t("O anexo de resíduos está desativado neste rascunho.")}</p>
+                {includeWaste && <p className="mt-2 text-sm font-medium text-foreground">{wasteRows.length} {t("e-GAR(s) encontrados no período")}</p>}
+              </section>
+              {savedDrafts.length > 0 && <section className="mt-5 rounded-xl border border-dashed border-border p-4"><div className="flex items-center gap-2"><FileText className="size-4 text-primary" /><h3 className="text-sm font-semibold">{t("Rascunhos deste projeto")}</h3></div><div className="mt-3 flex flex-wrap gap-2">{savedDrafts.slice(0, 8).map((draft: any) => <Button key={draft.id} size="sm" variant={draft.id === draftId ? "default" : "outline"} onClick={() => loadDraft(draft)}>{draft.reportNumber || `RDCD #${draft.id}`} · S{draft.startWeek}–S{draft.endWeek}/{draft.reportYear}</Button>)}</div></section>}
+              <div className="mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" onClick={() => setStep(3)}><ChevronLeft className="mr-1 size-4" />{t("Anterior")}</Button><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void saveDraft()} disabled={isSavingDraft}><Save className="mr-1.5 size-4" />{isSavingDraft ? t("A guardar...") : t("Guardar rascunho")}</Button><Button onClick={() => setStep(5)}>{t("Rever emissão")}<Eye className="ml-1 size-4" /></Button></div></div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(3)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> {t("Anterior")}
-                </Button>
-                <Button onClick={generateWord} disabled={isGenerating} className="gap-2">
-                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  {isGenerating ? t("A gerar...") : t("Gerar RDCD (.docx)")}
-                </Button>
+        {/* Step 5: review and generation */}
+        {step === 5 && (
+          <Card className="stand-surface">
+            <CardContent className="p-6">
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">{t("Pré-visualização do RDCD")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Revise a seleção e guarde o rascunho antes de gerar o Word. A geração não aprova, assina nem arquiva o relatório.")}</p></div><Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{RDCD_BRAND_PROFILES[brandProfile].label}</Badge></div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Projeto")}</p><p className="mt-1 text-sm font-semibold">{selectedProject ? `${selectedProject.code} — ${selectedProject.name}` : "—"}</p></div>
+                <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Período")}</p><p className="mt-1 text-sm font-semibold">S{startWeek.split("-W")[1]}–S{endWeek.split("-W")[1]}/{selectedYear}</p></div>
+                <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Fichas aprovadas")}</p><p className="mt-1 text-sm font-semibold">{filteredSubmissions.length}</p></div>
+                <div className="rounded-xl border border-border bg-card p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("e-GARs no anexo")}</p><p className="mt-1 text-sm font-semibold">{includeWaste ? wasteRows.length : t("Não incluído")}</p></div>
               </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-3"><div className="rounded-xl border border-border bg-muted/20 p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Medidas / semanas selecionadas")}</p><p className="mt-1 text-2xl font-semibold">{Object.values(measureSelections).filter(item => item.selectedWeeks.length > 0).length} <span className="text-sm font-normal text-muted-foreground">/ {Object.values(measureSelections).reduce((count, item) => count + item.selectedWeeks.length, 0)} {t("semanas")}</span></p></div><div className="rounded-xl border border-border bg-muted/20 p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Fotografias selecionadas")}</p><p className="mt-1 text-2xl font-semibold">{Object.values(measureSelections).reduce((count, item) => count + item.selectedImageUrls.length, 0)}</p></div><div className="rounded-xl border border-border bg-muted/20 p-4"><p className="text-xs uppercase tracking-wide text-muted-foreground">{t("Planos selecionados")}</p><p className="mt-1 text-2xl font-semibold">{includePlans ? selectedPlanIds.length : 0}</p></div></div>
+              <div className="mt-5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm leading-6 text-foreground"><p className="flex items-center gap-2 font-semibold"><Check className="size-4 text-amber-700 dark:text-amber-300" />{t("Controlo humano obrigatório")}</p><p className="mt-1 text-muted-foreground">{t("Antes de emissão externa, confirme o TUA, anexos, evidências, quantidades e-GAR, conclusões, responsável e aprovação. Este Word é um dossiê de trabalho, não uma aprovação automática.")}</p></div>
+              <div className="mt-6 flex flex-wrap justify-between gap-3"><Button variant="outline" onClick={() => setStep(4)}><ChevronLeft className="mr-1 size-4" />{t("Anterior")}</Button><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void saveDraft()} disabled={isSavingDraft}><Save className="mr-1.5 size-4" />{isSavingDraft ? t("A guardar...") : t("Guardar rascunho")}</Button><Button onClick={generateWord} disabled={isGenerating} className="gap-2">{isGenerating ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}{isGenerating ? t("A gerar...") : t("Gerar RDCD (.docx)")}</Button></div></div>
             </CardContent>
           </Card>
         )}

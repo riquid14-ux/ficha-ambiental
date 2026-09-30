@@ -12,6 +12,8 @@ const routerSource = readFileSync(join(root, "server/routers.ts"), "utf8");
 const dbSource = readFileSync(join(root, "server/db.ts"), "utf8");
 const remindersSource = readFileSync(join(root, "server/scheduled-reminders.ts"), "utf8");
 const uiSource = readFileSync(join(root, "client/src/pages/Planos.tsx"), "utf8");
+const navigationSource = readFileSync(join(root, "client/src/lib/role-navigation.ts"), "utf8");
+const layoutSource = readFileSync(join(root, "client/src/components/AppLayout.tsx"), "utf8");
 
 describe("Planos — alertas 30/15/7 dias", () => {
   const now = new Date("2026-08-25T23:45:00+01:00");
@@ -129,6 +131,18 @@ describe("Planos — permissões, calendário e segurança", () => {
 });
 
 describe("Planos — experiência e exportação", () => {
+  it("expõe a lista universal apenas em Todos os Projetos", () => {
+    expect(uiSource).toContain("A lista é intencionalmente global");
+    expect(uiSource).toContain("enabled: isAllProjects");
+    expect(uiSource).toContain('setLocation(canSeeAllProjects ? "/dashboard" : "/welcome")');
+    expect(navigationSource).not.toContain('STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/planos"');
+    expect(navigationSource).not.toContain('OPERATION_ROUTES = ["/welcome", "/dashboard", "/operacao", "/planos"');
+    const projectMenuBlock = layoutSource.slice(layoutSource.indexOf("const projectMenuItems"), layoutSource.indexOf("const operationProjectMenuItems"));
+    const operationMenuBlock = layoutSource.slice(layoutSource.indexOf("const operationProjectMenuItems"), layoutSource.indexOf("const allProjectsMenuItems"));
+    expect(projectMenuBlock).not.toContain('path: "/planos"');
+    expect(operationMenuBlock).not.toContain('path: "/planos"');
+  });
+
   it("inclui calendário exclusivo sincronizado no topo", () => {
     expect(uiSource).toContain("Calendário exclusivo dos planos");
     expect(uiSource).toContain("Sincronizado automaticamente com o calendário global");

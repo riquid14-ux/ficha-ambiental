@@ -10,8 +10,10 @@ type NavigationInput = {
 };
 
 const GLOBAL_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/rdcd", "/gamma"];
-const OPERATION_ROUTES = ["/welcome", "/dashboard", "/operacao", "/planos", "/calendario", "/mirr", "/fases", "/certificacoes", "/documentacao"];
-const STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"];
+// Os Planos de Monitorização são universais: existe um único registo por plano,
+// não uma cópia por obra. Por isso o acesso é feito apenas na visão global.
+const OPERATION_ROUTES = ["/welcome", "/dashboard", "/operacao", "/calendario", "/mirr", "/fases", "/certificacoes", "/documentacao"];
+const STANDARD_PROJECT_MENU_ROUTES = ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"];
 const OPERATION_ROLE_ROUTES: Record<string, string[]> = {
   admin: OPERATION_ROUTES,
   dono_obra: OPERATION_ROUTES,
@@ -20,11 +22,11 @@ const OPERATION_ROLE_ROUTES: Record<string, string[]> = {
   raa: ["/welcome", "/documentacao"],
 };
 const PROJECT_ROLE_ROUTES: Record<string, string[]> = {
-  admin: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
-  dono_obra: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
-  pm: ["/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  admin: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  dono_obra: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  pm: ["/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao"],
   ee: ["/welcome", "/ficha", "/residuos", "/kpi", "/dashboard-parceiros", "/pedidos-eep", "/documentacao"],
-  raa: ["/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao"],
+  raa: ["/welcome", "/ficha", "/residuos", "/kpi", "/documentacao"],
   rap: ["/welcome", "/ficha", "/kpi"],
   observador: ["/welcome", "/dashboard", "/ficha"],
   user: ["/welcome", "/ficha"],

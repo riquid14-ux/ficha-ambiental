@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import { useBrandImage } from "@/hooks/useBrandImage";
@@ -306,7 +307,8 @@ function PlanCalendar({ plans }: { plans: any[] }) {
 export default function Planos() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const { activeProject } = useProject();
+  const { isAllProjects, canSeeAllProjects } = useProject();
+  const [, setLocation] = useLocation();
   const plansImage = useBrandImage("planos");
   const isAdminOrDono = user?.role === "admin" || user?.role === "dono_obra";
   const [showCreate, setShowCreate] = useState(false);
@@ -320,9 +322,15 @@ export default function Planos() {
     notes: "",
   });
 
+  // A lista é intencionalmente global: cada plano DCAPE é universal e não se
+  // replica por projeto. A navegação já só a expõe em "Todos os Projetos"; este
+  // guard protege também URLs diretos guardados antes desta alteração.
+  useEffect(() => {
+    if (!isAllProjects) setLocation(canSeeAllProjects ? "/dashboard" : "/welcome");
+  }, [canSeeAllProjects, isAllProjects, setLocation]);
   const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery(
-    activeProject?.id ? { projectId: activeProject.id } : undefined,
-    { enabled: Boolean(activeProject?.id) }
+    undefined,
+    { enabled: isAllProjects }
   );
   const utils = trpc.useUtils();
   const createMutation = trpc.monitoringPlans.create.useMutation({
@@ -569,9 +577,7 @@ export default function Planos() {
           eyebrow="Controlo e reporting"
           title={t("Planos de Monitorização")}
           description="Calendário, responsáveis, evidências e último estado de cada plano numa única visão."
-          context={
-            activeProject?.code || activeProject?.name || "Visão consolidada"
-          }
+          context={t("Todos os Projetos")}
           tone="operations"
           image={plansImage.url}
           imagePosition={plansImage.position}
@@ -585,27 +591,6 @@ export default function Planos() {
               >
                 <Download className="mr-2 h-4 w-4" />
                 Exportar updates
-              </Button>
-              <Button
-                variant="outline"
-                className="border-white/20 bg-card/10 text-white hover:bg-card/20 hover:text-white"
-                disabled={!activeProject?.id}
-                title={
-                  !activeProject?.id
-                    ? "Seleccione um projeto individual para exportar."
-                    : undefined
-                }
-                onClick={() =>
-                  activeProject?.id &&
-                  window.open(
-                    `/api/pdf/planos/${activeProject.id}`,
-                    "_blank",
-                    "noopener,noreferrer"
-                  )
-                }
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Relatório PDF
               </Button>
               {isAdminOrDono && (
                 <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -864,7 +849,7 @@ export default function Planos() {
                   key={plan.id}
                   plan={plan}
                   user={user}
-                  projectId={activeProject?.id}
+                  projectId={undefined}
                 />
               ))}
             </div>
@@ -916,7 +901,7 @@ function PlanCard({
     });
   const { data: history } = trpc.monitoringPlans.history.useQuery(
     { planId: plan.id, projectId },
-    { enabled: showHistory && Boolean(projectId) }
+    { enabled: showHistory }
   );
   const refresh = async () => {
     await Promise.all([
@@ -959,7 +944,6 @@ function PlanCard({
     if (file.size > 10 * 1024 * 1024)
       return toast.error("O ficheiro excede o limite de 10MB.");
     const fileBase64 = await fileToBase64(file);
-    if (!projectId) return toast.error("Seleccione um projeto individual.");
     uploadMutation.mutate({
       planId: plan.id,
       projectId,

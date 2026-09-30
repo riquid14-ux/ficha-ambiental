@@ -33,9 +33,9 @@ describe("Roles Drill Tests", () => {
       ]);
     });
 
-    it("should show RAA the operational modules and Planos", () => {
+    it("should keep Planos out of individual RAA project navigation", () => {
       expect(getVisibleNavigationPaths({ role: "raa", ...projectInput })).toEqual([
-        "/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao",
+        "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 
@@ -51,9 +51,9 @@ describe("Roles Drill Tests", () => {
       ]);
     });
 
-    it("should give Admin full access", () => {
+    it("should give Admin individual-project access without the universal Planos", () => {
       expect(getVisibleNavigationPaths({ role: "admin", ...projectInput })).toEqual([
-        "/welcome", "/dashboard", "/planos", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao",
+        "/welcome", "/dashboard", "/calendario", "/timeline", "/ficha", "/residuos", "/kpi", "/documentacao",
       ]);
     });
 
@@ -69,6 +69,8 @@ describe("Roles Drill Tests", () => {
     it("should only allow Admin and DO to see Todos os Projetos", () => {
       expect(getVisibleNavigationPaths({ role: "admin", ...projectInput, isAllProjects: true })).toContain("/rdcd");
       expect(getVisibleNavigationPaths({ role: "dono_obra", ...projectInput, isAllProjects: true })).toContain("/rdcd");
+      expect(getVisibleNavigationPaths({ role: "admin", ...projectInput, isAllProjects: true })).toContain("/planos");
+      expect(getVisibleNavigationPaths({ role: "dono_obra", ...projectInput, isAllProjects: true })).toContain("/planos");
       expect(getVisibleNavigationPaths({ role: "pm", ...projectInput, isAllProjects: true })).toEqual([]);
       expect(projectContextCode).toContain('user?.role === "admin" || user?.role === "dono_obra"');
       expect(projectContextCode).not.toMatch(/canSeeAllProjects[^;]*pm/);

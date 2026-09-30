@@ -126,4 +126,14 @@ describe("Acompanhamento das fases — experiência", () => {
     expect(reminderSource).not.toContain("project_phase_updates");
     expect(panelSource).toContain("não cria eventos de calendário nem alertas automáticos");
   });
+
+  it("expõe relatório de transição com pendências, responsáveis e último update", () => {
+    expect(routerSource).toContain("transitionReport: protectedProcedure");
+    expect(routerSource).toContain("getPhaseMeasureUpdatesForProject");
+    expect(routerSource).toContain("currently blocking logical DCAPE obligations");
+    expect(routerSource).toContain("latestUpdateByMeasureId");
+    expect(routerSource).toContain("ownerName: ownerNames.join");
+    expect(routerSource).toContain("supportName: supportNames.join");
+    expect(dbSource).toContain("export async function getPhaseMeasureUpdatesForProject");
+  });
 });

@@ -28,6 +28,17 @@
 | Próximo reporting | `calendarEvents.list` do projeto ativo | Primeiro evento pendente futuro ordenado por data | “Sem entrega agendada” | Fonte/owner/data mostrados sem metas inventadas |
 | MIRR no SIN01 | `wasteEgars.list` do projeto/ano | Contagem de registos e estado vazio quando não existirem e-GARs | Ligação para MIRR | 0 registos na demonstração |
 
+## Planos universais e transição entre fases
+
+> Os 20 Planos/Projetos DCAPE são universais: não são replicados por cada projeto. Por isso, a página **Planos** apenas é apresentada na visão **Todos os Projetos** e uma URL direta aberta com um projeto ativo redireciona para uma página permitida. A consulta não é executada fora dessa visão.
+
+| Bloco apresentado | Fonte autorizada | Fórmula/apresentação | Salvaguarda | Verificação desta ronda |
+|---|---|---|---|---|
+| Planos de monitorização | `monitoringPlans.list` | Uma lista global de 20 planos, com calendário, responsável, suporte, anexos, último update e histórico | Não cria 20 × N projetos nem carrega dados ao abrir um projeto individual | Navegação e URL direta verificadas com SIN02 ativo |
+| Relatório de transição entre fases | `phaseMeasures.transitionReport`, protegido por projeto e módulo `timeline` | Para cada projeto com Timeline ativa: fase em fecho, próxima fase e apenas obrigações lógicas pendentes, com estado, responsável, suporte e último update | Exclui ACP, que não tem módulo Timeline/DCAPE; não exporta nem revela projetos fora do âmbito do utilizador | Word exportado e renderizado: 22 páginas, responsável/suporte e autor/data do último update confirmados |
+
+As regressões de navegação de função foram atualizadas para garantir que **Planos** surge apenas em *Todos os Projetos* para Admin/DO, e não na navegação de um projeto individual para RAA, PM ou Admin.
+
 ## Operação NEST — extensão de decisão
 
 > A fotografia aérea continua a ser a **vista de infraestrutura**. Não é apresentada como um gémeo digital. O gémeo operacional é uma camada calculada, explicável e separada, que usa apenas leituras, parâmetros e qualidade já autorizados.

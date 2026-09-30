@@ -19,7 +19,7 @@ import { sanitizeFile } from "./file-sanitizer";
 import { canReadDocumentLibrary } from "./document-library";
 import { checkReadiness } from "./health";
 import ExcelJS from "exceljs";
-import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeMeasure, isLegacySupportingItem } from "@shared/phases";
+import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeElement, isDcapeMeasure, isLegacySupportingItem } from "@shared/phases";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -4055,6 +4055,102 @@ export const appRouter = router({
           results.push({ projectId: proj.id, code: proj.code, phases });
         }
         return results;
+      }),
+
+    /**
+     * Transition briefing for one project.  It deliberately returns only the
+     * currently blocking logical DCAPE obligations, rather than a flat export
+     * of the whole catalogue.  This is the source of truth for the handover
+     * report: item state, assigned owner/support and the latest immutable
+     * status update all come from the project tracking records.
+     */
+    transitionReport: protectedProcedure
+      .input(z.object({ projectId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const project = await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
+        const [projectMeasures, statuses, updates] = await Promise.all([
+          db.getProjectMeasures(input.projectId),
+          db.getPhaseMeasureStatuses(input.projectId),
+          db.getPhaseMeasureUpdatesForProject(input.projectId),
+        ]);
+
+        const statusByMeasureId = new Map(statuses.map((item: any) => [item.measureId, item]));
+        const latestUpdateByMeasureId = new Map<number, any>();
+        for (const update of updates as any[]) {
+          if (!latestUpdateByMeasureId.has(update.measureId)) latestUpdateByMeasureId.set(update.measureId, update);
+        }
+        const applicablePhases = project.code === "SIN01"
+          ? DCAPE_PHASES.filter(phase => phase.key === "exploracao" || phase.key === "desativacao")
+          : DCAPE_PHASES;
+
+        const phaseSummaries = applicablePhases.map(phase => {
+          const rawItems = projectMeasures
+            .filter(item => getDcapePhaseForItem(item.number)?.key === phase.key)
+            .filter(item => !isLegacySupportingItem(item.number));
+          const hasCanonicalExploration = phase.key === "exploracao" && rawItems.some(item => {
+            const number = baseDcapeNumber(item.number);
+            return number !== null && number >= 92 && number <= 110;
+          });
+          const visibleItems = hasCanonicalExploration
+            ? rawItems.filter(item => !/^EX-/i.test(String(item.number).trim()))
+            : rawItems;
+          const groups = new Map<string, any[]>();
+          for (const item of visibleItems) {
+            const key = isDcapeElement(item.number)
+              ? String(item.number).trim().toUpperCase()
+              : String(baseDcapeNumber(item.number) ?? item.number);
+            groups.set(key, [...(groups.get(key) || []), item]);
+          }
+
+          const obligations = Array.from(groups.values()).map(items => {
+            const root = items.find(item => !isDcapeElement(item.number) && String(item.number).trim() === String(baseDcapeNumber(item.number))) || items[0];
+            const trackingRows = items.map(item => statusByMeasureId.get(item.id)).filter(Boolean);
+            const trackingStates = items.map(item => statusByMeasureId.get(item.id)?.trackingStatus || statusByMeasureId.get(item.id)?.status || "nao_iniciado");
+            const status = trackingStates.length > 0 && trackingStates.every(value => value === "concluido")
+              ? "concluido"
+              : trackingStates.some(value => value === "bloqueado")
+                ? "bloqueado"
+                : trackingStates.some(value => value === "em_validacao")
+                  ? "em_validacao"
+                  : trackingStates.some(value => value === "em_curso" || value === "pendente")
+                    ? "em_curso"
+                    : "nao_iniciado";
+            const latestUpdate = items
+              .map(item => latestUpdateByMeasureId.get(item.id))
+              .filter(Boolean)
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] || null;
+            const ownerNames = Array.from(new Set(trackingRows.map((row: any) => row.ownerName).filter(Boolean)));
+            const supportNames = Array.from(new Set(trackingRows.map((row: any) => [row.supportName, row.supportCompany].filter(Boolean).join(" — ")).filter(Boolean)));
+            return {
+              key: isDcapeElement(root.number) ? String(root.number).trim().toUpperCase() : String(baseDcapeNumber(root.number) ?? root.number),
+              number: root.number,
+              description: root.description,
+              kind: isDcapeElement(root.number) ? "element" : "measure",
+              status,
+              ownerName: ownerNames.join(" / ") || null,
+              supportName: supportNames.join(" / ") || null,
+              latestUpdate,
+            };
+          }).sort((a, b) => {
+            const aNumber = isDcapeElement(a.number) ? Number.parseInt(String(a.number).split("-")[1] || "0", 10) : baseDcapeNumber(a.number) || 0;
+            const bNumber = isDcapeElement(b.number) ? Number.parseInt(String(b.number).split("-")[1] || "0", 10) : baseDcapeNumber(b.number) || 0;
+            return aNumber - bNumber;
+          });
+          const concluded = obligations.filter(item => item.status === "concluido").length;
+          return { ...phase, total: obligations.length, concluded, pending: obligations.filter(item => item.status !== "concluido") };
+        });
+
+        const currentIndex = phaseSummaries.findIndex(phase => phase.total > 0 && phase.pending.length > 0);
+        const current = currentIndex >= 0 ? phaseSummaries[currentIndex] : null;
+        const next = currentIndex >= 0
+          ? phaseSummaries.slice(currentIndex + 1).find(phase => phase.total > 0) || null
+          : null;
+        return {
+          project: { id: project.id, code: project.code, name: project.name },
+          current,
+          next: next ? { key: next.key, name: next.name, nameEn: next.nameEn } : null,
+          generatedAt: Date.now(),
+        };
       }),
 
     getStatuses: protectedProcedure

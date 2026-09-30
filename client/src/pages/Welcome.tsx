@@ -92,7 +92,10 @@ export default function Welcome() {
     ? videoUrl.replace("youtu.be/", "www.youtube.com/embed/")
     : videoUrl).replace("www.youtube.com/embed/", "www.youtube-nocookie.com/embed/");
   const embedUrl = `${normalizedVideoUrl}${normalizedVideoUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1&controls=1&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-  const welcomeImage = String((settingsQuery.data as any)?.image_welcome || welcomeHeaderImage.url);
+  // A mesma resolução usada no cabeçalho é também o poster do vídeo.  Assim uma
+  // alteração feita na Administração não deixa um URL antigo/quebrado apenas na
+  // página Bem-vindo.
+  const welcomeImage = welcomeHeaderImage.url;
 
   const visiblePaths = getVisibleNavigationPaths({
     role: userRole,
@@ -147,7 +150,7 @@ export default function Welcome() {
           <Card className="stand-surface lg:col-span-2 overflow-hidden">
             <CardContent className="p-0">
               {videoPlaying ? (
-                <div className="photo-grade-frame relative aspect-video w-full bg-[#0A3638]">
+                <div className="photo-grade-frame relative aspect-video w-full bg-surface-contrast">
                   <img src={welcomeImage} alt="" aria-hidden="true" className="photo-grade absolute inset-0 size-full object-cover" />
                   <span className={`absolute inset-0 bg-[linear-gradient(120deg,rgba(10,54,56,.7),rgba(10,54,56,.12)_65%,rgba(10,54,56,.55))] transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`} />
                   <iframe
@@ -156,17 +159,16 @@ export default function Welcome() {
                     title="Start Campus"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
-                    onLoad={() => setVideoReady(true)}
                   />
-                  <button type="button" onClick={() => setVideoPlaying(false)} className="absolute right-3 top-3 z-10 rounded-lg border border-white/20 bg-[#0A3638]/85 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-[#0A3638]">{t("Voltar à imagem")}</button>
+                  <button type="button" onClick={() => setVideoPlaying(false)} className="absolute right-3 top-3 z-10 rounded-lg border border-white/20 bg-surface-contrast/85 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-surface-contrast">{t("Voltar à imagem")}</button>
                 </div>
               ) : (
-                <button type="button" onClick={() => setVideoPlaying(true)} className="group relative block aspect-video w-full overflow-hidden bg-[#0A3638] text-left">
+                <button type="button" onClick={() => setVideoPlaying(true)} className="group relative block aspect-video w-full overflow-hidden bg-surface-contrast text-left">
                   <img src={welcomeImage} alt={t("Vista institucional do campus Start Campus")} className="photo-grade absolute inset-0 size-full object-cover transition duration-300 group-hover:scale-[1.025]" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                   <span className="absolute inset-0 bg-[linear-gradient(120deg,rgba(10,54,56,.82),rgba(10,54,56,.2)_65%,rgba(10,54,56,.55))]" />
                   <span className="absolute inset-0 flex items-end justify-between gap-4 p-5 text-white sm:p-6">
                     <span><span className="stand-kicker text-primary">{t("A Start Campus em movimento")}</span><span className="mt-2 block max-w-xs text-lg font-semibold tracking-[-0.03em]">{t("Conheça a visão que liga campus, operação e sustentabilidade.")}</span></span>
-                    <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/30 bg-card/12 backdrop-blur transition group-hover:scale-105 group-hover:bg-primary group-hover:text-[#0A3638]"><Play className="ml-0.5 size-5 fill-current" /></span>
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full border border-white/30 bg-card/12 backdrop-blur transition group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground"><Play className="ml-0.5 size-5 fill-current" /></span>
                   </span>
                 </button>
               )}
@@ -241,8 +243,8 @@ export default function Welcome() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="text-center p-2 rounded-lg border border-primary/30 bg-primary/10">
                       <CheckCircle2 className="w-5 h-5 text-primary mx-auto mb-1" />
-                      <p className="text-xs font-semibold text-[#0A3638]">{t("Aprovada")}</p>
-                      <p className="text-[10px] text-[#0A3638]/75 mt-0.5">{t("Arquivada no histórico")}</p>
+                      <p className="text-xs font-semibold text-foreground">{t("Aprovada")}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{t("Arquivada no histórico")}</p>
                     </div>
                     <div className="text-center p-2 rounded-lg bg-red-50 border border-red-200">
                       <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
@@ -253,8 +255,8 @@ export default function Welcome() {
                 </div>
               </div>
               <div className="mt-3 pt-2 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#0A3638]" /> {t("Ação EE/RAP")}</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#6D7A70]" /> {t("Ação RAA")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-2" /> {t("Ação EE/RAP")}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-3" /> {t("Ação RAA")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" /> {t("Aprovado")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> {t("Rejeitado")}</span>
               </div>
@@ -262,31 +264,31 @@ export default function Welcome() {
               <div className="mt-4 pt-3 border-t">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Entidades no Processo")}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#F4F4FF] border border-[#0A3638]/15">
-                    <span className="text-xs font-bold text-[#0A3638] bg-card px-1.5 py-0.5 rounded mt-0.5">EE</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-accent border border-primary/20">
+                    <span className="text-xs font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5">EE</span>
                     <div>
-                      <p className="text-xs font-medium text-[#272726]">{t("Entidade Executante")}</p>
+                      <p className="text-xs font-medium text-foreground">{t("Entidade Executante")}</p>
                       <p className="text-[10px] text-muted-foreground">{t("Cria e submete fichas semanais")}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#F4F4FF] border border-[#0A3638]/15">
-                    <span className="text-xs font-bold text-[#0A3638] bg-card px-1.5 py-0.5 rounded mt-0.5">RAP</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-accent border border-primary/20">
+                    <span className="text-xs font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5">RAP</span>
                     <div>
-                      <p className="text-xs font-medium text-[#272726]">{t("Resp. Ambiental Projeto")}</p>
+                      <p className="text-xs font-medium text-foreground">{t("Resp. Ambiental Projeto")}</p>
                       <p className="text-[10px] text-muted-foreground">{t("Submete fichas da sua responsabilidade")}</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#EDEBEB] border border-border">
-                    <span className="text-xs font-bold text-[#272726] bg-card px-1.5 py-0.5 rounded mt-0.5">RAA</span>
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted border border-border">
+                    <span className="text-xs font-bold text-foreground bg-card px-1.5 py-0.5 rounded mt-0.5">RAA</span>
                     <div>
-                      <p className="text-xs font-medium text-[#272726]">{t("Resp. Ambiental Atividade")}</p>
+                      <p className="text-xs font-medium text-foreground">{t("Resp. Ambiental Atividade")}</p>
                       <p className="text-[10px] text-muted-foreground">{t("Revê, aprova ou rejeita fichas")}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/25">
-                    <span className="text-xs font-bold text-[#0A3638] bg-primary px-1.5 py-0.5 rounded mt-0.5">DO</span>
+                    <span className="text-xs font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded mt-0.5">DO</span>
                     <div>
-                      <p className="text-xs font-medium text-[#272726]">{t("Dono de Obra")}</p>
+                      <p className="text-xs font-medium text-foreground">{t("Dono de Obra")}</p>
                       <p className="text-[10px] text-muted-foreground">{t("Visão completa e gestão de acessos")}</p>
                     </div>
                   </div>
@@ -298,17 +300,17 @@ export default function Welcome() {
 
         {/* Quick tips */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-[#F4F4FF] border border-[#0A3638]/15 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-[#0A3638] text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-accent border border-primary/20 shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-surface-contrast text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">1</div>
             <div>
-              <p className="text-sm font-medium text-[#272726] mb-0.5">{ t("Menu lateral") }</p>
+              <p className="text-sm font-medium text-foreground mb-0.5">{ t("Menu lateral") }</p>
               <p className="text-xs text-muted-foreground">{t("Navegue entre as secções da plataforma usando o menu à esquerda.")}</p>
             </div>
           </div>
           <div className="flex gap-3 items-start p-4 rounded-xl bg-primary/10 border border-primary/25 shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-primary text-[#0A3638] flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
+            <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">2</div>
             <div>
-              <p className="text-sm font-medium text-[#272726] mb-0.5">
+              <p className="text-sm font-medium text-foreground mb-0.5">
                 {t(userRole === "ee" || userRole === "rap" ? "Fichas semanais" : userRole === "raa" ? "Revisão" : "Dashboard")}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -321,10 +323,10 @@ export default function Welcome() {
               </p>
             </div>
           </div>
-          <div className="flex gap-3 items-start p-4 rounded-xl bg-[#EDEBEB] border border-border shadow-sm">
-            <div className="w-9 h-9 rounded-lg bg-[#6D7A70] text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
+          <div className="flex gap-3 items-start p-4 rounded-xl bg-muted border border-border shadow-sm">
+            <div className="w-9 h-9 rounded-lg bg-surface-contrast text-white flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">3</div>
             <div>
-              <p className="text-sm font-medium text-[#272726] mb-0.5">{ t("Suporte") }</p>
+              <p className="text-sm font-medium text-foreground mb-0.5">{ t("Suporte") }</p>
               <p className="text-xs text-muted-foreground">{t("Contacte apoioamb@startcampus.pt ou use Deixar Feedback.")}</p>
             </div>
           </div>
@@ -336,14 +338,14 @@ export default function Welcome() {
 
 function WelcomeFlowStep({ icon, title, desc, color, actor }: { icon: React.ReactNode; title: string; desc: string; color: string; actor: string }) {
   const colors: Record<string, string> = {
-    submissao: "bg-[#F4F4FF] border-[#0A3638]/18 text-[#0A3638]",
-    revisao: "bg-[#EDEBEB] border-border text-[#272726]",
-    decisao: "bg-primary/10 border-primary/25 text-[#0A3638]",
+    submissao: "bg-accent border-primary/20 text-foreground",
+    revisao: "bg-muted border-border text-foreground",
+    decisao: "bg-primary/10 border-primary/25 text-foreground",
   };
   const badges: Record<string, string> = {
-    submissao: "bg-card text-[#0A3638]",
-    revisao: "bg-card text-[#272726]",
-    decisao: "bg-primary text-[#0A3638]",
+    submissao: "bg-card text-foreground",
+    revisao: "bg-card text-foreground",
+    decisao: "bg-primary text-primary-foreground",
   };
   return (
     <div className={`w-full max-w-lg p-3 rounded-lg border ${colors[color]} flex items-center gap-3`}>

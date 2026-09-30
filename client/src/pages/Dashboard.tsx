@@ -19,7 +19,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { useState, useMemo } from "react";
-import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp, FileDown, ArrowUpRight, ClipboardCheck, Recycle, ShieldCheck, Gauge, Droplets, Waves, Database } from "lucide-react";
+import { CheckCircle, AlertTriangle, MinusCircle, Building2, Clock, FolderKanban, FileBarChart, CalendarDays, TrendingUp, FileDown, ArrowUpRight, ClipboardCheck, Recycle, ShieldCheck, Gauge, Droplets, Waves, Database, ListChecks } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   I: "var(--chart-1)",
@@ -42,6 +42,7 @@ export default function Dashboard() {
   const { t, language } = useLanguage();
   const [, setLocation] = useLocation();
   const { activeProject, isAllProjects, projects } = useProject();
+  const utils = trpc.useUtils();
   const dateLocale = language === "en" ? "en-GB" : "pt-PT";
   const allProjectsProgressQuery = trpc.phaseMeasures.getAllProjectsProgress.useQuery(undefined, { enabled: isAllProjects });
 
@@ -98,6 +99,164 @@ export default function Dashboard() {
     }
   };
 
+  const handleTransitionReport = async () => {
+    if (!isAllProjects || projects.length === 0) {
+      toast.error(t("Selecione Todos os Projetos para exportar o relatório de transição."));
+      return;
+    }
+    const timelineProjects = projects.filter(project => {
+      try {
+        return JSON.parse(project.enabledModules || "[]").includes("timeline");
+      } catch {
+        return false;
+      }
+    });
+    if (timelineProjects.length === 0) {
+      toast.error(t("Não existem projetos com acompanhamento de fases para exportar."));
+      return;
+    }
+    setIsTransitionExporting(true);
+    try {
+      const {
+        Document,
+        Packer,
+        Paragraph,
+        TextRun,
+        Table,
+        TableRow,
+        TableCell,
+        WidthType,
+        AlignmentType,
+        HeadingLevel,
+        BorderStyle,
+        PageBreak,
+      } = await import("docx");
+      const reports = await Promise.all(
+        timelineProjects.map(project => utils.phaseMeasures.transitionReport.fetch({ projectId: project.id }))
+      );
+      const generatedAt = new Date();
+      const noBorder = {
+        top: { style: BorderStyle.NONE, size: 0 },
+        bottom: { style: BorderStyle.NONE, size: 0 },
+        left: { style: BorderStyle.NONE, size: 0 },
+        right: { style: BorderStyle.NONE, size: 0 },
+      } as const;
+      const statusLabel = (status: string) => t({
+        nao_iniciado: "Não iniciado",
+        em_curso: "Em curso",
+        em_validacao: "Em validação",
+        concluido: "Concluído",
+        bloqueado: "Bloqueado",
+      }[status] || status);
+      const phaseLabel = (phase: any) => language === "en" ? phase.nameEn : phase.name;
+      const latestUpdateText = (item: any) => {
+        if (!item.latestUpdate?.updateText) return t("Sem update registado");
+        const author = item.latestUpdate.createdByName ? `${t("Reportado por")}: ${item.latestUpdate.createdByName}` : "";
+        const date = item.latestUpdate.createdAt ? `${t("Data")}: ${new Date(item.latestUpdate.createdAt).toLocaleDateString(dateLocale)}` : "";
+        return [item.latestUpdate.updateText, author, date].filter(Boolean).join("\n");
+      };
+      const detailRows = (report: any) => report.current.pending.map((item: any) => new TableRow({
+        children: [
+          item.number,
+          item.description,
+          statusLabel(item.status),
+          item.ownerName || t("Por definir"),
+          item.supportName || t("Por definir"),
+          latestUpdateText(item),
+        ].map((text, index) => new TableCell({
+          width: { size: [8, 28, 12, 16, 16, 20][index], type: WidthType.PERCENTAGE },
+          children: [new Paragraph({ children: [new TextRun({ text: String(text), size: 17 })] })],
+          borders: noBorder,
+          margins: { top: 90, bottom: 90, left: 90, right: 90 },
+        })),
+      }));
+      const headerRow = new TableRow({
+        tableHeader: true,
+        children: [
+          t("N.º"),
+          t("Obrigação pendente"),
+          t("Estado"),
+          t("Responsável"),
+          t("Suporte"),
+          t("Último status update"),
+        ].map(text => new TableCell({
+          shading: { fill: "0A3638" },
+          children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: "FFFFFF", size: 17 })] })],
+          borders: noBorder,
+          margins: { top: 100, bottom: 100, left: 90, right: 90 },
+        })),
+      });
+
+      const children: any[] = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: t("RELATÓRIO DE TRANSIÇÃO ENTRE FASES"), bold: true, size: 32, color: "0A3638" })],
+          spacing: { after: 180 },
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: t("Pendências DCAPE, responsáveis e último estado por projeto"), size: 20, color: "4B5563" })],
+          spacing: { after: 500 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: `${t("Emitido em")}: ${generatedAt.toLocaleString(dateLocale)}`, size: 18, color: "6B7280" })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 600 },
+        }),
+      ];
+
+      for (let index = 0; index < reports.length; index += 1) {
+        const report = reports[index];
+        if (index > 0) children.push(new Paragraph({ children: [new PageBreak()] }));
+        const current = report.current;
+        children.push(
+          new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${report.project.code} — ${report.project.name}`, bold: true, color: "0A3638" })] }),
+        );
+        if (!current) {
+          children.push(new Paragraph({ text: t("Não existem obrigações pendentes nas fases aplicáveis deste projeto."), spacing: { after: 260 } }));
+          continue;
+        }
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${t("Fase em fecho")}: `, bold: true }),
+              new TextRun({ text: phaseLabel(current) }),
+              new TextRun({ text: ` · ${current.pending.length} ${t("pendências")}` }),
+            ],
+            spacing: { after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${t("Próxima fase")}: `, bold: true }),
+              new TextRun({ text: report.next ? phaseLabel(report.next) : t("Sem fase seguinte aplicável") }),
+            ],
+            spacing: { after: 240 },
+          }),
+          new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...detailRows(report)] }),
+          new Paragraph({
+            children: [new TextRun({ text: t("Fonte: acompanhamento de fases e medidas da plataforma; o relatório não altera registos nem substitui validação humana."), size: 16, color: "6B7280", italics: true })],
+            spacing: { before: 220 },
+          }),
+        );
+      }
+
+      const wordDocument = new Document({ sections: [{ properties: {}, children }] });
+      const blob = await Packer.toBlob(wordDocument);
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `Relatorio_Transicao_Fases_${generatedAt.toISOString().slice(0, 10)}.docx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("Relatório de transição exportado"));
+    } catch (error) {
+      console.error(error);
+      toast.error(t("Não foi possível gerar o relatório de transição"));
+    } finally {
+      setIsTransitionExporting(false);
+    }
+  };
+
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
@@ -108,6 +267,7 @@ export default function Dashboard() {
   const [selectedWeek, setSelectedWeek] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [isTransitionExporting, setIsTransitionExporting] = useState(false);
 
   const companiesQuery = trpc.companies.list.useQuery();
   const catalogueProjectId = activeProject?.id ?? 0;
@@ -309,7 +469,7 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button> : undefined}>
+        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>{isAllProjects && <Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleTransitionReport} disabled={isTransitionExporting}><ListChecks className="w-4 h-4 mr-1" /> {isTransitionExporting ? t("A exportar...") : t("Transição de Fases")}</Button>}</div> : undefined}>
           <p className="text-xs font-medium text-white/80">{t("Visão operacional, documental e de conformidade no mesmo contexto de projeto.")}</p>
         </StandPageHeader>
 

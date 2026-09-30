@@ -10,14 +10,14 @@ describe("navegação visível por identidade", () => {
     ]);
   });
 
-  it("mostra à RAA os Planos, sem anunciar calendário ou Timeline", () => {
+  it("não mostra Planos à RAA num projeto individual", () => {
     expect(getVisibleNavigationPaths({ role: "raa", ...project })).toEqual([
-      "/welcome", "/planos", "/ficha", "/residuos", "/kpi", "/documentacao",
+      "/welcome", "/ficha", "/residuos", "/kpi", "/documentacao",
     ]);
   });
 
-  it("mostra Planos à PM no projeto individual para permitir a exportação por projeto", () => {
-    expect(getVisibleNavigationPaths({ role: "pm", ...project })).toContain("/planos");
+  it("não mostra Planos à PM num projeto individual", () => {
+    expect(getVisibleNavigationPaths({ role: "pm", ...project })).not.toContain("/planos");
   });
 
   it("respeita os módulos configurados para o PM dentro de cada projeto", () => {

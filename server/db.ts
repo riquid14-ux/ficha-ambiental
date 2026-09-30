@@ -1750,6 +1750,19 @@ export async function getPhaseMeasureUpdates(projectId: number, measureId: numbe
     .where(and(eq(phaseMeasureUpdates.projectId, projectId), eq(phaseMeasureUpdates.measureId, measureId)))
     .orderBy(desc(phaseMeasureUpdates.createdAt));
 }
+
+/**
+ * Read-only feed for the project-transition report.  Fetching the whole project
+ * at once prevents the dashboard from issuing one request per DCAPE item while
+ * preserving the immutable source records for each individual measure.
+ */
+export async function getPhaseMeasureUpdatesForProject(projectId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(phaseMeasureUpdates)
+    .where(eq(phaseMeasureUpdates.projectId, projectId))
+    .orderBy(desc(phaseMeasureUpdates.createdAt));
+}
 import { phaseMeasureStatuses, InsertPhaseMeasureStatus } from "../drizzle/schema";
 import { phaseEvidence, InsertPhaseEvidence } from "../drizzle/schema";
 

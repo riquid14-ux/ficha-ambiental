@@ -47,6 +47,24 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
           }
         }
 
+        if (event.sourceType === "apa_reporting_cycle" && event.sourceId) {
+          const cycleRecipients = await db.getApaCycleRecipients(event.sourceId);
+          for (const candidate of cycleRecipients) {
+            if (candidate.email) {
+              if (!recipients.some(item => item.email.toLowerCase() === candidate.email!.toLowerCase())) {
+                recipients.push({ email: candidate.email, name: candidate.name, userId: null });
+              }
+              continue;
+            }
+            if (candidate.userId) {
+              const owner = await db.getUserById(candidate.userId);
+              if (owner?.accountStatus === "active" && owner.email && !recipients.some(item => item.email.toLowerCase() === owner.email!.toLowerCase())) {
+                recipients.push({ email: owner.email, name: owner.fullName || owner.name || candidate.name, userId: owner.id });
+              }
+            }
+          }
+        }
+
         for (const recipient of recipients) {
           const claimed = await db.claimCalendarReminder({
             eventId: event.id,

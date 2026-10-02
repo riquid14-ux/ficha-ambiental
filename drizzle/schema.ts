@@ -442,6 +442,44 @@ export const monitoringPlans = mysqlTable("monitoring_plans", {
 export type MonitoringPlan = typeof monitoringPlans.$inferSelect;
 export type InsertMonitoringPlan = typeof monitoringPlans.$inferInsert;
 
+// ─── APA Reporting Cycles (ciclos RDCD / relatório anual) ───────────────────
+// Um evento RDCD do calendário pode ser recorrente. Cada ocorrência anual ou
+// semestral cria um ciclo próprio, com uma única receção, prazo máximo APA e
+// entrega efetiva. Os planos entram no ciclo através da tabela de ligação, para
+// que uma emissão possa consolidar vários planos sem os duplicar no calendário.
+export const apaReportingCycles = mysqlTable("apa_reporting_cycles", {
+  id: int("id").autoincrement().primaryKey(),
+  calendarEventId: int("calendarEventId").notNull(),
+  occurrenceAt: bigint("occurrenceAt", { mode: "number" }).notNull(),
+  projectId: int("projectId"),
+  reportType: mysqlEnum("reportType", ["rdcd", "relatorio_anual_dcape", "outro"]).default("rdcd").notNull(),
+  receivedAt: bigint("receivedAt", { mode: "number" }),
+  submissionDueAt: bigint("submissionDueAt", { mode: "number" }),
+  submittedAt: bigint("submittedAt", { mode: "number" }),
+  createdBy: int("createdBy").notNull(),
+  updatedBy: int("updatedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  occurrenceUnique: uniqueIndex("apa_reporting_cycle_occurrence_uq").on(table.calendarEventId, table.occurrenceAt),
+  dueDateIdx: index("apa_reporting_cycle_due_idx").on(table.submissionDueAt),
+}));
+export type ApaReportingCycle = typeof apaReportingCycles.$inferSelect;
+export type InsertApaReportingCycle = typeof apaReportingCycles.$inferInsert;
+
+export const apaReportingCyclePlans = mysqlTable("apa_reporting_cycle_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  cycleId: int("cycleId").notNull(),
+  planId: int("planId").notNull(),
+  addedBy: int("addedBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  cyclePlanUnique: uniqueIndex("apa_reporting_cycle_plan_uq").on(table.cycleId, table.planId),
+  planIdx: index("apa_reporting_cycle_plan_idx").on(table.planId),
+}));
+export type ApaReportingCyclePlan = typeof apaReportingCyclePlans.$inferSelect;
+export type InsertApaReportingCyclePlan = typeof apaReportingCyclePlans.$inferInsert;
+
 // ─── Monitoring Plan Assignments (estado de cada plano em cada projecto) ───────
 export const monitoringPlanAssignments = mysqlTable("monitoring_plan_assignments", {
   id: int("id").autoincrement().primaryKey(),

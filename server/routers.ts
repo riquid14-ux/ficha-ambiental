@@ -20,7 +20,7 @@ import { canReadDocumentLibrary } from "./document-library";
 import { checkReadiness } from "./health";
 import ExcelJS from "exceljs";
 import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeElement, isDcapeMeasure, isLegacySupportingItem } from "@shared/phases";
-import { addCivilMonths } from "@shared/reporting-calendar";
+import { addCivilMonths, reportingOccurrencesForYear } from "@shared/reporting-calendar";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -59,8 +59,9 @@ async function logFileUpload(userId: number, filename: string, mimeType: string,
 function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
 }
-
-
+function isModuleManagedCalendarEvent(sourceType?: string | null) {
+  return sourceType === "monitoring_plan" || sourceType === "monitoring_plan_apa" || sourceType === "apa_reporting_cycle";
+}
 function parseJsonSafely<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -3610,6 +3611,106 @@ export const appRouter = router({
         return db.getMonitoringPlanOverview();
       }),
 
+    apaReportingBoard: protectedProcedure
+      .input(z.object({ year: z.number().int().min(2020).max(2100) }))
+      .query(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra podem consultar a timeline global de reporte APA." });
+        }
+        const [events, cycles] = await Promise.all([
+          db.getCalendarEvents(undefined, false),
+          db.getApaReportingCycles(),
+        ]);
+        const cycleByOccurrence = new Map(
+          cycles.map(cycle => [`${cycle.calendarEventId}:${cycle.occurrenceAt}`, cycle]),
+        );
+        const anchors = events.filter(event => {
+          const searchable = [event.name, event.description, event.category, event.entityToDeliver]
+            .filter(Boolean).join(" ").toLocaleLowerCase("pt-PT");
+          return /\brdcd\b|relat[oó]rio anual.*dcape/.test(searchable);
+        });
+        return anchors.flatMap(event => {
+          const anchorAt = event.firstDate || event.nextDate;
+          if (!anchorAt) return [];
+          return reportingOccurrencesForYear(anchorAt, event.periodicity, input.year).map(occurrenceAt => ({
+            calendarEvent: event,
+            occurrenceAt,
+            cycle: cycleByOccurrence.get(`${event.id}:${occurrenceAt}`) ?? null,
+          }));
+        }).sort((a, b) => a.occurrenceAt - b.occurrenceAt);
+      }),
+
+    configureApaReportingCycle: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        calendarEventId: z.number().int().positive(),
+        occurrenceAt: z.number().int().positive(),
+        reportType: z.enum(["rdcd", "relatorio_anual_dcape", "outro"]),
+        receivedAt: z.number().int().positive(),
+        submissionDueAt: z.number().int().positive().nullable().optional(),
+        submittedAt: z.number().int().positive().nullable().optional(),
+        planIds: z.array(z.number().int().positive()).min(1).max(40),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem configurar ciclos RDCD e reporte à APA." });
+        }
+        const event = await db.getCalendarEventById(input.calendarEventId);
+        if (!event?.active) throw new TRPCError({ code: "NOT_FOUND", message: "Evento de calendário não encontrado." });
+        const searchable = [event.name, event.description, event.category, event.entityToDeliver]
+          .filter(Boolean).join(" ").toLocaleLowerCase("pt-PT");
+        if (!/\brdcd\b|relat[oó]rio anual.*dcape/.test(searchable)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O ciclo APA tem de partir de um evento RDCD ou Relatório Anual DCAPE já registado no calendário." });
+        }
+        const anchorAt = event.firstDate || event.nextDate;
+        if (!anchorAt || !reportingOccurrencesForYear(anchorAt, event.periodicity, new Date(input.occurrenceAt).getUTCFullYear()).includes(input.occurrenceAt)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "A ocorrência selecionada não pertence ao ciclo anual ou semestral do evento RDCD." });
+        }
+        const maximumDueAt = addCivilMonths(input.receivedAt, 3);
+        const dueAt = input.submissionDueAt ?? maximumDueAt;
+        if (dueAt < input.receivedAt || dueAt > maximumDueAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O envio à APA deve ocorrer entre a receção e o limite de três meses civis." });
+        }
+        if (input.submittedAt && input.submittedAt < input.receivedAt) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O envio efetivo à APA tem de ser posterior à receção do reporte." });
+        }
+        const selectedPlans = await Promise.all(input.planIds.map(id => db.getMonitoringPlanById(id)));
+        if (selectedPlans.some(plan => !plan?.active)) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Um dos planos selecionados já não está disponível." });
+        }
+        const existing = input.id ? await db.getApaReportingCycleById(input.id) : undefined;
+        if (input.id && !existing) throw new TRPCError({ code: "NOT_FOUND", message: "Ciclo APA não encontrado." });
+
+        const cycleId = await db.saveApaReportingCycle({
+          id: input.id,
+          calendarEventId: event.id,
+          occurrenceAt: input.occurrenceAt,
+          projectId: event.projectId ?? null,
+          reportType: input.reportType,
+          receivedAt: input.receivedAt,
+          submissionDueAt: dueAt,
+          submittedAt: input.submittedAt ?? null,
+          planIds: input.planIds,
+          userId: ctx.user.id,
+        });
+        await db.syncApaReportingCycleCalendarEvent(cycleId);
+        const affectedPlans = Array.from(new Set([
+          ...input.planIds,
+          ...(existing?.plans.map(plan => plan.id) ?? []),
+        ]));
+        await Promise.all(affectedPlans.map(planId => db.syncMonitoringPlanApaCalendarEvent(planId)));
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: existing ? "apa_reporting_cycle_updated" : "apa_reporting_cycle_created",
+          entity: "apa_reporting_cycle",
+          entityId: cycleId,
+          newValue: JSON.stringify({ calendarEventId: event.id, occurrenceAt: input.occurrenceAt, reportType: input.reportType, receivedAt: input.receivedAt, dueAt, submittedAt: input.submittedAt ?? null, planIds: input.planIds }),
+        });
+        return { id: cycleId, maximumDueAt, submissionDueAt: dueAt };
+      }),
+
     responsibleCandidates: protectedProcedure
       .input(z.object({ projectId: z.number().optional() }).optional())
       .query(async ({ ctx }) => {
@@ -4484,7 +4585,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const current = await db.getCalendarEventById(input.id);
-        if (current?.sourceType === "monitoring_plan_assignment") {
+        if (isModuleManagedCalendarEvent(current?.sourceType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Este prazo é gerido no módulo Planos. Actualize-o nessa página." });
         }
         const { id, ...data } = input;
@@ -4499,7 +4600,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const current = await db.getCalendarEventById(input.id);
-        if (current?.sourceType === "monitoring_plan_assignment") {
+        if (isModuleManagedCalendarEvent(current?.sourceType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Este prazo é gerido no módulo Planos e não pode ser eliminado no calendário global." });
         }
         await db.deleteCalendarEvent(input.id);
@@ -4516,7 +4617,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const sourceEvent = await db.getCalendarEventById(input.id);
-        if (sourceEvent?.sourceType === "monitoring_plan_assignment") {
+        if (isModuleManagedCalendarEvent(sourceEvent?.sourceType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "O estado deste prazo deve ser actualizado no módulo Planos." });
         }
         const updateData: any = { status: input.status };
@@ -4553,7 +4654,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN" });
         }
         const current = await db.getCalendarEventById(input.id);
-        if (current?.sourceType === "monitoring_plan_assignment") {
+        if (isModuleManagedCalendarEvent(current?.sourceType)) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável deste prazo deve ser definido no módulo Planos." });
         }
         await db.updateCalendarEvent(input.id, { ownerId: input.ownerId, ownerName: input.ownerName });

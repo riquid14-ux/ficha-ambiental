@@ -5,7 +5,7 @@ import { daysUntilDeadline, isPlanReminderDay, PLAN_REMINDER_DAYS } from "./plan
 
 const root = join(process.cwd());
 const schemaSource = readFileSync(join(root, "drizzle/schema.ts"), "utf8");
-const migrationSource = ["0023_tired_wallflower.sql", "0024_hesitant_ken_ellis.sql"]
+const migrationSource = ["0023_tired_wallflower.sql", "0024_hesitant_ken_ellis.sql", "0065_apa_reporting_cycles.sql"]
   .map(file => readFileSync(join(root, "drizzle", file), "utf8"))
   .join("\n");
 const routerSource = readFileSync(join(root, "server/routers.ts"), "utf8");
@@ -170,13 +170,29 @@ describe("Planos — experiência e exportação", () => {
     expect(uiSource).toContain("Sincronizado automaticamente com o calendário global");
   });
 
-  it("oferece control room APA com timeline interativa e edição apenas administrativa", () => {
-    expect(uiSource).toContain("Control room APA");
-    expect(uiSource).toContain("Receção, reporte e entrega à APA");
-    expect(uiSource).toContain("cursor-ew-resize");
-    expect(uiSource).toContain("configureApaReporting.useMutation");
+  it("liga a timeline APA aos eventos RDCD anuais e restringe a edição a Admin", () => {
+    expect(uiSource).toContain("Control room APA conectada");
+    expect(uiSource).toContain("Timeline anual de reporte");
+    expect(uiSource).toContain("apaReportingBoard.useQuery");
+    expect(uiSource).toContain("configureApaReportingCycle.useMutation");
     expect(uiSource).toContain('user?.role === "admin"');
-    expect(uiSource).toContain("Receção do plano + 3 meses = limite máximo APA");
+    expect(uiSource).toContain("Receção do reporte + 3 meses civis = limite máximo APA");
+    expect(uiSource).toContain("Planos a integrar nesta emissão");
+  });
+
+  it("consolida planos num ciclo APA auditável sem duplicar eventos individuais", () => {
+    expect(routerSource).toContain("apaReportingBoard");
+    expect(routerSource).toContain("consultar a timeline global de reporte APA");
+    expect(routerSource).toContain("configureApaReportingCycle");
+    expect(routerSource).toContain("calendarEventId");
+    expect(routerSource).toContain("O ciclo APA tem de partir de um evento RDCD");
+    expect(routerSource).toContain("syncApaReportingCycleCalendarEvent");
+    expect(dbSource).toContain("apaReportingCyclePlans");
+    expect(dbSource).toContain("sourceType: \"apa_reporting_cycle\"");
+    expect(dbSource).toContain("if (await isPlanInApaCycle(planId))");
+    expect(schemaSource).toContain("apaReportingCycles");
+    expect(schemaSource).toContain("apaReportingCyclePlans");
+    expect(migrationSource).toContain("CREATE TABLE `apa_reporting_cycles`");
   });
 
   it("permite pesquisar e filtrar exactamente os planos universais", () => {

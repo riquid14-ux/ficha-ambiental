@@ -442,6 +442,13 @@
       "when": 1790929466775,
       "tag": "0064_plan_apa_report_type",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "5",
+      "when": 1790931164669,
+      "tag": "0065_apa_reporting_cycles",
+      "breakpoints": true
     }
   ]
 }

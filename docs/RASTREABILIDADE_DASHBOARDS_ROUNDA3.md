@@ -39,6 +39,17 @@
 
 As regressões de navegação de função foram atualizadas para garantir que **Planos** surge apenas em *Todos os Projetos* para Admin/DO, e não na navegação de um projeto individual para RAA, PM ou Admin.
 
+### Ciclos RDCD conectados ao reporte APA
+
+| Bloco apresentado | Fonte autorizada | Regra / resultado | Salvaguarda |
+|---|---|---|---|
+| Timeline anual RDCD/APA | Eventos RDCD e Relatório Anual DCAPE já existentes em `calendar_events` | Expansão por meses civis a partir da data original e da periodicidade; o seletor permite ver anos anteriores e futuros sem deslocar a recorrência | Não cria um evento de origem fictício nem substitui o evento RDCD existente |
+| Ciclo consolidado | `apa_reporting_cycles` + `apa_reporting_cycle_plans` | Uma ocorrência RDCD recebe data de receção, até 40 planos e uma entrega APA calculada a três meses civis | Apenas Admin cria/edita; autor, criação e alteração ficam auditáveis |
+| Evento APA no calendário | `calendar_events` com `sourceType = apa_reporting_cycle` | Um único prazo APA é sincronizado por ciclo, com tipo, data, estado e número de planos consolidados | Os prazos individuais dos planos incluídos ficam inativos para não duplicar a obrigação |
+| Alertas 30/15/7 dias | `scheduled-reminders` + responsáveis/suportes dos planos do ciclo | Destinatários de cada plano consolidado são deduplicados antes do email; registo de envio permanece por evento/destinatário | O trabalho cron só envia quando a configuração de email estiver ativa; a interface não declara que um email foi enviado |
+
+**Verificação realizada:** o evento RDCD semestral existente em 15-10-2026 apareceu na timeline; ao mudar para 2027, a mesma âncora revelou 15-04-2027 e 15-10-2027. Sem gravar dados de teste, a interface calculou corretamente 30-04-2027 → 30-07-2027.
+
 ## Operação NEST — extensão de decisão
 
 > A fotografia aérea continua a ser a **vista de infraestrutura**. Não é apresentada como um gémeo digital. O gémeo operacional é uma camada calculada, explicável e separada, que usa apenas leituras, parâmetros e qualidade já autorizados.

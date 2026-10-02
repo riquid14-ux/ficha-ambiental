@@ -296,192 +296,204 @@ function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
   const { t, language } = useLanguage();
   const utils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
-  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const { data: board = [], isLoading } = trpc.monitoringPlans.apaReportingBoard.useQuery({ year });
+  const [selectedKey, setSelectedKey] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submittedDate, setSubmittedDate] = useState("");
   const [reportType, setReportType] = useState<"rdcd" | "relatorio_anual_dcape" | "outro">("rdcd");
-  const dragRef = useRef<{ planId: number; point: "received" | "due" | "submitted"; rect: DOMRect; start: number; end: number } | null>(null);
-
-  const configuredPlans = useMemo(
-    () => plans.filter(plan => plan.apaReceivedAt || plan.apaSubmissionDueAt || plan.apaSubmittedAt),
-    [plans],
-  );
-  const selectedPlan = useMemo(
-    () => plans.find(plan => String(plan.id) === selectedPlanId) || plans[0] || null,
-    [plans, selectedPlanId],
-  );
-  const range = useMemo(() => {
-    const values = configuredPlans.flatMap(plan => [plan.apaReceivedAt, plan.apaSubmissionDueAt, plan.apaSubmittedAt])
-      .filter((value): value is number => typeof value === "number");
-    const now = Date.now();
-    const start = values.length ? Math.min(...values, now) : now;
-    const end = values.length ? Math.max(...values, addCivilMonths(now, 3)) : addCivilMonths(now, 3);
-    const pad = 14 * 86400000;
-    return { start: start - pad, end: end + pad };
-  }, [configuredPlans]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const dateLocale = language === "en" ? "en-GB" : "pt-PT";
   const formatTimelineDate = (value?: number | null) => value
     ? new Date(value).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" })
     : t("Sem data");
-  const percentForDate = (value?: number | null) => value ? Math.max(0, Math.min(100, ((value - range.start) / (range.end - range.start)) * 100)) : 0;
-  const reportLabel = (type?: string) => t(type === "relatorio_anual_dcape" ? "Relatório Anual DCAPE" : type === "outro" ? "Outro reporte APA" : "RDCD");
+  const occurrenceKey = (item: any) => `${item.calendarEvent.id}:${item.occurrenceAt}`;
+  const selected = board.find((item: any) => occurrenceKey(item) === selectedKey) || board[0] || null;
+  const maximumDueAt = receivedDate ? addCivilMonths(toTimestamp(receivedDate)!, 3) : null;
 
   const refresh = async () => {
     await Promise.all([
+      utils.monitoringPlans.apaReportingBoard.invalidate(),
       utils.monitoringPlans.list.invalidate(),
       utils.calendarEvents.list.invalidate(),
     ]);
   };
-  const apaMutation = trpc.monitoringPlans.configureApaReporting.useMutation({
+  const cycleMutation = trpc.monitoringPlans.configureApaReportingCycle.useMutation({
     onSuccess: async () => {
       await refresh();
-      toast.success(t("Ciclo de reporte APA atualizado"));
+      toast.success(t("Ciclo RDCD e APA atualizado"));
     },
     onError: error => toast.error(error.message),
   });
 
   useEffect(() => {
-    if (!selectedPlan) return;
-    setSelectedPlanId(String(selectedPlan.id));
-    setReceivedDate(dateInputValue(selectedPlan.apaReceivedAt));
-    setDueDate(dateInputValue(selectedPlan.apaSubmissionDueAt));
-    setSubmittedDate(dateInputValue(selectedPlan.apaSubmittedAt));
-    setReportType(selectedPlan.apaReportType || "rdcd");
-  }, [selectedPlan?.id, selectedPlan?.apaReceivedAt, selectedPlan?.apaSubmissionDueAt, selectedPlan?.apaSubmittedAt, selectedPlan?.apaReportType]);
+    if (!selected) return;
+    setSelectedKey(occurrenceKey(selected));
+    const cycle = selected.cycle;
+    setReceivedDate(dateInputValue(cycle?.receivedAt));
+    setDueDate(dateInputValue(cycle?.submissionDueAt));
+    setSubmittedDate(dateInputValue(cycle?.submittedAt));
+    setReportType(cycle?.reportType || (selected.calendarEvent.name.toLocaleLowerCase("pt-PT").includes("rdcd") ? "rdcd" : "relatorio_anual_dcape"));
+    setSelectedPlanIds((cycle?.plans || []).map((plan: any) => plan.id));
+  }, [selectedKey, selected?.cycle?.id, selected?.occurrenceAt]);
 
-  function saveSelectedPlan() {
-    if (!selectedPlan) return;
-    const receivedAt = toTimestamp(receivedDate);
-    const dueAt = toTimestamp(dueDate);
-    const submittedAt = toTimestamp(submittedDate);
-    if (receivedAt && !dueAt) setDueDate(dateInputValue(addCivilMonths(receivedAt, 3)));
-    apaMutation.mutate({
-      planId: selectedPlan.id,
-      apaReportType: reportType,
-      apaReceivedAt: receivedAt,
-      apaSubmissionDueAt: dueAt ?? (receivedAt ? addCivilMonths(receivedAt, 3) : null),
-      apaSubmittedAt: submittedAt,
+  function togglePlan(planId: number) {
+    setSelectedPlanIds(current => current.includes(planId)
+      ? current.filter(id => id !== planId)
+      : [...current, planId]);
+  }
+
+  function saveCycle() {
+    if (!selected || !receivedDate || selectedPlanIds.length === 0) return;
+    const receivedAt = toTimestamp(receivedDate)!;
+    cycleMutation.mutate({
+      id: selected.cycle?.id,
+      calendarEventId: selected.calendarEvent.id,
+      occurrenceAt: selected.occurrenceAt,
+      reportType,
+      receivedAt,
+      submissionDueAt: toTimestamp(dueDate) ?? addCivilMonths(receivedAt, 3),
+      submittedAt: toTimestamp(submittedDate),
+      planIds: selectedPlanIds,
     });
-  }
-
-  function beginDrag(event: React.PointerEvent<HTMLButtonElement>, plan: any, point: "received" | "due" | "submitted") {
-    if (!isAdmin || apaMutation.isPending) return;
-    const track = event.currentTarget.closest("[data-apa-track]");
-    if (!track) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { planId: plan.id, point, rect: track.getBoundingClientRect(), start: range.start, end: range.end };
-  }
-  function endDrag(event: React.PointerEvent<HTMLButtonElement>, plan: any) {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    if (!drag || !isAdmin || drag.planId !== plan.id) return;
-    const ratio = Math.max(0, Math.min(1, (event.clientX - drag.rect.left) / drag.rect.width));
-    const value = Math.round(drag.start + ratio * (drag.end - drag.start));
-    const dateAtNoon = Date.UTC(new Date(value).getUTCFullYear(), new Date(value).getUTCMonth(), new Date(value).getUTCDate(), 12, 0, 0);
-    if (drag.point === "received") {
-      apaMutation.mutate({ planId: plan.id, apaReceivedAt: dateAtNoon });
-    } else if (drag.point === "due") {
-      apaMutation.mutate({ planId: plan.id, apaSubmissionDueAt: dateAtNoon });
-    } else {
-      apaMutation.mutate({ planId: plan.id, apaSubmittedAt: dateAtNoon });
-    }
   }
 
   return (
     <section aria-labelledby="apa-reporting-title" className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_14px_32px_hsl(var(--shadow-color)/0.055)]">
       <div className="border-b border-white/10 bg-gradient-to-br from-[#0A3638] via-[#0A3638] to-[#0A3638] px-5 py-5 text-white sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <p className="stand-kicker text-primary">{t("Control room APA")}</p>
-            <h2 id="apa-reporting-title" className="mt-2 text-xl font-semibold tracking-tight">{t("Receção, reporte e entrega à APA")}</h2>
-            <p className="mt-1 text-sm leading-6 text-white/75">{t("A regra de ouro aplica três meses civis entre a receção do plano e o limite de envio à APA. RDCD e Relatório Anual DCAPE surgem no calendário global como eventos próprios.")}</p>
+            <p className="stand-kicker text-primary">{t("Control room APA conectada")}</p>
+            <h2 id="apa-reporting-title" className="mt-2 text-xl font-semibold tracking-tight">{t("Ciclos RDCD, planos agrupados e entrega à APA")}</h2>
+            <p className="mt-1 text-sm leading-6 text-white/75">{t("A timeline usa os eventos RDCD já existentes no calendário global. Em cada ocorrência, indique a receção, agrupe os planos aplicáveis e o limite máximo APA é calculado a três meses civis.")}</p>
           </div>
           <div className="rounded-xl border border-white/15 bg-card/10 px-3 py-2 text-xs leading-5 text-white/80">
             <p className="font-semibold text-white">{t("Regra de ouro")}</p>
-            <p>{t("Receção do plano + 3 meses = limite máximo APA")}</p>
+            <p>{t("Receção do reporte + 3 meses civis = limite máximo APA")}</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-5 p-4 sm:p-5">
-        {configuredPlans.length === 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="stand-kicker text-primary">{t("Timeline anual de reporte")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("Navegue entre anos para antecipar janelas de receção e limites APA.")}</p>
+          </div>
+          <div className="flex items-center rounded-xl border border-border bg-muted/30 p-1">
+            <Button variant="ghost" size="icon" onClick={() => setYear(value => value - 1)} aria-label={t("Ano anterior")}><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="min-w-20 text-center text-sm font-semibold text-foreground">{year}</span>
+            <Button variant="ghost" size="icon" onClick={() => setYear(value => value + 1)} aria-label={t("Ano seguinte")}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="h-36 animate-pulse rounded-xl bg-muted" />
+        ) : board.length === 0 ? (
           <div className="rounded-xl border border-dashed border-primary/35 bg-primary/[0.035] px-5 py-8 text-center">
             <CalendarDays className="mx-auto h-8 w-8 text-primary" />
-            <p className="mt-3 text-sm font-semibold text-foreground">{t("Ainda não existem ciclos APA configurados")}</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Selecione um plano abaixo para registar a data de receção; o limite de três meses é calculado automaticamente.")}</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("Não existem eventos RDCD ou Relatório Anual DCAPE no calendário deste ano")}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Registe o evento no Calendário de Reporting; ele aparecerá automaticamente nesta timeline anual.")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto pb-1">
-            <div className="min-w-[720px] space-y-3" aria-label={t("Timeline de reporte APA")}>
-              <div className="ml-[220px] flex justify-between px-2 text-xs font-medium text-muted-foreground">
-                <span>{formatTimelineDate(range.start)}</span><span>{formatTimelineDate(range.end)}</span>
-              </div>
-              {configuredPlans.map(plan => {
-                const late = Boolean(plan.apaSubmissionDueAt && !plan.apaSubmittedAt && plan.apaSubmissionDueAt < Date.now());
-                return (
-                  <div key={plan.id} className="grid grid-cols-[210px_minmax(0,1fr)] items-center gap-3">
-                    <button type="button" onClick={() => setSelectedPlanId(String(plan.id))} className="min-w-0 text-left">
-                      <p className="truncate text-sm font-semibold text-foreground">{plan.planNumber} · {plan.name}</p>
-                      <p className={`mt-0.5 text-xs ${late ? "text-rose-600 dark:text-rose-300" : "text-muted-foreground"}`}>{reportLabel(plan.apaReportType)} · {late ? t("Prazo vencido") : plan.apaSubmittedAt ? t("Enviado à APA") : t("Em preparação")}</p>
+            <div className="relative min-w-[760px] py-6" aria-label={t("Timeline anual de reporte APA") }>
+              <div aria-hidden="true" className="absolute left-8 right-8 top-1/2 h-px -translate-y-1/2 bg-border" />
+              <div className="grid grid-cols-1 gap-3">
+                {board.map((item: any, index: number) => {
+                  const cycle = item.cycle;
+                  const selectedItem = occurrenceKey(item) === occurrenceKey(selected || item);
+                  const overdue = Boolean(cycle?.submissionDueAt && !cycle?.submittedAt && cycle.submissionDueAt < Date.now());
+                  return (
+                    <button
+                      key={occurrenceKey(item)}
+                      type="button"
+                      onClick={() => setSelectedKey(occurrenceKey(item))}
+                      className={`relative z-10 grid grid-cols-[150px_44px_minmax(0,1fr)] items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedItem ? "border-primary bg-primary/[0.055] ring-1 ring-primary/20" : "border-border bg-card hover:border-primary/40 hover:bg-muted/35"}`}
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{formatTimelineDate(item.occurrenceAt)}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.calendarEvent.name}</p>
+                      </div>
+                      <span className={`mx-auto h-4 w-4 rounded-full border-4 border-card shadow-sm ${cycle?.submittedAt ? "bg-emerald-500" : overdue ? "bg-rose-500" : cycle ? "bg-amber-500" : "bg-primary"}`} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{cycle ? `${cycle.plans.length} ${t("planos agrupados")}` : t("Por configurar")}</p>
+                        <p className={`mt-0.5 text-xs ${overdue ? "text-rose-600 dark:text-rose-300" : "text-muted-foreground"}`}>
+                          {cycle?.receivedAt ? `${t("Recebido")}: ${formatTimelineDate(cycle.receivedAt)} · ${t("Limite APA")}: ${formatTimelineDate(cycle.submissionDueAt)}` : t("Selecione para iniciar o ciclo de reporte")}
+                          {cycle?.submittedAt ? ` · ${t("Enviado")}: ${formatTimelineDate(cycle.submittedAt)}` : ""}
+                        </p>
+                      </div>
                     </button>
-                    <div data-apa-track className="relative h-12 rounded-xl border border-border bg-muted/50" onPointerMove={event => { if (dragRef.current) event.preventDefault(); }}>
-                      {plan.apaReceivedAt && <div className="absolute top-1/2 h-px bg-primary/55" style={{ left: `${percentForDate(plan.apaReceivedAt)}%`, width: `${Math.max(0, percentForDate(plan.apaSubmissionDueAt) - percentForDate(plan.apaReceivedAt))}%` }} />}
-                      {plan.apaReceivedAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "received")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-primary p-1.5 shadow-sm ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaReceivedAt)}%` }} aria-label={`${t("Receção do plano")}: ${formatTimelineDate(plan.apaReceivedAt)}`}><span className="block h-2 w-2 rounded-full bg-primary-foreground" /></button>}
-                      {plan.apaSubmissionDueAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "due")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card p-2 shadow-sm ${late ? "bg-rose-500" : "bg-amber-500"} ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaSubmissionDueAt)}%` }} aria-label={`${t("Limite APA")}: ${formatTimelineDate(plan.apaSubmissionDueAt)}`}><span className="block h-1.5 w-1.5 rounded-sm bg-white" /></button>}
-                      {plan.apaSubmittedAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "submitted")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-emerald-500 p-2 shadow-sm ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaSubmittedAt)}%` }} aria-label={`${t("Enviado à APA")}: ${formatTimelineDate(plan.apaSubmittedAt)}`}><CheckCircle2 className="h-2.5 w-2.5 text-white" /></button>}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
-        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-primary" />{t("Receção do plano")}</span>
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-500" />{t("Limite de envio APA")}</span>
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500" />{t("Envio efetivo à APA")}</span>
+
+        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-4">
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-primary" />{t("Ocorrência RDCD no calendário")}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-500" />{t("Em preparação para APA")}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500" />{t("Enviado à APA")}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-rose-500" />{t("Prazo vencido")}</span>
         </div>
 
-        <div className="rounded-xl border border-border bg-muted/35 p-4 sm:p-5">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">{t("Configurar ciclo APA")}</h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{isAdmin ? t("Pode editar diretamente os campos ou arrastar os marcadores da timeline. O servidor não permite ultrapassar o limite de três meses.") : t("Consulta disponível; apenas Administradores podem alterar este calendário.")}</p>
+        {selected && (
+          <div className="rounded-xl border border-border bg-muted/35 p-4 sm:p-5">
+            <div className="flex flex-col gap-2 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="stand-kicker text-primary">{t("Ciclo selecionado")}</p>
+                <h3 className="mt-1 text-base font-semibold text-foreground">{selected.calendarEvent.name} · {formatTimelineDate(selected.occurrenceAt)}</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Os planos selecionados partilham um único evento de entrega APA, que é visível também no Calendário de Reporting.")}</p>
+              </div>
+              {!isAdmin && <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">{t("Só leitura")}</span>}
             </div>
-            {!isAdmin && <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">{t("Só leitura")}</span>}
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label htmlFor="cycle-type" className="text-xs font-semibold text-muted-foreground">{t("Reporte")}</label>
+                <Select value={reportType} onValueChange={(value: any) => setReportType(value)} disabled={!isAdmin}>
+                  <SelectTrigger id="cycle-type" className="mt-1.5 bg-card"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="rdcd">RDCD</SelectItem><SelectItem value="relatorio_anual_dcape">{t("Relatório Anual DCAPE")}</SelectItem><SelectItem value="outro">{t("Outro reporte APA")}</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="cycle-received" className="text-xs font-semibold text-muted-foreground">{t("Receção do reporte")}</label>
+                <Input id="cycle-received" type="date" className="mt-1.5 bg-card" value={receivedDate} disabled={!isAdmin} onChange={event => { const value = event.target.value; setReceivedDate(value); const timestamp = toTimestamp(value); if (timestamp) setDueDate(dateInputValue(addCivilMonths(timestamp, 3))); }} />
+              </div>
+              <div>
+                <label htmlFor="cycle-due" className="text-xs font-semibold text-muted-foreground">{t("Entrega máxima APA")}</label>
+                <Input id="cycle-due" type="date" className="mt-1.5 bg-card" value={dueDate} disabled={!isAdmin} onChange={event => setDueDate(event.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="cycle-submitted" className="text-xs font-semibold text-muted-foreground">{t("Envio efetivo APA")}</label>
+                <Input id="cycle-submitted" type="date" className="mt-1.5 bg-card" value={submittedDate} disabled={!isAdmin} onChange={event => setSubmittedDate(event.target.value)} />
+              </div>
+            </div>
+            {maximumDueAt && <p className="mt-3 rounded-lg border border-primary/20 bg-primary/[0.045] px-3 py-2 text-xs text-foreground">{t("Limite legal calculado")}: <span className="font-semibold">{formatTimelineDate(maximumDueAt)}</span>. {t("Pode antecipar, mas não ultrapassar esta data.")}</p>}
+
+            <div className="mt-5">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">{t("Planos a integrar nesta emissão")}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("Selecione todos os planos que serão consolidados no mesmo RDCD ou reporte anual.")}</p>
+                </div>
+                <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground">{selectedPlanIds.length} {t("selecionados")}</span>
+              </div>
+              <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+                {plans.map(plan => {
+                  const checked = selectedPlanIds.includes(plan.id);
+                  return <label key={plan.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${checked ? "border-primary/50 bg-primary/[0.055]" : "border-border bg-card hover:border-primary/35"}`}>
+                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={checked} disabled={!isAdmin} onChange={() => togglePlan(plan.id)} />
+                    <span className="min-w-0"><span className="block text-xs font-bold text-primary">{plan.planNumber}</span><span className="mt-0.5 block line-clamp-2 text-xs font-medium leading-5 text-foreground">{plan.name}</span></span>
+                  </label>;
+                })}
+              </div>
+            </div>
+            {isAdmin && <div className="mt-5 flex justify-end"><Button size="sm" onClick={saveCycle} disabled={!receivedDate || selectedPlanIds.length === 0 || cycleMutation.isPending}>{cycleMutation.isPending ? t("A guardar...") : <><Save className="mr-2 h-4 w-4" />{t("Guardar ciclo RDCD / APA")}</>}</Button></div>}
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-            <div className="xl:col-span-2">
-              <label htmlFor="apa-plan" className="text-xs font-semibold text-muted-foreground">{t("Plano")}</label>
-              <Select value={selectedPlan ? String(selectedPlan.id) : ""} onValueChange={setSelectedPlanId}>
-                <SelectTrigger id="apa-plan" className="mt-1.5 bg-card"><SelectValue placeholder={t("Selecione um plano")} /></SelectTrigger>
-                <SelectContent>{plans.map(plan => <SelectItem key={plan.id} value={String(plan.id)}>{plan.planNumber} — {plan.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="apa-type" className="text-xs font-semibold text-muted-foreground">{t("Reporte")}</label>
-              <Select value={reportType} onValueChange={(value: any) => setReportType(value)} disabled={!isAdmin}>
-                <SelectTrigger id="apa-type" className="mt-1.5 bg-card"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="rdcd">RDCD</SelectItem><SelectItem value="relatorio_anual_dcape">{t("Relatório Anual DCAPE")}</SelectItem><SelectItem value="outro">{t("Outro reporte APA")}</SelectItem></SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="apa-received" className="text-xs font-semibold text-muted-foreground">{t("Receção do plano")}</label>
-              <Input id="apa-received" type="date" className="mt-1.5 bg-card" value={receivedDate} disabled={!isAdmin} onChange={event => { const value = event.target.value; setReceivedDate(value); const timestamp = toTimestamp(value); if (timestamp) setDueDate(dateInputValue(addCivilMonths(timestamp, 3))); }} />
-            </div>
-            <div>
-              <label htmlFor="apa-due" className="text-xs font-semibold text-muted-foreground">{t("Limite APA")}</label>
-              <Input id="apa-due" type="date" className="mt-1.5 bg-card" value={dueDate} disabled={!isAdmin} onChange={event => setDueDate(event.target.value)} />
-            </div>
-            <div>
-              <label htmlFor="apa-submitted" className="text-xs font-semibold text-muted-foreground">{t("Envio efetivo APA")}</label>
-              <Input id="apa-submitted" type="date" className="mt-1.5 bg-card" value={submittedDate} disabled={!isAdmin} onChange={event => setSubmittedDate(event.target.value)} />
-            </div>
-          </div>
-          {selectedPlan && receivedDate && <p className="mt-3 text-xs text-muted-foreground">{t("Limite legal calculado")}: <span className="font-semibold text-foreground">{formatTimelineDate(addCivilMonths(toTimestamp(receivedDate)!, 3))}</span></p>}
-          {isAdmin && <div className="mt-4 flex justify-end"><Button size="sm" onClick={saveSelectedPlan} disabled={!selectedPlan || apaMutation.isPending}>{apaMutation.isPending ? t("A guardar...") : <><Save className="mr-2 h-4 w-4" />{t("Guardar ciclo APA")}</>}</Button></div>}
-        </div>
+        )}
       </div>
     </section>
   );

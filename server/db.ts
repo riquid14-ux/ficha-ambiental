@@ -24,11 +24,14 @@ import {
   monitoringPlanAssignments,
   monitoringPlanUpdates,
   monitoringPlanAttachments,
+  apaReportingCycles,
+  apaReportingCyclePlans,
   calendarReminderLogs,
   InsertMonitoringPlan,
   InsertMonitoringPlanAssignment,
   InsertMonitoringPlanUpdate,
   InsertMonitoringPlanAttachment,
+  InsertApaReportingCycle,
   documentLibrary,
   documentLibraryProjects,
   InsertDocumentLibraryItem,
@@ -1475,6 +1478,159 @@ export async function getMonitoringPlanOverview() {
   }).sort((a, b) => (a.planNumber || "").localeCompare(b.planNumber || "", "pt", { numeric: true }));
 }
 
+export async function getApaReportingCycles() {
+  const db = await getDb();
+  if (!db) return [];
+  const cycles = await db.select().from(apaReportingCycles).orderBy(desc(apaReportingCycles.occurrenceAt));
+  if (cycles.length === 0) return [];
+
+  const cycleIds = cycles.map(cycle => cycle.id);
+  const links = await db.select().from(apaReportingCyclePlans)
+    .where(inArray(apaReportingCyclePlans.cycleId, cycleIds));
+  const eventIds = Array.from(new Set(cycles.map(cycle => cycle.calendarEventId)));
+  const events = eventIds.length
+    ? await db.select().from(calendarEvents).where(inArray(calendarEvents.id, eventIds))
+    : [];
+  const planIds = Array.from(new Set(links.map(link => link.planId)));
+  const plans = planIds.length
+    ? await db.select().from(monitoringPlans).where(inArray(monitoringPlans.id, planIds))
+    : [];
+
+  const eventsById = new Map(events.map(event => [event.id, event]));
+  const plansById = new Map(plans.map(plan => [plan.id, plan]));
+  return cycles.map(cycle => ({
+    ...cycle,
+    calendarEvent: eventsById.get(cycle.calendarEventId) ?? null,
+    plans: links
+      .filter(link => link.cycleId === cycle.id)
+      .map(link => plansById.get(link.planId))
+      .filter((plan): plan is typeof plans[number] => Boolean(plan)),
+  }));
+}
+
+export async function getApaReportingCycleById(id: number) {
+  const cycles = await getApaReportingCycles();
+  return cycles.find(cycle => cycle.id === id);
+}
+
+/** Saves one occurrence of an existing RDCD/annual-report calendar event. */
+export async function saveApaReportingCycle(input: {
+  id?: number;
+  calendarEventId: number;
+  occurrenceAt: number;
+  projectId: number | null;
+  reportType: "rdcd" | "relatorio_anual_dcape" | "outro";
+  receivedAt: number | null;
+  submissionDueAt: number | null;
+  submittedAt: number | null;
+  planIds: number[];
+  userId: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const uniquePlanIds = Array.from(new Set(input.planIds));
+
+  const result = await db.transaction(async (tx) => {
+    let cycleId = input.id;
+    const payload: Omit<InsertApaReportingCycle, "id" | "createdAt" | "updatedAt" | "createdBy"> = {
+      calendarEventId: input.calendarEventId,
+      occurrenceAt: input.occurrenceAt,
+      projectId: input.projectId,
+      reportType: input.reportType,
+      receivedAt: input.receivedAt,
+      submissionDueAt: input.submissionDueAt,
+      submittedAt: input.submittedAt,
+      updatedBy: input.userId,
+    };
+    if (cycleId) {
+      await tx.update(apaReportingCycles).set(payload).where(eq(apaReportingCycles.id, cycleId));
+    } else {
+      const [created] = await tx.insert(apaReportingCycles).values({ ...payload, createdBy: input.userId }).$returningId();
+      cycleId = created.id;
+    }
+    await tx.delete(apaReportingCyclePlans).where(eq(apaReportingCyclePlans.cycleId, cycleId!));
+    if (uniquePlanIds.length > 0) {
+      await tx.insert(apaReportingCyclePlans).values(uniquePlanIds.map(planId => ({
+        cycleId: cycleId!,
+        planId,
+        addedBy: input.userId,
+      })));
+    }
+    return cycleId!;
+  });
+  return result;
+}
+
+export async function getApaCyclePlanIds(cycleId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const links = await db.select({ planId: apaReportingCyclePlans.planId }).from(apaReportingCyclePlans)
+    .where(eq(apaReportingCyclePlans.cycleId, cycleId));
+  return links.map(link => link.planId);
+}
+
+export async function getApaCycleRecipients(cycleId: number) {
+  const cycle = await getApaReportingCycleById(cycleId);
+  if (!cycle) return [];
+  const recipients: Array<{ userId: number | null; email: string | null; name: string }> = [];
+  for (const plan of cycle.plans) {
+    if (plan.ownerId) recipients.push({ userId: plan.ownerId, email: null, name: plan.ownerName || plan.planNumber || plan.name });
+    if (plan.supportEmail) recipients.push({ userId: null, email: plan.supportEmail, name: plan.supportName || plan.supportCompany || plan.supportEmail });
+  }
+  return recipients;
+}
+
+export async function isPlanInApaCycle(planId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ id: apaReportingCyclePlans.id }).from(apaReportingCyclePlans)
+    .where(eq(apaReportingCyclePlans.planId, planId)).limit(1);
+  return Boolean(result[0]);
+}
+
+/** Publishes exactly one calendar deadline for an entire grouped reporting cycle. */
+export async function syncApaReportingCycleCalendarEvent(cycleId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const cycle = await getApaReportingCycleById(cycleId);
+  if (!cycle) throw new Error("APA reporting cycle not found");
+  const sourceKey = `apa_reporting_cycle:${cycle.id}`;
+  const existing = await db.select().from(calendarEvents).where(eq(calendarEvents.sourceKey, sourceKey)).limit(1);
+  if (!cycle.submissionDueAt) {
+    if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0]?.id ?? null;
+  }
+
+  const sourceName = cycle.calendarEvent?.name || "Reporte regulamentar";
+  const typeLabel = cycle.reportType === "relatorio_anual_dcape"
+    ? "Relatório Anual DCAPE"
+    : cycle.reportType === "outro" ? "Reporte APA" : "RDCD";
+  const eventData: Partial<InsertCalendarEvent> = {
+    projectId: cycle.projectId,
+    name: `${typeLabel} — entrega APA`,
+    description: `${sourceName}. Ciclo consolidado com ${cycle.plans.length} plano(s); prazo máximo calculado a partir da receção.`,
+    periodicity: null,
+    firstDate: cycle.submissionDueAt,
+    nextDate: cycle.submissionDueAt,
+    lastDeliveredDate: cycle.submittedAt,
+    category: "apa_reporting",
+    status: cycle.submittedAt ? "reported" : "pending",
+    ownerId: cycle.calendarEvent?.ownerId ?? null,
+    ownerName: cycle.calendarEvent?.ownerName ?? null,
+    sourceType: "apa_reporting_cycle",
+    sourceId: cycle.id,
+    sourceKey,
+    entityToDeliver: "APA",
+    active: 1,
+  };
+  if (existing[0]) {
+    await db.update(calendarEvents).set(eventData).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0].id;
+  }
+  const created = await db.insert(calendarEvents).values(eventData as InsertCalendarEvent);
+  return created[0].insertId;
+}
+
 export async function syncMonitoringPlanCalendarEvent(planId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
@@ -1527,6 +1683,14 @@ export async function syncMonitoringPlanApaCalendarEvent(planId: number) {
   const existing = await db.select().from(calendarEvents)
     .where(eq(calendarEvents.sourceKey, sourceKey))
     .limit(1);
+
+  // A plan included in a consolidated RDCD/annual-report cycle contributes to
+  // that one deadline. Keeping a separate per-plan event would duplicate the
+  // same APA obligation in the global calendar.
+  if (await isPlanInApaCycle(planId)) {
+    if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0]?.id ?? null;
+  }
 
   if (!plan.apaSubmissionDueAt) {
     if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));

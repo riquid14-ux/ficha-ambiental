@@ -62,6 +62,14 @@ describe("Planos — modelo de dados e migração", () => {
     expect(schemaSource).toContain("nextReportingDate");
   });
 
+  it("guarda receção, limite e envio efetivo à APA sem substituir a entrega do plano", () => {
+    expect(schemaSource).toContain("apaReceivedAt");
+    expect(schemaSource).toContain("apaSubmissionDueAt");
+    expect(schemaSource).toContain("apaSubmittedAt");
+    expect(schemaSource).toContain("apaReportType");
+    expect(dbSource).toContain("syncMonitoringPlanApaCalendarEvent");
+  });
+
   it("mantém updates imutáveis com autor, texto e data", () => {
     expect(schemaSource).toContain("monitoringPlanUpdates");
     expect(schemaSource).toContain("updateText");
@@ -110,12 +118,26 @@ describe("Planos — permissões, calendário e segurança", () => {
     expect(routerSource).toContain("Apenas Admin ou Dono de Obra podem configurar responsáveis e prazos");
   });
 
+  it("limita exclusivamente aos Administradores a configuração do reporte APA", () => {
+    expect(routerSource).toContain("configureApaReporting");
+    expect(routerSource).toContain('ctx.user.role !== "admin"');
+    expect(routerSource).toContain("três meses civis após a receção");
+    expect(routerSource).toContain("addCivilMonths");
+    expect(routerSource).toContain("monitoring_plan_apa_reporting_configured");
+  });
+
   it("sincroniza um único evento global por plano", () => {
     expect(schemaSource).toContain("calendar_events_source_key_uq");
     expect(dbSource).toContain('sourceType: "monitoring_plan"');
     expect(dbSource).toContain("sourceKey = `monitoring_plan:${plan.id}`");
     expect(dbSource).toContain("syncMonitoringPlanCalendarEvent");
     expect(routerSource).toContain("Este prazo é gerido no módulo Planos");
+  });
+
+  it("sincroniza o reporte APA como evento separado e mantém os alertas do suporte", () => {
+    expect(dbSource).toContain("monitoring_plan_apa:");
+    expect(dbSource).toContain('sourceType: "monitoring_plan_apa"');
+    expect(remindersSource).toContain('event.sourceType === "monitoring_plan_apa"');
   });
 
   it("sanitiza, limita e arquiva anexos fora da base de dados", () => {
@@ -146,6 +168,15 @@ describe("Planos — experiência e exportação", () => {
   it("inclui calendário exclusivo sincronizado no topo", () => {
     expect(uiSource).toContain("Calendário exclusivo dos planos");
     expect(uiSource).toContain("Sincronizado automaticamente com o calendário global");
+  });
+
+  it("oferece control room APA com timeline interativa e edição apenas administrativa", () => {
+    expect(uiSource).toContain("Control room APA");
+    expect(uiSource).toContain("Receção, reporte e entrega à APA");
+    expect(uiSource).toContain("cursor-ew-resize");
+    expect(uiSource).toContain("configureApaReporting.useMutation");
+    expect(uiSource).toContain('user?.role === "admin"');
+    expect(uiSource).toContain("Receção do plano + 3 meses = limite máximo APA");
   });
 
   it("permite pesquisar e filtrar exactamente os planos universais", () => {

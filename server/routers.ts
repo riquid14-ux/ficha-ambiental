@@ -20,6 +20,7 @@ import { canReadDocumentLibrary } from "./document-library";
 import { checkReadiness } from "./health";
 import ExcelJS from "exceljs";
 import { DCAPE_PHASES, baseDcapeNumber, getDcapePhaseForItem, isDcapeElement, isDcapeMeasure, isLegacySupportingItem } from "@shared/phases";
+import { addCivilMonths } from "@shared/reporting-calendar";
 
 // Security: Allowed MIME types for file uploads
 const ALLOWED_FILE_TYPES = new Set([
@@ -58,6 +59,7 @@ async function logFileUpload(userId: number, filename: string, mimeType: string,
 function isAdminOrDono(role: string) {
   return role === "admin" || role === "dono_obra";
 }
+
 
 function parseJsonSafely<T>(value: string | null | undefined, fallback: T): T {
   if (!value) return fallback;
@@ -3722,6 +3724,66 @@ export const appRouter = router({
           newValue: JSON.stringify(changes),
         });
         return { success: true, planId: plan.id };
+      }),
+
+    configureApaReporting: protectedProcedure
+      .input(z.object({
+        planId: z.number().int().positive(),
+        apaReportType: z.enum(["rdcd", "relatorio_anual_dcape", "outro"]).optional(),
+        apaReceivedAt: z.number().int().positive().nullable().optional(),
+        apaSubmissionDueAt: z.number().int().positive().nullable().optional(),
+        apaSubmittedAt: z.number().int().positive().nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem alterar o ciclo de reporte à APA." });
+        }
+        const plan = await db.getMonitoringPlanById(input.planId);
+        if (!plan || !plan.active) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+
+        const receivedAt = input.apaReceivedAt === undefined ? plan.apaReceivedAt : input.apaReceivedAt;
+        const automaticDueAt = receivedAt ? addCivilMonths(receivedAt, 3) : null;
+        const requestedDueAt = input.apaSubmissionDueAt === undefined ? plan.apaSubmissionDueAt : input.apaSubmissionDueAt;
+        let dueAt = requestedDueAt;
+
+        if (receivedAt === null) {
+          if (input.apaSubmissionDueAt !== undefined && input.apaSubmissionDueAt !== null) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Indique primeiro a data de receção para definir o prazo APA." });
+          }
+          dueAt = null;
+        } else if (automaticDueAt) {
+          if (dueAt === null || dueAt === undefined) dueAt = automaticDueAt;
+          if (dueAt < receivedAt) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "O limite APA não pode ser anterior à receção do plano." });
+          }
+          if (dueAt > automaticDueAt) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "O envio à APA não pode ultrapassar três meses civis após a receção." });
+          }
+        }
+
+        const submittedAt = input.apaSubmittedAt === undefined ? plan.apaSubmittedAt : input.apaSubmittedAt;
+        if (submittedAt && (!receivedAt || submittedAt < receivedAt)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "O envio à APA tem de ser posterior à receção do plano." });
+        }
+
+        const changes = {
+          ...(input.apaReportType !== undefined ? { apaReportType: input.apaReportType } : {}),
+          ...(input.apaReceivedAt !== undefined ? { apaReceivedAt: receivedAt } : {}),
+          ...(input.apaSubmissionDueAt !== undefined || input.apaReceivedAt !== undefined ? { apaSubmissionDueAt: dueAt } : {}),
+          ...(input.apaSubmittedAt !== undefined ? { apaSubmittedAt: submittedAt } : {}),
+        };
+        await db.updateMonitoringPlan(plan.id, changes as any);
+        await db.syncMonitoringPlanApaCalendarEvent(plan.id);
+        const database = await db.getDb();
+        if (database) await database.insert(schema.auditLog).values({
+          userId: ctx.user.id,
+          userName: getUserDisplayName(ctx.user),
+          action: "monitoring_plan_apa_reporting_configured",
+          entity: "monitoring_plan",
+          entityId: plan.id,
+          newValue: JSON.stringify({ ...changes, automaticDueAt }),
+        });
+        return { success: true, planId: plan.id, automaticDueAt, apaSubmissionDueAt: dueAt };
       }),
 
     addUpdate: protectedProcedure

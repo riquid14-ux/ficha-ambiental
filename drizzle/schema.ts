@@ -420,6 +420,12 @@ export const monitoringPlans = mysqlTable("monitoring_plans", {
   trackingStatus: mysqlEnum("trackingStatus", ["nao_iniciado", "em_curso", "em_validacao", "concluido", "bloqueado"]).default("nao_iniciado").notNull(),
   lastReportingDate: bigint("lastReportingDate", { mode: "number" }),
   nextReportingDate: bigint("nextReportingDate", { mode: "number" }),
+  // Ciclo de reporte à APA: o limite é calculado como três meses civis após
+  // a receção do plano; a data efetiva é sempre auditável e nunca inferida.
+  apaReceivedAt: bigint("apaReceivedAt", { mode: "number" }),
+  apaSubmissionDueAt: bigint("apaSubmissionDueAt", { mode: "number" }),
+  apaSubmittedAt: bigint("apaSubmittedAt", { mode: "number" }),
+  apaReportType: mysqlEnum("apaReportType", ["rdcd", "relatorio_anual_dcape", "outro"]).default("rdcd").notNull(),
   notes: text("notes"),
   submissionStatus: mysqlEnum("submissionStatus", ["pending", "submitted", "delivered"]).default("pending").notNull(),
   submittedFileUrl: varchar("submittedFileUrl", { length: 1000 }),
@@ -431,6 +437,7 @@ export const monitoringPlans = mysqlTable("monitoring_plans", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow(),
 }, (table) => ({
   planNumberUnique: uniqueIndex("monitoring_plans_plan_number_uq").on(table.planNumber),
+  apaDueDateIdx: index("monitoring_plans_apa_due_idx").on(table.apaSubmissionDueAt),
 }));
 export type MonitoringPlan = typeof monitoringPlans.$inferSelect;
 export type InsertMonitoringPlan = typeof monitoringPlans.$inferInsert;

@@ -1517,6 +1517,54 @@ export async function syncMonitoringPlanCalendarEvent(planId: number) {
   return result[0].insertId;
 }
 
+/** Mantém um evento separado para o reporte APA, sem substituir a entrega do plano. */
+export async function syncMonitoringPlanApaCalendarEvent(planId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const plan = await getMonitoringPlanById(planId);
+  if (!plan) throw new Error("Monitoring plan not found");
+  const sourceKey = `monitoring_plan_apa:${plan.id}`;
+  const existing = await db.select().from(calendarEvents)
+    .where(eq(calendarEvents.sourceKey, sourceKey))
+    .limit(1);
+
+  if (!plan.apaSubmissionDueAt) {
+    if (existing[0]) await db.update(calendarEvents).set({ active: 0, nextDate: null }).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0]?.id ?? null;
+  }
+
+  const reportType = plan.apaReportType === "relatorio_anual_dcape"
+    ? "Relatório Anual DCAPE"
+    : plan.apaReportType === "outro"
+      ? "Reporte APA"
+      : "RDCD";
+  const eventData: Partial<InsertCalendarEvent> = {
+    projectId: null,
+    name: `${plan.planNumber || `P-${String(plan.id).padStart(2, "0")}`} — ${reportType} para APA`,
+    description: `Prazo de envio à APA do reporte associado a ${plan.name}. Limite máximo: três meses após a receção do plano.`,
+    periodicity: null,
+    firstDate: plan.apaSubmissionDueAt,
+    nextDate: plan.apaSubmissionDueAt,
+    lastDeliveredDate: plan.apaSubmittedAt,
+    category: "apa_reporting",
+    status: plan.apaSubmittedAt ? "reported" : "pending",
+    ownerId: plan.ownerId,
+    ownerName: plan.ownerName,
+    sourceType: "monitoring_plan_apa",
+    sourceId: plan.id,
+    sourceKey,
+    entityToDeliver: "APA",
+    active: 1,
+  };
+
+  if (existing[0]) {
+    await db.update(calendarEvents).set(eventData).where(eq(calendarEvents.id, existing[0].id));
+    return existing[0].id;
+  }
+  const result = await db.insert(calendarEvents).values(eventData as InsertCalendarEvent);
+  return result[0].insertId;
+}
+
 export async function hasCalendarReminderBeenSent(eventId: number, deadlineDate: number, reminderDays: number, recipientEmail: string) {
   const db = await getDb();
   if (!db) return false;

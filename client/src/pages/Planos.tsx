@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
@@ -29,6 +29,7 @@ import {
   StandStatusBadge,
   type StandStatusTone,
 } from "@/components/stand/StandStatusBadge";
+import { addCivilMonths } from "@shared/reporting-calendar";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -50,22 +51,6 @@ import {
   Upload,
   UserRound,
 } from "lucide-react";
-
-const MONTHS_PT = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
-const DAYS_PT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 const STATUS_LABELS: Record<string, string> = {
   nao_iniciado: "Não iniciado",
@@ -121,6 +106,7 @@ async function fileToBase64(file: globalThis.File) {
 }
 
 function PlanCalendar({ plans }: { plans: any[] }) {
+  const { t, language } = useLanguage();
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   );
@@ -140,6 +126,11 @@ function PlanCalendar({ plans }: { plans: any[] }) {
       )
   );
   const todayKey = new Date().toDateString();
+  const dateLocale = language === "en" ? "en-GB" : "pt-PT";
+  const monthName = month.toLocaleDateString(dateLocale, { month: "long" });
+  const calendarDays = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(new Date(Date.UTC(2023, 0, 2 + index))),
+  );
 
   const plansByDay = useMemo(() => {
     const map = new Map<string, any[]>();
@@ -164,29 +155,26 @@ function PlanCalendar({ plans }: { plans: any[] }) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-2xl">
             <p className="stand-kicker text-primary">
-              Calendário exclusivo dos planos
+              {t("Calendário exclusivo dos planos")}
             </p>
             <h2
               id="plan-calendar-title"
               className="mt-2 text-xl font-semibold tracking-tight"
             >
-              Próximas entregas
+              {t("Próximas entregas")}
             </h2>
-            <p className="mt-1 text-sm leading-6 text-primary/75">
-              Sincronizado automaticamente com o calendário global e com os
-              alertas 30/15/7 dias.
-            </p>
+            <p className="mt-1 text-sm leading-6 text-white/75">{t("Sincronizado automaticamente com o calendário global e com os alertas 30/15/7 dias.")}</p>
           </div>
           <div
             className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-card/10 p-1.5 backdrop-blur sm:w-auto sm:justify-start"
-            aria-label="Navegação do calendário"
+            aria-label={t("Navegação do calendário")}
           >
             <Button
               variant="ghost"
               size="icon"
               className="text-white hover:bg-card/15 hover:text-white"
               onClick={() => setMonth(new Date(year, monthIndex - 1, 1))}
-              aria-label="Mês anterior"
+              aria-label={t("Mês anterior")}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -194,14 +182,14 @@ function PlanCalendar({ plans }: { plans: any[] }) {
               aria-live="polite"
               className="min-w-40 text-center text-sm font-semibold"
             >
-              {MONTHS_PT[monthIndex]} {year}
+              {monthName} {year}
             </span>
             <Button
               variant="ghost"
               size="icon"
               className="text-white hover:bg-card/15 hover:text-white"
               onClick={() => setMonth(new Date(year, monthIndex + 1, 1))}
-              aria-label="Mês seguinte"
+              aria-label={t("Mês seguinte")}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -212,9 +200,9 @@ function PlanCalendar({ plans }: { plans: any[] }) {
         <div
           className="grid grid-cols-7 gap-1.5"
           role="grid"
-          aria-label={`Calendário de ${MONTHS_PT[monthIndex]} de ${year}`}
+          aria-label={`${t("Calendário de")} ${monthName} ${year}`}
         >
-          {DAYS_PT.map(day => (
+          {calendarDays.map(day => (
             <div
               key={day}
               role="columnheader"
@@ -237,7 +225,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
                 key={date.toISOString()}
                 onClick={() => setSelectedDate(date)}
                 aria-pressed={selected}
-                aria-label={`${date.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" })}${dayPlans.length ? `, ${dayPlans.length} entrega${dayPlans.length > 1 ? "s" : ""}` : ", sem entregas"}`}
+                aria-label={`${date.toLocaleDateString(dateLocale, { weekday: "long", day: "numeric", month: "long" })}${dayPlans.length ? `, ${dayPlans.length} ${t(dayPlans.length > 1 ? "entregas" : "entrega")}` : `, ${t("sem entregas")}`}`}
                 className={`relative min-h-[72px] rounded-xl border p-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${selected ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20" : "border-border hover:border-primary/35 hover:bg-muted/70"} ${inMonth ? "bg-card" : "bg-muted/45 text-muted-foreground/55"}`}
               >
                 <span
@@ -255,7 +243,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
                     </p>
                     {dayPlans.length > 1 && (
                       <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-                        +{dayPlans.length - 1} planos
+                        +{dayPlans.length - 1} {t("planos")}
                       </p>
                     )}
                   </div>
@@ -267,7 +255,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
         {selectedDate && (
           <div className="mt-4 rounded-xl border border-border bg-muted/50 p-4">
             <p className="text-sm font-semibold text-foreground">
-              {selectedDate.toLocaleDateString("pt-PT", {
+              {selectedDate.toLocaleDateString(dateLocale, {
                 weekday: "long",
                 day: "2-digit",
                 month: "long",
@@ -275,7 +263,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
             </p>
             {selectedPlans.length === 0 ? (
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Sem entregas de planos nesta data.
+                {t("Sem entregas de planos nesta data.")}
               </p>
             ) : (
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -291,7 +279,7 @@ function PlanCalendar({ plans }: { plans: any[] }) {
                       {plan.name}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {plan.ownerName || "Responsável por definir"}
+                      {plan.ownerName || t("Responsável por definir")}
                     </p>
                   </div>
                 ))}
@@ -304,8 +292,203 @@ function PlanCalendar({ plans }: { plans: any[] }) {
   );
 }
 
+function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
+  const { t, language } = useLanguage();
+  const utils = trpc.useUtils();
+  const isAdmin = user?.role === "admin";
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [receivedDate, setReceivedDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [submittedDate, setSubmittedDate] = useState("");
+  const [reportType, setReportType] = useState<"rdcd" | "relatorio_anual_dcape" | "outro">("rdcd");
+  const dragRef = useRef<{ planId: number; point: "received" | "due" | "submitted"; rect: DOMRect; start: number; end: number } | null>(null);
+
+  const configuredPlans = useMemo(
+    () => plans.filter(plan => plan.apaReceivedAt || plan.apaSubmissionDueAt || plan.apaSubmittedAt),
+    [plans],
+  );
+  const selectedPlan = useMemo(
+    () => plans.find(plan => String(plan.id) === selectedPlanId) || plans[0] || null,
+    [plans, selectedPlanId],
+  );
+  const range = useMemo(() => {
+    const values = configuredPlans.flatMap(plan => [plan.apaReceivedAt, plan.apaSubmissionDueAt, plan.apaSubmittedAt])
+      .filter((value): value is number => typeof value === "number");
+    const now = Date.now();
+    const start = values.length ? Math.min(...values, now) : now;
+    const end = values.length ? Math.max(...values, addCivilMonths(now, 3)) : addCivilMonths(now, 3);
+    const pad = 14 * 86400000;
+    return { start: start - pad, end: end + pad };
+  }, [configuredPlans]);
+  const dateLocale = language === "en" ? "en-GB" : "pt-PT";
+  const formatTimelineDate = (value?: number | null) => value
+    ? new Date(value).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" })
+    : t("Sem data");
+  const percentForDate = (value?: number | null) => value ? Math.max(0, Math.min(100, ((value - range.start) / (range.end - range.start)) * 100)) : 0;
+  const reportLabel = (type?: string) => t(type === "relatorio_anual_dcape" ? "Relatório Anual DCAPE" : type === "outro" ? "Outro reporte APA" : "RDCD");
+
+  const refresh = async () => {
+    await Promise.all([
+      utils.monitoringPlans.list.invalidate(),
+      utils.calendarEvents.list.invalidate(),
+    ]);
+  };
+  const apaMutation = trpc.monitoringPlans.configureApaReporting.useMutation({
+    onSuccess: async () => {
+      await refresh();
+      toast.success(t("Ciclo de reporte APA atualizado"));
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  useEffect(() => {
+    if (!selectedPlan) return;
+    setSelectedPlanId(String(selectedPlan.id));
+    setReceivedDate(dateInputValue(selectedPlan.apaReceivedAt));
+    setDueDate(dateInputValue(selectedPlan.apaSubmissionDueAt));
+    setSubmittedDate(dateInputValue(selectedPlan.apaSubmittedAt));
+    setReportType(selectedPlan.apaReportType || "rdcd");
+  }, [selectedPlan?.id, selectedPlan?.apaReceivedAt, selectedPlan?.apaSubmissionDueAt, selectedPlan?.apaSubmittedAt, selectedPlan?.apaReportType]);
+
+  function saveSelectedPlan() {
+    if (!selectedPlan) return;
+    const receivedAt = toTimestamp(receivedDate);
+    const dueAt = toTimestamp(dueDate);
+    const submittedAt = toTimestamp(submittedDate);
+    if (receivedAt && !dueAt) setDueDate(dateInputValue(addCivilMonths(receivedAt, 3)));
+    apaMutation.mutate({
+      planId: selectedPlan.id,
+      apaReportType: reportType,
+      apaReceivedAt: receivedAt,
+      apaSubmissionDueAt: dueAt ?? (receivedAt ? addCivilMonths(receivedAt, 3) : null),
+      apaSubmittedAt: submittedAt,
+    });
+  }
+
+  function beginDrag(event: React.PointerEvent<HTMLButtonElement>, plan: any, point: "received" | "due" | "submitted") {
+    if (!isAdmin || apaMutation.isPending) return;
+    const track = event.currentTarget.closest("[data-apa-track]");
+    if (!track) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { planId: plan.id, point, rect: track.getBoundingClientRect(), start: range.start, end: range.end };
+  }
+  function endDrag(event: React.PointerEvent<HTMLButtonElement>, plan: any) {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (!drag || !isAdmin || drag.planId !== plan.id) return;
+    const ratio = Math.max(0, Math.min(1, (event.clientX - drag.rect.left) / drag.rect.width));
+    const value = Math.round(drag.start + ratio * (drag.end - drag.start));
+    const dateAtNoon = Date.UTC(new Date(value).getUTCFullYear(), new Date(value).getUTCMonth(), new Date(value).getUTCDate(), 12, 0, 0);
+    if (drag.point === "received") {
+      apaMutation.mutate({ planId: plan.id, apaReceivedAt: dateAtNoon });
+    } else if (drag.point === "due") {
+      apaMutation.mutate({ planId: plan.id, apaSubmissionDueAt: dateAtNoon });
+    } else {
+      apaMutation.mutate({ planId: plan.id, apaSubmittedAt: dateAtNoon });
+    }
+  }
+
+  return (
+    <section aria-labelledby="apa-reporting-title" className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_14px_32px_hsl(var(--shadow-color)/0.055)]">
+      <div className="border-b border-white/10 bg-gradient-to-br from-[#0A3638] via-[#0A3638] to-[#0A3638] px-5 py-5 text-white sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="stand-kicker text-primary">{t("Control room APA")}</p>
+            <h2 id="apa-reporting-title" className="mt-2 text-xl font-semibold tracking-tight">{t("Receção, reporte e entrega à APA")}</h2>
+            <p className="mt-1 text-sm leading-6 text-white/75">{t("A regra de ouro aplica três meses civis entre a receção do plano e o limite de envio à APA. RDCD e Relatório Anual DCAPE surgem no calendário global como eventos próprios.")}</p>
+          </div>
+          <div className="rounded-xl border border-white/15 bg-card/10 px-3 py-2 text-xs leading-5 text-white/80">
+            <p className="font-semibold text-white">{t("Regra de ouro")}</p>
+            <p>{t("Receção do plano + 3 meses = limite máximo APA")}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-5 p-4 sm:p-5">
+        {configuredPlans.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-primary/35 bg-primary/[0.035] px-5 py-8 text-center">
+            <CalendarDays className="mx-auto h-8 w-8 text-primary" />
+            <p className="mt-3 text-sm font-semibold text-foreground">{t("Ainda não existem ciclos APA configurados")}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Selecione um plano abaixo para registar a data de receção; o limite de três meses é calculado automaticamente.")}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto pb-1">
+            <div className="min-w-[720px] space-y-3" aria-label={t("Timeline de reporte APA")}>
+              <div className="ml-[220px] flex justify-between px-2 text-xs font-medium text-muted-foreground">
+                <span>{formatTimelineDate(range.start)}</span><span>{formatTimelineDate(range.end)}</span>
+              </div>
+              {configuredPlans.map(plan => {
+                const late = Boolean(plan.apaSubmissionDueAt && !plan.apaSubmittedAt && plan.apaSubmissionDueAt < Date.now());
+                return (
+                  <div key={plan.id} className="grid grid-cols-[210px_minmax(0,1fr)] items-center gap-3">
+                    <button type="button" onClick={() => setSelectedPlanId(String(plan.id))} className="min-w-0 text-left">
+                      <p className="truncate text-sm font-semibold text-foreground">{plan.planNumber} · {plan.name}</p>
+                      <p className={`mt-0.5 text-xs ${late ? "text-rose-600 dark:text-rose-300" : "text-muted-foreground"}`}>{reportLabel(plan.apaReportType)} · {late ? t("Prazo vencido") : plan.apaSubmittedAt ? t("Enviado à APA") : t("Em preparação")}</p>
+                    </button>
+                    <div data-apa-track className="relative h-12 rounded-xl border border-border bg-muted/50" onPointerMove={event => { if (dragRef.current) event.preventDefault(); }}>
+                      {plan.apaReceivedAt && <div className="absolute top-1/2 h-px bg-primary/55" style={{ left: `${percentForDate(plan.apaReceivedAt)}%`, width: `${Math.max(0, percentForDate(plan.apaSubmissionDueAt) - percentForDate(plan.apaReceivedAt))}%` }} />}
+                      {plan.apaReceivedAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "received")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-primary p-1.5 shadow-sm ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaReceivedAt)}%` }} aria-label={`${t("Receção do plano")}: ${formatTimelineDate(plan.apaReceivedAt)}`}><span className="block h-2 w-2 rounded-full bg-primary-foreground" /></button>}
+                      {plan.apaSubmissionDueAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "due")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card p-2 shadow-sm ${late ? "bg-rose-500" : "bg-amber-500"} ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaSubmissionDueAt)}%` }} aria-label={`${t("Limite APA")}: ${formatTimelineDate(plan.apaSubmissionDueAt)}`}><span className="block h-1.5 w-1.5 rounded-sm bg-white" /></button>}
+                      {plan.apaSubmittedAt && <button type="button" onPointerDown={event => beginDrag(event, plan, "submitted")} onPointerUp={event => endDrag(event, plan)} className={`absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-emerald-500 p-2 shadow-sm ${isAdmin ? "cursor-ew-resize touch-none" : "cursor-default"}`} style={{ left: `${percentForDate(plan.apaSubmittedAt)}%` }} aria-label={`${t("Enviado à APA")}: ${formatTimelineDate(plan.apaSubmittedAt)}`}><CheckCircle2 className="h-2.5 w-2.5 text-white" /></button>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-primary" />{t("Receção do plano")}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-500" />{t("Limite de envio APA")}</span>
+          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500" />{t("Envio efetivo à APA")}</span>
+        </div>
+
+        <div className="rounded-xl border border-border bg-muted/35 p-4 sm:p-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">{t("Configurar ciclo APA")}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{isAdmin ? t("Pode editar diretamente os campos ou arrastar os marcadores da timeline. O servidor não permite ultrapassar o limite de três meses.") : t("Consulta disponível; apenas Administradores podem alterar este calendário.")}</p>
+            </div>
+            {!isAdmin && <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">{t("Só leitura")}</span>}
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="xl:col-span-2">
+              <label htmlFor="apa-plan" className="text-xs font-semibold text-muted-foreground">{t("Plano")}</label>
+              <Select value={selectedPlan ? String(selectedPlan.id) : ""} onValueChange={setSelectedPlanId}>
+                <SelectTrigger id="apa-plan" className="mt-1.5 bg-card"><SelectValue placeholder={t("Selecione um plano")} /></SelectTrigger>
+                <SelectContent>{plans.map(plan => <SelectItem key={plan.id} value={String(plan.id)}>{plan.planNumber} — {plan.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="apa-type" className="text-xs font-semibold text-muted-foreground">{t("Reporte")}</label>
+              <Select value={reportType} onValueChange={(value: any) => setReportType(value)} disabled={!isAdmin}>
+                <SelectTrigger id="apa-type" className="mt-1.5 bg-card"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="rdcd">RDCD</SelectItem><SelectItem value="relatorio_anual_dcape">{t("Relatório Anual DCAPE")}</SelectItem><SelectItem value="outro">{t("Outro reporte APA")}</SelectItem></SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="apa-received" className="text-xs font-semibold text-muted-foreground">{t("Receção do plano")}</label>
+              <Input id="apa-received" type="date" className="mt-1.5 bg-card" value={receivedDate} disabled={!isAdmin} onChange={event => { const value = event.target.value; setReceivedDate(value); const timestamp = toTimestamp(value); if (timestamp) setDueDate(dateInputValue(addCivilMonths(timestamp, 3))); }} />
+            </div>
+            <div>
+              <label htmlFor="apa-due" className="text-xs font-semibold text-muted-foreground">{t("Limite APA")}</label>
+              <Input id="apa-due" type="date" className="mt-1.5 bg-card" value={dueDate} disabled={!isAdmin} onChange={event => setDueDate(event.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="apa-submitted" className="text-xs font-semibold text-muted-foreground">{t("Envio efetivo APA")}</label>
+              <Input id="apa-submitted" type="date" className="mt-1.5 bg-card" value={submittedDate} disabled={!isAdmin} onChange={event => setSubmittedDate(event.target.value)} />
+            </div>
+          </div>
+          {selectedPlan && receivedDate && <p className="mt-3 text-xs text-muted-foreground">{t("Limite legal calculado")}: <span className="font-semibold text-foreground">{formatTimelineDate(addCivilMonths(toTimestamp(receivedDate)!, 3))}</span></p>}
+          {isAdmin && <div className="mt-4 flex justify-end"><Button size="sm" onClick={saveSelectedPlan} disabled={!selectedPlan || apaMutation.isPending}>{apaMutation.isPending ? t("A guardar...") : <><Save className="mr-2 h-4 w-4" />{t("Guardar ciclo APA")}</>}</Button></div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Planos() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { isAllProjects, canSeeAllProjects } = useProject();
   const [, setLocation] = useLocation();
@@ -780,6 +963,8 @@ export default function Planos() {
         </section>
 
         <PlanCalendar plans={plans as any[]} />
+
+        <ApaReportingTimeline plans={plans as any[]} user={user} />
 
         <section aria-labelledby="plans-heading" className="space-y-4">
           <div className="flex flex-col gap-3 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">

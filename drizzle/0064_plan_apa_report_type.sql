@@ -1,0 +1,1 @@
+ALTER TABLE `monitoring_plans` ADD `apaReportType` enum('rdcd','relatorio_anual_dcape','outro') DEFAULT 'rdcd' NOT NULL;

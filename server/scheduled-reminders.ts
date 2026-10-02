@@ -40,7 +40,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
           }
         }
 
-        if (event.sourceType === "monitoring_plan" && event.sourceId) {
+        if ((event.sourceType === "monitoring_plan" || event.sourceType === "monitoring_plan_apa") && event.sourceId) {
           const plan = await db.getMonitoringPlanById(event.sourceId);
           if (plan?.supportEmail && !recipients.some(item => item.email.toLowerCase() === plan.supportEmail!.toLowerCase())) {
             recipients.push({ email: plan.supportEmail, name: plan.supportName || plan.supportCompany || plan.supportEmail, userId: null });

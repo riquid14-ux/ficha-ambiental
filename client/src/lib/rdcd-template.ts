@@ -126,6 +126,57 @@ export const SIN02_RDCD_METADATA = {
   licensingEntity: "Direção-Geral de Energia e Geologia (DGEG)",
 } as const;
 
+/**
+ * A estrutura de um RDCD não pode ser copiada cegamente entre projectos.
+ * SIN02 tem um modelo de obra e enquadramento institucional já confirmado;
+ * SIN01/NEST usa o catálogo OPS de exploração. Os restantes projectos de obra
+ * recebem o mesmo esqueleto regulamentar, mas nunca herdam TUA, APA ou outras
+ * referências exclusivas do SIN02.
+ */
+export type RdcdProjectModel = {
+  kind: "construction" | "operations";
+  label: string;
+  reportTitle: string;
+  defaultPhase: string;
+  sourceLabel: string;
+  chapterFiveLabel: string;
+  guidance: string;
+};
+
+export const SIN01_OPS_RDCD_MODEL: RdcdProjectModel = {
+  kind: "operations",
+  label: "OPS — Medidas de Operação DCAPE SIN01",
+  reportTitle: "Relatório de Demonstração do Cumprimento — Operação",
+  defaultPhase: "Operação do NEST",
+  sourceLabel: "Medidas OPS, responsáveis, status updates e evidências da Fase de Exploração",
+  chapterFiveLabel: "Estado detalhado das medidas OPS DCAPE",
+  guidance: "Este relatório não usa fichas semanais de obra. Compila exclusivamente as medidas OPS do SIN01, os respetivos responsáveis, updates e evidências do período.",
+};
+
+export const SIN02_RDCD_MODEL: RdcdProjectModel = {
+  kind: "construction",
+  label: "RDCD SIN02 — modelo institucional de construção",
+  reportTitle: "Relatório de Demonstração do Cumprimento da Decisão (DCAPE)",
+  defaultPhase: "Execução da obra",
+  sourceLabel: "Fichas semanais aprovadas, evidências, planos de monitorização e e-GARs",
+  chapterFiveLabel: "Compilação das fichas semanais aprovadas",
+  guidance: "O modelo SIN02 pré-preenche apenas o enquadramento institucional confirmado no template. A emissão mantém revisão técnica humana obrigatória.",
+};
+
+export function getRdcdProjectModel(projectCode?: string | null): RdcdProjectModel {
+  if (projectCode === "SIN01") return SIN01_OPS_RDCD_MODEL;
+  if (projectCode === "SIN02") return SIN02_RDCD_MODEL;
+  return {
+    kind: "construction",
+    label: `RDCD ${projectCode || "do projeto"} — modelo de construção`,
+    reportTitle: "Relatório de Demonstração do Cumprimento da Decisão (DCAPE)",
+    defaultPhase: "Execução da obra",
+    sourceLabel: "Fichas semanais aprovadas, evidências, planos de monitorização e e-GARs do projeto",
+    chapterFiveLabel: "Compilação das fichas semanais aprovadas",
+    guidance: "Este RDCD é independente do SIN02. Confirme e introduza os elementos legais e institucionais próprios do projeto antes de emitir o Word.",
+  };
+}
+
 export type RdcdBrandProfileId = "startcampus_gleeds_quadrante" | "startcampus_gleeds" | "startcampus";
 
 // Marcas extraídas do template RDCD fornecido e colocadas em storage privado.

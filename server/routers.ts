@@ -4285,6 +4285,7 @@ export const appRouter = router({
             const ownerNames = Array.from(new Set(trackingRows.map((row: any) => row.ownerName).filter(Boolean)));
             const supportNames = Array.from(new Set(trackingRows.map((row: any) => [row.supportName, row.supportCompany].filter(Boolean).join(" — ")).filter(Boolean)));
             return {
+              measureId: root.id,
               key: isDcapeElement(root.number) ? String(root.number).trim().toUpperCase() : String(baseDcapeNumber(root.number) ?? root.number),
               number: root.number,
               description: root.description,
@@ -4300,7 +4301,15 @@ export const appRouter = router({
             return aNumber - bNumber;
           });
           const concluded = obligations.filter(item => item.status === "concluido").length;
-          return { ...phase, total: obligations.length, concluded, pending: obligations.filter(item => item.status !== "concluido") };
+          return {
+            ...phase,
+            total: obligations.length,
+            concluded,
+            pending: obligations.filter(item => item.status !== "concluido"),
+            // O briefing mostra as pendências; o RDCD OPS também precisa da
+            // lista integral, com estados, responsáveis e updates rastreáveis.
+            obligations,
+          };
         });
 
         const currentIndex = phaseSummaries.findIndex(phase => phase.total > 0 && phase.pending.length > 0);
@@ -4312,6 +4321,9 @@ export const appRouter = router({
           project: { id: project.id, code: project.code, name: project.name },
           current,
           next: next ? { key: next.key, name: next.name, nameEn: next.nameEn } : null,
+          // O RDCD OPS precisa do inventário completo de obrigações e não apenas
+          // da primeira fase com pendências usada pelo briefing de transição.
+          phases: phaseSummaries,
           generatedAt: Date.now(),
         };
       }),

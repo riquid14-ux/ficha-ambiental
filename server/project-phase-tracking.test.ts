@@ -134,6 +134,7 @@ describe("Acompanhamento das fases — experiência", () => {
     expect(routerSource).toContain("latestUpdateByMeasureId");
     expect(routerSource).toContain("ownerName: ownerNames.join");
     expect(routerSource).toContain("supportName: supportNames.join");
+    expect(routerSource).toContain("obligations,");
     expect(dbSource).toContain("export async function getPhaseMeasureUpdatesForProject");
   });
 });

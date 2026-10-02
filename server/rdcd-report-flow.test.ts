@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { RDCD_BRAND_PROFILES, buildRdcdWeeklyRows } from "../client/src/lib/rdcd-template";
+import { RDCD_BRAND_PROFILES, buildRdcdWeeklyRows, getRdcdProjectModel } from "../client/src/lib/rdcd-template";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -73,6 +73,17 @@ describe("RDCD — relatório estruturado e rastreável", () => {
     expect(rows.every(row => row.phases === "Execução da obra")).toBe(true);
   });
 
+  it("separa o modelo OPS SIN01 dos RDCD de construção", () => {
+    expect(getRdcdProjectModel("SIN01")).toMatchObject({
+      kind: "operations",
+      label: "OPS — Medidas de Operação DCAPE SIN01",
+      defaultPhase: "Operação do NEST",
+    });
+    expect(getRdcdProjectModel("SIN02").kind).toBe("construction");
+    expect(getRdcdProjectModel("SIN03").kind).toBe("construction");
+    expect(getRdcdProjectModel("SIN03").guidance).toContain("independente do SIN02");
+  });
+
   it("gera o Word a partir de semanas, fotografias e e-GAR selecionados pelo responsável", () => {
     expect(pageSource).toContain("selectedImageUrls");
     expect(pageSource).toContain("selectedWeeks");
@@ -80,12 +91,15 @@ describe("RDCD — relatório estruturado e rastreável", () => {
     expect(pageSource).toContain("trpc.rdcd.wasteRows.useQuery");
     expect(pageSource).toContain("Anexo III — Registo de Resíduos e-GAR do Período");
     expect(pageSource).toContain("A geração não aprova, assina nem arquiva o relatório");
-    expect(pageSource).toContain("RELATÓRIO DE DEMONSTRAÇÃO");
+    expect(pageSource).toContain("reportModel.reportTitle.toUpperCase()");
     expect(pageSource).toContain("ÍNDICE GERAL");
+    expect(pageSource).toContain("TableOfContents");
     expect(pageSource).toContain("chapterDetails");
     expect(pageSource).toContain("Ações, responsabilidades e prazos");
     expect(pageSource).toContain("uploadLogoMutation");
     expect(pageSource).toContain("reportLogos");
     expect(pageSource).toContain("/api/rdcd/media/logo?projectId=");
+    expect(pageSource).toContain("Medidas OPS — Operação DCAPE SIN01");
+    expect(pageSource).toContain("phaseMeasures.transitionReport.useQuery");
   });
 });

@@ -86,6 +86,12 @@ export default function Operation() {
   const invoiceDownloadQuery = trpc.operation.invoiceDownload.useQuery({ projectId, invoiceId: 0 }, { enabled: false });
 
   const readings = overviewQuery.data?.readings || [];
+  const latestTelemetryDate = useMemo(() => (importsQuery.data || [])
+    .map((batch: any) => String(batch.measuredDate || ""))
+    .filter((date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort()
+    .at(-1) || null, [importsQuery.data]);
+  const selectedPeriodHasNoReadings = !overviewQuery.isLoading && readings.length === 0 && Boolean(latestTelemetryDate) && Boolean(latestTelemetryDate && (latestTelemetryDate < startDate || latestTelemetryDate > endDate));
   const latest = overviewQuery.data?.latest || {};
   const quality = overviewQuery.data?.quality;
   const financial = overviewQuery.data?.financial;
@@ -142,6 +148,15 @@ export default function Operation() {
   const reconciliationStats = { total: reconciliations.length, compliant: reconciliations.filter((item: any) => item.status === "conforme").length, deviations: reconciliations.filter((item: any) => item.status === "desvio").length, incomplete: reconciliations.filter((item: any) => item.status === "incompleta").length };
 
   async function importReport(file?: File) { if (!file || !projectId) return; if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 15 * 1024 * 1024) { toast.error("Selecione um relatório Excel (.xlsx) até 15 MB."); return; } try { importMutation.mutate({ projectId, filename: file.name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data: await readFile(file) }); } catch (error: any) { toast.error(error.message || "Não foi possível ler o relatório."); } }
+  function showLatestTelemetry() {
+    if (!latestTelemetryDate) return;
+    const latest = new Date(`${latestTelemetryDate}T12:00:00Z`);
+    const start = new Date(latest);
+    start.setUTCDate(start.getUTCDate() - 14);
+    setStartDate(isoDate(start));
+    setEndDate(latestTelemetryDate);
+    setTimeGrouping("dia");
+  }
   async function createInvoice() { if (!projectId || !invoiceDraft.quantity || !invoiceDraft.unit) { toast.error("Indique o período, a quantidade e a unidade da fatura."); return; } try { const payloadBase = buildOperationInvoicePayload({ projectId, invoiceType: invoiceDraft.invoiceType, supplier: invoiceDraft.supplier || undefined, invoiceNumber: invoiceDraft.invoiceNumber || undefined, periodStart: invoiceDraft.periodStart, periodEnd: invoiceDraft.periodEnd, quantity: Number(invoiceDraft.quantity), unit: invoiceDraft.unit, totalCost: invoiceDraft.totalCost ? Number(invoiceDraft.totalCost) : undefined, notes: invoiceDraft.notes || undefined }); if (!payloadBase) { toast.error("Selecione um tipo de fatura válido."); return; } const file = invoiceFile.current?.files?.[0]; const payload: any = payloadBase; if (file) { payload.filename = file.name; payload.mimeType = file.type || (file.name.endsWith(".pdf") ? "application/pdf" : file.name.endsWith(".csv") ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); payload.data = await readFile(file); } invoiceMutation.mutate(payload); } catch (error: any) { toast.error(error.message || "Não foi possível ler o comprovativo."); } }
   async function importInvoices(file?: File) { if (!file || !projectId) return; if (!file.name.toLowerCase().endsWith(".xlsx") || file.size > 10 * 1024 * 1024) { toast.error("Selecione um ficheiro Excel (.xlsx) até 10 MB."); return; } try { invoicesImportMutation.mutate({ projectId, filename: file.name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", data: await readFile(file) }); } catch (error: any) { toast.error(error.message || "Não foi possível ler as faturas."); } }
   function createWaterReading() { const waterM3 = Number(waterDraft.waterM3); if (!projectId || !waterDraft.date || !Number.isFinite(waterM3) || waterM3 < 0) { toast.error("Indique uma data e um consumo de água válido."); return; } waterMutation.mutate({ projectId, date: waterDraft.date, waterM3, note: waterDraft.note || undefined }); }
@@ -184,7 +199,9 @@ export default function Operation() {
       <label className="text-xs font-medium text-muted-foreground">Início<Input className="mt-1 bg-card" type="date" value={startDate} onChange={event => setStartDate(event.target.value)} /></label>
       <label className="text-xs font-medium text-muted-foreground">Fim<Input className="mt-1 bg-card" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} /></label>
       <label className="text-xs font-medium text-muted-foreground">Granularidade<Select value={timeGrouping} onValueChange={value => setTimeGrouping(value as OperationGrouping)}><SelectTrigger className="mt-1 min-w-32 bg-card"><SelectValue /></SelectTrigger><SelectContent>{hasHourlyReadings && <SelectItem value="hora">Hora</SelectItem>}<SelectItem value="dia">Dia</SelectItem><SelectItem value="semana">Semana</SelectItem><SelectItem value="mes">Mês</SelectItem><SelectItem value="ano">Ano</SelectItem></SelectContent></Select></label>
+      {selectedPeriodHasNoReadings && latestTelemetryDate && <Button size="sm" variant="outline" className="border-primary/30 bg-primary/5 text-primary hover:bg-primary/10" onClick={showLatestTelemetry}><RadioTower className="mr-2 size-4" />{t("Ver última telemetria")} · {new Intl.DateTimeFormat(activeLocale(), { dateStyle: "medium" }).format(new Date(`${latestTelemetryDate}T12:00:00Z`))}</Button>}
     </section>
+    {selectedPeriodHasNoReadings && latestTelemetryDate && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-primary/35 bg-primary/[0.045] px-4 py-3 text-sm"><div><p className="font-semibold text-foreground">{t("O período selecionado não contém leituras operacionais")}</p><p className="mt-0.5 text-xs text-muted-foreground">{t("A última telemetria importada permanece disponível e pode ser aberta sem alterar ou estimar qualquer dado.")}</p></div><Button size="sm" onClick={showLatestTelemetry}>{t("Abrir último período com dados")}</Button></div>}
 
     <section className="stand-command-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{executiveCards.map(metric => <StandMetricCard key={metric.label} label={metric.label} value={<span className="data-figure">{metric.value === null || metric.value === undefined ? "—" : `${number(metric.value)} ${metric.unit}`}</span>} detail={metric.detail} icon={metric.icon} tone={metric.tone} action={metric.trend?.length ? <MicroTrend values={metric.trend} accent={metric.tone} /> : undefined} />)}</section>
 
@@ -218,17 +235,103 @@ export default function Operation() {
 }
 function OperationDigitalTwin({ twin, hasDemoData, onOpenSettings }: { twin: any; hasDemoData: boolean; onOpenSettings: () => void }) {
   const { t } = useLanguage();
-  if (!twin) return <EmptyPanel icon={RadioTower} title={t("Gémeo operacional a aguardar dados")} text={t("Importe leituras BMS ou registe medições para formar o estado calculado dos sistemas do edifício.")} />;
+  const operationalSystems = Array.isArray(twin?.systems) ? twin.systems : [];
+  const [selectedSystemId, setSelectedSystemId] = useState<string>(operationalSystems[0]?.id || "power_it");
+
+  if (!twin) {
+    return <EmptyPanel icon={RadioTower} title={t("Gémeo operacional a aguardar dados")} text={t("Importe leituras BMS ou registe medições para formar o estado calculado dos sistemas do edifício.")} />;
+  }
+
   const status = {
-    normal: { label: t("Normal"), className: "border-primary/35 bg-primary/[0.08]", icon: CheckCircle2 },
-    attention: { label: t("Atenção"), className: "border-secondary bg-secondary/65", icon: AlertTriangle },
-    alert: { label: t("Desvio"), className: "border-destructive/45 bg-destructive/[0.08]", icon: AlertTriangle },
-    reference: { label: t("Referência configurada"), className: "border-border bg-muted/55", icon: Settings2 },
-    data_gap: { label: t("Dados em falta"), className: "border-dashed border-border bg-muted/35", icon: RadioTower },
+    normal: { label: t("Normal"), dot: "success", icon: CheckCircle2 },
+    attention: { label: t("Atenção"), dot: "warning", icon: AlertTriangle },
+    alert: { label: t("Desvio"), dot: "critical", icon: AlertTriangle },
+    reference: { label: t("Referência configurada"), dot: "info", icon: Settings2 },
+    data_gap: { label: t("Dados em falta"), dot: "muted", icon: RadioTower },
   } as const;
-  const observedAt = twin.observedAt ? new Intl.DateTimeFormat(activeLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(twin.observedAt)) : null;
-  const operationalSystems = Array.isArray(twin.systems) ? twin.systems : [];
-  return <section className="ops-surface"><div className="relative p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-2"><span className="ops-chip inline-flex size-10 items-center justify-center"><RadioTower className="size-5 text-primary" /></span><p className="stand-kicker text-primary">{t("GÉMEO OPERACIONAL")}</p>{twin.mode === "reference" && <Badge className="border-white/20 bg-white/10 text-white">{t("Parâmetros ilustrativos")}</Badge>}{hasDemoData && <Badge className="border-white/20 bg-white/10 text-white">{t("Dados demonstrativos ativos")}</Badge>}</div><h2 className="mt-3 text-xl font-semibold tracking-tight text-white">{t("Estado calculado dos sistemas do edifício")}</h2><p className="mt-2 text-sm leading-6 text-white/72">{t("Esta réplica operacional usa telemetria, limites e qualidade do dado para sinalizar cada sistema. Não é uma maquete 3D: é uma visão de operação explicável, rastreável e separada da fotografia de infraestrutura.")}</p></div><div className="ops-chip min-w-48 p-3"><p className="text-xs text-white/62">{t("Cobertura do período")}</p><p className="mt-1 text-2xl font-semibold text-white">{twin.dataCoveragePercent === null || twin.dataCoveragePercent === undefined ? "—" : `${number(twin.dataCoveragePercent)}%`}</p><p className="mt-1 text-[11px] text-white/58">{twin.validReadings || 0}/{twin.totalReadings || 0} {t("leituras válidas")}</p></div></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{operationalSystems.map((system: any) => { const presentation = status[system.status as keyof typeof status] || status.data_gap; const Icon = presentation.icon; return <article key={system.id} className={`rounded-2xl border p-4 ${presentation.className}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-white">{t(system.label)}</p><p className="mt-1 text-[11px] font-medium uppercase tracking-[.12em] text-white/62">{presentation.label}</p></div><Icon className={system.status === "alert" ? "size-5 text-destructive" : system.status === "normal" ? "size-5 text-primary" : "size-5 text-white/76"} /></div><div className="mt-5 space-y-2">{(system.metrics || []).map((metric: any) => <div key={metric.id} className="flex items-end justify-between gap-3 border-b border-white/10 pb-2 last:border-0 last:pb-0"><p className="text-xs text-white/65">{t(metric.label)}</p><p className="text-right text-sm font-semibold text-white">{metric.value === null || metric.value === undefined ? "—" : number(metric.value)} <span className="text-[10px] font-medium text-white/60">{metric.unit}</span></p></div>)}</div>{system.checks?.some((check: any) => check.status === "desvio") && <p className="mt-4 text-xs leading-5 text-destructive">{t("Existe um desvio face ao limite aprovado. Consulte o detalhe de desempenho antes de atuar.")}</p>}</article>; })}</div><div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/12 pt-4 text-xs text-white/66"><span>{observedAt ? `${t("Última observação")}: ${observedAt}` : t("Sem observação válida no período selecionado")}</span><div className="flex gap-2"><Button size="sm" variant="outline" className="border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />{t("Ver limites e fórmulas")}</Button><span className="inline-flex items-center gap-2 rounded-lg px-2 py-1"><ShieldCheck className="size-4 text-primary" />{t("Dados e estimativas permanecem separados")}</span></div></div></div></section>;
+  const systemMeta: Record<string, { icon: typeof Server; code: string; route: string }> = {
+    power_it: { icon: Server, code: "01", route: t("Rede e salas TI") },
+    thermal: { icon: Thermometer, code: "02", route: t("Arrefecimento e permuta") },
+    seawater: { icon: Waves, code: "03", route: t("Captação e descarga") },
+    sustainability: { icon: Leaf, code: "04", route: t("Carbono e eficiência") },
+  };
+  const selected = operationalSystems.find((system: any) => system.id === selectedSystemId) || operationalSystems[0];
+  const selectedPresentation = selected ? status[selected.status as keyof typeof status] || status.data_gap : status.data_gap;
+  const SelectedIcon = selectedPresentation.icon;
+  const observedAt = twin.observedAt
+    ? new Intl.DateTimeFormat(activeLocale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(twin.observedAt))
+    : null;
+  const activeSystems = operationalSystems.filter((system: any) => system.status === "normal").length;
+  const attentionSystems = operationalSystems.filter((system: any) => ["attention", "alert"].includes(system.status)).length;
+
+  return <section className="ops-twin-panel">
+    <div className="ops-twin-header">
+      <div className="max-w-3xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="ops-twin-radar"><RadioTower className="size-5" /></span>
+          <p className="stand-kicker text-primary">{t("NEST · GÉMEO OPERACIONAL")}</p>
+          {twin.mode === "reference" && <Badge className="border-white/20 bg-white/10 text-white">{t("Parâmetros ilustrativos")}</Badge>}
+          {hasDemoData && <Badge className="border-white/20 bg-white/10 text-white">{t("Dados demonstrativos ativos")}</Badge>}
+        </div>
+        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-white">{t("Modelo de sistemas do edifício em operação")}</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-white/72">{t("O gémeo lê sinais operacionais, limites e qualidade de dados para revelar o estado da cadeia energética e térmica do NEST. A fotografia aérea abaixo mantém-se como vista de infraestrutura; esta camada é a sua réplica operacional rastreável.")}</p>
+      </div>
+      <div className="ops-twin-readout">
+        <div><p>{t("Sistemas normais")}</p><strong>{activeSystems}<span>/{operationalSystems.length}</span></strong></div>
+        <div><p>{t("A requerer atenção")}</p><strong className={attentionSystems ? "text-[var(--ops-warning)]" : "text-[var(--ops-success)]"}>{attentionSystems}</strong></div>
+        <div><p>{t("Cobertura válida")}</p><strong>{twin.dataCoveragePercent === null || twin.dataCoveragePercent === undefined ? "—" : `${number(twin.dataCoveragePercent)}%`}</strong></div>
+      </div>
+    </div>
+
+    <div className="ops-twin-workspace">
+      <aside className="ops-twin-rail">
+        <p className="stand-kicker text-white/55">{t("CAMADAS DO EDIFÍCIO")}</p>
+        <div className="mt-3 space-y-2">
+          {operationalSystems.map((system: any) => {
+            const meta = systemMeta[system.id] || { icon: Activity, code: "—", route: t("Sistema operacional") };
+            const Icon = meta.icon;
+            const presentation = status[system.status as keyof typeof status] || status.data_gap;
+            return <button type="button" key={system.id} className={`ops-twin-rail-item ${selected?.id === system.id ? "is-selected" : ""}`} onClick={() => setSelectedSystemId(system.id)}>
+              <span className={`status-dot ${presentation.dot}`} />
+              <span className="ops-twin-rail-code">{meta.code}</span>
+              <span className="min-w-0 flex-1 text-left"><span className="block truncate text-xs font-semibold text-white">{t(system.label)}</span><span className="mt-0.5 block truncate text-[10px] text-white/55">{meta.route}</span></span>
+              <Icon className="size-4 text-white/58" />
+            </button>;
+          })}
+        </div>
+        <div className="mt-auto border-t border-white/10 pt-4 text-[11px] leading-5 text-white/56"><span className="inline-flex items-center gap-2"><ShieldCheck className="size-4 text-primary" />{t("Os estados só são conclusivos com limites e leituras válidas.")}</span></div>
+      </aside>
+
+      <div className="ops-twin-stage" aria-label={t("Topologia operacional do edifício")}>
+        <div className="ops-twin-stage-label"><span className="status-dot info" />{t("Fluxo operacional monitorizado")}</div>
+        <div className="ops-twin-path ops-twin-path-a" aria-hidden="true" /><div className="ops-twin-path ops-twin-path-b" aria-hidden="true" /><div className="ops-twin-path ops-twin-path-c" aria-hidden="true" />
+        <div className="ops-twin-grid">
+          {operationalSystems.map((system: any, index: number) => {
+            const meta = systemMeta[system.id] || { icon: Activity, code: String(index + 1).padStart(2, "0"), route: t("Sistema operacional") };
+            const Icon = meta.icon;
+            const presentation = status[system.status as keyof typeof status] || status.data_gap;
+            const primaryMetric = system.metrics?.[0];
+            return <button type="button" key={system.id} className={`ops-twin-node status-${system.status} ${selected?.id === system.id ? "is-selected" : ""}`} onClick={() => setSelectedSystemId(system.id)}>
+              <div className="flex items-start justify-between gap-3"><span className="ops-twin-node-icon"><Icon className="size-5" /></span><span className="ops-twin-node-index">{meta.code}</span></div>
+              <p className="mt-5 text-sm font-semibold text-white">{t(system.label)}</p>
+              <p className="mt-1 text-[11px] text-white/56">{meta.route}</p>
+              <div className="mt-5 flex items-end justify-between gap-3 border-t border-white/10 pt-3"><span className="text-[10px] uppercase tracking-[.11em] text-white/46">{primaryMetric ? t(primaryMetric.label) : t("Sinal")}</span><span className="text-right text-sm font-semibold text-white">{primaryMetric?.value === null || primaryMetric?.value === undefined ? "—" : number(primaryMetric.value)}<small>{primaryMetric?.unit ? t(primaryMetric.unit) : ""}</small></span></div>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[.1em] text-white/60"><span className={`status-dot ${presentation.dot}`} />{presentation.label}</span>
+            </button>;
+          })}
+        </div>
+        <div className="ops-twin-stage-footer"><span>{t("4 camadas ligadas por telemetria e regras administrativas")}</span><span>{observedAt ? `${t("Última observação")}: ${observedAt}` : t("Sem observação válida no período selecionado")}</span></div>
+      </div>
+
+      <aside className="ops-twin-inspector">
+        <div className="flex items-start justify-between gap-3"><div><p className="stand-kicker text-primary">{t("INSPEÇÃO ATIVA")}</p><h3 className="mt-1 text-base font-semibold text-white">{selected ? t(selected.label) : t("Sem sistema selecionado")}</h3></div><span className="ops-twin-inspector-icon"><SelectedIcon className="size-5" /></span></div>
+        {selected ? <><div className="mt-5 space-y-2">{(selected.metrics || []).map((metric: any) => <div key={metric.id} className="ops-twin-metric"><span>{t(metric.label)}</span><strong>{metric.value === null || metric.value === undefined ? "—" : number(metric.value)} <small>{metric.unit ? t(metric.unit) : ""}</small></strong><em>{t(metric.source === "leitura" ? "Leitura" : metric.source === "calculado" ? "Calculado" : metric.source === "estimativa" ? "Estimativa" : "Em falta")}</em></div>)}</div>{selected.checks?.length ? <div className="mt-5 border-t border-white/10 pt-4"><p className="text-[10px] font-semibold uppercase tracking-[.12em] text-white/52">{t("Limites aplicáveis")}</p><div className="mt-3 space-y-2">{selected.checks.map((check: any) => <div className="flex items-center justify-between gap-3 text-xs" key={check.id}><span className="text-white/62">{t(check.label)}</span><span className="font-medium text-white">{check.limit === null ? t("Por configurar") : `${number(check.limit)} ${t(check.unit)}`}</span></div>)}</div></div> : <p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-white/58">{t("Este sistema é acompanhado por métricas de eficiência; os limites podem ser definidos na Administração.")}</p>}</> : <p className="mt-5 text-sm text-white/62">{t("Selecione uma camada para ver os sinais operacionais.")}</p>}
+        <Button size="sm" variant="outline" className="mt-6 w-full border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={onOpenSettings}><Settings2 className="mr-2 size-4" />{t("Ver limites e fórmulas")}</Button>
+      </aside>
+    </div>
+
+    <div className="ops-twin-footer"><div><p className="font-medium text-white">{t("Distinção de vistas")}</p><p>{t("Topologia = sistemas, sinais e regras. Vista de infraestrutura = fotografia aérea, equipamentos e pontos configuráveis.")}</p></div><div className="flex items-center gap-2"><RadioTower className="size-4 text-primary" /><span>{t("Dados e estimativas permanecem separados")}</span></div></div>
+  </section>;
 }
 function MicroTrend({ values, accent = "brand" }: { values: number[]; accent?: StandMetricTone }) {
   if (values.length < 2) return null;

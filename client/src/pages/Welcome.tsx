@@ -69,6 +69,8 @@ export default function Welcome() {
   const { activeProject, isAllProjects } = useProject();
   const { t } = useLanguage();
   const welcomeHeaderImage = useBrandImage("welcome");
+  const operationsImage = useBrandImage("operacao");
+  const timelineImage = useBrandImage("timeline");
   const [, setLocation] = useLocation();
   // Autoplay é permitido de forma fiável em browsers quando o vídeo inicia sem som.
   // A fotografia institucional permanece disponível no controlo "Voltar à imagem".
@@ -132,6 +134,22 @@ export default function Welcome() {
         <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName} image={welcomeHeaderImage.url} imagePosition={welcomeHeaderImage.position} imageMode={welcomeHeaderImage.mode} actions={<button type="button" onClick={() => setLocation("/dashboard")} className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-card/10 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-card/20"><span className="status-dot success" aria-hidden="true" />{t("Abrir centro de controlo")}<ArrowRight className="size-4" /></button>}>
           <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={t(isNest ? "NEST · Operação" : "Conformidade ambiental")} tone="success" /></div>
         </StandPageHeader>
+
+        <section className="stand-welcome-photo-rail" aria-label={t("Portefólio visual Start Campus")}>
+          <button type="button" className="stand-welcome-photo-card is-primary" onClick={() => setLocation(isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard")}>
+            <img src={operationsImage.url} alt="" style={{ objectPosition: operationsImage.position }} />
+            <span className="stand-welcome-photo-overlay" />
+            <span className="relative z-10 block"><span className="stand-kicker text-primary">{t("NEST · SIN01")}</span><strong>{t("Edifício, sistemas e eficiência")}</strong><small>{t("Explore a visão operacional")}</small></span>
+            <span className="relative z-10 grid size-9 place-items-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur"><ArrowRight className="size-4" /></span>
+          </button>
+          <button type="button" className="stand-welcome-photo-card" onClick={() => setLocation(visiblePaths.includes("/timeline") ? "/timeline" : "/dashboard")}>
+            <img src={timelineImage.url} alt="" style={{ objectPosition: timelineImage.position }} />
+            <span className="stand-welcome-photo-overlay" />
+            <span className="relative z-10 block"><span className="stand-kicker text-primary">{t("PROJECT DELIVERY")}</span><strong>{t("Fases, equipas e evidências")}</strong><small>{t("Acompanhe o cumprimento por projeto")}</small></span>
+            <span className="relative z-10 grid size-9 place-items-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur"><ArrowRight className="size-4" /></span>
+          </button>
+          <div className="stand-welcome-photo-note"><span className="status-dot success" /><div><p>{t("Fotografia institucional, dados com origem")}</p><small>{t("As imagens pertencem à identidade Start Campus; indicadores e estados mantêm a sua fonte auditável.")}</small></div></div>
+        </section>
 
         {/* Inspirational quote */}
         <div className="stand-welcome-quote flex items-start gap-4 rounded-2xl p-5">

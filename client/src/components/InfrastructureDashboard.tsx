@@ -67,7 +67,7 @@ function MiniTrend({ points }: { points: number[] }) {
   if (points.length < 2) return <p className="text-xs text-muted-foreground">Sem série suficiente no período.</p>;
   const min = Math.min(...points); const max = Math.max(...points); const range = max - min || 1;
   const path = points.map((value, index) => `${index ? "L" : "M"}${(index / (points.length - 1)) * 100},${100 - ((value - min) / range) * 82 - 9}`).join(" ");
-  return <svg viewBox="0 0 100 100" className="h-20 w-full overflow-visible" role="img" aria-label="Tendência da métrica selecionada"><path d={path} fill="none" stroke="#00C159" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" /></svg>;
+  return <svg viewBox="0 0 100 100" className="h-20 w-full overflow-visible" role="img" aria-label="Tendência da métrica selecionada"><path d={path} fill="none" stroke="var(--chart-1)" strokeWidth="3" vectorEffect="non-scaling-stroke" strokeLinecap="round" /></svg>;
 }
 
 export function InfrastructureDashboard({ projectId, points, futureArea, mapLabels, latest, readings, invoices, canConfigure, onOpenSettings }: { projectId: number; points: InfrastructurePoint[]; futureArea?: ReadonlyArray<MapCoordinate>; mapLabels?: MapLabels; latest: Record<string, any>; readings: any[]; invoices: any[]; canConfigure: boolean; onOpenSettings: () => void }) {
@@ -105,7 +105,7 @@ export function InfrastructureDashboard({ projectId, points, futureArea, mapLabe
     </div>
     <div style={{ aspectRatio: "3 / 1", minHeight: 0 }} className="relative overflow-hidden bg-surface-contrast">
         <img src={droneImageUrl} alt={t("Vista aérea de drone do NEST e infraestruturas envolventes")} className="absolute inset-0 size-full object-cover object-center opacity-95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A3638]/68 via-transparent to-[#0A3638]/16" />
+        <div className="absolute inset-0 bg-gradient-to-t from-surface-contrast/68 via-transparent to-surface-contrast/16" />
         <div style={{ clipPath: futureAreaClip([...resolvedFutureArea]) }} className="absolute inset-0 border border-white/65 bg-surface-contrast/42 shadow-[inset_0_0_60px_rgba(10,54,56,0.36)]">
           <div className="absolute inset-0 opacity-25 [background-image:repeating-linear-gradient(135deg,rgba(255,255,255,0.2)_0_1px,transparent_1px_11px)]" />
         </div>

@@ -161,7 +161,7 @@ export default function Operation() {
     { label: t("Custo no período"), value: financial?.invoiceCount ? financial.totalCostEur : null, unit: "EUR", icon: CircleDollarSign, tone: "neutral", detail: financial?.invoiceCount ? `${financial.invoiceCount} ${t("fatura(s) reconciliadas")}` : t("Aguardando faturas") },
   ];
 
-  return <AppLayout><div className="space-y-5 pb-10">
+  return <AppLayout><div className="stand-command-shell space-y-5 pb-10">
     <StandPageHeader
       tone="operations"
       eyebrow={t("NEST · SIN01 · OPERAÇÃO")}
@@ -179,14 +179,14 @@ export default function Operation() {
     <input ref={reportInput} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={event => importReport(event.target.files?.[0])} />
     <input ref={invoicesImportFile} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={event => importInvoices(event.target.files?.[0])} />
 
-    <section className="stand-filter-bar sticky top-3 z-20 shadow-lg shadow-black/5">
+    <section className="stand-filter-bar sticky top-3 z-20 shadow-lg shadow-black/5 backdrop-blur-xl">
       <div className="mr-auto min-w-48"><p className="text-sm font-semibold text-foreground">Janela de decisão</p><p className="mt-0.5 text-xs text-muted-foreground">O período aplica-se a todo o cockpit.</p></div>
       <label className="text-xs font-medium text-muted-foreground">Início<Input className="mt-1 bg-card" type="date" value={startDate} onChange={event => setStartDate(event.target.value)} /></label>
       <label className="text-xs font-medium text-muted-foreground">Fim<Input className="mt-1 bg-card" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} /></label>
       <label className="text-xs font-medium text-muted-foreground">Granularidade<Select value={timeGrouping} onValueChange={value => setTimeGrouping(value as OperationGrouping)}><SelectTrigger className="mt-1 min-w-32 bg-card"><SelectValue /></SelectTrigger><SelectContent>{hasHourlyReadings && <SelectItem value="hora">Hora</SelectItem>}<SelectItem value="dia">Dia</SelectItem><SelectItem value="semana">Semana</SelectItem><SelectItem value="mes">Mês</SelectItem><SelectItem value="ano">Ano</SelectItem></SelectContent></Select></label>
     </section>
 
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{executiveCards.map(metric => <StandMetricCard key={metric.label} label={metric.label} value={<span className="data-figure">{metric.value === null || metric.value === undefined ? "—" : `${number(metric.value)} ${metric.unit}`}</span>} detail={metric.detail} icon={metric.icon} tone={metric.tone} action={metric.trend?.length ? <MicroTrend values={metric.trend} accent={metric.tone} /> : undefined} />)}</section>
+    <section className="stand-command-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{executiveCards.map(metric => <StandMetricCard key={metric.label} label={metric.label} value={<span className="data-figure">{metric.value === null || metric.value === undefined ? "—" : `${number(metric.value)} ${metric.unit}`}</span>} detail={metric.detail} icon={metric.icon} tone={metric.tone} action={metric.trend?.length ? <MicroTrend values={metric.trend} accent={metric.tone} /> : undefined} />)}</section>
 
       <Tabs value={cockpitTab} onValueChange={setCockpitTab} className="space-y-5">
         <TabsList className="ops-tabs flex h-auto w-full flex-wrap justify-start gap-1 p-1"><TabsTrigger value="twin" className="rounded-xl px-4"><Building2 className="mr-2 size-4" />{t("Edifício em operação")}</TabsTrigger><TabsTrigger value="desempenho" className="rounded-xl px-4"><Gauge className="mr-2 size-4" />{t("Desempenho")}</TabsTrigger><TabsTrigger value="gestao" className="rounded-xl px-4"><ReceiptText className="mr-2 size-4" />{t("Gestão")}</TabsTrigger><TabsTrigger value="sustentabilidade" className="rounded-xl px-4"><Leaf className="mr-2 size-4" />{t("Sustentabilidade")}</TabsTrigger><TabsTrigger value="dados" className="rounded-xl px-4"><Activity className="mr-2 size-4" />{t("Dados operacionais")}</TabsTrigger></TabsList>

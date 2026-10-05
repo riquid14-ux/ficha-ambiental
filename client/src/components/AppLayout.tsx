@@ -277,7 +277,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r border-sidebar-border/70" disableTransition={isResizing}>
+        <Sidebar collapsible="icon" className="stand-sidebar border-r border-sidebar-border/70" disableTransition={isResizing}>
           <SidebarHeader className="h-[4.5rem] justify-center border-b border-sidebar-border/70">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
@@ -300,7 +300,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           <SidebarContent className="gap-0">
             {/* Project Selector */}
             {!isCollapsed && projects.length > 0 && (
-              <div className="px-3 py-3 border-b border-sidebar-border/70">
+              <div className="stand-sidebar-project px-3 py-3 border-b border-sidebar-border/70">
                 <label className="stand-kicker text-muted-foreground mb-1.5 block">
                   {t("Projeto")}
                 </label>
@@ -347,6 +347,12 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           </SidebarContent>
 
           <SidebarFooter className="p-3 pb-14">
+            {!isCollapsed && (
+              <div className="stand-sidebar-session mb-2 flex items-center gap-2 rounded-xl px-2.5 py-2">
+                <span className="status-dot success shrink-0" aria-hidden="true" />
+                <div className="min-w-0"><p className="stand-mono text-[9px] font-medium text-foreground/80">{t("SESSÃO PROTEGIDA")}</p><p className="mt-0.5 truncate text-[10px] text-muted-foreground">{t("Acesso auditado e sujeito a permissões")}</p></div>
+              </div>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-2 hover:border-sidebar-border hover:bg-sidebar-accent/55 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center">
@@ -425,31 +431,30 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="h-5 w-5 text-[#646461]" />
-                Autenticação de Dois Fatores Obrigatória
+                <Shield className="h-5 w-5 text-muted-foreground" />
+                {t("Autenticação de Dois Fatores Obrigatória")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Para garantir a segurança dos dados ambientais, é obrigatório configurar a autenticação de dois fatores (2FA).
-                Não poderá utilizar a plataforma até completar esta configuração.
+                {t("Para garantir a segurança dos dados ambientais, é obrigatório configurar a autenticação de dois fatores (2FA). Não poderá utilizar a plataforma até completar esta configuração.")}
               </p>
               {!qrData ? (
                 <Button className="w-full" onClick={() => setup2FAMutation.mutate()} disabled={setup2FAMutation.isPending}>
-                  <Shield className="h-4 w-4 mr-2" /> Configurar 2FA Agora
+                  <Shield className="h-4 w-4 mr-2" /> {t("Configurar 2FA Agora")}
                 </Button>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm font-medium">1. Digitalize com o Google/Microsoft Authenticator:</p>
+                  <p className="text-sm font-medium">{t("1. Digitalize com o Google/Microsoft Authenticator:")}</p>
                   <div className="flex justify-center">
                     <img src={qrData.qrCode} alt="QR Code 2FA" className="w-40 h-40 border rounded" />
                   </div>
-                  <p className="text-xs text-muted-foreground text-center break-all">Chave: {qrData.secret}</p>
+                  <p className="text-xs text-muted-foreground text-center break-all">{t("Chave:")} {qrData.secret}</p>
                   <p className="text-sm font-medium">{t("2. Introduza o código de 6 dígitos:")}</p>
                   <div className="flex gap-2">
                     <Input value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" className="font-mono text-lg tracking-widest" maxLength={6} />
                     <Button onClick={() => confirm2FAMutation.mutate({ code: totpCode })} disabled={totpCode.length !== 6 || confirm2FAMutation.isPending}>
-                      Confirmar
+                      {t("Confirmar")}
                     </Button>
                   </div>
                 </div>
@@ -457,7 +462,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground mb-2">{t("Não consegue aceder ao autenticador? Contacte")} <strong>apoioamb@startcampus.pt</strong></p>
                 <button type="button" className="text-sm text-red-500 hover:underline w-full text-center" onClick={() => { void logout().finally(() => { window.location.href = "/login"; }); }}>
-                  Terminar Sessão
+                  {t("Terminar Sessão")}
                 </button>
               </div>
             </CardContent>
@@ -468,11 +473,11 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
       {showFeedback && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFeedback(false)}>
           <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg mb-2">Deixar Feedback</h3>
+            <h3 className="font-semibold text-lg mb-2">{t("Deixar Feedback")}</h3>
             <p className="text-sm text-muted-foreground mb-4">{t("Partilhe sugestões de melhoria ou reporte problemas.")}</p>
-            <textarea className="w-full border rounded-md p-3 text-sm min-h-[100px] mb-3" placeholder="Descreva a sua sugestão ou problema..." value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
+            <textarea className="w-full border rounded-md p-3 text-sm min-h-[100px] mb-3" placeholder={t("Descreva a sua sugestão ou problema...")} value={feedbackText} onChange={e => setFeedbackText(e.target.value)} />
             <div className="mb-3">
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Anexar fotografias (opcional)</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">{t("Anexar fotografias (opcional)")}</label>
               <input type="file" accept="image/*" multiple className="text-xs" onChange={e => { if (e.target.files) setFeedbackPhotos(Array.from(e.target.files).slice(0, 5)); }} />
               {feedbackPhotos.length > 0 && (
                 <div className="flex gap-2 mt-2 flex-wrap">
@@ -487,7 +492,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
             </div>
             <div className="flex gap-2 justify-end">
               <button className="px-3 py-1.5 text-sm rounded border hover:bg-muted" onClick={() => setShowFeedback(false)}>{t("Cancelar")}</button>
-              <button className="px-3 py-1.5 text-sm rounded bg-primary text-[#0A3638] hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert("Obrigado pelo feedback!"); }).catch(() => alert("Erro ao enviar.")); } }}>Enviar</button>
+              <button className="px-3 py-1.5 text-sm rounded bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { if (feedbackText.trim()) { fetch("/api/trpc/feedback.create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ json: { content: feedbackText } }) }).then(() => { setShowFeedback(false); setFeedbackText(""); alert(t("Obrigado pelo feedback!")); }).catch(() => alert(t("Erro ao enviar."))); } }}>{t("Enviar")}</button>
             </div>
           </div>
         </div>
@@ -510,8 +515,8 @@ function NotificationBell() {
     review: ClipboardList, rejected: AlertTriangle, draft: FileText, access: KeyRound, users: UserCircle,
   };
   const typeColors: Record<string, string> = {
-    review: "text-[#0A3638]", rejected: "text-red-600", draft: "text-[#646461]",
-    access: "text-[#0A3638]", users: "text-primary",
+    review: "text-primary", rejected: "text-red-600", draft: "text-muted-foreground",
+    access: "text-primary", users: "text-primary",
   };
 
   return (

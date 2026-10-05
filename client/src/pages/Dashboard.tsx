@@ -468,12 +468,12 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="stand-command-shell space-y-6">
         <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>{isAllProjects && <Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleTransitionReport} disabled={isTransitionExporting}><ListChecks className="w-4 h-4 mr-1" /> {isTransitionExporting ? t("A exportar...") : t("Transição de Fases")}</Button>}</div> : undefined}>
           <p className="text-xs font-medium text-white/80">{t("Visão operacional, documental e de conformidade no mesmo contexto de projeto.")}</p>
         </StandPageHeader>
 
-        <section aria-label={t("Resumo executivo")} className="grid gap-3 md:grid-cols-3">
+        <section aria-label={t("Resumo executivo")} className="stand-command-grid grid gap-3 md:grid-cols-3">
           <StandMetricCard label={t("Âmbito ativo")} value={decisionSnapshot.scope} detail={isAllProjects ? t("Leitura consolidada para priorização transversal.") : t("Indicadores e ações filtrados pelo projeto selecionado.")} icon={FolderKanban} tone="brand" />
           <StandMetricCard label={t("Cumprimento registado")} value={decisionSnapshot.compliance === null ? "—" : `${decisionSnapshot.compliance}%`} detail={decisionSnapshot.waitingReview ? `${decisionSnapshot.waitingReview} ${t("fichas aguardam revisão")}` : t("Sem fichas pendentes de revisão.")} icon={TrendingUp} tone="success" />
           <StandMetricCard label={t("Atenção a prazos")} value={decisionSnapshot.overdue ? `${decisionSnapshot.overdue} ${t("em atraso")}` : t("Sem atrasos")} detail={decisionSnapshot.overdue ? t("Consulte os entregáveis críticos e atribua uma ação.") : t("Acompanhe os próximos reportings no calendário.")} icon={CalendarDays} tone={decisionSnapshot.overdue ? "danger" : "info"} onClick={() => setLocation("/calendario")} />
@@ -486,7 +486,7 @@ export default function Dashboard() {
               <div className="relative">
                 <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-start">
                   <div className="max-w-2xl">
-                    <div className="mb-4 flex items-center gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-[#0A3638]"><Building2 className="h-5 w-5" /></span><span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">NEST · SIN01</span></div>
+                    <div className="mb-4 flex items-center gap-2"><span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Building2 className="h-5 w-5" /></span><span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">NEST · SIN01</span></div>
                     <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("Centro de comando de exploração")}</h2>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-white/75">{t("Leitura única do cumprimento DCAPE, dos reportings críticos e da gestão de resíduos do edifício em operação.")}</p>
                   </div>
@@ -494,18 +494,18 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-white/65">{t("Catálogo DCAPE ativo")}</p></div>
-                  <div className="rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-white/65">{t("Medidas pós-exploração")}</p></div>
-                  <button onClick={() => setLocation("/calendario")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-primary" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString(language === "en" ? "en-GB" : "pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-white/65">{nextOperationReport?.name ? t(nextOperationReport.name) : t("Sem entrega agendada")}</p></button>
-                  <button onClick={() => setLocation("/mirr")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-white/65">{t("Registos ambientais no MIRR")}</p></button>
+                  <div className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Medidas de exploração")}</span><ClipboardCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.exploration}</p><p className="mt-1 text-xs text-white/65">{t("Catálogo DCAPE ativo")}</p></div>
+                  <div className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 backdrop-blur-sm"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Desativação")}</span><ShieldCheck className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{measuresQuery.isLoading ? "—" : operationCatalogue.decommissioning}</p><p className="mt-1 text-xs text-white/65">{t("Medidas pós-exploração")}</p></div>
+                  <button onClick={() => setLocation("/calendario")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Próximo reporting")}</span><CalendarDays className="h-4 w-4 text-primary" /></div><p className="mt-3 truncate text-xl font-semibold tracking-tight">{nextOperationReport ? new Date(Number(nextOperationReport.nextDate)).toLocaleDateString(language === "en" ? "en-GB" : "pt-PT", { day: "2-digit", month: "short" }) : "—"}</p><p className="mt-2 truncate text-xs text-white/65">{nextOperationReport?.name ? t(nextOperationReport.name) : t("Sem entrega agendada")}</p></button>
+                  <button onClick={() => setLocation("/mirr")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">e-GARs {new Date().getFullYear()}</span><Recycle className="h-4 w-4 text-primary" /></div><p className="mt-3 text-4xl font-semibold tracking-tight">{wasteQuery.data?.length || 0}</p><p className="mt-1 text-xs text-white/65">{t("Registos ambientais no MIRR")}</p></button>
                 </div>
                 <div className="mt-5 border-t border-white/12 pt-5">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t("Desempenho do edifício")}</p><p className="mt-1 text-xs text-white/65">{t("Fonte: leituras operacionais e parâmetros de cálculo aprovados.")}</p></div>{nestOperationSnapshot.isDemo && <Badge className="border border-yellow-200/30 bg-yellow-300/15 text-yellow-100">{t("Dados demonstrativos")}</Badge>}</div>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <button type="button" onClick={() => setLocation("/operacao")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">PUE</span><Gauge className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.pue?.value ?? null)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.pue ? `${t("Última leitura válida")} · ${t(nestOperationSnapshot.pue.unit || "rácio")}` : t("Registe leituras na Operação")}</p></button>
-                    <button type="button" onClick={() => setLocation("/operacao")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">WUE</span><Droplets className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.wue?.value ?? null)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.wue ? `${nestOperationSnapshot.wue.unit || "L/kWh TI"} · ${t("última leitura válida")}` : t("Registe água e energia TI")}</p></button>
-                    <button type="button" onClick={() => setLocation("/operacao")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">CUE</span><Waves className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.cue === null ? null : Number(nestOperationSnapshot.cue), 3)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.cue === null ? t("Defina fator de carbono em Operação") : "kg CO₂e/kWh TI"}</p></button>
-                    <button type="button" onClick={() => setLocation("/operacao")} className="rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Cobertura de dados")}</span><Database className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.coverage === null ? null : Number(nestOperationSnapshot.coverage), 0)}{nestOperationSnapshot.coverage === null ? "" : "%"}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.coverage === null ? t("Sem período com leituras válidas") : t("Qualidade do período selecionado")}</p></button>
+                    <button type="button" onClick={() => setLocation("/operacao")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">PUE</span><Gauge className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.pue?.value ?? null)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.pue ? `${t("Última leitura válida")} · ${t(nestOperationSnapshot.pue.unit || "rácio")}` : t("Registe leituras na Operação")}</p></button>
+                    <button type="button" onClick={() => setLocation("/operacao")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">WUE</span><Droplets className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.wue?.value ?? null)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.wue ? `${nestOperationSnapshot.wue.unit || "L/kWh TI"} · ${t("última leitura válida")}` : t("Registe água e energia TI")}</p></button>
+                    <button type="button" onClick={() => setLocation("/operacao")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">CUE</span><Waves className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.cue === null ? null : Number(nestOperationSnapshot.cue), 3)}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.cue === null ? t("Defina fator de carbono em Operação") : "kg CO₂e/kWh TI"}</p></button>
+                    <button type="button" onClick={() => setLocation("/operacao")} className="ops-control-card rounded-2xl border border-white/12 bg-card/7 p-4 text-left backdrop-blur-sm transition hover:bg-card/14"><div className="flex items-start justify-between"><span className="text-xs font-medium text-white/75">{t("Cobertura de dados")}</span><Database className="h-4 w-4 text-primary" /></div><p className="mt-3 text-3xl font-semibold tracking-tight">{formatOperationNumber(nestOperationSnapshot.coverage === null ? null : Number(nestOperationSnapshot.coverage), 0)}{nestOperationSnapshot.coverage === null ? "" : "%"}</p><p className="mt-1 text-xs text-white/65">{nestOperationSnapshot.coverage === null ? t("Sem período com leituras válidas") : t("Qualidade do período selecionado")}</p></button>
                   </div>
                 </div>
               </div>
@@ -515,13 +515,13 @@ export default function Dashboard() {
               <Card className="xl:col-span-8 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary dark:text-primary">{t("Agenda de controlo")}</p><CardTitle className="mt-1 text-lg">{t("Próximos Reportings")}</CardTitle></div><button onClick={() => setLocation("/calendario")} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline dark:text-primary">{t("Gerir prazos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-3">
                 {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents || calEvents.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Sem eventos de reporting configurados.")}</p>; const upcoming = calEvents.filter((e: any) => e.status === "pending").sort((a: any, b: any) => Number(a.nextDate) - Number(b.nextDate)).slice(0, 5); return <div className="space-y-1.5">{upcoming.map((evt: any) => { const date = new Date(Number(evt.nextDate)); const isOverdue = date < new Date(); return <div key={evt.id} className={`group flex items-center justify-between gap-4 rounded-xl border p-3 transition ${isOverdue ? "border-rose-200 bg-rose-50/70 dark:border-rose-950 dark:bg-rose-950/25" : "border-transparent hover:border-primary hover:bg-primary/50 dark:hover:border-primary dark:hover:bg-primary/20"}`}><div className="min-w-0"><p className="truncate text-sm font-semibold">{t(evt.name)}</p><p className="mt-0.5 truncate text-xs text-muted-foreground">{evt.ownerName || t("Sem responsável")}</p></div><div className="shrink-0 text-right"><p className={`text-sm font-semibold ${isOverdue ? "text-rose-700 dark:text-rose-300" : "text-foreground"}`}>{date.toLocaleDateString(language === "en" ? "en-GB" : "pt-PT")}</p>{isOverdue && <Badge variant="destructive" className="mt-1 text-[10px]">{t("Em atraso")}</Badge>}</div></div>; })}</div>; })()}
               </CardContent></Card>
-              <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#0A3638] dark:text-primary">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
+              <Card className="xl:col-span-4 overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25 pb-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t("Governação")}</p><CardTitle className="mt-1 text-lg">{t("Responsáveis pelo Reporting")}</CardTitle></CardHeader><CardContent className="p-3">
                 {(() => { const calEvents = calendarEventsQuery.data; if (!calEvents) return null; const owners = calEvents.filter((e: any) => e.ownerName).reduce((acc: Record<string, string[]>, e: any) => { if (!acc[e.ownerName]) acc[e.ownerName] = []; acc[e.ownerName].push(e.name); return acc; }, {}); if (Object.keys(owners).length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">{t("Atribua responsáveis no Calendário → Gerir.")}</p>; return <div className="space-y-2">{Object.entries(owners).map(([name, events]) => <div key={name} className="rounded-xl border border-border/70 bg-muted/20 p-3"><p className="truncate text-sm font-semibold">{name}</p><p className="mt-1 text-xs text-muted-foreground">{(events as string[]).length} {t("reportings atribuídos")}</p></div>)}</div>; })()}
               </CardContent></Card>
             </div>
 
-            <Card className="overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#646461] dark:text-muted-foreground">MIRR</p><CardTitle className="mt-1 text-lg">{t("Desempenho de resíduos")}</CardTitle></div><button onClick={() => setLocation("/mirr")} className="inline-flex items-center gap-1 text-xs font-semibold text-[#646461] hover:underline dark:text-muted-foreground">{t("Abrir resíduos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-5">
-              {(() => { const waste = wasteQuery.data; if (!waste || waste.length === 0) return <p className="py-5 text-center text-sm text-muted-foreground">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>; const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const landfill = Math.max(0, total - recycled - incinerated); return <div className="grid items-center gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p className="text-3xl font-semibold tracking-tight">{total.toFixed(3)} <span className="text-base font-medium text-muted-foreground">t</span></p><p className="mt-1 text-sm text-muted-foreground">{t("Total registado no período atual")}</p></div><div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{recycled > 0 && <div className="bg-primary" style={{ width: `${(recycled / total) * 100}%` }} />}{incinerated > 0 && <div className="bg-[#EDEBEB]" style={{ width: `${(incinerated / total) * 100}%` }} />}{landfill > 0 && <div className="bg-rose-500" style={{ width: `${(landfill / total) * 100}%` }} />}</div><div className="mt-3 grid grid-cols-3 gap-3 text-xs"><span className="rounded-lg bg-primary p-2 text-[#0A3638] dark:bg-primary/30 dark:text-primary"><b>{recycled.toFixed(2)} t</b><br />{t("Reciclado")}</span><span className="rounded-lg bg-[#EDEBEB] p-2 text-[#646461] dark:bg-muted/50 dark:text-muted-foreground"><b>{incinerated.toFixed(2)} t</b><br />{t("Incinerado")}</span><span className="rounded-lg bg-rose-50 p-2 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200"><b>{landfill.toFixed(2)} t</b><br />{t("Aterro")}</span></div></div></div>; })()}
+            <Card className="overflow-hidden border-border/80 shadow-sm"><CardHeader className="border-b bg-muted/25"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">MIRR</p><CardTitle className="mt-1 text-lg">{t("Desempenho de resíduos")}</CardTitle></div><button onClick={() => setLocation("/mirr")} className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline">{t("Abrir resíduos")}<ArrowUpRight className="h-3.5 w-3.5" /></button></div></CardHeader><CardContent className="p-5">
+              {(() => { const waste = wasteQuery.data; if (!waste || waste.length === 0) return <p className="py-5 text-center text-sm text-muted-foreground">{t("Sem e-GARs registadas. Vá ao MIRR para registar.")}</p>; const total = waste.reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const recycled = waste.filter((e: any) => e.destination === "recycled").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const incinerated = waste.filter((e: any) => e.destination === "incinerated").reduce((s: number, e: any) => s + (parseFloat(e.correctedQuantity || e.quantity) || 0), 0); const landfill = Math.max(0, total - recycled - incinerated); return <div className="grid items-center gap-5 lg:grid-cols-[1fr_1.4fr]"><div><p className="text-3xl font-semibold tracking-tight">{total.toFixed(3)} <span className="text-base font-medium text-muted-foreground">t</span></p><p className="mt-1 text-sm text-muted-foreground">{t("Total registado no período atual")}</p></div><div><div className="flex h-3 overflow-hidden rounded-full bg-muted">{recycled > 0 && <div className="bg-primary" style={{ width: `${(recycled / total) * 100}%` }} />}{incinerated > 0 && <div className="bg-chart-3/35" style={{ width: `${(incinerated / total) * 100}%` }} />}{landfill > 0 && <div className="bg-rose-500" style={{ width: `${(landfill / total) * 100}%` }} />}</div><div className="mt-3 grid grid-cols-3 gap-3 text-xs"><span className="rounded-lg bg-primary p-2 text-primary-foreground"><b>{recycled.toFixed(2)} t</b><br />{t("Reciclado")}</span><span className="rounded-lg bg-chart-3/35 p-2 text-muted-foreground dark:bg-muted/50 dark:text-muted-foreground"><b>{incinerated.toFixed(2)} t</b><br />{t("Incinerado")}</span><span className="rounded-lg bg-rose-50 p-2 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200"><b>{landfill.toFixed(2)} t</b><br />{t("Aterro")}</span></div></div></div>; })()}
             </CardContent></Card>
           </section>
         )}
@@ -536,7 +536,7 @@ export default function Dashboard() {
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-semibold">{t("Cumprimento por Projeto")}</p>
-                  <Badge variant="outline" className="text-[10px]">{projects.length} projetos</Badge>
+                  <Badge variant="outline" className="text-[10px]">{projects.length} {t("projetos")}</Badge>
                 </div>
                 <div className="space-y-2">
                   {allProjectsProgressQuery.data ? allProjectsProgressQuery.data.map((proj: any) => {
@@ -555,7 +555,7 @@ export default function Dashboard() {
                         colorClass = "bg-red-500"; // overdue
                         statusText = t("Em atraso");
                       } else if (diffDays < 30 && currentPhase.progress < 100) {
-                        colorClass = "bg-[#EDEBEB]"; // less than 1 month
+                        colorClass = "bg-chart-3/35"; // less than 1 month
                         statusText = "< 1 mês";
                       }
                     } else if (overallProgress === 0) {
@@ -572,7 +572,7 @@ export default function Dashboard() {
                           <p className="text-[10px] text-muted-foreground">{t(currentPhase?.key || "Pré-Licenciamento")}</p>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colorClass === "bg-[#EDEBEB]" ? "bg-[#EDEBEB] dark:bg-muted/45 text-[#646461]" : colorClass === "bg-primary" ? "bg-primary dark:bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
+                          <p className={`text-[11px] font-medium px-2 py-0.5 rounded ${colorClass === "bg-red-500" ? "bg-red-50 dark:bg-red-900/20 text-red-600" : colorClass === "bg-chart-3/35" ? "bg-chart-3/35 dark:bg-muted/45 text-muted-foreground" : colorClass === "bg-primary" ? "bg-primary dark:bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>{statusText}</p>
                         </div>
                       </div>
                     );
@@ -595,7 +595,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       {overdue.length > 0 && (
                         <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200">
-                          <p className="text-[11px] font-semibold text-red-700 mb-1.5">Em Incumprimento ({overdue.length})</p>
+                          <p className="text-[11px] font-semibold text-red-700 mb-1.5">{t("Em Incumprimento")} ({overdue.length})</p>
                           {overdue.slice(0, 4).map((e: any) => (
                             <div key={e.id} className="flex justify-between text-[10px] text-red-600 py-0.5">
                               <span className="truncate flex-1">{e.name}</span>
@@ -605,10 +605,10 @@ export default function Dashboard() {
                         </div>
                       )}
                       {upcoming.length > 0 && (
-                        <div className="p-2.5 rounded-lg bg-[#EDEBEB] dark:bg-muted/45 border border-[#6D7A70]">
-                          <p className="text-[11px] font-semibold text-[#646461] mb-1.5">Próximos 60 dias ({upcoming.length})</p>
+                        <div className="p-2.5 rounded-lg bg-chart-3/35 dark:bg-muted/45 border border-chart-3/45">
+                          <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">{t("Próximos 60 dias")} ({upcoming.length})</p>
                           {upcoming.slice(0, 4).map((e: any) => (
-                            <div key={e.id} className="flex justify-between text-[10px] text-[#646461] py-0.5">
+                            <div key={e.id} className="flex justify-between text-[10px] text-muted-foreground py-0.5">
                               <span className="truncate flex-1">{e.name}</span>
                               <span className="ml-2 shrink-0">{new Date(Number(e.nextDate)).toLocaleDateString("pt-PT", { day: "2-digit", month: "short" })}</span>
                             </div>
@@ -616,13 +616,13 @@ export default function Dashboard() {
                         </div>
                       )}
                       <div className="flex gap-3 text-center pt-1">
-                        <div className="flex-1 p-2 rounded bg-primary dark:bg-primary/20 border border-primary">
-                          <p className="text-lg font-bold text-primary">{validated.length}</p>
-                          <p className="text-[9px] text-primary">{t("Validados")}</p>
+                        <div className="flex-1 rounded border border-primary bg-primary p-2 text-primary-foreground">
+                          <p className="text-lg font-bold">{validated.length}</p>
+                          <p className="text-[9px]">{t("Validados")}</p>
                         </div>
-                        <div className="flex-1 p-2 rounded bg-[#0A3638] dark:bg-primary/15 border border-[#0A3638]">
-                          <p className="text-lg font-bold text-[#0A3638]">{events.length}</p>
-                          <p className="text-[9px] text-[#0A3638]">{t("Total Eventos")}</p>
+                        <div className="flex-1 rounded border border-chart-2 bg-chart-2 p-2 text-white">
+                          <p className="text-lg font-bold">{events.length}</p>
+                          <p className="text-[9px]">{t("Total Eventos")}</p>
                         </div>
                         <div className="flex-1 p-2 rounded bg-red-50 dark:bg-red-900/20 border border-red-100">
                           <p className="text-lg font-bold text-red-700">{overdue.length}</p>
@@ -689,7 +689,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between items-center p-2 bg-muted/30 rounded">
                     <span className="text-xs">{t("Próximo RDCD")}</span>
-                    <span className="text-sm font-bold text-[#0A3638]">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString(dateLocale, { day: "2-digit", month: "short" }) : "—"; })()}</span>
+                    <span className="text-sm font-bold text-primary">{(() => { const calEvents = calendarEventsQuery?.data; if (!calEvents) return "—"; const rdcd = (calEvents as any[]).find((e: any) => e.name?.includes("RDCD") && e.status === "pending"); return rdcd ? new Date(Number(rdcd.nextDate)).toLocaleDateString(dateLocale, { day: "2-digit", month: "short" }) : "—"; })()}</span>
                   </div>
                 </div>
               </CardContent>
@@ -789,15 +789,15 @@ export default function Dashboard() {
           const nextRDCDWeek = currentWeek + weeksUntilNextRDCD;
           
           return (
-            <Card className="border-[#0A3638] bg-gradient-to-r from-blue-50 to-indigo-50">
+            <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#0A3638] shrink-0">
-                    <FileBarChart className="w-5 h-5 text-[#0A3638]" />
+                  <div className="shrink-0 rounded-lg bg-primary p-2">
+                    <FileBarChart className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-sm text-[#0A3638]">{t("Próximo RDCD")}</p>
-                    <p className="text-xs text-[#0A3638]">
+                    <p className="text-sm font-semibold text-foreground">{t("Próximo RDCD")}</p>
+                    <p className="text-xs text-muted-foreground">
                       {language === "en"
                         ? weeksUntilNextRDCD <= 4
                           ? `${weeksUntilNextRDCD} weeks until the next half-year report`
@@ -808,7 +808,7 @@ export default function Dashboard() {
                       }
                     </p>
                   </div>
-                  <a href="/rdcd" className="text-xs text-[#0A3638] font-medium hover:underline shrink-0">{t("Gerar RDCD")} →</a>
+                  <a href="/rdcd" className="shrink-0 text-xs font-medium text-primary hover:underline">{t("Gerar RDCD")} →</a>
                 </div>
               </CardContent>
             </Card>
@@ -881,13 +881,13 @@ export default function Dashboard() {
                       const daysUntil = Math.ceil((Number(e.nextDate) - now) / 86400000);
                       const isUrgent = daysUntil <= 14;
                       return (
-                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-[#EDEBEB] dark:bg-muted/45 border border-[#6D7A70]" : "bg-muted/30"}`}>
-                          <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-[#EDEBEB]" : "bg-primary"}`} />
+                        <div key={e.id} className={`flex items-center gap-2 p-2 rounded-lg ${isUrgent ? "bg-chart-3/35 dark:bg-muted/45 border border-chart-3/45" : "bg-muted/30"}`}>
+                          <div className={`w-1.5 h-8 rounded-full ${isUrgent ? "bg-chart-3/35" : "bg-primary"}`} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium truncate">{e.name}</p>
                             <p className="text-[9px] text-muted-foreground">{new Date(Number(e.nextDate)).toLocaleDateString(dateLocale, { day: "2-digit", month: "long", year: "numeric" })}</p>
                           </div>
-                          <span className={`text-[9px] font-medium ${isUrgent ? "text-[#646461]" : "text-muted-foreground"}`}>{daysUntil}d</span>
+                          <span className={`text-[9px] font-medium ${isUrgent ? "text-muted-foreground" : "text-muted-foreground"}`}>{daysUntil}d</span>
                         </div>
                       );
                     })}
@@ -1014,7 +1014,7 @@ export default function Dashboard() {
           </Card>
           <Card className={`cursor-pointer transition-all ${selectedStatus === "C" ? "ring-2 ring-blue-500" : "hover:shadow-md"}`} onClick={() => setSelectedStatus(selectedStatus === "C" ? "all" : "C")}>
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-[#0A3638]"><CheckCircle className="w-5 h-5 text-[#0A3638]" /></div>
+              <div className="rounded-lg bg-primary p-2"><CheckCircle className="w-5 h-5 text-primary-foreground" /></div>
               <div>
                 <p className="text-2xl font-bold text-foreground">{(analytics?.byStatus as any)?.C ?? 0}</p>
                 <p className="text-xs text-muted-foreground">{t("Conforme")}</p>

@@ -128,13 +128,13 @@ export default function Welcome() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 pb-8">
-        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName} image={welcomeHeaderImage.url} imagePosition={welcomeHeaderImage.position} imageMode={welcomeHeaderImage.mode}>
+      <div className="stand-command-shell space-y-6 pb-8">
+        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName} image={welcomeHeaderImage.url} imagePosition={welcomeHeaderImage.position} imageMode={welcomeHeaderImage.mode} actions={<button type="button" onClick={() => setLocation("/dashboard")} className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-card/10 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-card/20"><span className="status-dot success" aria-hidden="true" />{t("Abrir centro de controlo")}<ArrowRight className="size-4" /></button>}>
           <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={t(isNest ? "NEST · Operação" : "Conformidade ambiental")} tone="success" /></div>
         </StandPageHeader>
 
         {/* Inspirational quote */}
-        <div className="flex items-start gap-4 rounded-2xl border border-primary/15 bg-primary/[0.035] p-5 dark:bg-primary/10">
+        <div className="stand-welcome-quote flex items-start gap-4 rounded-2xl p-5">
           <Leaf className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-base italic text-foreground leading-relaxed">
@@ -147,7 +147,7 @@ export default function Welcome() {
         {/* Video + Features side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Vídeo institucional — preservado com poster fotográfico quando o fornecedor externo não responde. */}
-          <Card className="stand-surface lg:col-span-2 overflow-hidden">
+          <Card className="stand-surface stand-welcome-video lg:col-span-2 overflow-hidden">
             <CardContent className="p-0">
               {videoPlaying ? (
                 <div className="photo-grade-frame relative aspect-video w-full bg-surface-contrast">
@@ -199,7 +199,7 @@ export default function Welcome() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="stand-feature-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {features.map((feature, i) => (
                   <button type="button" key={i} onClick={() => setLocation(feature.path)} className="stand-interactive flex gap-3 rounded-xl border bg-card p-3 text-left transition-colors group">
                     <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">

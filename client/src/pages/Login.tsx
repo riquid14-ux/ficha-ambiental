@@ -116,10 +116,10 @@ export default function Login() {
 
   if (loading || autoLoginLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+      <div className="stand-login min-h-screen flex flex-col items-center justify-center gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">
-          {autoLoginLoading ? "A autenticar via Autodesk..." : "A carregar..."}
+          {autoLoginLoading ? t("A autenticar via Autodesk...") : t("A carregar...")}
         </p>
       </div>
     );
@@ -156,8 +156,8 @@ export default function Login() {
   const isInIframe = window.self !== window.top;
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_8%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_29%),radial-gradient(circle_at_4%_96%,color-mix(in_oklch,var(--chart-2)_9%,transparent),transparent_34%)]" />
+    <div className="stand-login min-h-screen flex relative overflow-hidden bg-background">
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_78%_8%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent_29%),radial-gradient(circle_at_4%_96%,color-mix(in_oklch,var(--chart-2)_9%,transparent),transparent_34%)]" />
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         <Button variant="outline" size="sm" className="bg-background/80 backdrop-blur" onClick={() => toggleTheme?.()}>
           {theme === "dark" ? <Sun className="mr-1.5 h-3.5 w-3.5" /> : <Moon className="mr-1.5 h-3.5 w-3.5" />}
@@ -168,32 +168,37 @@ export default function Login() {
         </Button>
       </div>
       {/* Left panel - brand image (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 relative border-r border-border/50">
+      <div className="stand-login-visual hidden lg:flex lg:w-1/2 relative border-r border-white/10">
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A3638]/90 via-slate-950/25 to-transparent flex flex-col justify-end p-10">
+        <div className="absolute inset-0 flex flex-col justify-end p-10 text-white">
           <p className="stand-kicker text-primary">Start Campus · Sines</p>
-          <h2 className="mt-3 text-white text-4xl font-semibold tracking-[-0.05em]">STAND</h2>
+          <h2 className="mt-3 text-5xl font-semibold tracking-[-0.06em]">STAND</h2>
           <p className="mt-3 max-w-md text-white/85 text-lg leading-7">{t("Onde a sustentabilidade ganha posição")}</p>
           <p className="text-white/60 text-sm mt-3">{t("Infraestruturas digitais sustentáveis, com governação ambiental.")}</p>
+          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 stand-login-meta text-white/58">
+            <span><span className="mr-2 inline-block size-1.5 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" />{t("Acesso auditado")}</span>
+            <span>{t("MFA obrigatório")}</span>
+            <span>{t("Governação ambiental")}</span>
+          </div>
         </div>
       </div>
       {/* Right panel - login form */}
       <div className="relative flex-1 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="rounded-[1.35rem] bg-card/95 shadow-[0_24px_60px_hsl(var(--shadow-color)/0.13)] border border-border/75 p-7 sm:p-8 backdrop-blur">
+        <div className="stand-login-card bg-card/95 p-7 sm:p-8 backdrop-blur">
         <div className="flex flex-col items-center gap-5 mb-8">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
             <img src={LOGO_URL} alt="Start Campus" className="h-9 object-contain brightness-0 invert" />
           </div>
           <div className="text-center">
-            <p className="stand-kicker text-primary">Environmental governance</p>
+            <p className="stand-kicker text-primary">{t("Governação ambiental")}</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">STAND</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              {viewMode === "login" && "Introduza as suas credenciais para aceder"}
-              {viewMode === "register" && "Crie uma conta para solicitar acesso"}
-              {viewMode === "2fa" && "Introduza o código do Authenticator"}
-              {viewMode === "changePassword" && "Introduza a sua palavra-passe para continuar"}
-              {viewMode === "forgotPassword" && "Recuperação de palavra-passe"}
+              {viewMode === "login" && t("Introduza as suas credenciais para aceder")}
+              {viewMode === "register" && t("Crie uma conta para solicitar acesso")}
+              {viewMode === "2fa" && t("Introduza o código do Authenticator")}
+              {viewMode === "changePassword" && t("Introduza a sua palavra-passe para continuar")}
+              {viewMode === "forgotPassword" && t("Recuperação de palavra-passe")}
             </p>
           </div>
         </div>
@@ -218,43 +223,43 @@ export default function Login() {
             {isInIframe && (
               <div className="mb-6">
                 <Button type="button" size="lg" variant="outline" className="w-full h-12 border-2" onClick={handleAutodeskLogin}>
-                  <Shield className="w-5 h-5 mr-2" /> Entrar com Autodesk
+                  <Shield className="w-5 h-5 mr-2" /> {t("Entrar com Autodesk")}
                 </Button>
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">ou</span></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">{t("ou")}</span></div>
                 </div>
               </div>
             )}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
-                <label htmlFor="login-email" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Email profissional</label>
+                <label htmlFor="login-email" className="mb-1.5 block text-xs font-semibold text-muted-foreground">{t("Email profissional")}</label>
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input id="login-email" type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus={!isInIframe} disabled={loginMutation.isPending} />
               </div>
               <div className="relative">
-                <label htmlFor="login-password" className="mb-1.5 block text-xs font-semibold text-muted-foreground">Palavra-passe</label>
+                <label htmlFor="login-password" className="mb-1.5 block text-xs font-semibold text-muted-foreground">{t("Palavra-passe")}</label>
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input id="login-password" type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" disabled={loginMutation.isPending} />
+                <Input id="login-password" type="password" placeholder={t("Palavra-passe")} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" disabled={loginMutation.isPending} />
               </div>
               <Button type="submit" size="lg" className="w-full h-12 shadow-lg" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : t("Entrar")}
+                {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A verificar...")}</>) : t("Entrar")}
               </Button>
             </form>
             {!isInIframe && (
               <div className="mt-4">
                 <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">ou</span></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">{t("ou")}</span></div>
                 </div>
                 <Button type="button" size="lg" variant="outline" className="w-full h-12" onClick={handleAutodeskLogin}>
-                  <Shield className="w-5 h-5 mr-2" /> Entrar com Autodesk
+                  <Shield className="w-5 h-5 mr-2" /> {t("Entrar com Autodesk")}
                 </Button>
               </div>
             )}
             <div className="flex justify-between mt-4">
               <button type="button" className="text-sm text-primary hover:underline" onClick={() => { setViewMode("register"); setError(""); setSuccess(""); }}>
-                <UserPlus className="w-3 h-3 inline mr-1" /> Criar conta
+                <UserPlus className="w-3 h-3 inline mr-1" /> {t("Criar conta")}
               </button>
               <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => { setViewMode("forgotPassword"); setError(""); setSuccess(""); }}>
                 {t("Esqueceu a palavra-passe?")}
@@ -272,11 +277,11 @@ export default function Login() {
             </div>
             <Input type="text" placeholder="000000" value={totpCode} onChange={(e) => { setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} className="h-14 text-center text-2xl tracking-widest font-mono" maxLength={6} autoFocus />
             <Button type="submit" size="lg" className="w-full h-12" disabled={verify2FAMutation.isPending}>
-              {verify2FAMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Verificar"}
+              {verify2FAMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A verificar...")}</>) : t("Verificar")}
             </Button>
             {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setTotpCode(""); setError(""); setUserId(null); }}>
-              ← Voltar ao login
+              ← {t("Voltar ao login")}
             </button>
             <p className="text-xs text-muted-foreground text-center">{t("Não tem acesso ao autenticador? Contacte")}<strong>apoioamb@startcampus.pt</strong></p>
           </form>
@@ -300,7 +305,7 @@ export default function Login() {
               <Input type="password" placeholder={t("Confirmar palavra-passe")} value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
             </div>
             <Button type="submit" size="lg" className="w-full h-12" disabled={registerMutation.isPending}>
-              {registerMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A criar...</>) : "Solicitar Acesso"}
+              {registerMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A criar...")}</>) : t("Solicitar Acesso")}
             </Button>
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>{t("Já tenho conta — Entrar")}</button>
             <p className="text-xs text-muted-foreground text-center mt-2">{t("Após criar conta, o administrador irá aprovar o seu acesso.")}</p>
@@ -312,7 +317,7 @@ export default function Login() {
           <form onSubmit={(e) => {
             e.preventDefault();
             setError("");
-            if (!password.trim()) { setError("Introduza a palavra-passe"); return; }
+            if (!password.trim()) { setError(t("Introduza a palavra-passe")); return; }
             loginMutation.mutate({ email: user?.email || "", password });
           }} className="space-y-4">
             <div className="text-center mb-4">
@@ -327,14 +332,14 @@ export default function Login() {
             )}
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder="Palavra-passe" value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
+              <Input type="password" placeholder={t("Palavra-passe")} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
             </div>
             <Button type="submit" size="lg" className="w-full h-12 shadow-lg shadow-primary/15" disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A verificar...</>) : "Confirmar"}
+              {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A verificar...")}</>) : t("Confirmar")}
             </Button>
             <div className="flex justify-between text-sm">
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => setViewMode("forgotPassword")}>
-                Esqueceu a palavra-passe?
+                {t("Esqueceu a palavra-passe?")}
               </button>
               <button type="button" className="text-red-500 hover:underline" onClick={() => { void logout().finally(() => { window.location.href = "/login"; }); }}>{t("Terminar Sessão")}</button>
             </div>
@@ -344,7 +349,7 @@ export default function Login() {
           <form onSubmit={(e) => {
             e.preventDefault();
             setError(""); setSuccess("");
-            if (!email.trim()) { setError("Introduza o seu email"); return; }
+            if (!email.trim()) { setError(t("Introduza o seu email")); return; }
             forgotMutation.mutate({ email: email.trim() });
           }} className="space-y-4">
             <div className="text-center mb-4">
@@ -356,10 +361,10 @@ export default function Login() {
               <Input type="email" placeholder="nome@empresa.pt" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
             </div>
             <Button type="submit" size="lg" className="w-full h-12" disabled={forgotMutation.isPending}>
-              {forgotMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A enviar...</>) : "Solicitar Recuperação"}
+              {forgotMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A enviar...")}</>) : t("Solicitar Recuperação")}
             </Button>
             <button type="button" className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setViewMode("login"); setError(""); setSuccess(""); }}>
-              ← Voltar ao login
+              ← {t("Voltar ao login")}
             </button>
             <p className="text-xs text-muted-foreground text-center">
               Contacte <strong>apoioamb@startcampus.pt</strong>{t("para assistência imediata.")}</p>

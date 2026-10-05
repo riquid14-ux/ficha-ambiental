@@ -6,8 +6,8 @@ export type StandMetricTone = "brand" | "success" | "info" | "warning" | "danger
 const toneClass: Record<StandMetricTone, string> = {
   brand: "border-primary/16 bg-card",
   success: "border-primary/26 bg-card",
-  info: "border-[#0A3638]/18 bg-card",
-  warning: "border-[#6D7A70]/28 bg-card",
+  info: "border-chart-2/18 bg-card",
+  warning: "border-chart-3/28 bg-card",
   danger: "border-destructive/24 bg-card",
   neutral: "border-border bg-card",
 };
@@ -15,8 +15,8 @@ const toneClass: Record<StandMetricTone, string> = {
 const iconTone: Record<StandMetricTone, string> = {
   brand: "bg-primary text-primary-foreground",
   success: "bg-primary text-primary-foreground",
-  info: "bg-[#0A3638] text-white",
-  warning: "bg-[#6D7A70] text-white",
+  info: "bg-chart-2 text-white dark:text-surface-contrast",
+  warning: "bg-chart-3 text-white",
   danger: "bg-destructive text-white",
   neutral: "bg-muted text-muted-foreground",
 };

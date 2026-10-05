@@ -414,7 +414,7 @@ function AppLayoutContent({ children, setSidebarWidth }: { children: React.React
         />
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="stand-workspace">
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">

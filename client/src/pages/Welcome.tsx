@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
-  Quote, Leaf, ArrowRight, FileText, Send, Eye, XCircle, RotateCcw, ArrowDown
+  Quote, Leaf, ArrowRight, FileText, Send, Eye, XCircle, RotateCcw, ArrowDown,
+  Activity, Building2, Database, Gauge, LockKeyhole, RadioTower, Server, Workflow
 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -111,6 +112,9 @@ export default function Welcome() {
   const roleLabel = t(ROLE_LABELS[userRole] || userRole);
   const projectName = isAllProjects ? t("Todos os Projetos") : (activeProject?.name || projectCode);
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
+  const primaryPath = isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard";
+  const primaryLabel = isNest ? t("Abrir operação NEST") : t("Abrir centro de controlo");
+  const quickCommands = features.slice(0, 6);
 
   useEffect(() => {
     if (!videoPlaying) return;
@@ -131,36 +135,56 @@ export default function Welcome() {
   return (
     <AppLayout>
       <div className="stand-command-shell space-y-6 pb-8">
-        <StandPageHeader tone="operations" eyebrow="STAND · START CAMPUS" title={`${t("Obrigado por te juntares")}, ${userName}!`} description={t("Onde a sustentabilidade ganha posição")} context={projectName} image={welcomeHeaderImage.url} imagePosition={welcomeHeaderImage.position} imageMode={welcomeHeaderImage.mode} actions={<button type="button" onClick={() => setLocation("/dashboard")} className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-card/10 px-3.5 py-2 text-sm font-semibold text-white backdrop-blur transition hover:bg-card/20"><span className="status-dot success" aria-hidden="true" />{t("Abrir centro de controlo")}<ArrowRight className="size-4" /></button>}>
-          <div className="flex flex-wrap gap-2"><StandStatusBadge label={roleLabel} tone="info" /><StandStatusBadge label={t(isNest ? "NEST · Operação" : "Conformidade ambiental")} tone="success" /></div>
-        </StandPageHeader>
-
-        <section className="stand-welcome-photo-rail" aria-label={t("Portefólio visual Start Campus")}>
-          <button type="button" className="stand-welcome-photo-card is-primary" onClick={() => setLocation(isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard")}>
-            <img src={operationsImage.url} alt="" style={{ objectPosition: operationsImage.position }} />
-            <span className="stand-welcome-photo-overlay" />
-            <span className="relative z-10 block"><span className="stand-kicker text-primary">{t("NEST · SIN01")}</span><strong>{t("Edifício, sistemas e eficiência")}</strong><small>{t("Explore a visão operacional")}</small></span>
-            <span className="relative z-10 grid size-9 place-items-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur"><ArrowRight className="size-4" /></span>
-          </button>
-          <button type="button" className="stand-welcome-photo-card" onClick={() => setLocation(visiblePaths.includes("/timeline") ? "/timeline" : "/dashboard")}>
-            <img src={timelineImage.url} alt="" style={{ objectPosition: timelineImage.position }} />
-            <span className="stand-welcome-photo-overlay" />
-            <span className="relative z-10 block"><span className="stand-kicker text-primary">{t("PROJECT DELIVERY")}</span><strong>{t("Fases, equipas e evidências")}</strong><small>{t("Acompanhe o cumprimento por projeto")}</small></span>
-            <span className="relative z-10 grid size-9 place-items-center rounded-full border border-white/25 bg-white/10 text-white backdrop-blur"><ArrowRight className="size-4" /></span>
-          </button>
-          <div className="stand-welcome-photo-note"><span className="status-dot success" /><div><p>{t("Fotografia institucional, dados com origem")}</p><small>{t("As imagens pertencem à identidade Start Campus; indicadores e estados mantêm a sua fonte auditável.")}</small></div></div>
+        <section className="stand-os-hero" aria-label={t("Centro de comando STAND")}>
+          <img className="stand-os-hero-image" src={welcomeHeaderImage.url} alt="" style={{ objectPosition: welcomeHeaderImage.position }} />
+          <div className="stand-os-hero-wash" />
+          <div className="stand-os-scanline" aria-hidden="true" />
+          <div className="stand-os-hero-top">
+            <div className="stand-os-brandline"><span className="status-dot success ops-glow-dot" /><span>STAND_OS</span><span className="opacity-45">/</span><span>{t("Centro de comando ambiental")}</span></div>
+            <div className="stand-os-topmeta"><span>{projectName}</span><span className="stand-os-live"><span className="status-dot success" />{t("Sessão protegida")}</span></div>
+          </div>
+          <div className="stand-os-hero-core">
+            <div className="stand-os-hero-copy">
+              <p className="stand-kicker text-primary">{t(isNest ? "NEST · SIN01 · OPERAÇÃO" : "START CAMPUS · GOVERNAÇÃO AMBIENTAL")}</p>
+              <h1>{t("A sustentabilidade ganha posição.")}</h1>
+              <p>{t("Uma consola única para projetos, conformidade, evidências e decisões ambientais — sem perder a origem de cada dado.")}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button type="button" onClick={() => setLocation(primaryPath)} className="stand-os-primary-action"><Activity className="size-4" />{primaryLabel}<ArrowRight className="size-4" /></button>
+                {visiblePaths.includes("/timeline") && <button type="button" onClick={() => setLocation("/timeline")} className="stand-os-secondary-action"><Workflow className="size-4" />{t("Ver ciclo do projeto")}</button>}
+              </div>
+            </div>
+            <aside className="stand-os-status-module" aria-label={t("Estado do ambiente de trabalho")}>
+              <div className="stand-os-module-head"><RadioTower className="size-4 text-primary" /><span>{t("Ambiente de trabalho")}</span><span className="ml-auto stand-os-code">01</span></div>
+              <div className="stand-os-module-value">{isNest ? "NEST / SIN01" : projectName}</div>
+              <div className="stand-os-module-rule" />
+              <div className="stand-os-module-list">
+                <div><span>{t("Perfil")}</span><strong>{roleLabel}</strong></div>
+                <div><span>{t("Âmbito ativo")}</span><strong>{isAllProjects ? t("Portefólio") : projectCode}</strong></div>
+                <div><span>{t("Controlo de acesso")}</span><strong>{t("RBAC ativo")}</strong></div>
+              </div>
+              <div className="stand-os-ports" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} className={index === 1 || index === 7 ? "is-live" : ""} />)}</div>
+            </aside>
+          </div>
+          <div className="stand-os-hero-bottom">
+            <div><Building2 className="size-4" /><span>{t("Fotografia institucional Start Campus")}</span></div>
+            <div><LockKeyhole className="size-4" /><span>{t("Acesso auditado por papel, empresa e projeto")}</span></div>
+            <div><Database className="size-4" /><span>{t("Dados e evidências com origem rastreável")}</span></div>
+          </div>
         </section>
 
-        {/* Inspirational quote */}
-        <div className="stand-welcome-quote flex items-start gap-4 rounded-2xl p-5">
-          <Leaf className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-base italic text-foreground leading-relaxed">
-              "Esta plataforma foi pensada para cada um de nós. Para que a informação esteja sempre atualizada, para que possamos tomar decisões mais conscientes e para que, juntos, consigamos reduzir ao máximo o nosso impacto ambiental. Cada dado que aqui registamos contribui para um futuro mais sustentável."
-            </p>
-            <p className="text-sm text-primary mt-2 font-semibold">{t("Equipa de Sustentabilidade, Start Campus")}</p>
-          </div>
-        </div>
+        <section className="stand-os-command-grid" aria-label={t("Acessos rápidos") }>
+          <button type="button" className="stand-os-visual-command stand-os-visual-command--operations" onClick={() => setLocation(isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard")}>
+            <img src={operationsImage.url} alt="" style={{ objectPosition: operationsImage.position }} />
+            <span className="stand-os-command-scrim" />
+            <span className="stand-os-command-content"><span className="stand-os-code">SYS.01</span><strong>{t("Edifício, sistemas e eficiência")}</strong><small>{t("Da infraestrutura aos sinais de operação")}</small></span><span className="stand-os-arrow"><ArrowRight className="size-4" /></span>
+          </button>
+          <button type="button" className="stand-os-visual-command stand-os-visual-command--delivery" onClick={() => setLocation(visiblePaths.includes("/timeline") ? "/timeline" : "/dashboard")}>
+            <img src={timelineImage.url} alt="" style={{ objectPosition: timelineImage.position }} />
+            <span className="stand-os-command-scrim" />
+            <span className="stand-os-command-content"><span className="stand-os-code">PRJ.02</span><strong>{t("Fases, equipas e evidências")}</strong><small>{t("Cumprimento DCAPE ponto a ponto")}</small></span><span className="stand-os-arrow"><ArrowRight className="size-4" /></span>
+          </button>
+          <div className="stand-os-trust-panel"><span className="stand-os-code">STAND / START CAMPUS</span><p>{t("Uma plataforma de conformidade que se comporta como um sistema de missão crítica.")}</p><div><Shield className="size-4 text-primary" /><span>{t("Permissões, histórico e fontes visíveis")}</span></div></div>
+        </section>
 
         {/* Video + Features side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

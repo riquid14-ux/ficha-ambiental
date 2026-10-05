@@ -157,7 +157,7 @@ export default function Welcome() {
             <div className="stand-os-hero-copy">
               <p className="stand-kicker text-primary">{t(isNest ? "NEST · SIN01 · OPERAÇÃO" : "START CAMPUS · GOVERNAÇÃO AMBIENTAL")}</p>
               {userName && <p className="stand-os-greeting">{t("Bem-vindo de volta")}, <strong>{userName}</strong>.</p>}
-              <h1>{t("A sustentabilidade ganha posição.")}</h1>
+              <h1>{t("Governança ambiental, com rigor em cada decisão.")}</h1>
               <p>{t("Cada registo liga a operação, a conformidade e decisões ambientais mais conscientes.")}</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button type="button" onClick={() => setLocation(primaryPath)} className="stand-os-primary-action"><Activity className="size-4" />{primaryLabel}<ArrowRight className="size-4" /></button>

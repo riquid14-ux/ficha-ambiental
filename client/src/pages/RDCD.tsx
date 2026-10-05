@@ -3227,8 +3227,8 @@ export default function RDCD() {
                     </Accordion>
                   </section>
 
-                  <section className="rdcd-curation mt-5 grid gap-5 rounded-2xl border border-primary/15 bg-primary/[0.025] p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3 xl:col-start-1">
+                  <section className="rdcd-curation mt-5 grid gap-5 rounded-2xl border border-primary/15 bg-primary/[0.025] p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3 lg:col-start-1">
                       <div>
                         <p className="stand-kicker text-primary">
                           {t("CURADORIA DO CAPÍTULO 5")}
@@ -3269,7 +3269,7 @@ export default function RDCD() {
                         {t("Selecionar todas as semanas disponíveis")}
                       </Button>
                     </div>
-                    <div className="space-y-4 xl:col-start-1">
+                    <div className="space-y-4 lg:col-start-1">
                       {measuresBySection.map(sec => (
                         <div
                           key={sec.id}
@@ -3485,7 +3485,7 @@ export default function RDCD() {
                         </div>
                       ))}
                     </div>
-                    <aside className="rdcd-page-console xl:col-start-2 xl:row-span-2 xl:row-start-1">
+                    <aside className="rdcd-page-console lg:col-start-2 lg:row-span-2 lg:row-start-1">
                       <div className="rdcd-page-console-topbar">
                         <span className="stand-mono">
                           {t("PRÉ-VISUALIZAÇÃO VIVA")}

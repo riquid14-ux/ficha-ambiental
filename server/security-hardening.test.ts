@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import type { Request } from "express";
+import fs from "node:fs";
+import path from "node:path";
 import { requiresTwoFactorEnrollment } from "@shared/two-factor-policy";
 import { createMfaPendingToken, MFA_PENDING_COOKIE, verifyMfaPendingRequest } from "./_core/mfa";
 import {
@@ -16,6 +18,9 @@ function requestWithCookies(cookie = "") {
     socket: { remoteAddress: "203.0.113.10" },
   } as unknown as Request;
 }
+
+const projectRoot = path.resolve(__dirname, "..");
+const readSource = (relativePath: string) => fs.readFileSync(path.join(projectRoot, relativePath), "utf8");
 
 describe("endurecimento de segurança", () => {
   beforeEach(() => resetAuthenticationRateLimitsForTest());
@@ -45,5 +50,48 @@ describe("endurecimento de segurança", () => {
     const req = requestWithCookies();
     for (let attempt = 0; attempt < 8; attempt += 1) recordAuthenticationFailure(req, "password:teste@startcampus.pt");
     expect(() => assertAuthenticationAttemptAllowed(req, "password:teste@startcampus.pt")).toThrow(/Demasiadas tentativas/);
+  });
+
+  it("desativa a rota legada de upload sem validação de âmbito", () => {
+    const source = readSource("server/upload.ts");
+    expect(source).toContain("res.status(410)");
+    expect(source).not.toContain("storagePut(");
+    expect(source).not.toContain("addEvidenceImage(");
+  });
+
+  it("impõe troca da palavra-passe temporária antes de chamadas protegidas", () => {
+    const source = readSource("server/_core/trpc.ts");
+    const loginSource = readSource("client/src/pages/Login.tsx");
+    expect(source).toContain("Altere a palavra-passe temporária antes de aceder à plataforma.");
+    expect(source).toContain("auth.changePassword");
+    expect(source).toContain("ctx.user.mustChangePassword");
+    expect(loginSource).toContain("!user.mustChangePassword && viewMode === \"login\"");
+  });
+
+  it("restringe mutações autenticadas à origem servida", () => {
+    const source = readSource("server/_core/trpc.ts");
+    expect(source).toContain('request.get("origin")');
+    expect(source).toContain('typeof request.get === "function"');
+    expect(source).toContain("Origem de pedido não autorizada.");
+  });
+
+  it("verifica o projeto de cada ficha antes da exportação PDF", () => {
+    const source = readSource("server/pdf.ts");
+    expect(source).toContain("canReadSubmissionPdf");
+    expect(source).toContain('canExportProjectPdf(user, submission.projectId, "ficha")');
+    expect(source).toContain("Sem permissão para uma ou mais fichas selecionadas");
+  });
+
+  it("mantém medidas e secções analíticas dentro do âmbito autorizado", () => {
+    const source = readSource("server/db.ts");
+    expect(source).toContain("scopedProjectIds");
+    expect(source).toContain("inArray(measures.projectId, scopedProjectIds)");
+    expect(source).toContain("inArray(sections.projectId, scopedProjectIds)");
+  });
+
+  it("guarda tokens de recuperação apenas como hash", () => {
+    const source = readSource("server/routers.ts");
+    expect(source).toContain('crypto.createHash("sha256").update(token).digest("hex")');
+    expect(source).toContain("crypto.timingSafeEqual");
   });
 });

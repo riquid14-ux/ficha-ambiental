@@ -254,6 +254,23 @@ async function assertSubmissionReviewAccess(user: any, submission: { projectId: 
   if (!canReview(user.role)) throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para rever esta ficha." });
 }
 
+async function assertMeasureBelongsToSubmission(
+  submission: { projectId: number | null },
+  measureId: number,
+) {
+  if (!submission.projectId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A ficha não tem projecto associado." });
+  }
+  const measure = await db.getMeasureById(measureId, submission.projectId);
+  if (!measure) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "A medida não pertence ao projecto desta ficha.",
+    });
+  }
+  return measure;
+}
+
 async function getAccessibleProjectIds(user: any) {
   if (isAdminOrDono(user.role)) {
     return (await db.getAllProjects()).map(project => project.id);
@@ -1365,7 +1382,8 @@ export const appRouter = router({
       const { passwordHash, totpSecret, ...safe } = u as any;
       return { ...safe, passwordHash: !!passwordHash, totpEnabled: !!(u as any).totpEnabled };
     }),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: partnerAllowedProcedure.mutation(async ({ ctx }) => {
+      await db.incrementUserSessionVersion(ctx.user.id);
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       ctx.res.clearCookie(MFA_PENDING_COOKIE, { ...cookieOptions, maxAge: -1 });
@@ -1426,9 +1444,10 @@ export const appRouter = router({
         if (!user) return { success: true, message: "Se o email existir no sistema, o administrador será notificado. Contacte apoioamb@startcampus.pt" };
         const crypto = await import("crypto");
         const token = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
         const expiry = Date.now() + 3600000;
-        await database.update(schema.users).set({ passwordResetToken: token, passwordResetExpiry: expiry }).where(eq(schema.users.id, user.id));
-        // Password reset token generated
+        await database.update(schema.users).set({ passwordResetToken: tokenHash, passwordResetExpiry: expiry }).where(eq(schema.users.id, user.id));
+        // The raw token is never persisted. Delivery is handled by the approved support flow.
         return { success: true, message: "Pedido de recuperação registado. Contacte apoioamb@startcampus.pt para receber as instruções de reset." };
       }),
     // ─── Reset Password with Token ──────────────────────────────────────
@@ -1440,7 +1459,12 @@ export const appRouter = router({
         const [user] = await database.select().from(schema.users).where(eq(schema.users.email, input.email.toLowerCase().trim())).limit(1);
         if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Utilizador não encontrado" });
         const u = user as any;
-        if (!u.passwordResetToken || u.passwordResetToken !== input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Token inválido" });
+        const crypto = await import("crypto");
+        const candidateHash = crypto.createHash("sha256").update(input.token).digest("hex");
+        const storedToken = String(u.passwordResetToken || "");
+        const storedBuffer = Buffer.from(storedToken);
+        const candidateBuffer = Buffer.from(candidateHash);
+        if (storedBuffer.length !== candidateBuffer.length || !crypto.timingSafeEqual(storedBuffer, candidateBuffer)) throw new TRPCError({ code: "BAD_REQUEST", message: "Token inválido" });
         if (u.passwordResetExpiry && Date.now() > u.passwordResetExpiry) throw new TRPCError({ code: "BAD_REQUEST", message: "Token expirado" });
         const hash = await bcrypt.hash(input.newPassword, 10);
         await database.update(schema.users).set({ passwordHash: hash, mustChangePassword: 0, passwordResetToken: null, passwordResetExpiry: null }).where(eq(schema.users.id, user.id));
@@ -1483,17 +1507,17 @@ export const appRouter = router({
         if (existingUsers.find((u) => u.email?.toLowerCase().trim() === email)) {
           return { success: true, message: "Conta criada com sucesso. Aguarde aprovação do administrador." };
         }
-        const openId = `email_${email.replace(/[^a-z0-9]/g, "_")}`;
+        const crypto = await import("crypto");
+        const openId = `email_${crypto.randomBytes(24).toString("hex")}`;
         const passwordHash = await bcrypt.hash(input.password, 10);
         const displayName = input.companyName ? `${input.name} (${input.companyName})` : input.name;
         await db.upsertUser({ openId, name: displayName, email, loginMethod: "email", role: "user" });
         const registeredUser = await db.getUserByOpenId(openId);
-        const invitationAccepted = !!registeredUser?.companyId && registeredUser.role !== "user";
         const database = await db.getDb();
         if (database) {
-          await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = ${invitationAccepted ? "active" : "pending"} WHERE openId = ${openId}`);
+          await database.execute(sql`UPDATE users SET passwordHash = ${passwordHash}, mustChangePassword = 0, accountStatus = "pending" WHERE openId = ${openId}`);
         }
-        return { success: true, message: invitationAccepted ? "Convite aceite. Já pode iniciar sessão." : "Conta criada com sucesso. Aguarde aprovação do administrador." };
+        return { success: true, message: "Conta criada com sucesso. Aguarde aprovação do administrador." };
       }),
 
     // ─── Change password ────────────────────────────────────────────────────
@@ -1518,6 +1542,13 @@ export const appRouter = router({
 
     // ─── Setup 2FA ──────────────────────────────────────────────────────────
     setup2FA: partnerAllowedProcedure.mutation(async ({ ctx }) => {
+      const existingUser = await db.getUserById(ctx.user.id);
+      if (existingUser?.totpEnabled) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "O segundo fator já está ativo. Desative-o com o código atual antes de configurar um novo dispositivo.",
+        });
+      }
       const secret = new Secret({ size: 20 });
       const totp = new TOTP({ issuer: "Controlo Ambiental", label: ctx.user.email || ctx.user.name || "user", secret, algorithm: "SHA1", digits: 6, period: 30 });
       const uri = totp.toString();
@@ -2078,7 +2109,7 @@ export const appRouter = router({
         });
 
         // Pre-fill from previous week
-        const latest = await db.getLatestSubmissionForCompany(user.companyId);
+        const latest = await db.getLatestSubmissionForCompany(user.companyId, input.projectId);
         if (latest) {
           const prevResponses = await db.getResponsesBySubmission(latest.id);
           if (prevResponses.length > 0) {
@@ -2123,6 +2154,10 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.role !== "observador") {
           throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        if (!isAdminOrDono(ctx.user.role)) {
+          const projectIds = await getAccessibleProjectIds(ctx.user);
+          return db.getSubmissionsByProjectIds(projectIds, input?.year, input?.companyId);
         }
         if (input?.companyId) {
           return db.getSubmissionsByCompany(input.companyId);
@@ -2315,6 +2350,7 @@ export const appRouter = router({
         }
         // Save per-measure reviews if provided
         if (input.measureReviews && input.measureReviews.length > 0) {
+          await Promise.all(input.measureReviews.map(review => assertMeasureBelongsToSubmission(sub, review.measureId)));
           await db.bulkUpsertMeasureReviews(input.id, ctx.user.id, input.measureReviews);
         }
         await db.reviewSubmission(input.id, ctx.user.id, input.status, input.notes);
@@ -2913,6 +2949,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        await Promise.all(input.responses.map(response => assertMeasureBelongsToSubmission(sub, response.measureId)));
         await db.bulkUpsertResponses(input.submissionId, input.responses);
         return { success: true };
       }),
@@ -3195,8 +3232,20 @@ export const appRouter = router({
         }).optional()
       )
       .query(async ({ ctx, input }) => {
+        const filters: {
+          companyId?: number;
+          weekYear?: number;
+          weekNumber?: number;
+          sectionId?: number;
+          projectId?: number;
+          projectIds?: number[];
+        } = { ...input };
+        if (input?.projectId) {
+          await assertProjectModuleAccess(ctx.user, input.projectId, "dashboard");
+        } else if (!isAdminOrDono(ctx.user.role)) {
+          filters.projectIds = await getAccessibleProjectIds(ctx.user);
+        }
         // EE/RAP can only see own company
-        const filters = { ...input };
         if (!isAdminOrDono(ctx.user.role) && ctx.user.role !== "raa" && ctx.user.companyId) {
           filters.companyId = ctx.user.companyId;
         }
@@ -3425,10 +3474,10 @@ export const appRouter = router({
   // ─── Matrix (Acompanhamento) ──────────────────────────────────────────────
   matrix: router({
     getData: protectedProcedure
-      .input(z.object({ projectId: z.number().optional(), year: z.number().optional() }).optional())
+      .input(z.object({ projectId: z.number().int().positive(), year: z.number().optional() }))
       .query(async ({ ctx, input }) => {
-        // All authenticated users can view the matrix
-        return db.getMatrixData(input?.projectId, input?.year);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "ficha");
+        return db.getMatrixData(input.projectId, input.year);
       }),
   }),
 
@@ -3450,6 +3499,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        await assertMeasureBelongsToSubmission(sub, input.measureId);
         // Decode base64
         // Security: validate file type and size
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
@@ -3540,7 +3590,7 @@ export const appRouter = router({
   // ─── Overdue Detection (3 semanas sem ficha) ──────────────────────────────
   overdue: router({
     check: protectedProcedure
-      .input(z.object({ projectId: z.number().optional() }).optional())
+      .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         // Only show overdue to admin, dono_obra, raa (and EE/RAP for their own company)
         // Calculate current week
@@ -3551,7 +3601,8 @@ export const appRouter = router({
         const currentYear = now.getFullYear();
 
         // Get all active EE/RAP companies (optionally filtered by project)
-        const matrixData = await db.getMatrixData(input?.projectId);
+        await assertProjectModuleAccess(ctx.user, input.projectId, "ficha");
+        const matrixData = await db.getMatrixData(input.projectId);
         const { submissions, companies } = matrixData;
 
         // For each company, find the latest submission week
@@ -4559,15 +4610,18 @@ export const appRouter = router({
   // ─── Calendar Events ─────────────────────────────────────────────────────────
   calendarEvents: router({
     list: protectedProcedure
-      .input(z.object({ projectId: z.number().optional() }).optional())
+      .input(z.object({ projectId: z.number().int().positive().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        if (ctx.user.role === "pm" && !input?.projectId) throw new TRPCError({ code: "BAD_REQUEST", message: "Seleccione um projeto individual para consultar o calendário." });
+        if (!input?.projectId && !isAdminOrDono(ctx.user.role)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Seleccione um projecto autorizado para consultar o calendário." });
+        }
         if (input?.projectId) await assertProjectModuleAccess(ctx.user, input.projectId, "calendar");
         return await db.getCalendarEvents(input?.projectId);
       }),
 
     listAll: protectedProcedure
-      .query(async () => {
+      .query(async ({ ctx }) => {
+        if (!isAdminOrDono(ctx.user.role)) throw new TRPCError({ code: "FORBIDDEN" });
         return await db.getCalendarEvents(undefined, true);
       }),
 
@@ -5142,17 +5196,13 @@ export const appRouter = router({
     }),
     // KPI Incidents
     listIncidents: partnerAllowedProcedure
-      .input(z.object({ projectId: z.number().optional() }))
+      .input(z.object({ projectId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
-        if (ctx.user.role === "ee_partner" && !input.projectId) throw new TRPCError({ code: "FORBIDDEN" });
-        if (input.projectId) await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
+        await assertPartnerProjectModuleAccess(ctx.user, input.projectId, "kpi");
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        let query = database.select().from(schema.kpiIncidents);
-        if (input.projectId) {
-          query = query.where(eq(schema.kpiIncidents.projectId, input.projectId)) as any;
-        }
-        return await query;
+        return database.select().from(schema.kpiIncidents)
+          .where(eq(schema.kpiIncidents.projectId, input.projectId));
       }),
     createIncident: protectedProcedure
       .input(z.object({ projectId: z.number(), name: z.string(), date: z.string(), status: z.string(), severity: z.string(), link: z.string().optional() }))

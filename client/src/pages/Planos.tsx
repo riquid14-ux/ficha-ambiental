@@ -129,7 +129,9 @@ function PlanCalendar({ plans }: { plans: any[] }) {
   const dateLocale = language === "en" ? "en-GB" : "pt-PT";
   const monthName = month.toLocaleDateString(dateLocale, { month: "long" });
   const calendarDays = Array.from({ length: 7 }, (_, index) =>
-    new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(new Date(Date.UTC(2023, 0, 2 + index))),
+    new Intl.DateTimeFormat(dateLocale, { weekday: "short" }).format(
+      new Date(Date.UTC(2023, 0, 2 + index))
+    )
   );
 
   const plansByDay = useMemo(() => {
@@ -163,7 +165,11 @@ function PlanCalendar({ plans }: { plans: any[] }) {
             >
               {t("Próximas entregas")}
             </h2>
-            <p className="mt-1 text-sm leading-6 text-white/75">{t("Sincronizado automaticamente com o calendário global e com os alertas 30/15/7 dias.")}</p>
+            <p className="mt-1 text-sm leading-6 text-white/75">
+              {t(
+                "Sincronizado automaticamente com o calendário global e com os alertas 30/15/7 dias."
+              )}
+            </p>
           </div>
           <div
             className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-card/10 p-1.5 backdrop-blur sm:w-auto sm:justify-start"
@@ -297,20 +303,101 @@ function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
   const utils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const { data: board = [], isLoading } = trpc.monitoringPlans.apaReportingBoard.useQuery({ year });
+  const { data: board = [], isLoading } =
+    trpc.monitoringPlans.apaReportingBoard.useQuery({ year });
   const [selectedKey, setSelectedKey] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submittedDate, setSubmittedDate] = useState("");
-  const [reportType, setReportType] = useState<"rdcd" | "relatorio_anual_dcape" | "outro">("rdcd");
+  const [reportType, setReportType] = useState<
+    "rdcd" | "relatorio_anual_dcape" | "outro"
+  >("rdcd");
   const [selectedPlanIds, setSelectedPlanIds] = useState<number[]>([]);
   const dateLocale = language === "en" ? "en-GB" : "pt-PT";
-  const formatTimelineDate = (value?: number | null) => value
-    ? new Date(value).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" })
-    : t("Sem data");
-  const occurrenceKey = (item: any) => `${item.calendarEvent.id}:${item.occurrenceAt}`;
-  const selected = board.find((item: any) => occurrenceKey(item) === selectedKey) || board[0] || null;
-  const maximumDueAt = receivedDate ? addCivilMonths(toTimestamp(receivedDate)!, 3) : null;
+  const months = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) =>
+        new Intl.DateTimeFormat(dateLocale, { month: "short" }).format(
+          new Date(Date.UTC(year, index, 1))
+        )
+      ),
+    [dateLocale, year]
+  );
+  const formatTimelineDate = (value?: number | null) =>
+    value
+      ? new Date(value).toLocaleDateString(dateLocale, {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : t("Sem data");
+  const occurrenceKey = (item: any) =>
+    `${item.calendarEvent.id}:${item.occurrenceAt}`;
+  const selected =
+    board.find((item: any) => occurrenceKey(item) === selectedKey) ||
+    board[0] ||
+    null;
+  const maximumDueAt = receivedDate
+    ? addCivilMonths(toTimestamp(receivedDate)!, 3)
+    : null;
+
+  const configuredWindows = useMemo(
+    () =>
+      board
+        .filter(
+          (item: any) => item.cycle?.receivedAt && item.cycle?.submissionDueAt
+        )
+        .map((item: any) => ({
+          startAt: item.cycle.receivedAt as number,
+          endAt: item.cycle.submissionDueAt as number,
+        })),
+    [board]
+  );
+  const forecastPlans = useMemo(
+    () =>
+      plans
+        .filter(plan => Boolean(plan.nextReportingDate))
+        .map(plan => {
+          const forecastAt = plan.nextReportingDate as number;
+          const latestAt = addCivilMonths(forecastAt, 3);
+          const grouped = board.find((item: any) =>
+            (item.cycle?.plans || []).some(
+              (cyclePlan: any) => cyclePlan.id === plan.id
+            )
+          );
+          const window = configuredWindows.find(
+            candidate =>
+              forecastAt >= candidate.startAt && forecastAt <= candidate.endAt
+          );
+          const anchor = board.find(
+            (item: any) =>
+              item.occurrenceAt >= forecastAt && item.occurrenceAt <= latestAt
+          );
+          return { plan, forecastAt, latestAt, grouped, window, anchor };
+        })
+        .sort((a, b) => a.forecastAt - b.forecastAt),
+    [board, configuredWindows, plans]
+  );
+  const standaloneForecasts = forecastPlans.filter(
+    item => !item.grouped && !item.window && !item.anchor
+  );
+  const pendingWindowForecasts = forecastPlans.filter(
+    item => !item.grouped && !item.window && item.anchor
+  );
+  const selectedCandidateIds = useMemo(() => {
+    if (!receivedDate || !maximumDueAt) return new Set<number>();
+    const receivedAt = toTimestamp(receivedDate)!;
+    return new Set(
+      plans
+        .filter(
+          plan =>
+            plan.nextReportingDate &&
+            plan.nextReportingDate >= receivedAt &&
+            plan.nextReportingDate <= maximumDueAt
+        )
+        .map(plan => plan.id)
+    );
+  }, [maximumDueAt, plans, receivedDate]);
 
   const refresh = async () => {
     await Promise.all([
@@ -319,31 +406,39 @@ function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
       utils.calendarEvents.list.invalidate(),
     ]);
   };
-  const cycleMutation = trpc.monitoringPlans.configureApaReportingCycle.useMutation({
-    onSuccess: async () => {
-      await refresh();
-      toast.success(t("Ciclo RDCD e APA atualizado"));
-    },
-    onError: error => toast.error(error.message),
-  });
+  const cycleMutation =
+    trpc.monitoringPlans.configureApaReportingCycle.useMutation({
+      onSuccess: async () => {
+        await refresh();
+        toast.success(t("Ciclo RDCD e APA atualizado"));
+      },
+      onError: error => toast.error(error.message),
+    });
 
   useEffect(() => {
     if (!selected) return;
-    setSelectedKey(occurrenceKey(selected));
+    const key = occurrenceKey(selected);
+    if (selectedKey !== key) setSelectedKey(key);
     const cycle = selected.cycle;
     setReceivedDate(dateInputValue(cycle?.receivedAt));
     setDueDate(dateInputValue(cycle?.submissionDueAt));
     setSubmittedDate(dateInputValue(cycle?.submittedAt));
-    setReportType(cycle?.reportType || (selected.calendarEvent.name.toLocaleLowerCase("pt-PT").includes("rdcd") ? "rdcd" : "relatorio_anual_dcape"));
+    setReportType(
+      cycle?.reportType ||
+        (selected.calendarEvent.name.toLocaleLowerCase("pt-PT").includes("rdcd")
+          ? "rdcd"
+          : "relatorio_anual_dcape")
+    );
     setSelectedPlanIds((cycle?.plans || []).map((plan: any) => plan.id));
   }, [selectedKey, selected?.cycle?.id, selected?.occurrenceAt]);
 
   function togglePlan(planId: number) {
-    setSelectedPlanIds(current => current.includes(planId)
-      ? current.filter(id => id !== planId)
-      : [...current, planId]);
+    setSelectedPlanIds(current =>
+      current.includes(planId)
+        ? current.filter(id => id !== planId)
+        : [...current, planId]
+    );
   }
-
   function saveCycle() {
     if (!selected || !receivedDate || selectedPlanIds.length === 0) return;
     const receivedAt = toTimestamp(receivedDate)!;
@@ -358,73 +453,214 @@ function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
       planIds: selectedPlanIds,
     });
   }
+  const monthColumn = (timestamp: number) =>
+    new Date(timestamp).getUTCMonth() + 2;
+  const spanMonths = (startAt: number, endAt: number) => {
+    const startMonth = new Date(startAt).getUTCMonth();
+    const endMonth = new Date(endAt).getUTCMonth();
+    return Math.max(1, Math.min(12 - startMonth, endMonth - startMonth + 1));
+  };
 
   return (
-    <section aria-labelledby="apa-reporting-title" className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_14px_32px_hsl(var(--shadow-color)/0.055)]">
-      <div className="border-b border-white/10 bg-gradient-to-br from-[#0A3638] via-[#0A3638] to-[#0A3638] px-5 py-5 text-white sm:px-6">
+    <section
+      aria-labelledby="apa-reporting-title"
+      className="overflow-hidden rounded-[1.25rem] border border-border bg-card shadow-[0_14px_32px_hsl(var(--shadow-color)/0.055)]"
+    >
+      <div className="border-b border-white/10 bg-gradient-to-br from-[#0A3638] via-[#104b4d] to-[#0A3638] px-5 py-5 text-white sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <p className="stand-kicker text-primary">{t("Control room APA conectada")}</p>
-            <h2 id="apa-reporting-title" className="mt-2 text-xl font-semibold tracking-tight">{t("Ciclos RDCD, planos agrupados e entrega à APA")}</h2>
-            <p className="mt-1 text-sm leading-6 text-white/75">{t("A timeline usa os eventos RDCD já existentes no calendário global. Em cada ocorrência, indique a receção, agrupe os planos aplicáveis e o limite máximo APA é calculado a três meses civis.")}</p>
+            <p className="stand-kicker text-primary">
+              {t("Calendário de comunicação APA")}
+            </p>
+            <h2
+              id="apa-reporting-title"
+              className="mt-2 text-xl font-semibold tracking-tight"
+            >
+              {t("Do plano ao RDCD, com uma janela APA clara")}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-white/75">
+              {t(
+                "Cada entrega prevista abre uma janela de três meses. Os RDCD e relatórios anuais já existentes no Calendário aparecem como oportunidades para agrupar planos; quando não existe uma comunicação no intervalo, o plano é assinalado para submissão autónoma."
+              )}
+            </p>
           </div>
           <div className="rounded-xl border border-white/15 bg-card/10 px-3 py-2 text-xs leading-5 text-white/80">
             <p className="font-semibold text-white">{t("Regra de ouro")}</p>
-            <p>{t("Receção do reporte + 3 meses civis = limite máximo APA")}</p>
+            <p>
+              {t(
+                "Receção do plano ou reporte + 3 meses civis = limite máximo APA"
+              )}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="space-y-5 p-4 sm:p-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <TimelineMetric
+            label={t("Ocorrências RDCD / anuais")}
+            value={board.length}
+            detail={t("Fontes já registadas no Calendário")}
+            tone="brand"
+          />
+          <TimelineMetric
+            label={t("Janelas APA configuradas")}
+            value={configuredWindows.length}
+            detail={t("Receção e limite máximo definidos")}
+            tone="success"
+          />
+          <TimelineMetric
+            label={t("Planos com janela a preparar")}
+            value={pendingWindowForecasts.length}
+            detail={t("Existe ocorrência, falta configurar a janela")}
+            tone="warning"
+          />
+          <TimelineMetric
+            label={t("Submissão autónoma a avaliar")}
+            value={standaloneForecasts.length}
+            detail={t("Sem comunicação calendarizada nos três meses")}
+            tone={standaloneForecasts.length ? "danger" : "neutral"}
+          />
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="stand-kicker text-primary">{t("Timeline anual de reporte")}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("Navegue entre anos para antecipar janelas de receção e limites APA.")}</p>
+            <p className="stand-kicker text-primary">
+              {t("Linha anual de comunicação")}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t(
+                "A barra começa na receção configurada e termina no limite APA. Sem receção, o marcador mostra apenas a ocorrência que já existe no Calendário."
+              )}
+            </p>
           </div>
           <div className="flex items-center rounded-xl border border-border bg-muted/30 p-1">
-            <Button variant="ghost" size="icon" onClick={() => setYear(value => value - 1)} aria-label={t("Ano anterior")}><ChevronLeft className="h-4 w-4" /></Button>
-            <span className="min-w-20 text-center text-sm font-semibold text-foreground">{year}</span>
-            <Button variant="ghost" size="icon" onClick={() => setYear(value => value + 1)} aria-label={t("Ano seguinte")}><ChevronRight className="h-4 w-4" /></Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setYear(value => value - 1)}
+              aria-label={t("Ano anterior")}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="min-w-20 text-center text-sm font-semibold text-foreground">
+              {year}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setYear(value => value + 1)}
+              aria-label={t("Ano seguinte")}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="h-36 animate-pulse rounded-xl bg-muted" />
+          <div className="h-44 animate-pulse rounded-xl bg-muted" />
         ) : board.length === 0 ? (
           <div className="rounded-xl border border-dashed border-primary/35 bg-primary/[0.035] px-5 py-8 text-center">
             <CalendarDays className="mx-auto h-8 w-8 text-primary" />
-            <p className="mt-3 text-sm font-semibold text-foreground">{t("Não existem eventos RDCD ou Relatório Anual DCAPE no calendário deste ano")}</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Registe o evento no Calendário de Reporting; ele aparecerá automaticamente nesta timeline anual.")}</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">
+              {t(
+                "Não existem eventos RDCD ou Relatório Anual DCAPE no calendário deste ano"
+              )}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {t(
+                "Registe o evento no Calendário de Reporting; ele aparecerá automaticamente nesta timeline anual."
+              )}
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto pb-1">
-            <div className="relative min-w-[760px] py-6" aria-label={t("Timeline anual de reporte APA") }>
-              <div aria-hidden="true" className="absolute left-8 right-8 top-1/2 h-px -translate-y-1/2 bg-border" />
-              <div className="grid grid-cols-1 gap-3">
-                {board.map((item: any, index: number) => {
+          <div className="overflow-x-auto pb-2">
+            <div
+              className="min-w-[920px] rounded-2xl border border-border bg-muted/[0.28] p-3 sm:p-4"
+              aria-label={t("Timeline anual de reporte APA")}
+            >
+              <div className="grid grid-cols-[172px_repeat(12,minmax(0,1fr))] border-b border-border/70 pb-2">
+                <div className="px-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {t("Comunicação")}
+                </div>
+                {months.map(month => (
+                  <div
+                    key={month}
+                    className="border-l border-border/60 px-1 text-center text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+                  >
+                    {month}
+                  </div>
+                ))}
+              </div>
+              <div className="relative mt-2 space-y-2">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 ml-[172px] grid grid-cols-12"
+                >
+                  {months.map(month => (
+                    <div key={month} className="border-l border-border/35" />
+                  ))}
+                </div>
+                {board.map((item: any) => {
                   const cycle = item.cycle;
-                  const selectedItem = occurrenceKey(item) === occurrenceKey(selected || item);
-                  const overdue = Boolean(cycle?.submissionDueAt && !cycle?.submittedAt && cycle.submissionDueAt < Date.now());
+                  const selectedItem =
+                    occurrenceKey(item) === occurrenceKey(selected || item);
+                  const overdue = Boolean(
+                    cycle?.submissionDueAt &&
+                      !cycle?.submittedAt &&
+                      cycle.submissionDueAt < Date.now()
+                  );
+                  const windowStart = cycle?.receivedAt || item.occurrenceAt;
+                  const windowEnd = cycle?.submissionDueAt || windowStart;
+                  const configured = Boolean(
+                    cycle?.receivedAt && cycle?.submissionDueAt
+                  );
+                  const tone = cycle?.submittedAt
+                    ? "bg-emerald-500/15 border-emerald-500/45 text-emerald-950 dark:text-emerald-100"
+                    : overdue
+                      ? "bg-rose-500/15 border-rose-500/45 text-rose-950 dark:text-rose-100"
+                      : configured
+                        ? "bg-amber-500/15 border-amber-500/45 text-amber-950 dark:text-amber-100"
+                        : "bg-primary/[0.08] border-primary/45 text-foreground";
                   return (
-                    <button
+                    <div
                       key={occurrenceKey(item)}
-                      type="button"
-                      onClick={() => setSelectedKey(occurrenceKey(item))}
-                      className={`relative z-10 grid grid-cols-[150px_44px_minmax(0,1fr)] items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedItem ? "border-primary bg-primary/[0.055] ring-1 ring-primary/20" : "border-border bg-card hover:border-primary/40 hover:bg-muted/35"}`}
+                      className="relative grid grid-cols-[172px_repeat(12,minmax(0,1fr))] items-center py-1.5"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{formatTimelineDate(item.occurrenceAt)}</p>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.calendarEvent.name}</p>
-                      </div>
-                      <span className={`mx-auto h-4 w-4 rounded-full border-4 border-card shadow-sm ${cycle?.submittedAt ? "bg-emerald-500" : overdue ? "bg-rose-500" : cycle ? "bg-amber-500" : "bg-primary"}`} />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{cycle ? `${cycle.plans.length} ${t("planos agrupados")}` : t("Por configurar")}</p>
-                        <p className={`mt-0.5 text-xs ${overdue ? "text-rose-600 dark:text-rose-300" : "text-muted-foreground"}`}>
-                          {cycle?.receivedAt ? `${t("Recebido")}: ${formatTimelineDate(cycle.receivedAt)} · ${t("Limite APA")}: ${formatTimelineDate(cycle.submissionDueAt)}` : t("Selecione para iniciar o ciclo de reporte")}
-                          {cycle?.submittedAt ? ` · ${t("Enviado")}: ${formatTimelineDate(cycle.submittedAt)}` : ""}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKey(occurrenceKey(item))}
+                        className={`relative z-10 mr-3 rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedItem ? "border-primary bg-primary/[0.08] ring-1 ring-primary/20" : "border-border bg-card hover:border-primary/45"}`}
+                      >
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {item.calendarEvent.name}
                         </p>
-                      </div>
-                    </button>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatTimelineDate(item.occurrenceAt)}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKey(occurrenceKey(item))}
+                        style={{
+                          gridColumn: `${monthColumn(windowStart)} / span ${spanMonths(windowStart, windowEnd)}`,
+                        }}
+                        className={`relative z-10 min-w-0 rounded-lg border px-2.5 py-2 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tone}`}
+                      >
+                        <span className="block truncate text-xs font-bold">
+                          {cycle?.submittedAt
+                            ? t("Enviado à APA")
+                            : configured
+                              ? t("Janela APA ativa")
+                              : t("Receção por confirmar")}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] opacity-80">
+                          {configured
+                            ? `${formatTimelineDate(windowStart)} → ${formatTimelineDate(windowEnd)}`
+                            : t("Configure a receção para abrir a janela")}
+                        </span>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -432,70 +668,303 @@ function ApaReportingTimeline({ plans, user }: { plans: any[]; user: any }) {
           </div>
         )}
 
-        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-4">
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-primary" />{t("Ocorrência RDCD no calendário")}</span>
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-500" />{t("Em preparação para APA")}</span>
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500" />{t("Enviado à APA")}</span>
-          <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-rose-500" />{t("Prazo vencido")}</span>
+        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-primary" />
+            {t("Ocorrência já prevista")}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-amber-500" />
+            {t("Janela a preparar")}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-emerald-500" />
+            {t("Entrega APA confirmada")}
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full bg-rose-500" />
+            {t("Prazo vencido ou submissão autónoma")}
+          </span>
         </div>
 
+        {standaloneForecasts.length > 0 && (
+          <div
+            className="rounded-xl border border-amber-500/35 bg-amber-500/[0.08] p-4"
+            role="status"
+          >
+            <div className="flex gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  {t("Planos sem comunicação APA no intervalo")}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t(
+                    "No ano em vista, não existe ocorrência RDCD ou Relatório Anual DCAPE entre a entrega prevista e o respetivo limite de três meses. Estes planos devem ser avaliados para submissão autónoma ou para criar uma comunicação no Calendário."
+                  )}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {standaloneForecasts.slice(0, 8).map(item => (
+                    <span
+                      key={item.plan.id}
+                      className="rounded-full border border-amber-500/30 bg-card px-2.5 py-1 text-xs font-semibold text-foreground"
+                    >
+                      {item.plan.planNumber} ·{" "}
+                      {formatTimelineDate(item.forecastAt)} →{" "}
+                      {formatTimelineDate(item.latestAt)}
+                    </span>
+                  ))}
+                  {standaloneForecasts.length > 8 && (
+                    <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                      +{standaloneForecasts.length - 8}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {pendingWindowForecasts.length > 0 && (
+          <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-4">
+            <p className="text-sm font-semibold text-foreground">
+              {t("Agrupamentos possíveis ainda por configurar")}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {t(
+                "Existe uma ocorrência RDCD ou anual dentro dos três meses seguintes à entrega prevista. Abra a ocorrência abaixo, registe a receção e integre o plano se a equipa confirmar que a comunicação é aplicável."
+              )}
+            </p>
+          </div>
+        )}
+
         {selected && (
-          <div className="rounded-xl border border-border bg-muted/35 p-4 sm:p-5">
+          <div className="rounded-2xl border border-border bg-muted/35 p-4 sm:p-5">
             <div className="flex flex-col gap-2 border-b border-border/70 pb-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="stand-kicker text-primary">{t("Ciclo selecionado")}</p>
-                <h3 className="mt-1 text-base font-semibold text-foreground">{selected.calendarEvent.name} · {formatTimelineDate(selected.occurrenceAt)}</h3>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Os planos selecionados partilham um único evento de entrega APA, que é visível também no Calendário de Reporting.")}</p>
+                <p className="stand-kicker text-primary">
+                  {t("Janela de submissão selecionada")}
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-foreground">
+                  {selected.calendarEvent.name} ·{" "}
+                  {formatTimelineDate(selected.occurrenceAt)}
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {t(
+                    "A receção abre o período de três meses. Selecione apenas os planos confirmados para este RDCD ou relatório anual; a app cria um único evento APA rastreável."
+                  )}
+                </p>
               </div>
-              {!isAdmin && <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">{t("Só leitura")}</span>}
+              {!isAdmin && (
+                <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  {t("Só leitura")}
+                </span>
+              )}
             </div>
-
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div>
-                <label htmlFor="cycle-type" className="text-xs font-semibold text-muted-foreground">{t("Reporte")}</label>
-                <Select value={reportType} onValueChange={(value: any) => setReportType(value)} disabled={!isAdmin}>
-                  <SelectTrigger id="cycle-type" className="mt-1.5 bg-card"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="rdcd">RDCD</SelectItem><SelectItem value="relatorio_anual_dcape">{t("Relatório Anual DCAPE")}</SelectItem><SelectItem value="outro">{t("Outro reporte APA")}</SelectItem></SelectContent>
+                <label
+                  htmlFor="cycle-type"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {t("Reporte")}
+                </label>
+                <Select
+                  value={reportType}
+                  onValueChange={(value: any) => setReportType(value)}
+                  disabled={!isAdmin}
+                >
+                  <SelectTrigger id="cycle-type" className="mt-1.5 bg-card">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rdcd">RDCD</SelectItem>
+                    <SelectItem value="relatorio_anual_dcape">
+                      {t("Relatório Anual DCAPE")}
+                    </SelectItem>
+                    <SelectItem value="outro">
+                      {t("Outro reporte APA")}
+                    </SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div>
-                <label htmlFor="cycle-received" className="text-xs font-semibold text-muted-foreground">{t("Receção do reporte")}</label>
-                <Input id="cycle-received" type="date" className="mt-1.5 bg-card" value={receivedDate} disabled={!isAdmin} onChange={event => { const value = event.target.value; setReceivedDate(value); const timestamp = toTimestamp(value); if (timestamp) setDueDate(dateInputValue(addCivilMonths(timestamp, 3))); }} />
+                <label
+                  htmlFor="cycle-received"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {t("Receção confirmada")}
+                </label>
+                <Input
+                  id="cycle-received"
+                  type="date"
+                  className="mt-1.5 bg-card"
+                  value={receivedDate}
+                  disabled={!isAdmin}
+                  onChange={event => {
+                    const value = event.target.value;
+                    setReceivedDate(value);
+                    const timestamp = toTimestamp(value);
+                    if (timestamp)
+                      setDueDate(dateInputValue(addCivilMonths(timestamp, 3)));
+                  }}
+                />
               </div>
               <div>
-                <label htmlFor="cycle-due" className="text-xs font-semibold text-muted-foreground">{t("Entrega máxima APA")}</label>
-                <Input id="cycle-due" type="date" className="mt-1.5 bg-card" value={dueDate} disabled={!isAdmin} onChange={event => setDueDate(event.target.value)} />
+                <label
+                  htmlFor="cycle-due"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {t("Limite máximo APA")}
+                </label>
+                <Input
+                  id="cycle-due"
+                  type="date"
+                  className="mt-1.5 bg-card"
+                  value={dueDate}
+                  disabled={!isAdmin}
+                  onChange={event => setDueDate(event.target.value)}
+                />
               </div>
               <div>
-                <label htmlFor="cycle-submitted" className="text-xs font-semibold text-muted-foreground">{t("Envio efetivo APA")}</label>
-                <Input id="cycle-submitted" type="date" className="mt-1.5 bg-card" value={submittedDate} disabled={!isAdmin} onChange={event => setSubmittedDate(event.target.value)} />
+                <label
+                  htmlFor="cycle-submitted"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {t("Envio efetivo APA")}
+                </label>
+                <Input
+                  id="cycle-submitted"
+                  type="date"
+                  className="mt-1.5 bg-card"
+                  value={submittedDate}
+                  disabled={!isAdmin}
+                  onChange={event => setSubmittedDate(event.target.value)}
+                />
               </div>
             </div>
-            {maximumDueAt && <p className="mt-3 rounded-lg border border-primary/20 bg-primary/[0.045] px-3 py-2 text-xs text-foreground">{t("Limite legal calculado")}: <span className="font-semibold">{formatTimelineDate(maximumDueAt)}</span>. {t("Pode antecipar, mas não ultrapassar esta data.")}</p>}
-
+            {maximumDueAt && (
+              <p className="mt-3 rounded-lg border border-primary/20 bg-primary/[0.045] px-3 py-2 text-xs text-foreground">
+                <span className="font-semibold">{t("Janela calculada")}: </span>
+                {formatTimelineDate(toTimestamp(receivedDate))} →{" "}
+                <span className="font-semibold">
+                  {formatTimelineDate(maximumDueAt)}
+                </span>
+                . {t("Pode antecipar, mas não ultrapassar esta data.")}
+              </p>
+            )}
             <div className="mt-5">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">{t("Planos a integrar nesta emissão")}</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">{t("Selecione todos os planos que serão consolidados no mesmo RDCD ou reporte anual.")}</p>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    {t("Planos a integrar nesta emissão")}
+                  </h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t(
+                      "Os planos sugeridos são apenas previsões de calendário; a integração exige confirmação administrativa."
+                    )}
+                  </p>
                 </div>
-                <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground">{selectedPlanIds.length} {t("selecionados")}</span>
+                <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground">
+                  {selectedPlanIds.length} {t("selecionados")}
+                </span>
               </div>
-              <div className="mt-3 grid max-h-56 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
                 {plans.map(plan => {
                   const checked = selectedPlanIds.includes(plan.id);
-                  return <label key={plan.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${checked ? "border-primary/50 bg-primary/[0.055]" : "border-border bg-card hover:border-primary/35"}`}>
-                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-primary" checked={checked} disabled={!isAdmin} onChange={() => togglePlan(plan.id)} />
-                    <span className="min-w-0"><span className="block text-xs font-bold text-primary">{plan.planNumber}</span><span className="mt-0.5 block line-clamp-2 text-xs font-medium leading-5 text-foreground">{plan.name}</span></span>
-                  </label>;
+                  const suggested = selectedCandidateIds.has(plan.id);
+                  return (
+                    <label
+                      key={plan.id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${checked ? "border-primary/50 bg-primary/[0.055]" : suggested ? "border-amber-500/45 bg-amber-500/[0.055]" : "border-border bg-card hover:border-primary/35"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 accent-primary"
+                        checked={checked}
+                        disabled={!isAdmin}
+                        onChange={() => togglePlan(plan.id)}
+                      />
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                          {plan.planNumber}
+                          {suggested && !checked && (
+                            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-800 dark:text-amber-200">
+                              {t("Sugerido")}
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-0.5 block line-clamp-2 text-xs font-medium leading-5 text-foreground">
+                          {plan.name}
+                        </span>
+                        {plan.nextReportingDate && (
+                          <span className="mt-1 block text-[11px] text-muted-foreground">
+                            {t("Entrega prevista")}:{" "}
+                            {formatTimelineDate(plan.nextReportingDate)}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
                 })}
               </div>
             </div>
-            {isAdmin && <div className="mt-5 flex justify-end"><Button size="sm" onClick={saveCycle} disabled={!receivedDate || selectedPlanIds.length === 0 || cycleMutation.isPending}>{cycleMutation.isPending ? t("A guardar...") : <><Save className="mr-2 h-4 w-4" />{t("Guardar ciclo RDCD / APA")}</>}</Button></div>}
+            {isAdmin && (
+              <div className="mt-5 flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={saveCycle}
+                  disabled={
+                    !receivedDate ||
+                    selectedPlanIds.length === 0 ||
+                    cycleMutation.isPending
+                  }
+                >
+                  {cycleMutation.isPending ? (
+                    t("A guardar...")
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {t("Guardar ciclo RDCD / APA")}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
     </section>
+  );
+}
+
+function TimelineMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  tone: "brand" | "success" | "warning" | "danger" | "neutral";
+}) {
+  const tones = {
+    brand: "border-primary/25 bg-primary/[0.055]",
+    success: "border-emerald-500/25 bg-emerald-500/[0.06]",
+    warning: "border-amber-500/25 bg-amber-500/[0.07]",
+    danger: "border-rose-500/25 bg-rose-500/[0.06]",
+    neutral: "border-border bg-muted/35",
+  } as const;
+  return (
+    <div className={`rounded-xl border p-3 ${tones[tone]}`}>
+      <p className="text-2xl font-semibold tracking-tight text-foreground">
+        {value}
+      </p>
+      <p className="mt-1 text-xs font-semibold text-foreground">{label}</p>
+      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+        {detail}
+      </p>
+    </div>
   );
 }
 
@@ -521,7 +990,8 @@ export default function Planos() {
   // replica por projeto. A navegação já só a expõe em "Todos os Projetos"; este
   // guard protege também URLs diretos guardados antes desta alteração.
   useEffect(() => {
-    if (!isAllProjects) setLocation(canSeeAllProjects ? "/dashboard" : "/welcome");
+    if (!isAllProjects)
+      setLocation(canSeeAllProjects ? "/dashboard" : "/welcome");
   }, [canSeeAllProjects, isAllProjects, setLocation]);
   const { data: plans = [], isLoading } = trpc.monitoringPlans.list.useQuery(
     undefined,

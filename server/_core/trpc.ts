@@ -24,10 +24,24 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 
 const requireUser = t.middleware(async opts => {
-  const { ctx, next } = opts;
+  const { ctx, next, type } = opts;
 
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  if (type === "mutation") {
+    // O adaptador Express expõe `get`. Chamadores internos (por exemplo, testes
+    // de contrato) não trazem um pedido HTTP e não devem simular uma origem.
+    // Quando existe um pedido de browser, a validação permanece obrigatória.
+    const request = ctx.req as typeof ctx.req & { get?: (name: string) => string | undefined };
+    if (typeof request.get === "function") {
+      const origin = request.get("origin");
+      const host = request.get("host");
+      if (origin && host && origin !== `${request.protocol}://${host}`) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Origem de pedido não autorizada." });
+      }
+    }
   }
 
   return next({
@@ -44,6 +58,15 @@ const TWO_FACTOR_ENROLLMENT_PATHS = new Set([
   "auth.logout",
 ]);
 
+const PASSWORD_CHANGE_PATHS = new Set([
+  "auth.me",
+  "auth.changePassword",
+  "auth.setup2FA",
+  "auth.confirm2FA",
+  "auth.disable2FA",
+  "auth.logout",
+]);
+
 const enforceTwoFactorEnrollment = t.middleware(async opts => {
   const { ctx, next, path } = opts;
   if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
@@ -56,7 +79,22 @@ const enforceTwoFactorEnrollment = t.middleware(async opts => {
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
 
-export const partnerAllowedProcedure = t.procedure.use(requireUser).use(enforceTwoFactorEnrollment);
+const enforcePasswordChange = t.middleware(async opts => {
+  const { ctx, next, path } = opts;
+  if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  if (ctx.user.mustChangePassword && !PASSWORD_CHANGE_PATHS.has(path)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Altere a palavra-passe temporária antes de aceder à plataforma.",
+    });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const partnerAllowedProcedure = t.procedure
+  .use(requireUser)
+  .use(enforceTwoFactorEnrollment)
+  .use(enforcePasswordChange);
 
 const blockPartnerByDefault = t.middleware(async opts => {
   const { ctx, next } = opts;

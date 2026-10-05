@@ -119,7 +119,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   // ─── Auto-assign from pending invitation on first login ───────────────
   // Check if this user has a pending invitation by email and hasn't been
   // assigned a company yet. If so, apply the invited company + role.
-  if (user.email) {
+  if (user.email && user.loginMethod !== "email") {
     const emailLower = user.email.toLowerCase();
     const existingUser = await db.select().from(users).where(eq(users.openId, user.openId)).limit(1);
     if (existingUser.length > 0) {
@@ -373,13 +373,17 @@ export async function getAllSubmissionsByYear(year: number) {
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 
-export async function getLatestSubmissionForCompany(companyId: number) {
+export async function getLatestSubmissionForCompany(companyId: number, projectId: number) {
   const db = await getDb();
   if (!db) return undefined;
   const result = await db
     .select()
     .from(weeklySubmissions)
-    .where(and(eq(weeklySubmissions.companyId, companyId), eq(weeklySubmissions.status, "submitted")))
+    .where(and(
+      eq(weeklySubmissions.companyId, companyId),
+      eq(weeklySubmissions.projectId, projectId),
+      eq(weeklySubmissions.status, "submitted"),
+    ))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber))
     .limit(1);
   return result[0];
@@ -642,7 +646,14 @@ export async function getResponseById(id: number) {
 
 // ─── Dashboard Analytics ─────────────────────────────────────────────────────
 
-export async function getAnalytics(filters?: { companyId?: number; weekYear?: number; weekNumber?: number; sectionId?: number; projectId?: number }) {
+export async function getAnalytics(filters?: {
+  companyId?: number;
+  weekYear?: number;
+  weekNumber?: number;
+  sectionId?: number;
+  projectId?: number;
+  projectIds?: number[];
+}) {
   const db = await getDb();
   if (!db) return { total: 0, byStatus: {}, byWeek: [], bySection: [] };
 
@@ -652,6 +663,10 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
   if (filters?.weekYear) subConditions.push(eq(weeklySubmissions.weekYear, filters.weekYear));
   if (filters?.weekNumber) subConditions.push(eq(weeklySubmissions.weekNumber, filters.weekNumber));
   if (filters?.projectId) subConditions.push(eq(weeklySubmissions.projectId, filters.projectId));
+  else if (filters?.projectIds) {
+    if (filters.projectIds.length === 0) return { total: 0, byStatus: { I: 0, C: 0, NC: 0, NA: 0 }, byWeek: [], bySection: [], byCompany: [] };
+    subConditions.push(inArray(weeklySubmissions.projectId, filters.projectIds));
+  }
 
   // FLOW-01 FIX: Only APPROVED fichas count toward compliance analytics
   subConditions.push(eq(weeklySubmissions.status, "approved"));
@@ -707,7 +722,12 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
     .sort((a, b) => a.week.localeCompare(b.week));
 
   // Group by section
-  const allMeasuresList = await db.select().from(measures);
+  const scopedProjectIds = filters?.projectId
+    ? [filters.projectId]
+    : filters?.projectIds;
+  const allMeasuresList = scopedProjectIds && scopedProjectIds.length > 0
+    ? await db.select().from(measures).where(inArray(measures.projectId, scopedProjectIds))
+    : await db.select().from(measures);
   const sectionMap = new Map<number, { I: number; C: number; NC: number; NA: number }>();
   for (const r of allResponses) {
     const measure = allMeasuresList.find((m) => m.id === r.measureId);
@@ -719,7 +739,9 @@ export async function getAnalytics(filters?: { companyId?: number; weekYear?: nu
     }
   }
 
-  const allSections = await db.select().from(sections).orderBy(sections.orderIndex);
+  const allSections = scopedProjectIds && scopedProjectIds.length > 0
+    ? await db.select().from(sections).where(inArray(sections.projectId, scopedProjectIds)).orderBy(sections.orderIndex)
+    : await db.select().from(sections).orderBy(sections.orderIndex);
   const bySection = allSections.map((s) => ({
     sectionId: s.id,
     sectionName: s.name,
@@ -1098,6 +1120,20 @@ export async function getSubmissionsByProject(projectId: number) {
   if (!db) return [];
   return db.select().from(weeklySubmissions)
     .where(and(eq(weeklySubmissions.projectId, projectId), sql`${weeklySubmissions.status} != 'deleted'`))
+    .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
+}
+
+export async function getSubmissionsByProjectIds(projectIds: number[], year?: number, companyId?: number) {
+  const db = await getDb();
+  if (!db || projectIds.length === 0) return [];
+  const conditions = [
+    inArray(weeklySubmissions.projectId, projectIds),
+    sql`${weeklySubmissions.status} != 'deleted'`,
+  ];
+  if (year !== undefined) conditions.push(eq(weeklySubmissions.weekYear, year));
+  if (companyId !== undefined) conditions.push(eq(weeklySubmissions.companyId, companyId));
+  return db.select().from(weeklySubmissions)
+    .where(and(...conditions))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber));
 }
 

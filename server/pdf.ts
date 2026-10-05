@@ -2,7 +2,6 @@ import { Express, Request, Response } from "express";
 import PDFDocument from "pdfkit";
 import { ZipArchive } from "archiver";
 import https from "https";
-import http from "http";
 import { sdk } from "./_core/sdk";
 import * as db from "./db";
 import { generateWeeklyControlPdfBuffer } from "./weekly-control-pdf";
@@ -85,7 +84,7 @@ function writePdfFooter(doc: any) {
 
 const PM_PDF_MODULES = ["dashboard", "planos", "calendar", "timeline", "ficha", "residuos", "kpi", "documentacao"];
 
-function pmHasPdfModule(assignment: any, module: "planos" | "timeline") {
+function pmHasPdfModule(assignment: any, module: "planos" | "timeline" | "ficha") {
   if (!assignment?.accessModules) return true;
   try {
     const modules = JSON.parse(assignment.accessModules);
@@ -95,7 +94,10 @@ function pmHasPdfModule(assignment: any, module: "planos" | "timeline") {
   }
 }
 
-async function canExportProjectPdf(user: any, projectId: number, module?: "planos" | "timeline") {
+async function canExportProjectPdf(user: any, projectId: number, module?: "planos" | "timeline" | "ficha") {
+  // EEP is deliberately limited to KPI and Waste through tRPC. It never receives
+  // exports containing weekly forms, phases, plans or other project evidence.
+  if (user.role === "ee_partner") return false;
   if (user.role === "admin" || user.role === "dono_obra") return true;
   const [userProjects, companyProjects] = await Promise.all([
     db.getUserProjects(user.id),
@@ -103,6 +105,12 @@ async function canExportProjectPdf(user: any, projectId: number, module?: "plano
   ]);
   if (user.role === "pm") return userProjects.some((item: any) => item.projectId === projectId && (!module || pmHasPdfModule(item, module)));
   return userProjects.some((item: any) => item.projectId === projectId) || companyProjects.some((item: any) => item.projectId === projectId);
+}
+
+async function canReadSubmissionPdf(user: any, submission: { projectId: number | null; companyId: number }) {
+  if (!submission.projectId || !await canExportProjectPdf(user, submission.projectId, "ficha")) return false;
+  if (user.role === "admin" || user.role === "dono_obra" || user.role === "raa" || user.role === "observador" || user.role === "pm") return true;
+  return submission.companyId === user.companyId;
 }
 
 // Helper: determine which measures a user can export based on their role
@@ -126,12 +134,30 @@ function filterMeasuresForUser(measures: any[], user: any): any[] {
 // Helper to fetch image buffer from URL
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const isPrivateIpv4 = /^(127|10|0)\./.test(hostname)
+      || /^192\.168\./.test(hostname)
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+      || hostname === "169.254.169.254";
+    if (parsed.protocol !== "https:" || hostname === "localhost" || hostname.endsWith(".local") || isPrivateIpv4) {
+      return null;
+    }
     return await new Promise((resolve) => {
-      const client = url.startsWith("https") ? https : http;
+      const client = https;
       client.get(url, { timeout: 5000 }, (res) => {
         if (res.statusCode !== 200) { resolve(null); return; }
         const chunks: Buffer[] = [];
-        res.on("data", (chunk) => chunks.push(chunk));
+        let bytes = 0;
+        res.on("data", (chunk) => {
+          bytes += chunk.length;
+          if (bytes > 8 * 1024 * 1024) {
+            res.destroy();
+            resolve(null);
+            return;
+          }
+          chunks.push(chunk);
+        });
         res.on("end", () => resolve(Buffer.concat(chunks)));
         res.on("error", () => resolve(null));
       }).on("error", () => resolve(null));
@@ -299,8 +325,7 @@ export function registerPdfRoutes(app: Express) {
         return res.status(404).json({ error: "Submissão não encontrada" });
       }
 
-      // Access control
-      if (user.role !== "admin" && user.role !== "dono_obra" && user.role !== "raa" && user.role !== "observador" && sub.companyId !== user.companyId) {
+      if (!await canReadSubmissionPdf(user, sub)) {
         return res.status(403).json({ error: "Sem permissão" });
       }
 
@@ -355,8 +380,19 @@ export function registerPdfRoutes(app: Express) {
         return res.status(400).json({ error: "Máximo de 50 fichas por exportação" });
       }
 
-      // Set response headers for ZIP
+      const submissions = await Promise.all(ids.map(id => db.getSubmissionById(id)));
+      if (submissions.some(sub => !sub || !sub.projectId)) {
+        return res.status(403).json({ error: "Sem permissão para uma ou mais fichas selecionadas" });
+      }
+      for (const sub of submissions) {
+        if (!sub || !await canReadSubmissionPdf(user, sub)) {
+          return res.status(403).json({ error: "Sem permissão para uma ou mais fichas selecionadas" });
+        }
+      }
+
+      // Set response headers only after authorization of every requested record.
       res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Cache-Control", "private, no-store");
       res.setHeader("Content-Disposition", `attachment; filename="fichas_ambientais.zip"`);
 
       // Create ZIP archive
@@ -370,15 +406,9 @@ export function registerPdfRoutes(app: Express) {
         }
       });
 
-      for (const submissionId of ids) {
+      for (const sub of submissions) {
         try {
-          const sub = await db.getSubmissionById(submissionId);
           if (!sub) continue;
-
-          // Access control: skip submissions user can't access
-          if (user.role !== "admin" && user.role !== "dono_obra" && user.role !== "raa" && user.role !== "observador") {
-            if (sub.companyId !== user.companyId) continue;
-          }
 
           // Only export submitted or approved
           if (sub.status !== "submitted" && sub.status !== "approved") continue;
@@ -394,8 +424,9 @@ export function registerPdfRoutes(app: Express) {
           const filename = `ficha_controlo_S${String(sub.weekNumber).padStart(2, "0")}_${sub.weekYear}_${company?.shortName || "EE"}_${sub.status === "approved" ? "APROVADA" : "SUBMETIDA"}.pdf`;
           archive.append(pdfBuffer, { name: filename });
         } catch (err) {
-          console.error(`[PDF Batch] Error generating PDF for submission ${submissionId}:`, err);
-          // Skip failed PDFs, continue with others
+          console.error(`[PDF Batch] Error generating PDF for submission ${sub?.id ?? "unknown"}:`, err);
+          archive.destroy(err as Error);
+          return;
         }
       }
 

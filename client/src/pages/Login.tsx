@@ -44,8 +44,6 @@ export default function Login() {
         setMustChangePassword(true);
         setViewMode("changePassword");
         setError("");
-        // Session was created, but force password change
-        window.location.href = "/welcome";
       } else {
         sessionStorage.setItem("pw_verified", "1");
         window.location.href = "/welcome";
@@ -57,7 +55,9 @@ export default function Login() {
   const verify2FAMutation = trpc.auth.verify2FA.useMutation({
     onSuccess: (data) => {
       if (data.mustChangePassword) {
-        window.location.href = "/welcome";
+        setMustChangePassword(true);
+        setViewMode("changePassword");
+        setError("");
       } else {
         sessionStorage.setItem("pw_verified", "1");
         window.location.href = "/welcome";
@@ -81,6 +81,20 @@ export default function Login() {
     onSuccess: (data) => { setSuccess(data.message); },
     onError: (err) => setError(err.message),
   });
+  const changePasswordMutation = trpc.auth.changePassword.useMutation({
+    onSuccess: () => {
+      sessionStorage.setItem("pw_verified", "1");
+      window.location.href = "/welcome";
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  useEffect(() => {
+    if (user?.mustChangePassword) {
+      setMustChangePassword(true);
+      setViewMode("changePassword");
+    }
+  }, [user?.mustChangePassword]);
 
   // ACC auto-login (iframe detection)
   useEffect(() => {
@@ -110,7 +124,7 @@ export default function Login() {
   }, [loading, user, autoLoginAttempted]);
 
   useEffect(() => {
-    if (!loading && user && viewMode === "login") setLocation("/welcome");
+    if (!loading && user && !user.mustChangePassword && viewMode === "login") setLocation("/welcome");
     // OAuth users go directly to dashboard
   }, [loading, user, setLocation, viewMode]);
 
@@ -316,12 +330,14 @@ export default function Login() {
           <form onSubmit={(e) => {
             e.preventDefault();
             setError("");
-            if (!password.trim()) { setError(t("Introduza a palavra-passe")); return; }
-            loginMutation.mutate({ email: user?.email || "", password });
+            if (!password.trim()) { setError(t("Introduza a palavra-passe atual")); return; }
+            if (newPassword.length < 8) { setError(t("A nova palavra-passe deve ter pelo menos 8 caracteres.")); return; }
+            if (newPassword !== confirmPassword) { setError(t("As palavras-passe não coincidem.")); return; }
+            changePasswordMutation.mutate({ currentPassword: password, newPassword });
           }} className="space-y-4">
             <div className="text-center mb-4">
               <Shield className="w-12 h-12 mx-auto text-primary mb-2" />
-              <p className="text-sm text-muted-foreground">{t("Verificação de segurança — confirme a sua identidade.")}</p>
+              <p className="text-sm text-muted-foreground">{t("Por segurança, defina agora uma nova palavra-passe para continuar.")}</p>
               {user?.email && <p className="text-xs text-muted-foreground mt-1 font-medium">{user.email}</p>}
             </div>
             {error && (
@@ -331,10 +347,18 @@ export default function Login() {
             )}
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="password" placeholder={t("Palavra-passe")} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
+              <Input type="password" placeholder={t("Palavra-passe atual")} value={password} onChange={(e) => { setPassword(e.target.value); setError(""); }} className="pl-10 h-12" autoFocus />
             </div>
-            <Button type="submit" size="lg" className="w-full h-12 shadow-lg shadow-primary/15" disabled={loginMutation.isPending}>
-              {loginMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A verificar...")}</>) : t("Confirmar")}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="password" placeholder={t("Nova palavra-passe (mín. 8 caracteres)")} value={newPassword} onChange={(e) => { setNewPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input type="password" placeholder={t("Confirmar nova palavra-passe")} value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }} className="pl-10 h-12" />
+            </div>
+            <Button type="submit" size="lg" className="w-full h-12 shadow-lg shadow-primary/15" disabled={changePasswordMutation.isPending}>
+              {changePasswordMutation.isPending ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("A guardar...")}</>) : t("Alterar palavra-passe e continuar")}
             </Button>
             <div className="flex justify-between text-sm">
               <button type="button" className="text-muted-foreground hover:underline" onClick={() => setViewMode("forgotPassword")}>

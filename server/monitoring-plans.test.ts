@@ -171,12 +171,12 @@ describe("Planos — experiência e exportação", () => {
   });
 
   it("liga a timeline APA aos eventos RDCD anuais e restringe a edição a Admin", () => {
-    expect(uiSource).toContain("Control room APA conectada");
-    expect(uiSource).toContain("Timeline anual de reporte");
+    expect(uiSource).toContain("Calendário de comunicação APA");
+    expect(uiSource).toContain("Linha anual de comunicação");
     expect(uiSource).toContain("apaReportingBoard.useQuery");
     expect(uiSource).toContain("configureApaReportingCycle.useMutation");
     expect(uiSource).toContain('user?.role === "admin"');
-    expect(uiSource).toContain("Receção do reporte + 3 meses civis = limite máximo APA");
+    expect(uiSource).toContain("Receção do plano ou reporte + 3 meses civis = limite máximo APA");
     expect(uiSource).toContain("Planos a integrar nesta emissão");
   });
 

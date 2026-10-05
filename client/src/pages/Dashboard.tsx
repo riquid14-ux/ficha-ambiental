@@ -300,7 +300,8 @@ export default function Dashboard() {
 
   // Overdue detection
   const overdueQuery = trpc.overdue.check.useQuery(
-    !isAllProjects && activeProject ? { projectId: activeProject.id } : undefined
+    { projectId: activeProject?.id ?? 1 },
+    { enabled: Boolean(!isAllProjects && activeProject?.id) },
   );
 
   const analytics = analyticsQuery.data;

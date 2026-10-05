@@ -82,6 +82,11 @@ class RouteErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   static getDerivedStateFromError() {
     return { hasError: true };
   }
+  componentDidCatch(error: Error) {
+    // A interface não expõe detalhes técnicos, mas a consola de desenvolvimento
+    // mantém o diagnóstico disponível durante QA.
+    if (import.meta.env.DEV) console.error("Route render error", error);
+  }
   render() {
     if (this.state.hasError) {
       return (

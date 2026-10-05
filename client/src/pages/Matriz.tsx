@@ -25,7 +25,8 @@ export default function Matriz(props: any) {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const matrixQuery = trpc.matrix.getData.useQuery(
-    isAllProjects ? { year: selectedYear } : { projectId: activeProject?.id, year: selectedYear }
+    { projectId: activeProject?.id ?? 1, year: selectedYear },
+    { enabled: Boolean(!isAllProjects && activeProject?.id) },
   );
 
   // Fetch company periods and weeks without work for active project

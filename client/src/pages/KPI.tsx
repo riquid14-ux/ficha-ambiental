@@ -68,7 +68,10 @@ export default function KPI() {
   const importExcelMutation = trpc.kpi.importExcel.useMutation({ onSuccess: (result) => { toast.success(`${result.importedWeeks} ${result.importedWeeks === 1 ? "semana importada" : "semanas importadas"} como ${result.mode === "draft" ? "rascunho" : "submissão"}.`); refreshKpiViews(); if (importInputRef.current) importInputRef.current.value = ""; } });
   const upsertMetricMutation = trpc.kpi.upsertMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); setEditingMetric(null); toast.success(t("Métrica guardada.")); } });
   const deleteMetricMutation = trpc.kpi.deleteMetric.useMutation({ onSuccess: () => { metricsQuery.refetch(); toast.success(t("Métrica removida.")); } });
-  const incidentsQuery = trpc.kpi.listIncidents.useQuery({ projectId: activeProject?.id });
+  const incidentsQuery = trpc.kpi.listIncidents.useQuery(
+    { projectId },
+    { enabled: projectId > 0 },
+  );
   const createIncidentMut = trpc.kpi.createIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });
   const deleteIncidentMut = trpc.kpi.deleteIncident.useMutation({ onSuccess: () => incidentsQuery.refetch() });
   const [showIncidentForm, setShowIncidentForm] = useState(false);

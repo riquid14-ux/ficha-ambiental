@@ -123,9 +123,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!loading && !user) setLocation("/login");
   }, [loading, user, setLocation]);
 
+  useEffect(() => {
+    if (!loading && user?.mustChangePassword) setLocation("/login");
+  }, [loading, user?.mustChangePassword, setLocation]);
+
   if (loading) return <DashboardLayoutSkeleton />;
 
-  if (!user) return null;
+  if (!user || user.mustChangePassword) return null;
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>

@@ -78,11 +78,34 @@ const rdcdChapterActionInput = z.object({
   status: z.string().trim().max(120),
 });
 
+const rdcdChapterFigureInput = z.object({
+  id: z.string().trim().min(6).max(100),
+  url: z
+    .string()
+    .trim()
+    .regex(
+      /^\/manus-storage\/rdcd-assets\/\d+\/[A-Za-z0-9._-]+$/,
+      "Referência de figura inválida."
+    ),
+  type: z.enum(["png", "jpg"]),
+  kind: z.enum(["image", "chart"]),
+  caption: z.string().trim().max(1_000),
+});
+
+const rdcdChapterTableInput = z.object({
+  id: z.string().trim().min(6).max(100),
+  title: z.string().trim().max(300),
+  columns: z.array(z.string().trim().max(160)).min(1).max(6),
+  rows: z.array(z.array(z.string().trim().max(1_000)).min(1).max(6)).max(20),
+});
+
 const rdcdChapterBlockInput = z.object({
   summary: z.string().trim().max(12_000).optional(),
   keyPoints: z.array(z.string().trim().max(1_500)).max(20).optional(),
   sourceReferences: z.array(z.string().trim().max(500)).max(30).optional(),
   actions: z.array(rdcdChapterActionInput).max(20).optional(),
+  figures: z.array(rdcdChapterFigureInput).max(12).optional(),
+  tables: z.array(rdcdChapterTableInput).max(8).optional(),
 });
 
 const rdcdContentInput = z.object({
@@ -5735,6 +5758,82 @@ export const appRouter = router({
         const extension = input.mimeType === "image/png" ? "png" : "jpg";
         const stored = await storagePut(`rdcd-branding/${input.projectId}/${Date.now()}-${ctx.user.id}.${extension}`, buffer, input.mimeType);
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "rdcd_logo_uploaded", "rdcd_reports", null, null, JSON.stringify({ projectId: input.projectId, filename: input.filename, mimeType: input.mimeType, storageKey: stored.key }));
+        return { url: stored.url, type: extension as "png" | "jpg" };
+      }),
+    uploadFigure: protectedProcedure
+      .input(
+        z.object({
+          projectId: z.number().int().positive(),
+          filename: z.string().trim().min(1).max(180),
+          mimeType: z.enum(["image/jpeg", "image/png"]),
+          data: z
+            .string()
+            .min(4)
+            .max(8 * 1024 * 1024),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!isAdminOrDono(ctx.user.role))
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Apenas Admin ou Dono de Obra podem adicionar figuras a um RDCD.",
+          });
+        await assertProjectAccess(ctx.user, input.projectId);
+        if (
+          /[/\\\r\n\0]/.test(input.filename) ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(input.data) ||
+          input.data.length % 4 !== 0
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A figura selecionada é inválida.",
+          });
+        }
+        const buffer = Buffer.from(input.data, "base64");
+        if (buffer.length === 0 || buffer.length > 4 * 1024 * 1024)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A figura deve ter no máximo 4 MB.",
+          });
+        const sanitization = await sanitizeFile(
+          buffer,
+          input.mimeType,
+          input.filename
+        );
+        await logFileUpload(
+          ctx.user.id,
+          input.filename,
+          input.mimeType,
+          sanitization.safe,
+          sanitization.threats,
+          "rdcd-editorial-figure"
+        );
+        if (!sanitization.safe)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A figura foi rejeitada pela verificação de segurança.",
+          });
+        const extension = input.mimeType === "image/png" ? "png" : "jpg";
+        const stored = await storagePut(
+          `rdcd-assets/${input.projectId}/${Date.now()}-${ctx.user.id}.${extension}`,
+          buffer,
+          input.mimeType
+        );
+        await db.insertAuditLog(
+          ctx.user.id,
+          getUserDisplayName(ctx.user),
+          "rdcd_figure_uploaded",
+          "rdcd_reports",
+          null,
+          null,
+          JSON.stringify({
+            projectId: input.projectId,
+            filename: input.filename,
+            mimeType: input.mimeType,
+            storageKey: stored.key,
+          })
+        );
         return { url: stored.url, type: extension as "png" | "jpg" };
       }),
     list: protectedProcedure

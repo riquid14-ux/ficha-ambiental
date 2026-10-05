@@ -22,8 +22,17 @@ function typeForKey(key: string) {
 export function registerRdcdMediaRoutes(app: Express) {
   app.get("/api/rdcd/media/logo", async (req, res) => {
     const projectId = Number(req.query.projectId);
-    const rawKey = typeof req.query.key === "string" ? req.query.key.replace(/^\/manus-storage\//, "") : "";
-    if (!Number.isSafeInteger(projectId) || projectId < 1 || !rawKey || rawKey.length > 500 || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(rawKey)) {
+    const rawKey =
+      typeof req.query.key === "string"
+        ? req.query.key.replace(/^\/manus-storage\//, "")
+        : "";
+    if (
+      !Number.isSafeInteger(projectId) ||
+      projectId < 1 ||
+      !rawKey ||
+      rawKey.length > 500 ||
+      !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(rawKey)
+    ) {
       res.status(400).send("Referência de logótipo inválida.");
       return;
     }
@@ -39,7 +48,9 @@ export function registerRdcdMediaRoutes(app: Express) {
         res.status(404).send("Projeto não encontrado.");
         return;
       }
-      const customForProject = new RegExp(`^rdcd-branding/${projectId}/[A-Za-z0-9._-]+$`).test(rawKey);
+      const customForProject = new RegExp(
+        `^rdcd-branding/${projectId}/[A-Za-z0-9._-]+$`
+      ).test(rawKey);
       if (!DEFAULT_RDCD_LOGO_KEYS.has(rawKey) && !customForProject) {
         res.status(404).send("Logótipo não encontrado.");
         return;
@@ -60,6 +71,61 @@ export function registerRdcdMediaRoutes(app: Express) {
     } catch (error) {
       console.error("[RDCD] Failed to stream report logo", error);
       if (!res.headersSent) res.status(403).send("Sem acesso ao logótipo.");
+    }
+  });
+
+  /**
+   * Editorial figures are stored privately per project. The browser receives a
+   * same-origin stream only after the same role gate used by RDCD drafts.
+   */
+  app.get("/api/rdcd/media/asset", async (req, res) => {
+    const projectId = Number(req.query.projectId);
+    const rawKey =
+      typeof req.query.key === "string"
+        ? req.query.key.replace(/^\/manus-storage\//, "")
+        : "";
+    if (
+      !Number.isSafeInteger(projectId) ||
+      projectId < 1 ||
+      !rawKey ||
+      rawKey.length > 500 ||
+      !/^rdcd-assets\/\d+\/[A-Za-z0-9._-]+$/.test(rawKey)
+    ) {
+      res.status(400).send("Referência de figura inválida.");
+      return;
+    }
+    if (!rawKey.startsWith(`rdcd-assets/${projectId}/`)) {
+      res.status(404).send("Figura não encontrada.");
+      return;
+    }
+
+    try {
+      const user = await sdk.authenticateRequest(req);
+      if (user.role !== "admin" && user.role !== "dono_obra") {
+        res.status(403).send("Sem acesso às figuras do RDCD.");
+        return;
+      }
+      const project = await db.getProjectById(projectId);
+      if (!project) {
+        res.status(404).send("Projeto não encontrado.");
+        return;
+      }
+      const signedUrl = await storageGetSignedUrl(rawKey);
+      const upstream = await fetch(signedUrl);
+      if (!upstream.ok || !upstream.body) {
+        res.status(502).send("Não foi possível obter a figura.");
+        return;
+      }
+      res.status(200);
+      res.setHeader("Content-Type", typeForKey(rawKey));
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+      Readable.fromWeb(upstream.body as never).pipe(res);
+    } catch (error) {
+      console.error("[RDCD] Failed to stream editorial figure", error);
+      if (!res.headersSent) res.status(403).send("Sem acesso à figura.");
     }
   });
 }

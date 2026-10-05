@@ -44,48 +44,75 @@ export function isPublicBrandingKey(key: string) {
 }
 
 export function isSafeStorageKey(key: string) {
-  return Boolean(key)
-    && key.length <= 500
-    && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(key)
-    && !key.split("/").some(segment => segment === "." || segment === "..");
+  return (
+    Boolean(key) &&
+    key.length <= 500 &&
+    /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(key) &&
+    !key.split("/").some(segment => segment === "." || segment === "..")
+  );
 }
 
 function parsePmModules(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return null;
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? new Set(parsed.filter((item): item is string => typeof item === "string")) : null;
+    return Array.isArray(parsed)
+      ? new Set(
+          parsed.filter((item): item is string => typeof item === "string")
+        )
+      : null;
   } catch {
     return null;
   }
 }
 
-async function canAccessProject(user: User, projectId: number, module: ProjectModule) {
+async function canAccessProject(
+  user: User,
+  projectId: number,
+  module: ProjectModule
+) {
   const project = await db.getProjectById(projectId);
   if (!project) return false;
   if (ADMIN_ROLES.has(user.role)) return true;
 
   const [userProjects, companyProjects] = await Promise.all([
     db.getUserProjects(user.id),
-    user.companyId ? db.getProjectsForCompany(user.companyId) : Promise.resolve([]),
+    user.companyId
+      ? db.getProjectsForCompany(user.companyId)
+      : Promise.resolve([]),
   ]);
   const assignment = userProjects.find(item => item.projectId === projectId);
-  const assigned = user.role === "pm"
-    ? Boolean(assignment)
-    : Boolean(assignment || companyProjects.some(item => item.projectId === projectId));
+  const assigned =
+    user.role === "pm"
+      ? Boolean(assignment)
+      : Boolean(
+          assignment ||
+            companyProjects.some(item => item.projectId === projectId)
+        );
   if (!assigned) return false;
 
   if (user.role === "pm") {
     const modules = parsePmModules(assignment?.accessModules);
     if (modules && !modules.has(module)) return false;
   }
-  if (module === "operacao" && project.code !== OPERATION_PROJECT_CODE) return false;
+  if (module === "operacao" && project.code !== OPERATION_PROJECT_CODE)
+    return false;
   return true;
 }
 
-async function canReadSubmission(user: User, row: { projectId: number | null; companyId: number }) {
-  if (!row.projectId || !await canAccessProject(user, row.projectId, "ficha")) return false;
-  if (ADMIN_ROLES.has(user.role) || user.role === "raa" || user.role === "observador" || user.role === "pm") return true;
+async function canReadSubmission(
+  user: User,
+  row: { projectId: number | null; companyId: number }
+) {
+  if (!row.projectId || !(await canAccessProject(user, row.projectId, "ficha")))
+    return false;
+  if (
+    ADMIN_ROLES.has(user.role) ||
+    user.role === "raa" ||
+    user.role === "observador" ||
+    user.role === "pm"
+  )
+    return true;
   return user.companyId === row.companyId;
 }
 
@@ -121,8 +148,14 @@ export async function authorizeStorageRead(user: User, key: string) {
     return canReadSubmission(user, submissionRows[0]);
   }
 
-  const phaseRows = await findRows(sql`SELECT projectId FROM phase_evidence WHERE fileKey = ${key}`);
-  if (phaseRows.length > 0) return phaseRows.length === 1 && canAccessProject(user, Number(phaseRows[0].projectId), "timeline");
+  const phaseRows = await findRows(
+    sql`SELECT projectId FROM phase_evidence WHERE fileKey = ${key}`
+  );
+  if (phaseRows.length > 0)
+    return (
+      phaseRows.length === 1 &&
+      canAccessProject(user, Number(phaseRows[0].projectId), "timeline")
+    );
 
   const planRows = await findRows(sql`
     SELECT assignment.projectId FROM monitoring_plan_attachments attachment
@@ -134,7 +167,11 @@ export async function authorizeStorageRead(user: User, key: string) {
     WHERE plan.submittedFileKey = ${key}
   `);
   if (planRows.length > 0) {
-    const grants = await Promise.all(planRows.map((row: { projectId: number }) => canAccessProject(user, Number(row.projectId), "planos")));
+    const grants = await Promise.all(
+      planRows.map((row: { projectId: number }) =>
+        canAccessProject(user, Number(row.projectId), "planos")
+      )
+    );
     return grants.some(Boolean);
   }
 
@@ -145,14 +182,31 @@ export async function authorizeStorageRead(user: User, key: string) {
     UNION ALL
     SELECT projectId FROM operation_infrastructure_points WHERE chartFileKey = ${key} OR cardImageKey = ${key}
   `);
-  if (operationRows.length > 0) return operationRows.length === 1 && canAccessProject(user, Number(operationRows[0].projectId), "operacao");
+  if (operationRows.length > 0)
+    return (
+      operationRows.length === 1 &&
+      canAccessProject(user, Number(operationRows[0].projectId), "operacao")
+    );
 
   // As marcas escolhidas para um RDCD não são ativos públicos: a chave contém
   // o projeto e só é disponibilizada a quem pode elaborar o relatório desse
   // projeto. Isto também cobre rascunhos ainda não guardados na base de dados.
   const rdcdBrandMatch = key.match(/^rdcd-branding\/(\d+)\/[A-Za-z0-9._-]+$/);
   if (rdcdBrandMatch) {
-    return ADMIN_ROLES.has(user.role) && canAccessProject(user, Number(rdcdBrandMatch[1]), "timeline");
+    return (
+      ADMIN_ROLES.has(user.role) &&
+      canAccessProject(user, Number(rdcdBrandMatch[1]), "timeline")
+    );
+  }
+
+  // Figuras, gráficos e imagens editoriais pertencem ao rascunho do relatório.
+  // Tal como as marcas, ficam confinadas ao projecto indicado no próprio caminho.
+  const rdcdAssetMatch = key.match(/^rdcd-assets\/(\d+)\/[A-Za-z0-9._-]+$/);
+  if (rdcdAssetMatch) {
+    return (
+      ADMIN_ROLES.has(user.role) &&
+      canAccessProject(user, Number(rdcdAssetMatch[1]), "timeline")
+    );
   }
 
   // A Biblioteca Documental e as pré-visualizações de importação têm rotas ou

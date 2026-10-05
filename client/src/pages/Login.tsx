@@ -167,18 +167,17 @@ export default function Login() {
           <Globe2 className="mr-1.5 h-3.5 w-3.5" />{language === "pt" ? "English" : "Português"}
         </Button>
       </div>
-      {/* Left panel - brand image (hidden on mobile) */}
+      {/* A entrada não explica a plataforma ao exterior: identifica-a e deixa clara
+          a fronteira de segurança antes de apresentar as credenciais. */}
       <div className="stand-login-visual hidden lg:flex lg:w-1/2 relative border-r border-white/10">
         <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
         <div className="absolute inset-0 flex flex-col justify-end p-10 text-white">
-          <p className="stand-kicker text-primary">Start Campus · Sines</p>
+          <p className="stand-kicker text-primary">START CAMPUS</p>
           <h2 className="mt-3 text-5xl font-semibold tracking-[-0.06em]">STAND</h2>
-          <p className="mt-3 max-w-md text-white/85 text-lg leading-7">{t("Onde a sustentabilidade ganha posição")}</p>
-          <p className="text-white/60 text-sm mt-3">{t("Infraestruturas digitais sustentáveis, com governação ambiental.")}</p>
-          <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 stand-login-meta text-white/58">
-            <span><span className="mr-2 inline-block size-1.5 rounded-full bg-primary shadow-[0_0_12px_var(--primary)]" />{t("Acesso auditado")}</span>
-            <span>{t("MFA obrigatório")}</span>
-            <span>{t("Governação ambiental")}</span>
+          <p className="mt-3 max-w-sm text-white/90 text-xl font-medium leading-7">{t("Acesso seguro para equipas autorizadas.")}</p>
+          <div className="stand-login-security-note mt-8">
+            <Shield className="size-4 text-primary" />
+            <span>{t("Autenticação, permissões e atividade sujeitas a controlo de segurança.")}</span>
           </div>
         </div>
       </div>
@@ -191,7 +190,7 @@ export default function Login() {
             <img src={LOGO_URL} alt="Start Campus" className="h-9 object-contain brightness-0 invert" />
           </div>
           <div className="text-center">
-            <p className="stand-kicker text-primary">{t("Governação ambiental")}</p>
+            <p className="stand-kicker text-primary">{t("Acesso restrito")}</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground">STAND</h1>
             <p className="text-sm text-muted-foreground mt-2">
               {viewMode === "login" && t("Introduza as suas credenciais para aceder")}

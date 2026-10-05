@@ -10,7 +10,7 @@ import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
 import { useBrandImage } from "@/hooks/useBrandImage";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ClipboardList, BarChart3, CalendarDays, Recycle, FileBarChart,
   Shield, BookOpen, GitBranch, Layers, Heart, Play, Info, CheckCircle2,
@@ -77,6 +77,8 @@ export default function Welcome() {
   // A fotografia institucional permanece disponível no controlo "Voltar à imagem".
   const [videoPlaying, setVideoPlaying] = useState(true);
   const [videoReady, setVideoReady] = useState(false);
+  const [selectedRackPath, setSelectedRackPath] = useState<string>("");
+  const videoFrameRef = useRef<HTMLIFrameElement | null>(null);
   const userRole = (user as any)?.role || "user";
   const projectCode = activeProject?.code || "";
   const isNest = projectCode === "SIN01";
@@ -114,7 +116,9 @@ export default function Welcome() {
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
   const primaryPath = isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard";
   const primaryLabel = isNest ? t("Abrir operação NEST") : t("Abrir centro de controlo");
-  const quickCommands = features.slice(0, 6);
+  const quickCommands = features.slice(0, 8);
+  const rackPathSignature = quickCommands.map((feature) => feature.path).join("|");
+  const selectedRackFeature = quickCommands.find((feature) => feature.path === selectedRackPath) || quickCommands[0];
 
   useEffect(() => {
     if (!videoPlaying) return;
@@ -132,6 +136,12 @@ export default function Welcome() {
     return () => window.removeEventListener("message", handlePlayerMessage);
   }, [videoPlaying, embedUrl]);
 
+  useEffect(() => {
+    if (!quickCommands.some((feature) => feature.path === selectedRackPath) && quickCommands[0]?.path) {
+      setSelectedRackPath(quickCommands[0].path);
+    }
+  }, [selectedRackPath, rackPathSignature]);
+
   return (
     <AppLayout>
       <div className="stand-command-shell space-y-6 pb-8">
@@ -146,8 +156,9 @@ export default function Welcome() {
           <div className="stand-os-hero-core">
             <div className="stand-os-hero-copy">
               <p className="stand-kicker text-primary">{t(isNest ? "NEST · SIN01 · OPERAÇÃO" : "START CAMPUS · GOVERNAÇÃO AMBIENTAL")}</p>
+              {userName && <p className="stand-os-greeting">{t("Bem-vindo de volta")}, <strong>{userName}</strong>.</p>}
               <h1>{t("A sustentabilidade ganha posição.")}</h1>
-              <p>{t("Uma consola única para projetos, conformidade, evidências e decisões ambientais — sem perder a origem de cada dado.")}</p>
+              <p>{t("Cada registo liga a operação, a conformidade e decisões ambientais mais conscientes.")}</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button type="button" onClick={() => setLocation(primaryPath)} className="stand-os-primary-action"><Activity className="size-4" />{primaryLabel}<ArrowRight className="size-4" /></button>
                 {visiblePaths.includes("/timeline") && <button type="button" onClick={() => setLocation("/timeline")} className="stand-os-secondary-action"><Workflow className="size-4" />{t("Ver ciclo do projeto")}</button>}
@@ -196,11 +207,34 @@ export default function Welcome() {
                   <img src={welcomeImage} alt="" aria-hidden="true" className="photo-grade absolute inset-0 size-full object-cover" />
                   <span className={`absolute inset-0 bg-[linear-gradient(120deg,rgba(10,54,56,.7),rgba(10,54,56,.12)_65%,rgba(10,54,56,.55))] transition-opacity duration-300 ${videoReady ? "opacity-0" : "opacity-100"}`} />
                   <iframe
+                    ref={videoFrameRef}
                     className={`absolute inset-0 h-full w-full transition-opacity duration-300 ${videoReady ? "opacity-100" : "opacity-0"}`}
                     src={embedUrl}
                     title="Start Campus"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    onLoad={() => {
+                      // O browser pode bloquear autoplay até receber o comando do
+                      // próprio player. O poster só desaparece quando há estado
+                      // de reprodução real, nunca apenas ao carregar o iframe.
+                      const player = videoFrameRef.current?.contentWindow;
+                      const target = new URL(embedUrl).origin;
+                      const send = (payload: unknown) => player?.postMessage(JSON.stringify(payload), target);
+                      // O host do iframe é youtube-nocookie.com (e não a URL
+                      // pública normalizada do vídeo); usar o mesmo host é
+                      // necessário para o browser aceitar postMessage.
+                      send({ event: "listening" });
+                      send({ event: "command", func: "addEventListener", args: ["onStateChange"] });
+                      const startPlayback = () => {
+                        send({ event: "command", func: "mute", args: [] });
+                        send({ event: "command", func: "playVideo", args: [] });
+                      };
+                      // O player pode ainda estar a inicializar quando o iframe
+                      // termina de carregar. Repetimos o comando em janelas
+                      // curtas, sem revelar um frame vazio se o fornecedor não
+                      // confirmar reprodução.
+                      [180, 700, 1400].forEach((delay) => window.setTimeout(startPlayback, delay));
+                    }}
                   />
                   <button type="button" onClick={() => setVideoPlaying(false)} className="absolute right-3 top-3 z-10 rounded-lg border border-white/20 bg-surface-contrast/85 px-2.5 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-surface-contrast">{t("Voltar à imagem")}</button>
                 </div>
@@ -221,42 +255,36 @@ export default function Welcome() {
             </CardContent>
           </Card>
 
-          {/* What you can do - 3/5 width */}
-          <Card className="stand-surface lg:col-span-3">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Info className="w-4 h-4 text-primary" />
-                {isAllProjects
-                  ? t("O que pode fazer na visão global")
-                  : `${t("O que pode fazer em")} ${projectName}`
-                }
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                {isAllProjects
-                  ? t("Visão consolidada de todos os projetos Start Campus.")
-                  : isNest
-                  ? t("Projeto em fase de operação: desempenho do edifício, entregáveis ambientais, resíduos e certificações.")
-                  : t("Acompanhamento do cumprimento das medidas ambientais da DCAPE durante a construção.")
-                }
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="stand-feature-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {features.map((feature, i) => (
-                  <button type="button" key={i} onClick={() => setLocation(feature.path)} className="stand-interactive flex gap-3 rounded-xl border bg-card p-3 text-left transition-colors group">
-                    <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                      <feature.icon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1">
-                        <h3 className="font-semibold text-sm">{t(feature.title)}</h3>
-                        <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{t(feature.description)}</p>
-                    </div>
-                  </button>
-                ))}
+          <Card className="stand-access-rack lg:col-span-3">
+            <CardHeader className="stand-rack-header">
+              <div>
+                <p className="stand-kicker text-primary">{t("ACESSO POR PERFIL")}</p>
+                <CardTitle className="mt-1 flex items-center gap-2 text-base"><Server className="size-4 text-primary" />{t("A sua rack de trabalho")}</CardTitle>
               </div>
+              <span className="stand-rack-access-badge"><LockKeyhole className="size-3" />{quickCommands.length} {t("gavetas autorizadas")}</span>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <div className="stand-rack-workspace">
+                <div className="stand-rack-slots" aria-label={t("Módulos autorizados")}>{quickCommands.map((feature, index) => {
+                  const isSelected = feature.path === selectedRackFeature?.path;
+                  return <button type="button" key={feature.path} aria-pressed={isSelected} onClick={() => setSelectedRackPath(feature.path)} className={`stand-rack-drawer ${isSelected ? "is-open" : ""}`}>
+                    <span className="stand-rack-slot-index">{String(index + 1).padStart(2, "0")}</span>
+                    <feature.icon className="size-4" />
+                    <span className="truncate">{t(feature.title)}</span>
+                    <i aria-hidden="true" />
+                  </button>;
+                })}</div>
+                <aside className="stand-rack-inspector" aria-live="polite">
+                  {selectedRackFeature && <>
+                    <div className="stand-rack-inspector-icon"><selectedRackFeature.icon className="size-5" /></div>
+                    <span className="stand-os-code">{t("GAVETA ATIVA")}</span>
+                    <h3>{t(selectedRackFeature.title)}</h3>
+                    <p>{t(selectedRackFeature.description)}</p>
+                    <button type="button" onClick={() => setLocation(selectedRackFeature.path)} className="stand-rack-open-action">{t("Abrir módulo")}<ArrowRight className="size-4" /></button>
+                  </>}
+                </aside>
+              </div>
+              <p className="stand-rack-footnote"><LockKeyhole className="size-3.5" />{t("Só são apresentadas gavetas autorizadas pelo seu perfil, empresa e projeto.")}</p>
             </CardContent>
           </Card>
         </div>
@@ -264,23 +292,23 @@ export default function Welcome() {
         {/* Quick tips */}
         {/* Workflow Diagram - How the process works */}
         {!isAllProjects && !isNest && visiblePaths.includes("/ficha") && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BookOpen className="w-4 h-4 text-primary" />
-                {t("Fluxo de Submissão")}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">{t("Como funciona o processo de submissão e aprovação das fichas de controlo ambiental.")}</p>
+          <Card className="stand-flow-console">
+            <CardHeader className="stand-flow-header">
+              <div>
+                <p className="stand-kicker text-primary">{t("SEQUÊNCIA CONTROLADA")}</p>
+                <CardTitle className="mt-1 flex items-center gap-2 text-base"><BookOpen className="w-4 h-4 text-primary" />{t("Fluxo de Submissão")}</CardTitle>
+              </div>
+              <p className="max-w-xl text-xs text-muted-foreground">{t("Cada ficha é submetida, revista e decidida no mesmo percurso rastreável — sem aprovações cruzadas.")}</p>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center gap-0 py-2">
+              <div className="stand-flow-track">
                 <WelcomeFlowStep icon={<FileText className="w-4 h-4" />} title={t("1. Criação da Ficha")} desc={t("EE/RAP preenche a ficha semanal")} color="submissao" actor="EE / RAP" />
-                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
+                <ArrowRight className="stand-flow-arrow size-5" />
                 <WelcomeFlowStep icon={<Send className="w-4 h-4" />} title={t("2. Submissão")} desc={t("Ficha submetida para revisão")} color="revisao" actor="EE / RAP" />
-                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
+                <ArrowRight className="stand-flow-arrow size-5" />
                 <WelcomeFlowStep icon={<Eye className="w-4 h-4" />} title={t("3. Revisão pela RAA")} desc={t("RAA analisa e verifica conformidade")} color="decisao" actor="RAA" />
-                <ArrowDown className="w-4 h-4 text-muted-foreground my-1" />
-                <div className="w-full max-w-lg border-2 border-dashed border-muted-foreground/30 rounded-xl p-3 bg-muted/20">
+                <ArrowRight className="stand-flow-arrow size-5" />
+                <div className="stand-flow-decision">
                   <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("Decisão da RAA")}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="text-center p-2 rounded-lg border border-primary/30 bg-primary/10">
@@ -296,7 +324,7 @@ export default function Welcome() {
                   </div>
                 </div>
               </div>
-              <div className="mt-3 pt-2 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
+              <div className="mt-5 pt-3 border-t flex flex-wrap gap-3 justify-center text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-2" /> {t("Ação EE/RAP")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-chart-3" /> {t("Ação RAA")}</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary" /> {t("Aprovado")}</span>
@@ -390,7 +418,7 @@ function WelcomeFlowStep({ icon, title, desc, color, actor }: { icon: React.Reac
     decisao: "bg-primary text-primary-foreground",
   };
   return (
-    <div className={`w-full max-w-lg p-3 rounded-lg border ${colors[color]} flex items-center gap-3`}>
+    <div className={`stand-flow-step ${colors[color]} flex items-center gap-3`}>
       <div className="flex-shrink-0">{icon}</div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold">{title}</p>

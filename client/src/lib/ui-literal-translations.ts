@@ -1702,4 +1702,12 @@ export const uiLiteralTranslations: Record<string, string> = {
   ,"Cumprimento DCAPE ponto a ponto": "DCAPE compliance point by point"
   ,"Uma plataforma de conformidade que se comporta como um sistema de missão crítica.": "A compliance platform that behaves like a mission-critical system."
   ,"Permissões, histórico e fontes visíveis": "Visible permissions, history and sources"
+  ,"Abrir módulo": "Open module"
+  ,"Autenticação, permissões e atividade sujeitas a controlo de segurança.": "Authentication, permissions and activity are subject to security controls."
+  ,"Bem-vindo de volta": "Welcome back"
+  ,"Cada ficha é submetida, revista e decidida no mesmo percurso rastreável — sem aprovações cruzadas.": "Each form is submitted, reviewed and decided through the same traceable journey — with no cross-approvals."
+  ,"Cada registo liga a operação, a conformidade e decisões ambientais mais conscientes.": "Each record connects operations, compliance and more informed environmental decisions."
+  ,"Módulos autorizados": "Authorised modules"
+  ,"SEQUÊNCIA CONTROLADA": "CONTROLLED SEQUENCE"
+  ,"Só são apresentadas gavetas autorizadas pelo seu perfil, empresa e projeto.": "Only drawers authorised for your role, company and project are shown."
 };

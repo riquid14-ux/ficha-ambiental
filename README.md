@@ -26,15 +26,19 @@ Aplicação web para monitorização e compliance ambiental em projectos de cons
 - **Calendário** — Prazos regulatórios e internos de reporting
 - **Importação PDF** — Fichas históricas com extracção automática via LLM
 - **9 papéis com permissões** — admin, dono_obra, pm, raa, ee, ee_partner, rap, observador e user
-- **Segurança** — 2FA obrigatório, sanitização de ficheiros, 292 testes automatizados
+- **Segurança** — 2FA obrigatório, sanitização de ficheiros, 592 testes automatizados na validação desta versão
 - **Resiliência operacional** — health checks, vigia PM2, backup pré-deployment, alertas redundantes e rollback automático
+- **Operação SIN01 / NEST** — cockpit, importação Excel auditável, reconciliação de faturas, cenários e integração BMS fase 2 assinada e inativa por defeito
 
 ## Instalação
 
 ```bash
-git clone <url-do-repo>
-cd Plataforma-Ambiental-V2
-pnpm install
+git clone https://github.com/riquid14-ux/ficha-ambiental.git
+cd ficha-ambiental
+pnpm install --frozen-lockfile
+pnpm check
+pnpm test
+pnpm build
 ```
 
 ## Configuração
@@ -46,9 +50,14 @@ DATABASE_URL=mysql://<utilizador>:<palavra-passe>@<servidor>:3306/plataforma_amb
 JWT_SECRET=<segredo-aleatorio-com-pelo-menos-32-caracteres>
 ```
 
-Ver documentação de implementação (Word) para configuração completa de SMTP, Azure OpenAI, SharePoint e ACC.
+### Guias para a equipa de IT
 
-Para instalar a protecção de crash-loops, CI/CD, aprovação humana e rollback no servidor Start Campus, consultar [`docs/OPERATIONS-RESILIENCE.md`](docs/OPERATIONS-RESILIENCE.md).
+- [Guia de implementação Start Campus](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md) — instalação, staging, segurança, SharePoint, ACC, CI/CD, recuperação e aceitação.
+- [Guia de implementação em Word](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx) — versão formatada para partilha direta com a equipa de IT.
+- [Integração BMS — Fase 2](docs/INTEGRACAO_BMS_FASE_2.md) — gateway outbound, contrato HMAC, allowlist de métricas, idempotência e testes de ativação para SIN01/NEST.
+- [Resiliência operacional](docs/OPERATIONS-RESILIENCE.md) — vigia, backup, rollback e resposta a crash-loop.
+
+Nenhum destes guias contém segredos. A configuração efetiva reside no cofre/ambiente de cada instalação.
 
 ## Execução
 

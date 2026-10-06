@@ -30,7 +30,18 @@ describe("dashboards KPI — aplicação da paleta", () => {
     expect(partner).toContain('const companySeriesDefinitions = useMemo');
     expect(partner).toContain('height="h-[27rem]"');
     expect(partner).toContain('StandPageHeader');
-    expect(kpi).toContain('function ChartCard({ title, children, h = "h-72" }');
-    expect(kpi).toContain('className="stand-chart');
+    expect(kpi).toContain('function ChartCard({ title, subtitle, children, h = "h-[24rem]", className = "" }');
+    expect(kpi).toContain('className={`stand-chart');
+    expect(kpi).toContain('className="xl:col-span-7"');
+    expect(kpi).toContain('className="xl:col-span-6"');
+  });
+
+  it("expõe um Word de estado global sem inferir dados de origem", () => {
+    const dashboard = readPage("Dashboard.tsx");
+    expect(dashboard).toContain("handlePortfolioStatusReport");
+    expect(dashboard).toContain("Estado_Portefolio_Ambiental_");
+    expect(dashboard).toContain("O relatório é uma fotografia de acompanhamento");
+    expect(dashboard).toContain("utils.phaseMeasures.transitionReport.fetch");
+    expect(dashboard).toContain("allCalendarEventsQuery");
   });
 });

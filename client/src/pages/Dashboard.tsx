@@ -12,6 +12,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandMetricCard } from "@/components/stand/StandMetricCard";
+import { ChartEmptyState, ReadableChartTooltip, readableAxisTick, readableGridStroke } from "@/components/stand/ReadableChart";
 import { DCAPE_PHASES } from "@shared/phases";
 import { isTimelinePhaseApplicable, phaseLogicalSummary } from "@/lib/dcape-presentation";
 import {
@@ -257,6 +258,95 @@ export default function Dashboard() {
     }
   };
 
+  const handlePortfolioStatusReport = async () => {
+    if (!isAllProjects || projects.length === 0) {
+      toast.error(t("Selecione Todos os Projetos para exportar o estado do portefólio."));
+      return;
+    }
+    setIsPortfolioStatusExporting(true);
+    try {
+      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, PageBreak } = await import("docx");
+      const generatedAt = new Date();
+      const reportProjects = projects.filter(project => {
+        try { return JSON.parse(project.enabledModules || "[]").includes("timeline"); } catch { return false; }
+      });
+      const transitionReports = await Promise.all(reportProjects.map(project => utils.phaseMeasures.transitionReport.fetch({ projectId: project.id })));
+      const transitionByProject = new Map(transitionReports.map(report => [Number(report.project.id), report]));
+      const submissions = (submissionsQuery.data || []) as any[];
+      const events = (allCalendarEventsQuery.data || []) as any[];
+      const noBorder = { top: { style: BorderStyle.NONE, size: 0 }, bottom: { style: BorderStyle.NONE, size: 0 }, left: { style: BorderStyle.NONE, size: 0 }, right: { style: BorderStyle.NONE, size: 0 } } as const;
+      const statusLabel = (status: string) => t({ nao_iniciado: "Não iniciado", em_curso: "Em curso", em_validacao: "Em validação", concluido: "Concluído", bloqueado: "Bloqueado" }[status] || status);
+      const cell = (text: string, width: number, header = false) => new TableCell({ width: { size: width, type: WidthType.PERCENTAGE }, borders: noBorder, margins: { top: 90, bottom: 90, left: 90, right: 90 }, shading: header ? { fill: "0A3638" } : undefined, children: [new Paragraph({ children: [new TextRun({ text, bold: header, color: header ? "FFFFFF" : "1F2937", size: header ? 17 : 16 })] })] });
+      const projectSnapshot = (project: any) => {
+        const projectSubmissions = submissions.filter(submission => Number(submission.projectId) === Number(project.id));
+        const approved = projectSubmissions.filter(submission => submission.status === "approved").length;
+        const review = projectSubmissions.filter(submission => submission.status === "submitted" || submission.status === "under_review").length;
+        const rejected = projectSubmissions.filter(submission => submission.status === "rejected").length;
+        const report: any = transitionByProject.get(Number(project.id));
+        const phases = (report?.current?.phases || report?.phases || []) as any[];
+        const completed = phases.reduce((sum, phase) => sum + Number(phase.concluido || 0), 0);
+        const total = phases.reduce((sum, phase) => sum + Number(phase.total || 0), 0);
+        const pending = Number(report?.current?.pending?.length || 0);
+        const nextEvent = events.filter(event => Number(event.projectId) === Number(project.id) && event.status === "pending" && Number(event.nextDate) >= Date.now()).sort((a, b) => Number(a.nextDate) - Number(b.nextDate))[0];
+        return { projectSubmissions, approved, review, rejected, report, phases, completed, total, pending, nextEvent };
+      };
+      const snapshots = projects.map(project => ({ project, ...projectSnapshot(project) }));
+      const headline = `${snapshots.reduce((sum, snapshot) => sum + snapshot.approved, 0)} ${t("fichas aprovadas")} · ${snapshots.reduce((sum, snapshot) => sum + snapshot.pending, 0)} ${t("pendências de fase")}`;
+      const summaryHeader = new TableRow({ tableHeader: true, children: [t("Projeto"), t("Fichas no ano"), t("Fase / progresso"), t("Pendências"), t("Próximo reporting")].map((text, index) => cell(text, [20, 18, 22, 14, 26][index], true)) });
+      const summaryRows = snapshots.map(snapshot => new TableRow({ children: [
+        cell(`${snapshot.project.code} — ${snapshot.project.name}`, 20),
+        cell(`${snapshot.approved} ${t("aprovadas")} · ${snapshot.review} ${t("em revisão")} · ${snapshot.rejected} ${t("rejeitadas")}`, 18),
+        cell(snapshot.total ? `${snapshot.completed}/${snapshot.total} · ${Math.round((snapshot.completed / snapshot.total) * 100)}%` : t("Sem fases aplicáveis"), 22),
+        cell(String(snapshot.pending), 14),
+        cell(snapshot.nextEvent ? `${t(snapshot.nextEvent.name)} · ${new Date(Number(snapshot.nextEvent.nextDate)).toLocaleDateString(dateLocale)}` : t("Sem reporting futuro configurado"), 26),
+      ] }));
+      const children: any[] = [
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: t("ESTADO DO PORTEFÓLIO AMBIENTAL"), bold: true, size: 34, color: "0A3638" })], spacing: { after: 180 } }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: t("Fichas, fases, pendências e próximos reportings por projeto"), size: 20, color: "4B5563" })], spacing: { after: 220 } }),
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: headline, bold: true, size: 19, color: "047857" })], spacing: { after: 420 } }),
+        new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: t("1. Visão consolidada"), bold: true, color: "0A3638" })] }),
+        new Paragraph({ children: [new TextRun({ text: `${t("Período de fichas")}: ${selectedYear}. ${t("Emitido em")}: ${generatedAt.toLocaleString(dateLocale)}. ${t("O relatório é uma fotografia de acompanhamento e não substitui a validação técnica, regulatória ou contratual.")}`, size: 18 })], spacing: { after: 250 } }),
+        new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [summaryHeader, ...summaryRows] }),
+      ];
+      for (const [index, snapshot] of Array.from(snapshots.entries())) {
+        children.push(new Paragraph({ children: [new PageBreak()] }));
+        children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: `${index + 2}. ${snapshot.project.code} — ${snapshot.project.name}`, bold: true, color: "0A3638" })] }));
+        children.push(new Paragraph({ children: [new TextRun({ text: `${t("Fichas aprovadas")}: ${snapshot.approved} · ${t("Em revisão")}: ${snapshot.review} · ${t("Rejeitadas")}: ${snapshot.rejected}.`, size: 18 })], spacing: { after: 180 } }));
+        if (snapshot.phases.length) {
+          children.push(new Paragraph({ children: [new TextRun({ text: t("Progresso regulamentar"), bold: true })], spacing: { after: 80 } }));
+          const phaseRows = [new TableRow({ tableHeader: true, children: [t("Fase"), t("Estado"), t("Progresso")].map((text, itemIndex) => cell(text, [48, 22, 30][itemIndex], true)) }), ...snapshot.phases.map((phase: any) => new TableRow({ children: [cell(language === "en" ? phase.nameEn || phase.name : phase.name || phase.key, 48), cell(statusLabel(phase.status || "em_curso"), 22), cell(`${Number(phase.concluido || 0)}/${Number(phase.total || 0)} · ${Number(phase.progress || 0)}%`, 30)] }))];
+          children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: phaseRows }));
+        } else {
+          children.push(new Paragraph({ children: [new TextRun({ text: t("Sem fases aplicáveis ou dados de progresso disponíveis para este projeto."), italics: true, color: "6B7280" })], spacing: { after: 140 } }));
+        }
+        const pending = snapshot.report?.current?.pending || [];
+        children.push(new Paragraph({ children: [new TextRun({ text: t("Pendências prioritárias"), bold: true })], spacing: { before: 230, after: 80 } }));
+        if (pending.length) {
+          const pendingRows = [new TableRow({ tableHeader: true, children: [t("N.º"), t("Obrigação"), t("Estado"), t("Responsável"), t("Último update")].map((text, itemIndex) => cell(text, [8, 35, 16, 20, 21][itemIndex], true)) }), ...pending.slice(0, 12).map((item: any) => new TableRow({ children: [cell(String(item.number), 8), cell(String(item.description), 35), cell(statusLabel(item.status), 16), cell(item.ownerName || t("Por definir"), 20), cell(item.latestUpdate?.updateText || t("Sem update registado"), 21)] }))];
+          children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: pendingRows }));
+        } else {
+          children.push(new Paragraph({ children: [new TextRun({ text: t("Sem pendências de fase registadas na fonte de acompanhamento."), italics: true, color: "6B7280" })] }));
+        }
+        children.push(new Paragraph({ children: [new TextRun({ text: `${t("Próximo reporting")}: ${snapshot.nextEvent ? `${t(snapshot.nextEvent.name)} · ${new Date(Number(snapshot.nextEvent.nextDate)).toLocaleDateString(dateLocale)}` : t("Sem reporting futuro configurado")}`, size: 17 })], spacing: { before: 180 } }));
+      }
+      children.push(new Paragraph({ children: [new PageBreak()] }), new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: t("Notas de emissão"), bold: true, color: "0A3638" })] }), new Paragraph({ children: [new TextRun({ text: t("Fonte: fichas semanais, acompanhamento de fases e calendário da plataforma. Ausências de dados são apresentadas como lacunas; não foram inferidas conclusões técnicas."), size: 17, color: "6B7280", italics: true })] }));
+      const wordDocument = new Document({ sections: [{ properties: {}, children }] });
+      const blob = await Packer.toBlob(wordDocument);
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `Estado_Portefolio_Ambiental_${generatedAt.toISOString().slice(0, 10)}.docx`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(t("Relatório de estado do portefólio exportado"));
+    } catch (error) {
+      console.error(error);
+      toast.error(t("Não foi possível gerar o relatório de estado do portefólio"));
+    } finally {
+      setIsPortfolioStatusExporting(false);
+    }
+  };
+
   // Check if this is an operation-only project
   const OPERATION_ONLY_PROJECT_CODES = ["SIN01"];
   const isOperationOnly = !isAllProjects && activeProject && OPERATION_ONLY_PROJECT_CODES.includes(activeProject.code);
@@ -268,6 +358,7 @@ export default function Dashboard() {
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("all");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [isTransitionExporting, setIsTransitionExporting] = useState(false);
+  const [isPortfolioStatusExporting, setIsPortfolioStatusExporting] = useState(false);
 
   const companiesQuery = trpc.companies.list.useQuery();
   const catalogueProjectId = activeProject?.id ?? 0;
@@ -306,6 +397,7 @@ export default function Dashboard() {
 
   const analytics = analyticsQuery.data;
   const calendarEventsQuery = trpc.calendarEvents.list.useQuery(activeProject?.id ? { projectId: activeProject.id } : { projectId: 0 });
+  const allCalendarEventsQuery = trpc.calendarEvents.listAll.useQuery(undefined, { enabled: isAllProjects && (user?.role === "admin" || user?.role === "dono_obra") });
   const wasteQuery = trpc.wasteEgars.list.useQuery({ projectId: activeProject?.id || 0, year: new Date().getFullYear() });
   const operationOverviewQuery = trpc.operation.overview.useQuery(
     { projectId: activeProject?.id || 0, includeDetailed: false },
@@ -499,7 +591,7 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="stand-command-shell space-y-6">
-        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>{isAllProjects && <Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleTransitionReport} disabled={isTransitionExporting}><ListChecks className="w-4 h-4 mr-1" /> {isTransitionExporting ? t("A exportar...") : t("Transição de Fases")}</Button>}</div> : undefined}>
+        <StandPageHeader eyebrow={isAllProjects ? t("Visão") : activeProject?.code} title={t("Dashboard")} description={t("Visão geral do cumprimento ambiental")} context={isAllProjects ? t("Todos os Projetos") : activeProject?.name} image={dashboardImage.url} imagePosition={dashboardImage.position} imageMode={dashboardImage.mode} actions={(user?.role === "admin" || user?.role === "dono_obra") ? <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleMonthlyReport}><FileDown className="w-4 h-4 mr-1" /> {t("Relatório Mensal")}</Button>{isAllProjects && <><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handlePortfolioStatusReport} disabled={isPortfolioStatusExporting}><FileBarChart className="w-4 h-4 mr-1" /> {isPortfolioStatusExporting ? t("A exportar...") : t("Estado por Projeto")}</Button><Button variant="outline" size="sm" className="border-white/25 bg-card/10 text-white hover:bg-card/20 hover:text-white" onClick={handleTransitionReport} disabled={isTransitionExporting}><ListChecks className="w-4 h-4 mr-1" /> {isTransitionExporting ? t("A exportar...") : t("Transição de Fases")}</Button></>}</div> : undefined}>
           <p className="text-xs font-medium text-white/80">{t("Visão operacional, documental e de conformidade no mesmo contexto de projeto.")}</p>
         </StandPageHeader>
 
@@ -1055,117 +1147,29 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Charts Row 1 */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader><CardTitle className="text-base">{t("Evolução Semanal")}</CardTitle></CardHeader>
-            <CardContent>
-              {filteredByWeek.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filteredByWeek}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}</div>
-              )}
-            </CardContent>
+        <div className="grid gap-6 xl:grid-cols-12">
+          <Card className="stand-chart overflow-hidden border-border/80 bg-card shadow-sm xl:col-span-7">
+            <CardHeader className="border-b border-border/60 bg-muted/20"><CardTitle className="text-base">{t("Evolução Semanal")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Leitura consolidada por semana; selecione um estado acima para isolar uma série.")}</p></CardHeader>
+            <CardContent className="p-5">{filteredByWeek.length > 0 ? <ResponsiveContainer width="100%" height={390}><BarChart data={filteredByWeek} margin={{ top: 16, right: 18, left: 8, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke={readableGridStroke} vertical={false} /><XAxis dataKey="week" tick={readableAxisTick} tickMargin={10} /><YAxis tick={readableAxisTick} width={50} allowDecimals={false} /><Tooltip content={<ReadableChartTooltip locale={dateLocale} />} /><Legend verticalAlign="top" height={42} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />{(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" radius={[7, 7, 0, 0]} />}</BarChart></ResponsiveContainer> : <ChartEmptyState>{t("Sem dados disponíveis")}</ChartEmptyState>}</CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">{t("Evolução do Projeto (Acumulado)")}</CardTitle></CardHeader>
-            <CardContent>
-              {projectEvolution.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={projectEvolution}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="week" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
-                    <Tooltip formatter={(v: number) => `${v}%`} />
-                    <Legend />
-                    <Line type="monotone" dataKey="conformidade" name="Conformidade (I+C)" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="naoConformidade" name="Não Conformidade" stroke="var(--data-incomplete)" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}</div>
-              )}
-            </CardContent>
+          <Card className="stand-chart overflow-hidden border-border/80 bg-card shadow-sm xl:col-span-5">
+            <CardHeader className="border-b border-border/60 bg-muted/20"><CardTitle className="text-base">{t("Evolução do Projeto (Acumulado)")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Percentagem acumulada de conformidade e não conformidade.")}</p></CardHeader>
+            <CardContent className="p-5">{projectEvolution.length > 0 ? <ResponsiveContainer width="100%" height={390}><LineChart data={projectEvolution} margin={{ top: 16, right: 18, left: 4, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke={readableGridStroke} vertical={false} /><XAxis dataKey="week" tick={readableAxisTick} tickMargin={10} /><YAxis tick={readableAxisTick} unit="%" width={52} domain={[0, 100]} /><Tooltip content={<ReadableChartTooltip locale={dateLocale} />} /><Legend verticalAlign="top" height={42} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} /><Line type="monotone" dataKey="conformidade" name={t("Conformidade (I+C)")} stroke="var(--chart-1)" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} /><Line type="monotone" dataKey="naoConformidade" name={t("Não Conformidade")} stroke="var(--data-incomplete)" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 6 }} /></LineChart></ResponsiveContainer> : <ChartEmptyState>{t("Sem dados disponíveis")}</ChartEmptyState>}</CardContent>
+          </Card>
+          <Card className="stand-chart overflow-hidden border-border/80 bg-card shadow-sm xl:col-span-8">
+            <CardHeader className="border-b border-border/60 bg-muted/20"><CardTitle className="flex items-center gap-2 text-base"><Building2 className="w-4 h-4" />{t("Distribuição por Entidade Executante")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Compare entidades pela mesma escala e mantenha a legenda sempre visível.")}</p></CardHeader>
+            <CardContent className="p-5">{filteredByCompany.length > 0 ? <ResponsiveContainer width="100%" height={410}><BarChart data={filteredByCompany} margin={{ top: 16, right: 18, left: 8, bottom: 36 }}><CartesianGrid strokeDasharray="3 3" stroke={readableGridStroke} vertical={false} /><XAxis dataKey="companyName" tick={readableAxisTick} angle={filteredByCompany.length > 4 ? -24 : 0} textAnchor={filteredByCompany.length > 4 ? "end" : "middle"} height={filteredByCompany.length > 4 ? 70 : 42} interval={0} /><YAxis tick={readableAxisTick} width={50} allowDecimals={false} /><Tooltip content={<ReadableChartTooltip locale={dateLocale} />} /><Legend verticalAlign="top" height={42} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />{(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" radius={[7, 7, 0, 0]} />}</BarChart></ResponsiveContainer> : <ChartEmptyState>{t("Sem dados disponíveis")}</ChartEmptyState>}</CardContent>
+          </Card>
+          <Card className="stand-chart overflow-hidden border-border/80 bg-card shadow-sm xl:col-span-4">
+            <CardHeader className="border-b border-border/60 bg-muted/20"><CardTitle className="text-base">{t("Distribuição por Estado")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Peso relativo de cada estado no âmbito ativo.")}</p></CardHeader>
+            <CardContent className="p-5">{pieData.length > 0 ? <ResponsiveContainer width="100%" height={410}><PieChart><Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="46%" outerRadius={122} labelLine={false} label={({ name, percent }) => `${String(name).slice(0, 15)} ${(Number(percent) * 100).toFixed(0)}%`}>{pieData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}</Pie><Tooltip content={<ReadableChartTooltip locale={dateLocale} />} /><Legend verticalAlign="bottom" height={48} wrapperStyle={{ fontSize: 12 }} /></PieChart></ResponsiveContainer> : <ChartEmptyState>{t("Sem dados disponíveis")}</ChartEmptyState>}</CardContent>
           </Card>
         </div>
 
-        {/* Charts Row 2 */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" />{t("Distribuição por Entidade Executante")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredByCompany.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={filteredByCompany}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                    <XAxis dataKey="companyName" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
-                    {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}</div>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">{t("Distribuição por Estado")}</CardTitle></CardHeader>
-            <CardContent>
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                      {pieData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">{t("Sem dados disponíveis")}</div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* By Section */}
         {filteredBySection.some((s: any) => s.I + s.C + s.NC + s.NA > 0) && (
-          <Card>
-            <CardHeader><CardTitle className="text-base">{t("Cumprimento por Secção")}</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={filteredBySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="sectionName" width={200} tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.length > 30 ? v.slice(0, 30) + "..." : v} />
-                  <Tooltip />
-                  <Legend />
-                  {(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}
-                  {(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" />}
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
+          <Card className="stand-chart overflow-hidden border-border/80 bg-card shadow-sm">
+            <CardHeader className="border-b border-border/60 bg-muted/20"><CardTitle className="text-base">{t("Cumprimento por Secção")}</CardTitle><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Comparação horizontal para manter nomes de secção e diferenças legíveis.")}</p></CardHeader>
+            <CardContent className="p-5"><ResponsiveContainer width="100%" height={Math.max(430, filteredBySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0).length * 56)}><BarChart data={filteredBySection.filter((s: any) => s.I + s.C + s.NC + s.NA > 0)} layout="vertical" margin={{ top: 16, right: 22, left: 56, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke={readableGridStroke} horizontal={false} /><XAxis type="number" tick={readableAxisTick} /><YAxis type="category" dataKey="sectionName" width={250} tick={readableAxisTick} tickFormatter={(v: string) => v.length > 38 ? v.slice(0, 38) + "..." : v} /><Tooltip content={<ReadableChartTooltip locale={dateLocale} />} /><Legend verticalAlign="top" height={42} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />{(selectedStatus === "all" || selectedStatus === "I") && <Bar dataKey="I" name={t("Implementado")} fill={STATUS_COLORS.I} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "C") && <Bar dataKey="C" name={t("Conforme")} fill={STATUS_COLORS.C} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NC") && <Bar dataKey="NC" name={t("Não Conforme")} fill={STATUS_COLORS.NC} stackId="a" />}{(selectedStatus === "all" || selectedStatus === "NA") && <Bar dataKey="NA" name={t("Não Aplicável")} fill={STATUS_COLORS.NA} stackId="a" radius={[7, 7, 0, 0]} />}</BarChart></ResponsiveContainer></CardContent>
           </Card>
         )}
         </>)}

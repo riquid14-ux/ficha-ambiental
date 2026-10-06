@@ -1,9 +1,9 @@
 # Guia de implementação para IT — Plataforma de Gestão Ambiental — Start Campus
 
-**Versão de referência:** checkpoint `6e9cfea8`  
+**Versão de referência:** branch `main`, confirmar o checkpoint/release mais recente antes da passagem a staging.
 **Repositório:** `https://github.com/riquid14-ux/ficha-ambiental`  
 **Branch de integração:** `main`  
-**Estado do repositório:** privado; a equipa de IT deve ser adicionada com acesso explícito antes da clonagem.
+**Publicação de referência:** RMD / `riquid14-ux`; repositório público sem segredos, ficheiros de produção ou documentação privada. O IT deve usar uma cópia interna/branch protegido para qualquer configuração de produção.
 
 ## 1. Objectivo e princípio de arquitectura
 
@@ -31,12 +31,12 @@ A Plataforma de Gestão Ambiental centraliza workflows de fichas semanais, KPI, 
 | 5 | Integrar ACC | Um PDF de teste é entregue na pasta correcta do projecto ACC e a referência devolvida é guardada. |
 | 6 | Configurar email corporativo | Convites e notificações chegam ao grupo de teste com remetente Start Campus autenticado. |
 | 7 | Activar CI/CD, watchdog, backup e rollback em staging | Um crash-loop simulado cria backup, alerta redundante e recuperação controlada. |
-| 8 | Integrar NodeODM isolado e testar voo DJI | Um lote exclusivamente nadir 90° gera outputs privados, sem afectar a disponibilidade da aplicação. |
+| 8 | Ativar a integração BMS fase 2 do SIN01/NEST | Gateway outbound assinado, idempotência, allowlist de métricas e validação contra fonte operacional aprovados. |
 | 9 | Aprovação de segurança e passagem a produção | Todos os testes de aceitação desta guia têm evidência guardada. |
 
 ## 3. Clonagem e execução em staging
 
-Após receber acesso ao repositório privado, a equipa pode clonar a versão actual com:
+A partir do repositório público de referência, a equipa deve clonar a versão validada e criar a sua cópia interna/branch protegido antes de configurar qualquer ambiente:
 
 ```bash
 git clone https://github.com/riquid14-ux/ficha-ambiental.git
@@ -57,6 +57,7 @@ O servidor deve correr com uma conta de serviço sem privilégios de administra�
 | SharePoint | `SHAREPOINT_CLIENT_ID`, `SHAREPOINT_CLIENT_SECRET`, `SHAREPOINT_TENANT_ID`, `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID` | App Microsoft Entra dedicada; acesso apenas ao site/biblioteca ambiental. |
 | Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Caixa técnica dedicada; TLS; SPF, DKIM e DMARC no domínio remetente. |
 | Watchdog/GitHub | ambiente `/etc/plataforma-ambiental/`, token GitHub App, chave SSH de deploy e destinatários de incidente | Segredos em ficheiros `600` ou cofre; não reutilizar credenciais pessoais. |
+| BMS fase 2 (opcional) | `BMS_INGEST_HMAC_SECRET`, `BMS_SERVICE_USER_ID`, gateway HTTPS outbound | Segredo e conta técnica apenas no cofre; a aplicação não inicia ligações à rede OT. |
 
 ## 4. Integração SharePoint como arquivo documental oficial
 
@@ -118,13 +119,19 @@ O repositório já contém CI, deployment aprovado, watchdog de PM2, backup, hea
 
 > A IA pode acelerar a investigação, mas a aprovação de código e a publicação continuam a exigir decisão humana.
 
-## 8. Fotogrametria DJI / NodeODM
+## 8. Integração BMS fase 2 — SIN01 / NEST
+
+A STAND já inclui o cockpit de Operação, importação Excel auditável, mapeamento de cabeçalhos, faturas, reconciliação, cenários e regras aprovadas. A fase 2 acrescenta uma **rota de receção BMS assinada**, inativa enquanto o IT não configurar o segredo e a conta técnica no cofre. Não expõe credenciais BMS, não abre conexões da aplicação para a rede OT e não pode enviar comandos ao edifício.
+
+O gateway corporativo é o único componente que comunica com o BMS local e faz `POST` HTTPS para a aplicação. O contrato impõe HMAC-SHA256, timestamp de cinco minutos, `eventId` idempotente, projeto único `SIN01` e allowlist de métricas/granularidades. A referência completa, payload, métricas e testes de aceitação estão em [Integração BMS — Fase 2](./INTEGRACAO_BMS_FASE_2.md).
+
+## 9. Fotogrametria DJI / NodeODM
 
 O módulo de Mapa e de fotogrametria foi retirado da aplicação activa por decisão de produto em 31 de Agosto de 2026. A Plataforma não expõe rotas, ecrãs, APIs, armazenamento ou tabelas de dados para levantamentos DJI, ortofotos, DSM ou NodeODM.
 
 Caso a Start Campus pretenda retomar esta possibilidade, deverá ser planeada como iniciativa separada, num worker privado e isolado da aplicação web. Os requisitos de segurança, capacidade e aceitação estão registados no documento [Ferramentas Futuras](./FERRAMENTAS_FUTURAS.md); não constituem trabalho de implementação pendente para a equipa de IT nesta versão.
 
-## 9. Testes de aceitação antes de produção
+## 10. Testes de aceitação antes de produção
 
 | Cenário | Resultado obrigatório |
 | --- | --- |
@@ -135,8 +142,9 @@ Caso a Start Campus pretenda retomar esta possibilidade, deverá ser planeada co
 | KPI/MIRR | Exportação por período mostra cabeçalhos profissionais, resumo e detalhe semanal correctos. |
 | Recuperação | Crash-loop em staging cria backup, alerta para vários destinatários, issue/PR opcional e rollback após readiness falhar. |
 | Segurança | Segredos não surgem em Git/logs; auditoria de dependências, testes e health check passam. |
+| BMS fase 2, se ativada | Assinatura válida aceita eventos, repetição é idempotente, assinatura/métrica inválida não escreve, e a semana é reconciliada com a fonte aprovada. |
 
-## 10. Entregáveis que o IT deve devolver à Start Campus
+## 11. Entregáveis que o IT deve devolver à Start Campus
 
 A passagem a produção deve terminar com um dossier de evidências: diagrama de rede e identidades técnicas; inventário de segredos e rotação; mapeamento projecto plataforma→ACC→SharePoint; resultado de testes de upload/arquivo/restauro; prova de SPF/DKIM/DMARC; relatório de health check e rollback; e evidência de branch protection/reviews. O template RDCD final continua a ser o elemento funcional que falta para validar a geração do relatório oficial com a estrutura exigida pela APA.
 

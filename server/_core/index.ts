@@ -20,6 +20,7 @@ import { registerHealthRoutes } from "../health";
 import { registerDocumentLibraryRoutes } from "../document-library";
 import { registerOperationMediaRoutes } from "../operation-media";
 import { registerRdcdMediaRoutes } from "../rdcd-media";
+import { registerBmsIngestRoutes } from "../bms-ingest";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -104,6 +105,13 @@ async function startServer() {
     standardHeaders: true,
     legacyHeaders: false,
   });
+  const bmsIngestLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 600,
+    message: { error: "Limite de receção BMS atingido. O gateway deve voltar a tentar com o mesmo eventId." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
   // Apply rate limiting to auth-related tRPC mutations
   app.use("/api/trpc/auth.login", authLimiter);
   app.use("/api/trpc/auth.register", authLimiter);
@@ -114,9 +122,18 @@ async function startServer() {
   app.use("/api/trpc/documentLibrary.update", documentWriteLimiter);
   app.use("/api/trpc/documentLibrary.delete", documentWriteLimiter);
   app.use("/api/documentos", documentReadLimiter);
+  app.use("/api/integrations/bms/v1/readings", bmsIngestLimiter);
 
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
+  app.use(express.json({
+    limit: "50mb",
+    verify: (req, _res, buffer) => {
+      const request = req as express.Request & { rawBody?: Buffer };
+      if (request.originalUrl?.split("?")[0] === "/api/integrations/bms/v1/readings") {
+        request.rawBody = Buffer.from(buffer);
+      }
+    },
+  }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // ─── ACC Iframe Support: Allow embedding in Autodesk Construction Cloud ───
@@ -141,6 +158,7 @@ async function startServer() {
   registerDocumentLibraryRoutes(app);
   registerOperationMediaRoutes(app);
   registerRdcdMediaRoutes(app);
+  registerBmsIngestRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);

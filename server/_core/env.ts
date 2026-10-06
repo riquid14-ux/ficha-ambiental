@@ -10,4 +10,7 @@ export const ENV = {
   adsClientId: process.env.ADS_CLIENT_ID ?? "",
   adsClientSecret: process.env.ADS_CLIENT_SECRET ?? "",
   adsRedirectUri: process.env.ADS_REDIRECT_URI ?? "",
+  // Apenas para o gateway BMS corporativo. Nunca expor no browser, no Git ou em logs.
+  bmsIngestHmacSecret: process.env.BMS_INGEST_HMAC_SECRET ?? "",
+  bmsServiceUserId: Number.parseInt(process.env.BMS_SERVICE_USER_ID ?? "", 10) || 0,
 };

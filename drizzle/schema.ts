@@ -951,6 +951,23 @@ export const operationImportBatches = mysqlTable("operation_import_batches", {
 export type OperationImportBatch = typeof operationImportBatches.$inferSelect;
 export type InsertOperationImportBatch = typeof operationImportBatches.$inferInsert;
 
+// Eventos assinados recebidos do gateway BMS. A tabela contém apenas a
+// identidade e hash do evento — não guarda a carga bruta nem segredos.
+export const operationBmsEvents = mysqlTable("operation_bms_events", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  eventId: varchar("eventId", { length: 120 }).notNull(),
+  payloadHash: varchar("payloadHash", { length: 64 }).notNull(),
+  batchId: int("batchId"),
+  receivedAt: bigint("receivedAt", { mode: "number" }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  projectEventUnique: uniqueIndex("operation_bms_events_project_event_unique").on(table.projectId, table.eventId),
+  batchIdx: index("operation_bms_events_batch_idx").on(table.batchId),
+}));
+export type OperationBmsEvent = typeof operationBmsEvents.$inferSelect;
+export type InsertOperationBmsEvent = typeof operationBmsEvents.$inferInsert;
+
 export const operationReadings = mysqlTable("operation_readings", {
   id: int("id").autoincrement().primaryKey(),
   projectId: int("projectId").notNull(),

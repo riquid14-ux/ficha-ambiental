@@ -83,6 +83,7 @@ import {
   buildRdcdPhaseRows,
   buildRdcdWeeklyRows,
   getRdcdProjectModel,
+  localizeRdcdSectionName,
   RDCD_BRAND_PROFILES,
   SIN02_RDCD_METADATA,
   type RdcdBrandProfileId,
@@ -1086,17 +1087,20 @@ export default function RDCD() {
         (allResponses || []) as any[],
         measures || [],
         sections || [],
-        reportPhase
+        reportPhase,
+        language
       );
       const phaseRows = buildRdcdPhaseRows(
         (allResponses || []) as any[],
         measures || [],
-        sections || []
+        sections || [],
+        language
       );
       const nonConformityRows = buildRdcdNonConformityRows(
         (allResponses || []) as any[],
         measures || [],
-        filteredSubmissions as any[]
+        filteredSubmissions as any[],
+        language
       );
       const operationRows = compiledMeasures.map((measure: any) => [
         String(measure.number),
@@ -2149,12 +2153,12 @@ export default function RDCD() {
     no_data: "bg-muted/40 text-muted-foreground border-border",
   };
   const statusLabels: Record<string, string> = {
-    conform: "Cumprido",
-    nc: "Não Conforme",
-    na: "N.A.",
-    pending: "Em curso",
-    partial: "Parcial",
-    no_data: "Sem dados",
+    conform: t("Cumprido"),
+    nc: t("Não Conforme"),
+    na: t("N.A."),
+    pending: t("Em curso"),
+    partial: t("Parcial"),
+    no_data: t("Sem dados"),
   };
   const responseStatusLabels: Record<string, string> = {
     I: t("Implementada"),
@@ -2282,6 +2286,288 @@ export default function RDCD() {
   const updateChapterSummary = (summary: string) => {
     updateActiveChapterBlock(current => ({ ...current, summary }));
     setContent(current => ({ ...current, [activeEditorialSection]: summary }));
+  };
+
+  const reportPeriodLabel =
+    startWeek && endWeek
+      ? `S${startWeek.split("-W")[1]}–S${endWeek.split("-W")[1]}/${selectedYear}`
+      : "—";
+
+  const renderLiveDocumentPage = (mode: "measure" | "chapter") => {
+    const isMeasurePreview = mode === "measure";
+    const measureStatus = curationPreviewMeasure
+      ? t(
+          statusLabels[curationPreviewMeasure.autoStatus] ||
+            curationPreviewMeasure.autoStatus
+        )
+      : "—";
+    const chapterFigures = activeChapterBlock.figures.slice(0, 2);
+    const chapterTable = activeChapterBlock.tables[0];
+    const chapterSources = activeChapterBlock.sourceReferences
+      .filter(Boolean)
+      .slice(0, 3);
+
+    return (
+      <div className="rdcd-document-page" aria-live="polite">
+        <div className="rdcd-document-header">
+          <div>
+            <p className="rdcd-document-brand">START CAMPUS · STAND</p>
+            <p className="rdcd-document-type">
+              {t("RELATÓRIO DE DEMONSTRAÇÃO DE CUMPRIMENTO")}
+            </p>
+          </div>
+          <div className="rdcd-document-meta">
+            <span>
+              {reportNumber.trim() ||
+                `RDCD-${selectedProject?.code || "PROJ"}-001`}
+            </span>
+            <span>
+              {t("Revisão")} {revision || "00"}
+            </span>
+          </div>
+        </div>
+
+        <div className="rdcd-document-project">
+          <span>{selectedProject?.code || t("Projeto por confirmar")}</span>
+          <span>{reportPeriodLabel}</span>
+        </div>
+
+        {isMeasurePreview ? (
+          <article className="rdcd-document-body">
+            <div className="rdcd-document-chapter-label">
+              {t("CAPÍTULO 5 · FICHAS SEMANAIS APROVADAS")}
+            </div>
+            {curationPreviewMeasure ? (
+              <>
+                <div className="rdcd-document-heading-row">
+                  <div>
+                    <h4>
+                      {t("Medida")} {curationPreviewMeasure.number}
+                    </h4>
+                    <p>
+                      {localizeDcapeDescription(
+                        curationPreviewMeasure.description,
+                        language
+                      )}
+                    </p>
+                  </div>
+                  <span className="rdcd-document-status">{measureStatus}</span>
+                </div>
+
+                <section className="rdcd-document-section">
+                  <p className="rdcd-document-section-label">
+                    {t("Semanas selecionadas")}
+                  </p>
+                  {isOperationsReport ? (
+                    <div className="rdcd-document-table-wrap">
+                      <table className="rdcd-document-table">
+                        <thead>
+                          <tr>
+                            <th>{t("Período")}</th>
+                            <th>{t("Estado")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>{reportPeriodLabel}</td>
+                            <td>{measureStatus}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : curationPreviewResponses.length > 0 ? (
+                    <div className="rdcd-document-table-wrap">
+                      <table className="rdcd-document-table">
+                        <thead>
+                          <tr>
+                            <th>{t("Semana")}</th>
+                            <th>{t("Estado")}</th>
+                            <th>{t("Observações")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {curationPreviewResponses.map((response: any) => (
+                            <tr
+                              key={`${response.submissionId}-${response.week}`}
+                            >
+                              <td>
+                                S{response.week}/{response.year}
+                              </td>
+                              <td>
+                                {responseStatusLabels[response.status] ||
+                                  response.status}
+                              </td>
+                              <td>{response.observations || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="rdcd-document-empty">
+                      {t("Sem registos selecionados nesta medida.")}
+                    </p>
+                  )}
+                </section>
+
+                <section className="rdcd-document-section">
+                  <p className="rdcd-document-section-label">
+                    {t("Nota editorial")}
+                  </p>
+                  <p className="rdcd-document-paragraph">
+                    {curationPreviewSelection?.notes.trim() ||
+                      t("Sem nota editorial adicional.")}
+                  </p>
+                </section>
+
+                {curationPreviewImages.length > 0 && (
+                  <section className="rdcd-document-section">
+                    <p className="rdcd-document-section-label">
+                      {t("Fotografias selecionadas")}
+                    </p>
+                    <div className="rdcd-document-figure-grid">
+                      {curationPreviewImages.slice(0, 2).map(image => (
+                        <figure key={image.url}>
+                          <img src={image.url} alt={image.filename} />
+                          <figcaption>{image.filename}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            ) : (
+              <p className="rdcd-document-empty">
+                {t(
+                  "Selecione uma medida à esquerda para compor o respetivo excerto."
+                )}
+              </p>
+            )}
+          </article>
+        ) : (
+          <article className="rdcd-document-body">
+            <div className="rdcd-document-chapter-label">
+              {t("CAPÍTULO EM COMPOSIÇÃO")}
+            </div>
+            <h4 className="rdcd-document-title">{t(activeEditorial.label)}</h4>
+            <p className="rdcd-document-paragraph rdcd-document-summary">
+              {activeChapterBlock.summary.trim() ||
+                t("Sem conteúdo técnico redigido neste capítulo.")}
+            </p>
+
+            {activeChapterBlock.keyPoints.filter(Boolean).length > 0 && (
+              <section className="rdcd-document-section">
+                <p className="rdcd-document-section-label">
+                  {t("Pontos-chave")}
+                </p>
+                <ul className="rdcd-document-list">
+                  {activeChapterBlock.keyPoints
+                    .filter(Boolean)
+                    .slice(0, 4)
+                    .map((point, index) => (
+                      <li key={`${point}-${index}`}>{point}</li>
+                    ))}
+                </ul>
+              </section>
+            )}
+
+            {chapterFigures.length > 0 && (
+              <section className="rdcd-document-section">
+                <div className="rdcd-document-figure-grid">
+                  {chapterFigures.map(figure => (
+                    <figure key={figure.id}>
+                      <img
+                        src={reportFigureMediaUrl(figure.url)}
+                        alt={figure.caption || t("Figura do RDCD")}
+                      />
+                      <figcaption>
+                        {figure.caption || t("Sem legenda")}
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {chapterTable && (
+              <section className="rdcd-document-section">
+                <p className="rdcd-document-section-label">
+                  {chapterTable.title || t("Quadro de acompanhamento")}
+                </p>
+                <div className="rdcd-document-table-wrap">
+                  <table className="rdcd-document-table">
+                    <thead>
+                      <tr>
+                        {chapterTable.columns.map((column, index) => (
+                          <th key={`${column}-${index}`}>{column || "—"}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chapterTable.rows.slice(0, 3).map((row, rowIndex) => (
+                        <tr key={`${chapterTable.id}-${rowIndex}`}>
+                          {chapterTable.columns.map((_, columnIndex) => (
+                            <td key={`${rowIndex}-${columnIndex}`}>
+                              {row[columnIndex] || "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {activeChapterBlock.actions.filter(
+              action =>
+                action.action || action.owner || action.dueDate || action.status
+            ).length > 0 && (
+              <section className="rdcd-document-section">
+                <p className="rdcd-document-section-label">
+                  {t("Ações e seguimento")}
+                </p>
+                <div className="rdcd-document-action-list">
+                  {activeChapterBlock.actions
+                    .filter(
+                      action =>
+                        action.action ||
+                        action.owner ||
+                        action.dueDate ||
+                        action.status
+                    )
+                    .slice(0, 3)
+                    .map((action, index) => (
+                      <div key={`${action.action}-${index}`}>
+                        <strong>{action.action || "—"}</strong>
+                        <span>
+                          {[action.owner, action.dueDate, action.status]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </section>
+            )}
+
+            {chapterSources.length > 0 && (
+              <section className="rdcd-document-sources">
+                <p>{t("Fontes registadas")}</p>
+                {chapterSources.map((source, index) => (
+                  <span key={`${source}-${index}`}>{source}</span>
+                ))}
+              </section>
+            )}
+          </article>
+        )}
+
+        <footer className="rdcd-document-footer">
+          <span>{t("Pré-visualização viva do documento")}</span>
+          <span>{t("Emissão Word sujeita a revisão humana")}</span>
+        </footer>
+      </div>
+    );
   };
 
   return (
@@ -3277,7 +3563,7 @@ export default function RDCD() {
                         >
                           <div className="border-b border-border bg-muted/20 px-4 py-3">
                             <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                              {sec.name}
+                              {localizeRdcdSectionName(sec.name, language)}
                             </p>
                             <p className="mt-1 text-[11px] text-muted-foreground">
                               {sec.measures.length}{" "}
@@ -3488,187 +3774,39 @@ export default function RDCD() {
                     <aside className="rdcd-page-console lg:col-start-2 lg:row-span-2 lg:row-start-1">
                       <div className="rdcd-page-console-topbar">
                         <span className="stand-mono">
-                          {t("PRÉ-VISUALIZAÇÃO VIVA")}
+                          {t("WORD · CAPÍTULO 5")}
                         </span>
                         <span>
                           {reportNumber.trim() ||
                             `RDCD-${selectedProject?.code || "PROJ"}-001`}
                         </span>
                       </div>
-                      {curationPreviewMeasure ? (
-                        <div className="space-y-4 p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="stand-kicker text-primary">
-                                {t("PONTO 5 · FICHA SEMANAL")}
-                              </p>
-                              <h4 className="mt-1 text-sm font-semibold text-foreground">
-                                {t("Medida")} {curationPreviewMeasure.number}
-                              </h4>
-                            </div>
-                            <Badge
-                              variant="outline"
-                              className={
-                                statusColors[
-                                  curationPreviewMeasure.autoStatus
-                                ] || ""
-                              }
-                            >
-                              {t(
-                                statusLabels[
-                                  curationPreviewMeasure.autoStatus
-                                ] || curationPreviewMeasure.autoStatus
-                              )}
-                            </Badge>
-                          </div>
-                          <p className="text-xs leading-5 text-muted-foreground">
-                            {localizeDcapeDescription(
-                              curationPreviewMeasure.description,
-                              language
-                            )}
+                      <div className="p-3">
+                        {renderLiveDocumentPage("measure")}
+                      </div>
+                      <div className="grid grid-cols-2 gap-px border-t border-border bg-border">
+                        <div className="bg-card p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                            {t("Medidas selecionadas")}
                           </p>
-                          <div className="rounded-xl border border-border bg-card p-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                              {t("Excerto que será composto no Word")}
-                            </p>
-                            <div className="mt-3 overflow-hidden rounded-lg border border-border">
-                              <table className="w-full text-left text-[11px]">
-                                <thead className="bg-muted/40 text-muted-foreground">
-                                  <tr>
-                                    <th className="px-2 py-2 font-medium">
-                                      {t("Período")}
-                                    </th>
-                                    <th className="px-2 py-2 font-medium">
-                                      {t("Estado")}
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {isOperationsReport ? (
-                                    <tr className="border-t border-border">
-                                      <td className="px-2 py-2 text-foreground">
-                                        {startWeek && endWeek
-                                          ? `S${startWeek.split("-W")[1]}–S${endWeek.split("-W")[1]}/${selectedYear}`
-                                          : "—"}
-                                      </td>
-                                      <td className="px-2 py-2 text-foreground">
-                                        {t(
-                                          statusLabels[
-                                            curationPreviewMeasure.autoStatus
-                                          ] || curationPreviewMeasure.autoStatus
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ) : curationPreviewResponses.length > 0 ? (
-                                    curationPreviewResponses.map(
-                                      (response: any) => (
-                                        <tr
-                                          key={`${response.submissionId}-${response.week}`}
-                                          className="border-t border-border"
-                                        >
-                                          <td className="px-2 py-2 text-foreground">
-                                            S{response.week}/{response.year}
-                                          </td>
-                                          <td className="px-2 py-2 text-foreground">
-                                            {responseStatusLabels[
-                                              response.status
-                                            ] || response.status}
-                                          </td>
-                                        </tr>
-                                      )
-                                    )
-                                  ) : (
-                                    <tr className="border-t border-border">
-                                      <td
-                                        className="px-2 py-3 text-muted-foreground"
-                                        colSpan={2}
-                                      >
-                                        {t(
-                                          "Selecione uma semana nesta medida."
-                                        )}
-                                      </td>
-                                    </tr>
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-semibold text-foreground">
-                                {t("Fotografias no excerto")}
-                              </p>
-                              <span className="text-[11px] text-muted-foreground">
-                                {curationPreviewImages.length}
-                              </span>
-                            </div>
-                            {curationPreviewImages.length > 0 ? (
-                              <div className="mt-2 grid grid-cols-2 gap-2">
-                                {curationPreviewImages
-                                  .slice(0, 4)
-                                  .map(image => (
-                                    <figure
-                                      key={image.url}
-                                      className="overflow-hidden rounded-lg border border-border bg-card"
-                                    >
-                                      <img
-                                        src={image.url}
-                                        alt={image.filename}
-                                        className="h-20 w-full object-cover"
-                                      />
-                                      <figcaption className="truncate px-2 py-1.5 text-[10px] text-muted-foreground">
-                                        {image.filename}
-                                      </figcaption>
-                                    </figure>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="mt-2 rounded-lg border border-dashed border-border px-3 py-3 text-[11px] leading-4 text-muted-foreground">
-                                {t(
-                                  "Nenhuma fotografia foi selecionada para esta medida."
-                                )}
-                              </p>
-                            )}
-                          </div>
-                          <div>
-                            <Label className="text-xs">
-                              {t("Texto editorial da medida")}
-                            </Label>
-                            <Textarea
-                              value={curationPreviewSelection?.notes || ""}
-                              onClick={event => event.stopPropagation()}
-                              onChange={event =>
-                                setMeasureSelections(current => ({
-                                  ...current,
-                                  [curationPreviewMeasure.id]: {
-                                    ...(current[curationPreviewMeasure.id] || {
-                                      selectedWeeks: [],
-                                      selectedImageUrls: [],
-                                      notes: "",
-                                    }),
-                                    notes: event.target.value,
-                                  },
-                                }))
-                              }
-                              className="mt-1.5 min-h-28 bg-background text-xs leading-5"
-                              placeholder={t(
-                                "Edite aqui a nota que acompanhará esta medida no capítulo 5."
-                              )}
-                            />
-                          </div>
-                          <p className="border-t border-border pt-3 text-[10px] leading-4 text-muted-foreground">
-                            {t(
-                              "Pré-visualização editorial: os registos aprovados, evidências e estados de origem não são alterados."
-                            )}
+                          <p className="mt-1 text-lg font-semibold text-foreground">
+                            {selectedMeasureCount}
                           </p>
                         </div>
-                      ) : (
-                        <div className="p-5 text-xs leading-5 text-muted-foreground">
-                          {t(
-                            "Selecione uma medida à esquerda para compor e rever o respetivo excerto."
-                          )}
+                        <div className="bg-card p-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                            {t("Fotografias")}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold text-foreground">
+                            {selectedPhotoCount}
+                          </p>
                         </div>
-                      )}
+                      </div>
+                      <p className="border-t border-border px-4 py-3 text-[10px] leading-4 text-muted-foreground">
+                        {t(
+                          "A página acompanha a medida selecionada, as semanas, as evidências e a nota editorial sem alterar as fichas aprovadas de origem."
+                        )}
+                      </p>
                     </aside>
                   </section>
                 </>
@@ -3731,7 +3869,7 @@ export default function RDCD() {
                   </div>
                 </div>
 
-                <div className="grid gap-0 xl:grid-cols-[270px_minmax(0,1fr)_270px]">
+                <div className="grid gap-0 xl:grid-cols-[230px_minmax(0,1fr)_360px]">
                   <aside className="border-b border-border bg-muted/10 p-3 xl:border-r xl:border-b-0">
                     <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       {t("Estrutura do relatório")}
@@ -4816,162 +4954,40 @@ export default function RDCD() {
                     </div>
                   </main>
 
-                  <aside className="border-t border-border bg-muted/10 p-4 xl:border-t-0 xl:border-l">
-                    <p className="stand-kicker text-primary">
-                      {t("PRÉ-VISUALIZAÇÃO DE EMISSÃO")}
-                    </p>
-                    <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-                      <p className="text-xs font-semibold text-foreground">
+                  <aside className="rdcd-page-console border-t border-border bg-muted/10 p-3 xl:border-t-0 xl:border-l">
+                    <div className="rdcd-page-console-topbar -m-3 mb-3">
+                      <span className="stand-mono">
+                        {t("WORD · EM COMPOSIÇÃO")}
+                      </span>
+                      <span>
                         {reportNumber.trim() ||
                           `RDCD-${selectedProject?.code || "PROJ"}-001`}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                        {selectedProject
-                          ? `${selectedProject.code} — ${selectedProject.name}`
-                          : t("Projeto por confirmar")}
-                      </p>
-                      <div className="mt-4 space-y-2 border-t border-border pt-3 text-xs">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-muted-foreground">
-                            {t("Período")}
-                          </span>
-                          <span className="font-medium text-foreground">
-                            {startWeek && endWeek
-                              ? `S${startWeek.split("-W")[1]}–S${endWeek.split("-W")[1]}/${selectedYear}`
-                              : "—"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-muted-foreground">
-                            {t("Revisão")}
-                          </span>
-                          <span className="font-medium text-foreground">
-                            {revision || "00"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <span className="text-muted-foreground">
-                            {t("Perfil")}
-                          </span>
-                          <span className="text-right font-medium text-foreground">
-                            {RDCD_BRAND_PROFILES[brandProfile].label}
-                          </span>
-                        </div>
-                      </div>
+                      </span>
                     </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-                        <div className="flex items-center justify-between border-b border-border bg-muted/25 px-3 py-2">
-                          <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                            <FileTextIcon className="size-3.5 text-primary" />
-                            {t("Página em composição")}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {t(activeEditorial.label)}
-                          </span>
-                        </div>
-                        <div className="space-y-3 p-3">
-                          <p className="text-xs font-semibold leading-5 text-foreground">
-                            {t(activeEditorial.label)}
-                          </p>
-                          <p className="line-clamp-5 text-[11px] leading-5 text-muted-foreground">
-                            {activeChapterBlock.summary.trim() ||
-                              t(
-                                "A síntese técnica deste capítulo aparecerá aqui enquanto é redigida."
-                              )}
-                          </p>
-                          {activeChapterBlock.keyPoints.filter(Boolean).length >
-                            0 && (
-                            <ul className="space-y-1 text-[10px] leading-4 text-muted-foreground">
-                              {activeChapterBlock.keyPoints
-                                .filter(Boolean)
-                                .slice(0, 3)
-                                .map((point, index) => (
-                                  <li
-                                    key={`${point}-${index}`}
-                                    className="flex gap-1.5"
-                                  >
-                                    <span className="mt-1.5 size-1 shrink-0 rounded-full bg-primary" />
-                                    {point}
-                                  </li>
-                                ))}
-                            </ul>
-                          )}
-                          {activeChapterBlock.figures.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2">
-                              {activeChapterBlock.figures
-                                .slice(0, 2)
-                                .map(figure => (
-                                  <figure
-                                    key={figure.id}
-                                    className="overflow-hidden rounded-md border border-border"
-                                  >
-                                    <img
-                                      src={reportFigureMediaUrl(figure.url)}
-                                      alt={
-                                        figure.caption || t("Figura do RDCD")
-                                      }
-                                      className="h-14 w-full object-cover"
-                                    />
-                                    <figcaption className="truncate px-1.5 py-1 text-[9px] text-muted-foreground">
-                                      {figure.caption || t("Sem legenda")}
-                                    </figcaption>
-                                  </figure>
-                                ))}
-                            </div>
-                          )}
-                          {activeChapterBlock.tables.length > 0 && (
-                            <p className="rounded-md border border-dashed border-border bg-muted/20 px-2 py-1.5 text-[10px] text-muted-foreground">
-                              {activeChapterBlock.tables.length}{" "}
-                              {activeChapterBlock.tables.length === 1
-                                ? t("tabela composta")
-                                : t("tabelas compostas")}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-xs font-medium text-foreground">
-                            <ListTodo className="size-4 text-primary" />
-                            {t("Medidas selecionadas")}
-                          </span>
-                          <span className="text-lg font-semibold text-foreground">
-                            {selectedMeasureCount}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                          {t("Com semanas escolhidas para o capítulo 5.")}
+                    {renderLiveDocumentPage("chapter")}
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="rounded-lg border border-border bg-card p-2.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          {t("Medidas")}
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-foreground">
+                          {selectedMeasureCount}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-xs font-medium text-foreground">
-                            <Images className="size-4 text-primary" />
-                            {t("Fotografias")}
-                          </span>
-                          <span className="text-lg font-semibold text-foreground">
-                            {selectedPhotoCount}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                          {t("Selecionadas para o anexo fotográfico.")}
+                      <div className="rounded-lg border border-border bg-card p-2.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          {t("Figuras")}
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-foreground">
+                          {activeChapterBlock.figures.length}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2 text-xs font-medium text-foreground">
-                            <Database className="size-4 text-primary" />
-                            {t("e-GARs")}
-                          </span>
-                          <span className="text-lg font-semibold text-foreground">
-                            {includeWaste ? wasteRows.length : "—"}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                          {includeWaste
-                            ? t("Serão listados no Anexo III.")
-                            : t("Anexo de resíduos desativado.")}
+                      <div className="rounded-lg border border-border bg-card p-2.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                          {t("Tabelas")}
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-foreground">
+                          {activeChapterBlock.tables.length}
                         </p>
                       </div>
                     </div>

@@ -62,10 +62,18 @@ describe("endurecimento de segurança", () => {
   it("impõe troca da palavra-passe temporária antes de chamadas protegidas", () => {
     const source = readSource("server/_core/trpc.ts");
     const loginSource = readSource("client/src/pages/Login.tsx");
+    const routerSource = readSource("server/routers.ts");
+    const userSchema = readSource("drizzle/schema.ts");
+    const passwordDefaultMigration = readSource(
+      "drizzle/0066_user_password_defaults.sql"
+    );
     expect(source).toContain("Altere a palavra-passe temporária antes de aceder à plataforma.");
     expect(source).toContain("auth.changePassword");
     expect(source).toContain("ctx.user.mustChangePassword");
     expect(loginSource).toContain("!user.mustChangePassword && viewMode === \"login\"");
+    expect(routerSource).toContain("mustChangePassword = 1 WHERE id = ${input.userId}");
+    expect(userSchema).toContain('mustChangePassword: int("mustChangePassword").default(0)');
+    expect(passwordDefaultMigration).toContain("MODIFY COLUMN `mustChangePassword` int DEFAULT 0");
   });
 
   it("restringe mutações autenticadas à origem servida", () => {

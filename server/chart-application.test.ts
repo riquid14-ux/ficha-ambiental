@@ -1,0 +1,25 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const readPage = (name: string) => readFileSync(resolve(process.cwd(), "client/src/pages", name), "utf8");
+
+describe("dashboards KPI — aplicação da paleta", () => {
+  it("atribui cores semânticas distintas a combustível, eletricidade, CO₂, água, equipa e ocorrências", () => {
+    const source = readPage("KPI.tsx");
+    expect(source).toContain('import { DATA_SERIES_COLOR, DATA_SERIES_PALETTE } from "@shared/chart-palette";');
+    for (const key of ["fuel", "electricity", "carbon", "water", "workforce", "transport", "incident"]) {
+      expect(source).toContain(`DATA_SERIES_COLOR.${key}`);
+    }
+    expect(source).toContain('dataKey="cumEmissions"');
+    expect(source).not.toContain('dataKey="cumFuel"');
+  });
+
+  it("elimina o fundo verde genérico e aplica a mesma semântica ao dashboard de parceiros", () => {
+    const source = readPage("PartnerDashboard.tsx");
+    expect(source).toContain('import { DATA_SERIES_COLOR, DATA_SERIES_PALETTE } from "@shared/chart-palette";');
+    expect(source).toContain('const chartColors = DATA_SERIES_PALETTE;');
+    expect(source).toContain('className="border-border bg-card"');
+    expect(source).not.toContain('from-emerald-50 to-white');
+  });
+});

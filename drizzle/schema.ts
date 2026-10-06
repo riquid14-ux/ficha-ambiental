@@ -14,7 +14,9 @@ export const users = mysqlTable("users", {
   fullName: varchar("fullName", { length: 255 }),
   jobTitle: varchar("jobTitle", { length: 255 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
-  mustChangePassword: int("mustChangePassword").default(1),
+  // Só palavras-passe emitidas num reset administrativo são temporárias.
+  // Uma conta aprovada com as suas próprias credenciais entra normalmente.
+  mustChangePassword: int("mustChangePassword").default(0),
   totpSecret: varchar("totpSecret", { length: 255 }),
   totpEnabled: int("totpEnabled").default(0),
   twoFactorGraceUntil: timestamp("twoFactorGraceUntil"),

@@ -8,8 +8,10 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { getBrandImageDefinition } from "@/lib/brand-images";
 
 type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPassword";
+const LOGIN_FALLBACK_IMAGE = getBrandImageDefinition("login").fallback;
 
 export default function Login() {
   const { t, language, setLanguage } = useLanguage();
@@ -184,7 +186,21 @@ export default function Login() {
       {/* A entrada não explica a plataforma ao exterior: identifica-a e deixa clara
           a fronteira de segurança antes de apresentar as credenciais. */}
       <div className="stand-login-visual hidden lg:flex lg:w-1/2 relative border-r border-white/10">
-        <img src={brandImages?.image_login || "/manus-storage/sc-aerial-1_176e4635.jpg"} alt="Start Campus Sines" className="photo-grade w-full h-full object-cover" style={{ objectPosition: brandImages?.image_login_position || "center" }} />
+        <img
+          src={brandImages?.image_login || LOGIN_FALLBACK_IMAGE}
+          alt=""
+          aria-hidden="true"
+          className="photo-grade"
+          style={{ objectPosition: brandImages?.image_login_position || "center" }}
+          onError={(event) => {
+            const image = event.currentTarget;
+            if (image.src.endsWith(LOGIN_FALLBACK_IMAGE)) {
+              image.style.display = "none";
+              return;
+            }
+            image.src = LOGIN_FALLBACK_IMAGE;
+          }}
+        />
         <div className="absolute inset-0 flex flex-col justify-end p-10 text-white">
           <p className="stand-kicker text-primary">START CAMPUS</p>
           <h2 className="mt-3 text-5xl font-semibold tracking-[-0.06em]">STAND</h2>

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildRdcdNonConformityRows, buildRdcdPhaseRows, buildRdcdWeeklyRows } from "../client/src/lib/rdcd-template";
+import {
+  buildRdcdNonConformityRows,
+  buildRdcdPhaseRows,
+  buildRdcdWeeklyRows,
+  localizeRdcdSectionName,
+  localizeRdcdStatus,
+} from "../client/src/lib/rdcd-template";
 
 const submissions = [{ id: 9, weekNumber: 12, weekYear: 2026, weekStartDate: "2026-03-16", weekEndDate: "2026-03-22", reviewNotes: "Validar barreira." }];
 const measures = [
@@ -22,6 +28,23 @@ describe("estrutura RDCD SIN02", () => {
   it("mantém a fase declarada pelo relatório curta na tabela semanal", () => {
     const [row] = buildRdcdWeeklyRows(submissions, responses, measures, sections, "Execução da obra");
     expect(row.phases).toBe("Execução da obra");
+  });
+
+  it("localiza estruturalmente os grupos DCAPE e estados do RDCD em inglês", () => {
+    expect(
+      localizeRdcdSectionName(
+        "Elementos a apresentar previamente ao licenciamento",
+        "en"
+      )
+    ).toBe("Information to be submitted before licensing");
+    expect(
+      localizeRdcdSectionName(
+        "MEDIDAS DA DCAPE A CONSIDERAR NA FASE DE EXECUÇÃO DA OBRA",
+        "en"
+      )
+    ).toBe("DCAPE measures to be considered during the construction phase");
+    expect(localizeRdcdStatus("Cumprido", "en")).toBe("Completed");
+    expect(localizeRdcdStatus("Não Conforme", "en")).toBe("Non-compliant");
   });
 
   it("consolida as respostas por fase e isola não conformidades e observações", () => {

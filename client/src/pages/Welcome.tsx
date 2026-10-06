@@ -127,7 +127,11 @@ export default function Welcome() {
       if (!/youtube(?:-nocookie)?\.com$/.test(new URL(event.origin).hostname)) return;
       try {
         const payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        if (payload?.event === "onStateChange" && [1, 3].includes(payload?.info)) setVideoReady(true);
+        // Apenas o estado 1 significa reprodução. O estado 3 é *buffering* e
+        // também pode ser emitido pelo YouTube antes de apresentar uma barreira
+        // de autenticação; nesse caso a fotografia institucional deve continuar
+        // a ser o fallback visível, nunca um painel vazio do fornecedor.
+        if (payload?.event === "onStateChange" && payload?.info === 1) setVideoReady(true);
       } catch {
         // Mensagens não estruturadas do fornecedor são ignoradas.
       }

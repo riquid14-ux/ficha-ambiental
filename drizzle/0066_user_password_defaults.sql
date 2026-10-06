@@ -1,0 +1,1 @@
+ALTER TABLE `users` MODIFY COLUMN `mustChangePassword` int DEFAULT 0;

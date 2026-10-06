@@ -23,16 +23,83 @@ export type RdcdMeasure = {
 
 export type RdcdSection = { id: number; name: string };
 
-const formatDate = (value?: string | Date | null) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("pt-PT");
+export type RdcdLanguage = "pt" | "en";
+
+const RDCD_SECTION_TRANSLATIONS: Record<string, string> = {
+  "MEDIDAS DA DCAPE A CONSIDERAR NA FASE DE PREPARAÇÃO PRÉVIA À EXECUÇÃO DA OBRA":
+    "DCAPE measures to be considered in the pre-construction preparation phase",
+  "Medidas a Considerar na Fase Prévia ao início dos trabalhos da Obra":
+    "Measures to be considered before construction works start",
+  "MEDIDAS DA DCAPE A CONSIDERAR NA FASE DE EXECUÇÃO DA OBRA":
+    "DCAPE measures to be considered during the construction phase",
+  "Medidas a Considerar na Fase de Execução da Obra":
+    "Measures to be considered during the construction phase",
+  "Desarborização, desmatação, limpeza e decapagem dos solos":
+    "Tree clearing, vegetation clearance, site cleaning and topsoil stripping",
+  "Escavação e movimentação de terras": "Excavation and earthworks",
+  "Construção e reabilitação de acessos": "Construction and rehabilitation of access routes",
+  "Circulação de veículos e funcionamento de maquinaria":
+    "Vehicle circulation and machinery operation",
+  "Proteção de Linhas de água, resíduos e águas residuais":
+    "Protection of watercourses, waste and wastewater",
+  "Acompanhamento arqueológico": "Archaeological monitoring",
+  "MEDIDAS DA DCAPE PARA A FASE FINAL DA CONSTRUÇÃO":
+    "DCAPE measures for the final construction phase",
+  "Medidas para a fase final da construção":
+    "Measures for the final construction phase",
+  "MEDIDAS DA DCAPE PARA A FASE DE DESATIVAÇÃO":
+    "DCAPE measures for the decommissioning phase",
+  "Medidas para a fase final de desativação":
+    "Measures for the final decommissioning phase",
+  "Elementos a apresentar previamente ao licenciamento":
+    "Information to be submitted before licensing",
+  "Pronúncias e elementos em sede de licenciamento":
+    "Opinions and submissions for licensing",
+  "Medidas para a fase de exploração": "Measures for the operational phase",
+  "Elementos a apresentar previamente ao início da construção":
+    "Information to be submitted before construction starts",
 };
 
-const shortPeriod = (submission: RdcdSubmission) => {
-  const start = formatDate(submission.weekStartDate);
-  const end = formatDate(submission.weekEndDate);
-  return start !== "—" && end !== "—" ? `${start} – ${end}` : `Semana ${submission.weekNumber}/${submission.weekYear}`;
+const RDCD_STATUS_TRANSLATIONS: Record<string, string> = {
+  Cumprido: "Completed",
+  "Não Conforme": "Non-compliant",
+  "N.A.": "N/A",
+  "Em curso": "In progress",
+  Parcial: "Partial",
+  "Sem dados": "No data",
+  Implementada: "Implemented",
+  Conforme: "Compliant",
+  Reportado: "Reported",
+};
+
+export function localizeRdcdSectionName(name: string, language: RdcdLanguage) {
+  return language === "en" ? RDCD_SECTION_TRANSLATIONS[name] || name : name;
+}
+
+export function localizeRdcdStatus(value: string, language: RdcdLanguage) {
+  return language === "en" ? RDCD_STATUS_TRANSLATIONS[value] || value : value;
+}
+
+const formatDate = (
+  value?: string | Date | null,
+  language: RdcdLanguage = "pt"
+) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleDateString(language === "en" ? "en-GB" : "pt-PT");
+};
+
+const shortPeriod = (
+  submission: RdcdSubmission,
+  language: RdcdLanguage = "pt"
+) => {
+  const start = formatDate(submission.weekStartDate, language);
+  const end = formatDate(submission.weekEndDate, language);
+  return start !== "—" && end !== "—"
+    ? `${start} – ${end}`
+    : `${language === "en" ? "Week" : "Semana"} ${submission.weekNumber}/${submission.weekYear}`;
 };
 
 const responseCounts = (responses: RdcdResponse[]) => ({
@@ -48,6 +115,7 @@ export function buildRdcdWeeklyRows(
   measures: RdcdMeasure[],
   sections: RdcdSection[],
   reportPhase?: string,
+  language: RdcdLanguage = "pt"
 ) {
   const measureById = new Map(measures.map(item => [item.id, item]));
   const sectionById = new Map(sections.map(item => [item.id, item.name]));
@@ -66,7 +134,7 @@ export function buildRdcdWeeklyRows(
         submissionId: submission.id,
         reference: `ID ${submission.id}`,
         week: submission.weekNumber,
-        period: shortPeriod(submission),
+        period: shortPeriod(submission, language),
         // O quadro semanal deve identificar a fase declarada no relatório, não
         // enumerar todas as secções técnicas (incluindo N.A.), que pertencem ao
         // detalhe consolidado do ponto 5.
@@ -81,6 +149,7 @@ export function buildRdcdPhaseRows(
   responses: RdcdResponse[],
   measures: RdcdMeasure[],
   sections: RdcdSection[],
+  language: RdcdLanguage = "pt"
 ) {
   const responsesByMeasure = new Map<number, RdcdResponse[]>();
   for (const response of responses) {
@@ -91,7 +160,11 @@ export function buildRdcdPhaseRows(
     const sectionMeasures = measures.filter(measure => measure.sectionId === section.id);
     const sectionResponses = sectionMeasures.flatMap(measure => responsesByMeasure.get(measure.id) || []);
     const counts = responseCounts(sectionResponses);
-    return { section: section.name, totalMeasures: sectionMeasures.length, ...counts };
+    return {
+      section: localizeRdcdSectionName(section.name, language),
+      totalMeasures: sectionMeasures.length,
+      ...counts,
+    };
   }).filter(row => row.totalMeasures > 0);
 }
 
@@ -99,6 +172,7 @@ export function buildRdcdNonConformityRows(
   responses: RdcdResponse[],
   measures: RdcdMeasure[],
   submissions: RdcdSubmission[],
+  language: RdcdLanguage = "pt"
 ) {
   const measureById = new Map(measures.map(item => [item.id, item]));
   const submissionById = new Map(submissions.map(item => [item.id, item]));
@@ -109,7 +183,12 @@ export function buildRdcdNonConformityRows(
       number: measure?.number || String(response.measureId),
       description: measure?.description || "Medida sem descrição disponível.",
       reference: submission ? `S${submission.weekNumber}/${submission.weekYear} · ID ${submission.id}` : "—",
-      finding: response.status === "NC" ? "Não Conforme" : "Observação relevante",
+      finding:
+        response.status === "NC"
+          ? localizeRdcdStatus("Não Conforme", language)
+          : language === "en"
+            ? "Relevant observation"
+            : "Observação relevante",
       observation: response.observations || "Sem comentário registado.",
     };
   });

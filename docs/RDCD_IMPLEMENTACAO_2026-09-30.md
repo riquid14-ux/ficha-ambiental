@@ -44,6 +44,12 @@ A seleção é feita **por medida** e **por semana**. Assim, uma medida pode inc
 
 A seleção não modifica a ficha semanal, não move fotografias e não altera estados de conformidade. O Word indica que o conteúdo continua a precisar de revisão técnica.
 
+### Pré-visualização documental viva
+
+Na curadoria do Capítulo 5, existe uma consola lateral sticky com a página Word em composição. Ao selecionar uma medida, semanas, evidências ou uma nota editorial, a consola apresenta imediatamente a medida ativa, o estado, a tabela das semanas selecionadas, as observações de origem e a nota, sem alterar a ficha aprovada.
+
+No estúdio editorial, a mesma consola acompanha o capítulo ativo. A síntese, os pontos-chave, as fontes, as ações, as tabelas e as figuras entram na composição antes da emissão. A consola é uma pré-visualização de trabalho: não substitui a revisão técnica, a validação de conteúdo nem o Word final gerado.
+
 ## Anexo e-GAR
 
 Quando ativado, o Anexo III é criado com os e-GARs do projeto e do período ISO escolhido:
@@ -93,3 +99,4 @@ As três marcas foram extraídas do template fornecido e colocadas em armazename
 - Auditoria estática de traduções PT/EN;
 - Inspeção visual do wizard em claro e escuro.
 - Exportação de controlo renderizada em PDF: capa com as marcas Start Campus, Gleeds e Quadrante efetivamente incorporadas no `.docx`.
+- Validação navegada em 6 de outubro de 2026 com SIN02, S33–S40/2026: medida ativa, semana S33 e nota editorial refletidas na consola lateral; texto editorial refletido em simultâneo na composição do capítulo. Confirmados ainda os controlos de tabela, figura/fotografia e gráfico.

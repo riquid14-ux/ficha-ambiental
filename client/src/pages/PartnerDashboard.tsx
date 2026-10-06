@@ -8,6 +8,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { DATA_SERIES_COLOR, DATA_SERIES_PALETTE } from "@shared/chart-palette";
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Droplets, Recycle, Users, XCircle, Zap } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import {
@@ -29,7 +30,7 @@ import {
 } from "recharts";
 
 const currentWeek = Math.max(1, Math.min(53, Math.ceil((((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86400000) + new Date(new Date().getFullYear(), 0, 1).getDay() + 1) / 7)));
-const chartColors = ["#16a34a", "#0A3638", "#6D7A70", "#dc2626", "#0A3638", "#0891b2", "#db2777", "#65a30d"];
+const chartColors = DATA_SERIES_PALETTE;
 const numberValue = (value: unknown) => { const parsed = Number(String(value ?? "").replace(",", ".")); return Number.isFinite(parsed) ? parsed : null; };
 const formatNumber = (value: number) => value.toLocaleString("pt-PT", { maximumFractionDigits: 2 });
 
@@ -43,12 +44,12 @@ function KpiChartCard({ id, title, children }: { id: string; title: string; chil
   return <Card data-kpi-visual={id}><CardHeader className="pb-2"><CardTitle className="text-sm">{title}</CardTitle></CardHeader><CardContent className="h-56"><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
 }
 
-function KpiStatCard({ id, title, value, subtitle, icon }: { id: string; title: string; value: string; subtitle: string; icon: ReactNode }) {
-  return <Card data-kpi-visual={id} className="bg-gradient-to-br from-emerald-50 to-white"><CardContent className="flex h-full min-h-64 flex-col items-center justify-center p-5 text-center"><div className="mb-3 text-primary">{icon}</div><p className="text-2xl font-semibold text-primary">{value}</p><p className="mt-1 text-sm font-medium">{title}</p><p className="mt-1 text-xs text-muted-foreground">{subtitle}</p></CardContent></Card>;
+function KpiStatCard({ id, title, value, subtitle, icon, accent = DATA_SERIES_COLOR.brand }: { id: string; title: string; value: string; subtitle: string; icon: ReactNode; accent?: string }) {
+  return <Card data-kpi-visual={id} className="border-border bg-card"><CardContent className="flex h-full min-h-56 flex-col items-center justify-center p-5 text-center"><div className="mb-3" style={{ color: accent }}>{icon}</div><p className="text-2xl font-semibold" style={{ color: accent }}>{value}</p><p className="mt-1 text-sm font-medium text-foreground">{title}</p><p className="mt-1 text-xs text-muted-foreground">{subtitle}</p></CardContent></Card>;
 }
 
 function EmptyAwareTooltip(props: any) {
-  return <Tooltip {...props} contentStyle={{ fontSize: 12, borderRadius: 8 }} />;
+  return <Tooltip {...props} contentStyle={{ fontSize: 12, borderRadius: 8, background: "var(--popover)", border: "1px solid var(--border)", color: "var(--popover-foreground)" }} />;
 }
 
 export default function PartnerDashboard() {
@@ -147,24 +148,24 @@ export default function PartnerDashboard() {
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="h-5 w-5" />16 dashboards KPI</h2><p className="text-xs text-muted-foreground">Os 36 campos KPI são consolidados nos mesmos 16 visuais da área KPI principal.</p></div><Badge variant="outline">16 visuais · {kpiValues.length} valores</Badge></div>
           <div className="grid gap-4 md:grid-cols-2">
-            <KpiChartCard id="fuel-consumption" title="Consumo de combustível"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="fuel" name="Combustível" fill="#6D7A70" /></BarChart></KpiChartCard>
-            <KpiChartCard id="electricity" title="Electricidade"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey={electricityMetric ? `m_${electricityMetric.id}` : "energy"} name="Electricidade" fill="#0A3638" stroke="#6d28d9" fillOpacity={0.25} /></AreaChart></KpiChartCard>
+            <KpiChartCard id="fuel-consumption" title="Consumo de combustível"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="fuel" name="Combustível" fill={DATA_SERIES_COLOR.fuel} /></BarChart></KpiChartCard>
+            <KpiChartCard id="electricity" title="Electricidade"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey={electricityMetric ? `m_${electricityMetric.id}` : "energy"} name="Electricidade" fill={DATA_SERIES_COLOR.electricity} stroke={DATA_SERIES_COLOR.electricity} fillOpacity={0.25} /></AreaChart></KpiChartCard>
             <KpiChartCard id="emissions-breakdown" title="Repartição de emissões CO₂"><PieChart><Pie data={emissionBreakdown} cx="50%" cy="50%" outerRadius={72} dataKey="value" nameKey="name" label={({ name, percent }) => percent > 0.06 ? `${String(name).slice(0, 12)} ${(percent * 100).toFixed(0)}%` : ""}>{emissionBreakdown.map((_, index) => <Cell key={index} fill={chartColors[index % chartColors.length]} />)}</Pie><EmptyAwareTooltip /></PieChart></KpiChartCard>
-            <KpiChartCard id="cumulative-co2" title="CO₂ acumulado"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeCo2" name="CO₂ acumulado" fill="#0A3638" stroke="#6D7A70" fillOpacity={0.2} /></AreaChart></KpiChartCard>
+            <KpiChartCard id="cumulative-co2" title="CO₂ acumulado"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeCo2" name="CO₂ acumulado" fill={DATA_SERIES_COLOR.carbon} stroke={DATA_SERIES_COLOR.carbon} fillOpacity={0.2} /></AreaChart></KpiChartCard>
 
-            <KpiChartCard id="water-consumption" title="Consumo de água"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="water" name="Água" fill="#0A3638" /></BarChart></KpiChartCard>
-            <KpiChartCard id="cumulative-water" title="Água acumulada"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeWater" name="Água acumulada" fill="#0A3638" stroke="#0A3638" fillOpacity={0.2} /></AreaChart></KpiChartCard>
+            <KpiChartCard id="water-consumption" title="Consumo de água"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="water" name="Água" fill={DATA_SERIES_COLOR.water} /></BarChart></KpiChartCard>
+            <KpiChartCard id="cumulative-water" title="Água acumulada"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeWater" name="Água acumulada" fill={DATA_SERIES_COLOR.water} stroke={DATA_SERIES_COLOR.water} fillOpacity={0.2} /></AreaChart></KpiChartCard>
             <KpiChartCard id="water-breakdown" title="Repartição por tipo de água"><PieChart><Pie data={waterBreakdown} cx="50%" cy="50%" outerRadius={72} dataKey="value" nameKey="name" label={({ name, percent }) => percent > 0.06 ? `${String(name).slice(0, 12)} ${(percent * 100).toFixed(0)}%` : ""}>{waterBreakdown.map((_, index) => <Cell key={index} fill={chartColors[index % chartColors.length]} />)}</Pie><EmptyAwareTooltip /></PieChart></KpiChartCard>
-            <KpiStatCard id="total-water" title="Total de água consumida" value={`${formatNumber(categoryTotal("water"))} L`} subtitle="Consolidação do filtro seleccionado" icon={<Droplets className="h-9 w-9" />} />
+            <KpiStatCard id="total-water" title="Total de água consumida" value={`${formatNumber(categoryTotal("water"))} L`} subtitle="Consolidação do filtro seleccionado" icon={<Droplets className="h-9 w-9" />} accent={DATA_SERIES_COLOR.water} />
 
-            <KpiChartCard id="workforce" title="Trabalhadores em projeto"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Line type="monotone" dataKey={workerMetric ? `m_${workerMetric.id}` : "workforce"} name="Trabalhadores" stroke="#0A3638" strokeWidth={2} dot={false} /></LineChart></KpiChartCard>
-            <KpiChartCard id="workforce-hours" title="Trabalhadores vs. horas"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Legend /><Line type="monotone" dataKey={workerMetric ? `m_${workerMetric.id}` : "workforce"} name="Trabalhadores" stroke="#0A3638" dot={false} /><Line type="monotone" dataKey={hoursMetric ? `m_${hoursMetric.id}` : "hours"} name="Horas" stroke="#0891b2" dot={false} /></LineChart></KpiChartCard>
-            <KpiChartCard id="transport" title="Transporte"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="transport" name="Transporte" fill="#0891b2" /></BarChart></KpiChartCard>
-            <KpiStatCard id="environmental-technicians" title="Técnicos de ambiente / trabalhadores" value={`${formatNumber(totalTechnicians)} / ${formatNumber(totalWorkers)}`} subtitle={`Rácio ${totalWorkers ? ((totalTechnicians / totalWorkers) * 100).toFixed(1) : "0,0"}%`} icon={<Users className="h-9 w-9" />} />
+            <KpiChartCard id="workforce" title="Trabalhadores em projeto"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Line type="monotone" dataKey={workerMetric ? `m_${workerMetric.id}` : "workforce"} name="Trabalhadores" stroke={DATA_SERIES_COLOR.workforce} strokeWidth={2} dot={false} /></LineChart></KpiChartCard>
+            <KpiChartCard id="workforce-hours" title="Trabalhadores vs. horas"><LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Legend /><Line type="monotone" dataKey={workerMetric ? `m_${workerMetric.id}` : "workforce"} name="Trabalhadores" stroke={DATA_SERIES_COLOR.workforce} dot={false} /><Line type="monotone" dataKey={hoursMetric ? `m_${hoursMetric.id}` : "hours"} name="Horas" stroke={DATA_SERIES_COLOR.brand} dot={false} /></LineChart></KpiChartCard>
+            <KpiChartCard id="transport" title="Transporte"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="transport" name="Transporte" fill={DATA_SERIES_COLOR.transport} /></BarChart></KpiChartCard>
+            <KpiStatCard id="environmental-technicians" title="Técnicos de ambiente / trabalhadores" value={`${formatNumber(totalTechnicians)} / ${formatNumber(totalWorkers)}`} subtitle={`Rácio ${totalWorkers ? ((totalTechnicians / totalWorkers) * 100).toFixed(1) : "0,0"}%`} icon={<Users className="h-9 w-9" />} accent={DATA_SERIES_COLOR.workforce} />
 
-            <KpiChartCard id="environmental-incidents" title="Incidentes ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="incidents" name="Incidentes" fill="#dc2626" /></BarChart></KpiChartCard>
-            <KpiStatCard id="total-incidents" title="Total de incidentes" value={formatNumber(totalIncidents)} subtitle="No ano e entidade seleccionados" icon={<AlertTriangle className="h-9 w-9" />} />
-            <KpiStatCard id="spills" title="Derrames" value={formatNumber(spillMetric ? metricTotals[spillMetric.id] || 0 : 0)} subtitle="Registos consolidados" icon={<Activity className="h-9 w-9" />} />
+            <KpiChartCard id="environmental-incidents" title="Incidentes ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="incidents" name="Incidentes" fill={DATA_SERIES_COLOR.incident} /></BarChart></KpiChartCard>
+            <KpiStatCard id="total-incidents" title="Total de incidentes" value={formatNumber(totalIncidents)} subtitle="No ano e entidade seleccionados" icon={<AlertTriangle className="h-9 w-9" />} accent={DATA_SERIES_COLOR.incident} />
+            <KpiStatCard id="spills" title="Derrames" value={formatNumber(spillMetric ? metricTotals[spillMetric.id] || 0 : 0)} subtitle="Registos consolidados" icon={<Activity className="h-9 w-9" />} accent={DATA_SERIES_COLOR.fuel} />
             <KpiStatCard id="weeks-with-data" title="Semanas com dados" value={String(weeksWithData)} subtitle="Semanas com pelo menos um KPI registado" icon={<Zap className="h-9 w-9" />} />
           </div>
         </section>

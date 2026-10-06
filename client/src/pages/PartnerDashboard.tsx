@@ -8,6 +8,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useProject } from "@/contexts/ProjectContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
+import { useBrandImage } from "@/hooks/useBrandImage";
+import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { DATA_SERIES_COLOR, DATA_SERIES_PALETTE } from "@shared/chart-palette";
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Droplets, Recycle, Users, XCircle, Zap } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
@@ -40,8 +42,8 @@ type KpiMetricRow = { id: number; name: string; unit: string; target: string | n
 type KpiValueRow = { metricId: number; value: string | null; companyId: number; shortName: string; weekNumber: number; weekYear: number };
 type WasteRow = { correctedQuantity: string | null; quantity: string; destination: string | null; subProjectCode: string | null; subProjectName: string | null };
 
-function KpiChartCard({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return <Card data-kpi-visual={id}><CardHeader className="pb-2"><CardTitle className="text-sm">{title}</CardTitle></CardHeader><CardContent className="h-56"><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
+function KpiChartCard({ id, title, subtitle, children, className = "", height = "h-80" }: { id: string; title: string; subtitle?: string; children: ReactNode; className?: string; height?: string }) {
+  return <Card data-kpi-visual={id} className={`stand-chart overflow-hidden border-border/80 bg-card shadow-sm ${className}`}><CardHeader className="border-b border-border/60 bg-muted/20 pb-3"><CardTitle className="text-base">{title}</CardTitle>{subtitle && <p className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</p>}</CardHeader><CardContent className={`${height} px-4 pb-4 pt-5 sm:px-5`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
 }
 
 function KpiStatCard({ id, title, value, subtitle, icon, accent = DATA_SERIES_COLOR.brand }: { id: string; title: string; value: string; subtitle: string; icon: ReactNode; accent?: string }) {
@@ -60,7 +62,9 @@ export default function PartnerDashboard() {
   const [startWeek, setStartWeek] = useState(Math.max(1, currentWeek - 11));
   const [endWeek, setEndWeek] = useState(currentWeek);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [comparisonMetricId, setComparisonMetricId] = useState<string>("");
   const projectId = activeProject?.id ?? 0;
+  const partnerImage = useBrandImage("kpi");
   const enabled = user?.role === "ee" && projectId > 0;
   const entities = trpc.partnerDashboard.entities.useQuery({ projectId }, { enabled });
   const matrix = trpc.partnerDashboard.kpiMatrix.useQuery({ projectId, year, startWeek, endWeek }, { enabled });
@@ -97,6 +101,38 @@ export default function PartnerDashboard() {
     }
     return Array.from(rows.values()).sort((a, b) => Number(a.week) - Number(b.week));
   }, [kpiMetrics, kpiValues]);
+
+  const comparisonMetric =
+    kpiMetrics.find(metric => String(metric.id) === comparisonMetricId) ||
+    kpiMetrics[0];
+  const companySeries = useMemo(() => {
+    if (!comparisonMetric) return [];
+    const rows = new Map<number, Record<string, number | string>>();
+    for (const value of kpiValues) {
+      if (Number(value.metricId) !== Number(comparisonMetric.id)) continue;
+      const numeric = numberValue(value.value);
+      if (numeric === null) continue;
+      const row = rows.get(value.weekNumber) || { name: `S${value.weekNumber}`, week: value.weekNumber };
+      row[`company_${value.companyId}`] = numeric;
+      rows.set(value.weekNumber, row);
+    }
+    return Array.from(rows.values()).sort((a, b) => Number(a.week) - Number(b.week));
+  }, [comparisonMetric, kpiValues]);
+  const companySeriesDefinitions = useMemo(() => {
+    if (!comparisonMetric) return [];
+    const names = new Map<number, string>();
+    for (const value of kpiValues) {
+      if (Number(value.metricId) === Number(comparisonMetric.id)) {
+        names.set(value.companyId, value.shortName || `Entidade ${value.companyId}`);
+      }
+    }
+    return Array.from(names.entries()).map(([id, name], index) => ({
+      id,
+      name,
+      key: `company_${id}`,
+      color: chartColors[index % chartColors.length],
+    }));
+  }, [comparisonMetric, kpiValues]);
 
   const cumulativeData = useMemo(() => {
     let co2 = 0; let water = 0;
@@ -140,18 +176,22 @@ export default function PartnerDashboard() {
 
   return (
     <AppLayout>
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold">{t("Dashboard Parceiros")}</h1><p className="text-sm text-muted-foreground">{activeProject.code} · EE e EEP subordinadas</p></div><div className="flex gap-3"><div><Label>{t("Ano")}</Label><Input className="w-24" type="number" value={year} onChange={event => setYear(Number(event.target.value))} /></div><div className="min-w-48"><Label>{t("Entidade")}</Label><Select value={companyFilter} onValueChange={setCompanyFilter}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t("Todos — EE + EEP")}</SelectItem>{entityRows.map(entity => <SelectItem key={entity.id} value={String(entity.id)}>{entity.entityType === "ee" ? "EE" : "EEP"} · {entity.shortName}</SelectItem>)}</SelectContent></Select></div></div></div>
+      <div className="space-y-6">
+        <StandPageHeader eyebrow="ECOSSISTEMA EE · EEP" title={t("Dashboard Parceiros")} description={t("Comparação de submissões, desempenho e resíduos entre a entidade executante e as suas parceiras autorizadas.")} context={activeProject.code} image={partnerImage.url} imagePosition={partnerImage.position} imageMode={partnerImage.mode} />
+
+        <section className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-border/80 bg-card p-4 shadow-sm sm:p-5"><div><p className="stand-kicker text-primary">{t("ÂMBITO DE LEITURA")}</p><h2 className="mt-1 text-base font-semibold text-foreground">{t("Comparação autorizada por entidade")}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Use o filtro para analisar uma entidade ou comparar a EE com todas as EEP do projeto.")}</p></div><div className="flex flex-wrap gap-3"><div><Label>{t("Ano")}</Label><Input className="mt-1 w-24" type="number" value={year} onChange={event => setYear(Number(event.target.value))} /></div><div className="min-w-52"><Label>{t("Entidade")}</Label><Select value={companyFilter} onValueChange={setCompanyFilter}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">{t("Todos — EE + EEP")}</SelectItem>{entityRows.map(entity => <SelectItem key={entity.id} value={String(entity.id)}>{entity.entityType === "ee" ? "EE" : "EEP"} · {entity.shortName}</SelectItem>)}</SelectContent></Select></div></div></section>
 
         <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle className="flex items-center gap-2 text-base"><Users className="h-4 w-4" />{t("Matriz de submissão KPI")}</CardTitle><div className="flex items-center gap-2 text-xs"><span>{t("Semanas")}</span><Input className="h-8 w-16" type="number" min={1} max={53} value={startWeek} onChange={event => setStartWeek(Math.max(1, Math.min(Number(event.target.value), endWeek)))} /><span>{t("a")}</span><Input className="h-8 w-16" type="number" min={1} max={53} value={endWeek} onChange={event => setEndWeek(Math.min(53, Math.max(Number(event.target.value), startWeek)))} /></div></div></CardHeader><CardContent className="overflow-x-auto"><table className="w-full border-collapse text-xs"><thead><tr><th className="sticky left-0 bg-background p-2 text-left">{t("Entidade")}</th>{weeks.map(week => <th key={week} className="min-w-20 p-2 text-center">S{week}</th>)}</tr></thead><tbody>{entityRows.filter(entity => Boolean(entity.allowKpi)).map(entity => <tr key={entity.id} className="border-t"><td className="sticky left-0 bg-background p-2 font-medium">{entity.shortName}</td>{weeks.map(week => { const ok = submitted.has(`${entity.id}-${week}`); return <td key={week} className="p-2 text-center"><span title={ok ? t("Submetido") : t("Não submetido")} className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${ok ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>{ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}</span></td>; })}</tr>)}</tbody></table></CardContent></Card>
 
         <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="h-5 w-5" />16 dashboards KPI</h2><p className="text-xs text-muted-foreground">Os 36 campos KPI são consolidados nos mesmos 16 visuais da área KPI principal.</p></div><Badge variant="outline">16 visuais · {kpiValues.length} valores</Badge></div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <KpiChartCard id="fuel-consumption" title="Consumo de combustível"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="fuel" name="Combustível" fill={DATA_SERIES_COLOR.fuel} /></BarChart></KpiChartCard>
-            <KpiChartCard id="electricity" title="Electricidade"><AreaChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey={electricityMetric ? `m_${electricityMetric.id}` : "energy"} name="Electricidade" fill={DATA_SERIES_COLOR.electricity} stroke={DATA_SERIES_COLOR.electricity} fillOpacity={0.25} /></AreaChart></KpiChartCard>
-            <KpiChartCard id="emissions-breakdown" title="Repartição de emissões CO₂"><PieChart><Pie data={emissionBreakdown} cx="50%" cy="50%" outerRadius={72} dataKey="value" nameKey="name" label={({ name, percent }) => percent > 0.06 ? `${String(name).slice(0, 12)} ${(percent * 100).toFixed(0)}%` : ""}>{emissionBreakdown.map((_, index) => <Cell key={index} fill={chartColors[index % chartColors.length]} />)}</Pie><EmptyAwareTooltip /></PieChart></KpiChartCard>
-            <KpiChartCard id="cumulative-co2" title="CO₂ acumulado"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeCo2" name="CO₂ acumulado" fill={DATA_SERIES_COLOR.carbon} stroke={DATA_SERIES_COLOR.carbon} fillOpacity={0.2} /></AreaChart></KpiChartCard>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="stand-kicker text-primary">{t("LEITURA COMPARATIVA")}</p><h2 className="mt-1 flex items-center gap-2 text-lg font-semibold"><BarChart3 className="h-5 w-5" />{t("Desempenho por entidade e semana")}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("Cada entidade tem uma série própria e uma legenda persistente; os valores exatos aparecem no tooltip.")}</p></div><Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">{companySeriesDefinitions.length} {t("entidades comparáveis")} · {kpiValues.length} {t("valores")}</Badge></div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <KpiChartCard id="company-comparison" title={`${t("Evolução por entidade")} — ${comparisonMetric?.name || t("Métrica por selecionar")}`} subtitle={comparisonMetric ? `${comparisonMetric.unit} · ${t("uma linha por entidade com permissão")}` : t("Sem métricas disponíveis para comparação.")} className="xl:col-span-2" height="h-[27rem]"><LineChart data={companySeries} margin={{ top: 12, right: 22, left: 8, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} tickMargin={10} /><YAxis tick={{ fontSize: 12 }} width={52} /><EmptyAwareTooltip /><Legend verticalAlign="top" height={44} wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />{companySeriesDefinitions.map(series => <Line key={series.key} type="monotone" dataKey={series.key} name={series.name} stroke={series.color} strokeWidth={3} dot={{ r: 3, strokeWidth: 2, fill: "var(--card)" }} activeDot={{ r: 6 }} connectNulls />)}</LineChart></KpiChartCard>
+            <div className="xl:col-span-2 -mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-muted/20 p-3"><span className="mr-1 text-xs font-semibold text-muted-foreground">{t("Métrica comparada")}</span><Select value={comparisonMetric ? String(comparisonMetric.id) : ""} onValueChange={setComparisonMetricId}><SelectTrigger className="h-9 min-w-64 bg-background text-sm"><SelectValue placeholder={t("Selecione uma métrica")} /></SelectTrigger><SelectContent>{kpiMetrics.map(metric => <SelectItem key={metric.id} value={String(metric.id)}>{metric.name} · {metric.unit}</SelectItem>)}</SelectContent></Select><span className="text-xs text-muted-foreground">{t("O filtro de entidade mantém o mesmo controlo de acesso da EE e das EEP.")}</span></div>
+            <KpiChartCard id="fuel-consumption" title={t("Consumo de combustível")} subtitle={t("Evolução semanal consolidada.")}><BarChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 6 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} /><YAxis tick={{ fontSize: 12 }} /><EmptyAwareTooltip /><Bar dataKey="fuel" name={t("Combustível")} fill={DATA_SERIES_COLOR.fuel} radius={[6, 6, 0, 0]} /></BarChart></KpiChartCard>
+            <KpiChartCard id="electricity" title={t("Eletricidade")} subtitle={t("Consumo semanal consolidado.")}><AreaChart data={chartData} margin={{ top: 10, right: 12, left: 0, bottom: 6 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} /><YAxis tick={{ fontSize: 12 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey={electricityMetric ? `m_${electricityMetric.id}` : "energy"} name={t("Eletricidade")} fill={DATA_SERIES_COLOR.electricity} stroke={DATA_SERIES_COLOR.electricity} strokeWidth={3} fillOpacity={0.25} /></AreaChart></KpiChartCard>
+            <KpiChartCard id="emissions-breakdown" title={t("Repartição de emissões CO₂")} subtitle={t("Contributo por fonte no período.")}><PieChart><Pie data={emissionBreakdown} cx="50%" cy="47%" outerRadius={92} dataKey="value" nameKey="name" labelLine={false} label={({ name, percent }) => percent > 0.06 ? `${String(name).slice(0, 15)} ${(percent * 100).toFixed(0)}%` : ""}>{emissionBreakdown.map((_, index) => <Cell key={index} fill={chartColors[index % chartColors.length]} />)}</Pie><EmptyAwareTooltip /><Legend verticalAlign="bottom" height={42} wrapperStyle={{ fontSize: 12 }} /></PieChart></KpiChartCard>
+            <KpiChartCard id="cumulative-co2" title={t("CO₂ acumulado")} subtitle={t("Soma de emissões calculadas no período.")}><AreaChart data={cumulativeData} margin={{ top: 10, right: 12, left: 0, bottom: 6 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} /><XAxis dataKey="name" tick={{ fontSize: 12 }} /><YAxis tick={{ fontSize: 12 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeCo2" name={t("CO₂ acumulado")} fill={DATA_SERIES_COLOR.carbon} stroke={DATA_SERIES_COLOR.carbon} strokeWidth={3} fillOpacity={0.2} /></AreaChart></KpiChartCard>
 
             <KpiChartCard id="water-consumption" title="Consumo de água"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Bar dataKey="water" name="Água" fill={DATA_SERIES_COLOR.water} /></BarChart></KpiChartCard>
             <KpiChartCard id="cumulative-water" title="Água acumulada"><AreaChart data={cumulativeData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} /><EmptyAwareTooltip /><Area type="monotone" dataKey="cumulativeWater" name="Água acumulada" fill={DATA_SERIES_COLOR.water} stroke={DATA_SERIES_COLOR.water} fillOpacity={0.2} /></AreaChart></KpiChartCard>

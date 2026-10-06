@@ -514,7 +514,7 @@ export default function KPI() {
                 <StandMetricCard label={t("Técnicos Ambiente / Total Trabalhadores")} value={(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return tec + ' / ' + total; })()} detail={`Rácio: ${(() => { const tec = totals[findMetric('workforce', 'Técnicos')?.id || 0] || 0; const total = totals[findMetric('workforce', 'Trabalhadores em projeto')?.id || 0] || 1; return ((tec / Math.max(total, 1)) * 100).toFixed(1); })()}%`} icon={Users} tone="brand" />
                 </>}
                 {dashPage === 3 && <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-4 md:grid-cols-2">
                   <ChartCard title="Incidentes Ambientais"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 9 }} /><Tooltip /><Bar dataKey="incidents" fill={DATA_SERIES_COLOR.incident} /></BarChart></ChartCard>
                   <StandMetricCard label="Total Incidentes" value={totals[findMetric("incidents", "Incidentes Ambientais")?.id || 0] || 0} detail={reportPeriodLabel} icon={AlertTriangle} tone="danger" />
                   <StandMetricCard label={t("Derrames")} value={totals[findMetric("incidents", "derrames")?.id || 0] || 0} detail={reportPeriodLabel} icon={Activity} tone="warning" />
@@ -607,8 +607,8 @@ export default function KPI() {
   );
 }
 
-function ChartCard({ title, children, h = "h-48" }: { title: string; children: React.ReactNode; h?: string }) {
-  return <Card className="overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm"><CardHeader className="border-b border-border/60 bg-muted/20 px-4 pb-3 pt-4"><CardTitle className="text-sm font-semibold text-foreground">{title}</CardTitle></CardHeader><CardContent className={`${h} px-3 pb-3 pt-4`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
+function ChartCard({ title, children, h = "h-72" }: { title: string; children: React.ReactNode; h?: string }) {
+  return <Card className="stand-chart overflow-hidden rounded-2xl border-border/80 bg-card shadow-sm"><CardHeader className="border-b border-border/60 bg-muted/20 px-4 pb-3 pt-4"><CardTitle className="text-base font-semibold text-foreground">{title}</CardTitle></CardHeader><CardContent className={`${h} px-4 pb-4 pt-5 sm:px-5`}><ResponsiveContainer width="100%" height="100%">{children as any}</ResponsiveContainer></CardContent></Card>;
 }
 
 function getISOWeek(date: Date): number {

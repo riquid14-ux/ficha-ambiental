@@ -575,6 +575,50 @@ main { animation: stand-rise 0.18s var(--ease-out); }
 .rdcd-document-sources p { margin: 0 0 .1rem; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .47rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .rdcd-document-sources span { color: var(--rdcd-paper-muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .55rem; line-height: 1.35; }
 .rdcd-document-footer { display: flex; justify-content: space-between; gap: .55rem; border-top: 1px solid var(--rdcd-paper-rule); padding: .52rem 1.05rem; color: var(--rdcd-paper-muted); font-size: .42rem; letter-spacing: .04em; }
+
+/* Documento contínuo do estúdio RDCD. A consola deixa de isolar o capítulo
+   aberto e passa a mostrar a sequência integral que será revista antes da
+   emissão Word. As páginas mantêm um tratamento editorial, mas sem fingir que
+   blocos ainda vazios já estão tecnicamente concluídos. */
+.rdcd-full-preview-console { min-width: 0; }
+.rdcd-full-document { display: grid; gap: .9rem; }
+.rdcd-document-sheet { overflow: hidden; border: 1px solid var(--rdcd-paper-rule); border-radius: .28rem; background: var(--rdcd-paper); color: var(--rdcd-paper-ink); box-shadow: 0 14px 28px -24px color-mix(in oklch, var(--foreground) 72%, transparent); font-family: Georgia, Cambria, "Times New Roman", serif; }
+.rdcd-document-sheet--active { border-color: var(--rdcd-paper-accent); box-shadow: 0 0 0 2px color-mix(in oklch, var(--rdcd-paper-accent) 45%, transparent), 0 14px 28px -24px color-mix(in oklch, var(--foreground) 72%, transparent); }
+.rdcd-document-sheet-running { display: flex; justify-content: space-between; gap: .7rem; border-bottom: 1px solid var(--rdcd-paper-rule); padding: .48rem .72rem; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .43rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.rdcd-document-sheet-body { padding: 1rem .85rem; }
+.rdcd-document-sheet-kicker { margin: 0; color: var(--rdcd-paper-accent); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .48rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.rdcd-document-sheet-title { margin: .38rem 0 .8rem; color: var(--rdcd-paper-ink); font-size: 1.15rem; font-weight: 700; line-height: 1.18; }
+.rdcd-document-sheet-summary { white-space: pre-wrap; }
+.rdcd-document-sheet-footer { display: flex; justify-content: space-between; gap: .6rem; border-top: 1px solid var(--rdcd-paper-rule); padding: .48rem .72rem; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .42rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.rdcd-document-cover { display: grid; min-height: 29rem; grid-template-rows: auto 1fr auto; background: linear-gradient(155deg, color-mix(in oklch, var(--rdcd-paper) 88%, var(--rdcd-paper-accent)), var(--rdcd-paper)); }
+.rdcd-document-cover-top { display: flex; justify-content: space-between; gap: .7rem; border-bottom: 2px solid var(--rdcd-paper-accent); padding: .8rem .85rem; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .47rem; font-weight: 700; letter-spacing: .065em; }
+.rdcd-document-cover-top p { margin: 0; color: var(--rdcd-paper-accent); }
+.rdcd-document-cover-main { align-self: center; padding: 2.3rem 1.05rem 1.75rem; }
+.rdcd-document-cover-main h3 { margin: .75rem 0 .65rem; color: var(--rdcd-paper-ink); font-size: clamp(1.45rem, 5vw, 2.2rem); font-weight: 700; line-height: 1.03; }
+.rdcd-document-cover-main > p:not(.rdcd-document-sheet-kicker) { margin: 0; color: var(--rdcd-paper-muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .7rem; line-height: 1.5; }
+.rdcd-document-cover-project { display: grid; gap: .28rem; margin-top: 2rem; border-left: 3px solid var(--rdcd-paper-accent); padding-left: .65rem; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .52rem; letter-spacing: .045em; }
+.rdcd-document-cover-project strong { color: var(--rdcd-paper-ink); font-size: .9rem; }
+.rdcd-document-cover-logos { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; border-top: 1px solid var(--rdcd-paper-rule); padding: .65rem .85rem; }
+.rdcd-document-cover-logos img { width: auto; height: 1.65rem; max-width: 4.8rem; object-fit: contain; object-position: left center; filter: saturate(.9); }
+.rdcd-document-toc { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
+.rdcd-document-toc li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; border-bottom: 1px dotted var(--rdcd-paper-rule); padding: .4rem 0; color: var(--rdcd-paper-ink); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .64rem; line-height: 1.35; }
+.rdcd-document-toc li b { color: var(--rdcd-paper-muted); font-size: .48rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; }
+.rdcd-document-toc li.is-active { margin: 0 -.35rem; border: 1px solid color-mix(in oklch, var(--rdcd-paper-accent) 48%, var(--rdcd-paper-rule)); border-radius: .35rem; background: var(--rdcd-paper-soft); padding: .4rem .35rem; }
+.rdcd-document-measure { margin-top: .78rem; border-top: 1px solid var(--rdcd-paper-rule); padding-top: .78rem; }
+.rdcd-document-measure:first-of-type { margin-top: 0; border-top: 0; padding-top: 0; }
+.rdcd-document-measure.is-active { margin-right: -.25rem; margin-left: -.25rem; border: 1px solid color-mix(in oklch, var(--rdcd-paper-accent) 48%, var(--rdcd-paper-rule)); border-radius: .38rem; background: var(--rdcd-paper-soft); padding: .7rem .25rem; }
+.rdcd-document-measure h5 { margin: 0; color: var(--rdcd-paper-ink); font-size: .78rem; }
+.rdcd-document-measure-meta { margin: .42rem 0; color: var(--rdcd-paper-muted); font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .46rem; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; }
+.rdcd-document-annex-list { display: grid; gap: .55rem; }
+.rdcd-document-annex-list > div { display: grid; gap: .16rem; border-left: 2px solid var(--rdcd-paper-accent); padding-left: .55rem; }
+.rdcd-document-annex-list strong { color: var(--rdcd-paper-ink); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .68rem; }
+.rdcd-document-annex-list span { color: var(--rdcd-paper-muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: .57rem; }
+
+/* Visualizações quantitativas: mais espaço e tooltip legível para comparar
+   entidades sem depender de cores demasiado próximas. */
+.stand-chart .recharts-default-tooltip { min-width: 10rem; border: 1px solid color-mix(in oklch, var(--primary) 34%, var(--border)) !important; border-radius: .7rem !important; background: color-mix(in oklch, var(--popover) 94%, var(--primary)) !important; box-shadow: 0 14px 30px -18px color-mix(in oklch, var(--foreground) 55%, transparent); color: var(--popover-foreground) !important; font-size: .76rem !important; line-height: 1.45 !important; padding: .55rem .7rem !important; }
+.stand-chart .recharts-legend-item-text { color: var(--foreground) !important; font-size: .72rem; }
+.stand-chart .recharts-cartesian-axis-tick-value { fill: var(--muted-foreground); font-size: .72rem; }
 @media (max-width: 560px) {
   .rdcd-document-header,
   .rdcd-document-project,
@@ -584,4 +628,9 @@ main { animation: stand-rise 0.18s var(--ease-out); }
   .rdcd-document-meta { margin-top: .5rem; text-align: left; }
   .rdcd-document-heading-row { display: block; }
   .rdcd-document-status { display: inline-block; margin-top: .5rem; }
+  .rdcd-document-cover { min-height: 24rem; }
+  .rdcd-document-sheet-body { padding: .85rem .72rem; }
+  .rdcd-document-cover-main { padding: 1.6rem .85rem 1.25rem; }
+  .rdcd-document-sheet-running,
+  .rdcd-document-sheet-footer { padding-right: .65rem; padding-left: .65rem; }
 }

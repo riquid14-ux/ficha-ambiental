@@ -100,9 +100,9 @@ describe("Dashboard Parceiros", () => {
   });
 
   it("apresenta indicadores KPI e Waste Map por subprojecto", () => {
-    expect(dashboardCode).toContain("16 dashboards KPI");
-    expect((dashboardCode.match(/<Kpi(?:Chart|Stat)Card id=/g) || [])).toHaveLength(16);
-    expect(dashboardCode).toContain("Os 36 campos KPI são consolidados nos mesmos 16 visuais");
+    expect((dashboardCode.match(/<Kpi(?:Chart|Stat)Card id=/g) || []).length).toBeGreaterThanOrEqual(16);
+    expect(dashboardCode).toContain("company-comparison");
+    expect(dashboardCode).toContain("companySeriesDefinitions");
     expect(dashboardCode).toContain("Waste Map");
     expect(dashboardCode).toContain("Por subprojecto");
     expect(routerCode).toContain("LEFT JOIN waste_subprojects");

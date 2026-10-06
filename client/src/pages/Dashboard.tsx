@@ -467,6 +467,35 @@ export default function Dashboard() {
     };
   }, [activeProject?.code, analytics?.byStatus, calendarEventsQuery.data, isAllProjects, submissionsQuery.data, t]);
 
+  const submissionActivity = useMemo(() => {
+    const submissions = (submissionsQuery.data || []) as any[];
+    const now = new Date();
+    const currentWeek = Math.ceil(
+      (now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
+        (7 * 24 * 60 * 60 * 1000)
+    );
+    return Array.from({ length: 12 }, (_, index) => {
+      let week = currentWeek - (11 - index);
+      let year = now.getFullYear();
+      if (week <= 0) {
+        week += 52;
+        year -= 1;
+      }
+      const matching = submissions.filter(
+        submission =>
+          submission.weekNumber === week &&
+          submission.weekYear === year &&
+          submission.status !== "deleted" &&
+          submission.status !== "draft"
+      );
+      return {
+        week: `S${week}`,
+        submitted: matching.length,
+        approved: matching.filter(item => item.status === "approved").length,
+      };
+    });
+  }, [submissionsQuery.data]);
+
   return (
     <AppLayout>
       <div className="stand-command-shell space-y-6">
@@ -639,35 +668,10 @@ export default function Dashboard() {
 
           {/* Submission Activity + Overdue Companies */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Weekly Activity Chart placeholder */}
-            <Card className="lg:col-span-2">
-              <CardContent className="p-4 space-y-3">
-                <p className="text-sm font-semibold">{t("Actividade de Submissão (últimas 12 semanas)")}</p>
-                <div className="grid grid-cols-12 gap-1 h-24 items-end">
-                  {(() => {
-                    const subs = submissionsQuery.data;
-                    if (!subs || !Array.isArray(subs)) return null;
-                    const now = new Date();
-                    const currentWeek = Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-                    const currentYear = now.getFullYear();
-                    const bars = [];
-                    for (let i = 11; i >= 0; i--) {
-                      let w = currentWeek - i;
-                      let y = currentYear;
-                      if (w <= 0) { w += 52; y--; }
-                      const count = subs.filter((s: any) => s.weekNumber === w && s.weekYear === y && s.status !== "deleted" && s.status !== "draft").length;
-                      const maxH = 80;
-                      const h = Math.max(count * 12, 4);
-                      bars.push(
-                        <div key={`${y}-${w}`} className="flex flex-col items-center gap-0.5">
-                          <div className="w-full rounded-t bg-primary/70 hover:bg-primary transition-colors" style={{ height: `${Math.min(h, maxH)}px` }} title={`S${w}: ${count} fichas`} />
-                          <span className="text-[8px] text-muted-foreground">S{w}</span>
-                        </div>
-                      );
-                    }
-                    return bars;
-                  })()}
-                </div>
+            <Card className="stand-chart lg:col-span-2 overflow-hidden border-border/80 bg-card shadow-sm">
+              <CardHeader className="border-b border-border/60 bg-muted/20 pb-3"><CardTitle className="text-base">{t("Actividade de Submissão (últimas 12 semanas)")}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{t("Submissões registadas e aprovadas por semana, no âmbito ativo.")}</p></CardHeader>
+              <CardContent className="h-80 p-4 pt-5 sm:p-5">
+                <ResponsiveContainer width="100%" height="100%"><BarChart data={submissionActivity} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} /><XAxis dataKey="week" tick={{ fontSize: 12 }} tickMargin={9} /><YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={38} /><Tooltip /><Legend verticalAlign="top" height={35} /><Bar dataKey="submitted" name={t("Submetidas")} fill="var(--chart-2)" radius={[5, 5, 0, 0]} /><Bar dataKey="approved" name={t("Aprovadas")} fill="var(--chart-1)" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer>
               </CardContent>
             </Card>
 

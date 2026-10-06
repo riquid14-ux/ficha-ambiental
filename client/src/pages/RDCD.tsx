@@ -2173,6 +2173,12 @@ export default function RDCD() {
   const completedEditorialSections = EDITORIAL_SECTIONS.filter(
     section => content[section.key].trim().length > 0
   ).length;
+  const selectedDocumentMeasures = compiledMeasures.filter((measure: any) =>
+    (measureSelections[measure.id]?.selectedWeeks || []).length > 0
+  );
+  const selectedDocumentPlans = (plans || []).filter((plan: any) =>
+    selectedPlanIds.includes(plan.id)
+  );
   const selectedMeasureCount = Object.values(measureSelections).filter(
     selection => selection.selectedWeeks.length > 0
   ).length;
@@ -2566,6 +2572,285 @@ export default function RDCD() {
           <span>{t("Pré-visualização viva do documento")}</span>
           <span>{t("Emissão Word sujeita a revisão humana")}</span>
         </footer>
+      </div>
+    );
+  };
+
+  /**
+   * A composição lateral não é uma miniatura do campo que está a ser editado.
+   * É uma maquete contínua do Word inteiro: os blocos ainda vazios permanecem
+   * explicitamente assinalados, sem inventar conteúdo técnico para o relatório.
+   */
+  const renderFullDocumentPreview = () => {
+    const reportId =
+      reportNumber.trim() || `RDCD-${selectedProject?.code || "PROJ"}-001`;
+    const documentChapters = [
+      { number: "1", label: EDITORIAL_SECTIONS[0]?.label || "1. Introdução", editable: "introduction" as keyof RdcdContent },
+      { number: "2", label: t("Enquadramento do projeto no TUA") },
+      { number: "3", label: EDITORIAL_SECTIONS[1]?.label || "3. Ponto de Situação do Desenvolvimento da Obra", editable: "projectStatus" as keyof RdcdContent },
+      { number: "4", label: t("Resumo do estado das medidas DCAPE") },
+      { number: "5", label: t("Compilação das fichas semanais selecionadas") },
+      { number: "6", label: EDITORIAL_SECTIONS[2]?.label || "6. Ações Corretivas e Seguimento", editable: "correctiveActions" as keyof RdcdContent },
+      { number: "7", label: t("Relatórios de monitorização") },
+      ...EDITORIAL_SECTIONS.slice(3).map(section => ({
+        number: section.label.split(".")[0] || "—",
+        label: section.label,
+        editable: section.key,
+      })),
+    ];
+
+    const sourceForms = filteredSubmissions
+      .slice()
+      .sort((a: any, b: any) =>
+        Number(a.weekYear) - Number(b.weekYear) ||
+        Number(a.weekNumber) - Number(b.weekNumber)
+      );
+
+    const renderEditorialPage = (section: EditorialSection) => {
+      const block = chapterBlocks[section.key] || EMPTY_CHAPTER_BLOCK;
+      const isActive = section.key === activeEditorialSection;
+      return (
+        <article
+          key={section.key}
+          className={`rdcd-document-sheet ${isActive ? "rdcd-document-sheet--active" : ""}`}
+        >
+          <div className="rdcd-document-sheet-running">
+            <span>{t("CORPO DO RELATÓRIO")}</span>
+            <span>{reportId}</span>
+          </div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">
+              {isActive ? t("Capítulo em edição") : t("Capítulo editorial")}
+            </p>
+            <h4 className="rdcd-document-sheet-title">{t(section.label)}</h4>
+            {block.summary.trim() ? (
+              <p className="rdcd-document-paragraph rdcd-document-sheet-summary">
+                {block.summary}
+              </p>
+            ) : (
+              <p className="rdcd-document-empty">
+                {t("Conteúdo técnico por completar antes da emissão.")}
+              </p>
+            )}
+            {block.keyPoints.filter(Boolean).length > 0 && (
+              <ul className="rdcd-document-list mt-3">
+                {block.keyPoints.filter(Boolean).map((point, index) => (
+                  <li key={`${section.key}-point-${index}`}>{point}</li>
+                ))}
+              </ul>
+            )}
+            {block.tables.map(table => (
+              <section className="rdcd-document-section" key={table.id}>
+                <p className="rdcd-document-section-label">
+                  {table.title || t("Quadro de acompanhamento")}
+                </p>
+                <div className="rdcd-document-table-wrap">
+                  <table className="rdcd-document-table">
+                    <thead>
+                      <tr>
+                        {table.columns.map((column, index) => (
+                          <th key={`${table.id}-head-${index}`}>{column || "—"}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {table.rows.map((row, rowIndex) => (
+                        <tr key={`${table.id}-row-${rowIndex}`}>
+                          {table.columns.map((_, columnIndex) => (
+                            <td key={`${table.id}-${rowIndex}-${columnIndex}`}>
+                              {row[columnIndex] || "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
+            {block.figures.length > 0 && (
+              <section className="rdcd-document-section">
+                <div className="rdcd-document-figure-grid">
+                  {block.figures.map(figure => (
+                    <figure key={figure.id}>
+                      <img
+                        src={reportFigureMediaUrl(figure.url)}
+                        alt={figure.caption || t("Figura do RDCD")}
+                      />
+                      <figcaption>{figure.caption || t("Sem legenda")}</figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </section>
+            )}
+            {block.actions.filter(action => action.action || action.owner || action.dueDate || action.status).length > 0 && (
+              <section className="rdcd-document-section">
+                <p className="rdcd-document-section-label">{t("Ações e seguimento")}</p>
+                <div className="rdcd-document-action-list">
+                  {block.actions
+                    .filter(action => action.action || action.owner || action.dueDate || action.status)
+                    .map((action, index) => (
+                      <div key={`${section.key}-action-${index}`}>
+                        <strong>{action.action || "—"}</strong>
+                        <span>{[action.owner, action.dueDate, action.status].filter(Boolean).join(" · ") || "—"}</span>
+                      </div>
+                    ))}
+                </div>
+              </section>
+            )}
+            {block.sourceReferences.filter(Boolean).length > 0 && (
+              <section className="rdcd-document-sources">
+                <p>{t("Fontes registadas")}</p>
+                {block.sourceReferences.filter(Boolean).map((source, index) => (
+                  <span key={`${section.key}-source-${index}`}>{source}</span>
+                ))}
+              </section>
+            )}
+          </div>
+          <div className="rdcd-document-sheet-footer">
+            <span>{isActive ? t("Página em atualização") : t("Rascunho de trabalho")}</span>
+            <span>{t("Revisão humana obrigatória")}</span>
+          </div>
+        </article>
+      );
+    };
+
+    return (
+      <div className="rdcd-full-document" aria-live="polite">
+        <article className="rdcd-document-sheet rdcd-document-cover">
+          <div className="rdcd-document-cover-top">
+            <p>START CAMPUS · STAND</p>
+            <span>{reportId}</span>
+          </div>
+          <div className="rdcd-document-cover-main">
+            <p className="rdcd-document-sheet-kicker">{t("Pré-visualização integral")}</p>
+            <h3>{t("RELATÓRIO DE DEMONSTRAÇÃO DE CUMPRIMENTO")}</h3>
+            <p>{presentedReportModel.reportTitle}</p>
+            <div className="rdcd-document-cover-project">
+              <strong>{selectedProject?.code || t("Projeto por confirmar")}</strong>
+              <span>{selectedProject?.name || t("Projeto por confirmar")}</span>
+              <span>{reportPeriodLabel}</span>
+            </div>
+          </div>
+          <div className="rdcd-document-cover-logos">
+            {reportLogos.slice(0, 4).map((logo, index) => (
+              <img
+                key={`${logo.url}-${index}`}
+                src={reportLogoMediaUrl(logo.url)}
+                alt={logo.name}
+              />
+            ))}
+          </div>
+          <div className="rdcd-document-sheet-footer">
+            <span>{t("Rascunho para revisão técnica")}</span>
+            <span>{t("Revisão")} {revision || "00"}</span>
+          </div>
+        </article>
+
+        <article className="rdcd-document-sheet">
+          <div className="rdcd-document-sheet-running"><span>{t("ÍNDICE")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("Estrutura do Word")}</p>
+            <h4 className="rdcd-document-sheet-title">{t("Índice e fontes")}</h4>
+            <ol className="rdcd-document-toc">
+              {documentChapters.map(chapter => (
+                <li key={`${chapter.number}-${chapter.label}`} className={chapter.editable === activeEditorialSection ? "is-active" : ""}>
+                  <span>{t(chapter.label)}</span>
+                  <b>{chapter.editable === activeEditorialSection ? t("em edição") : chapter.editable && content[chapter.editable].trim() ? t("redigido") : t("por completar")}</b>
+                </li>
+              ))}
+              <li><span>{t("Anexos técnicos e rastreabilidade")}</span><b>{t("automático")}</b></li>
+            </ol>
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Documento completo")}</span><span>{reportPeriodLabel}</span></div>
+        </article>
+
+        {renderEditorialPage(EDITORIAL_SECTIONS[0])}
+
+        <article className="rdcd-document-sheet">
+          <div className="rdcd-document-sheet-running"><span>{t("ENQUADRAMENTO")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("CAPÍTULO 2")}</p>
+            <h4 className="rdcd-document-sheet-title">{t("Enquadramento do projeto no TUA")}</h4>
+            <p className="rdcd-document-paragraph">{presentedReportModel.guidance}</p>
+            <p className="rdcd-document-empty mt-3">{t("Referências institucionais, TUA e licenças devem ser confirmados pelo responsável técnico antes da emissão.")}</p>
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Rascunho de trabalho")}</span><span>{t("Página 2")}</span></div>
+        </article>
+
+        {renderEditorialPage(EDITORIAL_SECTIONS[1])}
+
+        <article className="rdcd-document-sheet">
+          <div className="rdcd-document-sheet-running"><span>{t("MEDIDAS DCAPE")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("CAPÍTULO 4")}</p>
+            <h4 className="rdcd-document-sheet-title">{t("Resumo do estado das medidas DCAPE")}</h4>
+            <div className="rdcd-document-table-wrap">
+              <table className="rdcd-document-table">
+                <thead><tr><th>{t("Indicador")}</th><th>{t("Valor")}</th><th>{t("Origem")}</th></tr></thead>
+                <tbody>
+                  <tr><td>{t("Medidas com registo")}</td><td>{compiledMeasures.length}</td><td>{isOperationsReport ? t("OPS SIN01") : t("Fichas semanais aprovadas")}</td></tr>
+                  <tr><td>{t("Medidas selecionadas")}</td><td>{selectedDocumentMeasures.length}</td><td>{t("Curadoria por medida e semana")}</td></tr>
+                  <tr><td>{t("Não conformidades")}</td><td>{compiledMeasures.filter((measure: any) => measure.autoStatus === "non_conform").length}</td><td>{t("Seguimento técnico")}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Dados rastreáveis")}</span><span>{t("Página 4")}</span></div>
+        </article>
+
+        <article className="rdcd-document-sheet rdcd-document-sheet--chapter-five">
+          <div className="rdcd-document-sheet-running"><span>{t("CAPÍTULO 5 · FICHAS SEMANAIS APROVADAS")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("Compilação de origem aprovada")}</p>
+            <h4 className="rdcd-document-sheet-title">{isOperationsReport ? presentedReportModel.chapterFiveLabel : t("Compilação das fichas semanais selecionadas")}</h4>
+            {selectedDocumentMeasures.length > 0 ? selectedDocumentMeasures.map((measure: any) => {
+              const selection = measureSelections[measure.id];
+              const selectedResponses = isOperationsReport ? [] : (measure.responses || []).filter((response: any) => selection.selectedWeeks.includes(`${response.year}-W${String(response.week).padStart(2, "0")}`));
+              return (
+                <section key={`preview-measure-${measure.id}`} className={`rdcd-document-measure ${measure.id === activeMeasurePreviewId ? "is-active" : ""}`}>
+                  <div className="rdcd-document-heading-row">
+                    <div><h5>{t("Medida")} {measure.number}</h5><p>{localizeDcapeDescription(measure.description, language)}</p></div>
+                    <span className="rdcd-document-status">{t(statusLabels[measure.autoStatus] || measure.autoStatus)}</span>
+                  </div>
+                  <p className="rdcd-document-measure-meta">{selection.selectedWeeks.length} {t("semanas selecionadas")} · {selection.selectedImageUrls.length} {t("fotografias selecionadas")}</p>
+                  {selectedResponses.length > 0 && <div className="rdcd-document-table-wrap"><table className="rdcd-document-table"><thead><tr><th>{t("Semana")}</th><th>{t("Estado")}</th><th>{t("Observações")}</th></tr></thead><tbody>{selectedResponses.map((response: any) => <tr key={`${response.submissionId}-${response.week}`}><td>S{response.week}/{response.year}</td><td>{responseStatusLabels[response.status] || response.status}</td><td>{response.observations || "—"}</td></tr>)}</tbody></table></div>}
+                  {selection.notes.trim() && <p className="rdcd-document-paragraph mt-2"><strong>{t("Nota editorial")}:</strong> {selection.notes}</p>}
+                </section>
+              );
+            }) : <p className="rdcd-document-empty">{t("Nenhuma medida foi selecionada para este capítulo.")}</p>}
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Apenas fontes aprovadas")}</span><span>{t("Capítulo 5")}</span></div>
+        </article>
+
+        {renderEditorialPage(EDITORIAL_SECTIONS[2])}
+
+        <article className="rdcd-document-sheet">
+          <div className="rdcd-document-sheet-running"><span>{t("MONITORIZAÇÃO")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("CAPÍTULO 7")}</p>
+            <h4 className="rdcd-document-sheet-title">{t("Relatórios de monitorização")}</h4>
+            {includePlans && selectedDocumentPlans.length > 0 ? <div className="rdcd-document-table-wrap"><table className="rdcd-document-table"><thead><tr><th>{t("Plano")}</th><th>{t("Periodicidade")}</th><th>{t("Estado")}</th></tr></thead><tbody>{selectedDocumentPlans.map((plan: any) => <tr key={plan.id}><td>{plan.name}</td><td>{plan.periodicity || "—"}</td><td>{plan.submissionStatus === "delivered" ? t("Entregue") : t("Em acompanhamento")}</td></tr>)}</tbody></table></div> : <p className="rdcd-document-empty">{t("Não existem planos selecionados para este relatório.")}</p>}
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Planos selecionados")}</span><span>{t("Página 7")}</span></div>
+        </article>
+
+        {EDITORIAL_SECTIONS.slice(3).map(renderEditorialPage)}
+
+        <article className="rdcd-document-sheet">
+          <div className="rdcd-document-sheet-running"><span>{t("ANEXOS")}</span><span>{reportId}</span></div>
+          <div className="rdcd-document-sheet-body">
+            <p className="rdcd-document-sheet-kicker">{t("Anexos técnicos e rastreabilidade")}</p>
+            <h4 className="rdcd-document-sheet-title">{t("Fontes que acompanham a emissão")}</h4>
+            <div className="rdcd-document-annex-list">
+              <div><strong>{t("Anexo I · Fichas aprovadas")}</strong><span>{sourceForms.length} {t("fichas aprovadas no período")}</span></div>
+              <div><strong>{t("Anexo II · Registo fotográfico")}</strong><span>{selectedPhotoCount} {t("fotografias selecionadas")}</span></div>
+              <div><strong>{t("Anexo III · Resíduos e-GAR")}</strong><span>{includeWaste ? `${wasteRows.length} e-GARs` : t("não selecionado")}</span></div>
+            </div>
+            <p className="rdcd-document-empty mt-4">{t("A pré-visualização organiza fontes e composição. A emissão Word e a validação de conteúdo continuam sujeitas a revisão humana.")}</p>
+          </div>
+          <div className="rdcd-document-sheet-footer"><span>{t("Fim do rascunho")}</span><span>{reportId}</span></div>
+        </article>
       </div>
     );
   };
@@ -3869,7 +4154,7 @@ export default function RDCD() {
                   </div>
                 </div>
 
-                <div className="grid gap-0 xl:grid-cols-[230px_minmax(0,1fr)_360px]">
+                <div className="grid gap-0 xl:grid-cols-[220px_minmax(0,1fr)_minmax(390px,460px)]">
                   <aside className="border-b border-border bg-muted/10 p-3 xl:border-r xl:border-b-0">
                     <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       {t("Estrutura do relatório")}
@@ -4954,17 +5239,25 @@ export default function RDCD() {
                     </div>
                   </main>
 
-                  <aside className="rdcd-page-console border-t border-border bg-muted/10 p-3 xl:border-t-0 xl:border-l">
+                  <aside className="rdcd-page-console rdcd-full-preview-console border-t border-border bg-muted/10 p-3 xl:border-t-0 xl:border-l">
                     <div className="rdcd-page-console-topbar -m-3 mb-3">
                       <span className="stand-mono">
-                        {t("WORD · EM COMPOSIÇÃO")}
+                        {t("WORD · DOCUMENTO COMPLETO")}
                       </span>
                       <span>
                         {reportNumber.trim() ||
                           `RDCD-${selectedProject?.code || "PROJ"}-001`}
                       </span>
                     </div>
-                    {renderLiveDocumentPage("chapter")}
+                    <div className="mb-3 rounded-lg border border-primary/20 bg-primary/[0.045] px-3 py-2">
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {t("Visualização contínua do Word")}
+                      </p>
+                      <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                        {t("A página em edição fica assinalada; a composição mostra capa, índice, capítulos e anexos sem simular conteúdo técnico ausente.")}
+                      </p>
+                    </div>
+                    {renderFullDocumentPreview()}
                     <div className="mt-3 grid grid-cols-3 gap-2">
                       <div className="rounded-lg border border-border bg-card p-2.5">
                         <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">

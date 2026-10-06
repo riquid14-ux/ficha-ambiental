@@ -22,4 +22,15 @@ describe("dashboards KPI — aplicação da paleta", () => {
     expect(source).toContain('className="border-border bg-card"');
     expect(source).not.toContain('from-emerald-50 to-white');
   });
+
+  it("dá escala à análise e torna a comparação por entidade explícita", () => {
+    const partner = readPage("PartnerDashboard.tsx");
+    const kpi = readPage("KPI.tsx");
+    expect(partner).toContain('const companySeries = useMemo');
+    expect(partner).toContain('const companySeriesDefinitions = useMemo');
+    expect(partner).toContain('height="h-[27rem]"');
+    expect(partner).toContain('StandPageHeader');
+    expect(kpi).toContain('function ChartCard({ title, children, h = "h-72" }');
+    expect(kpi).toContain('className="stand-chart');
+  });
 });

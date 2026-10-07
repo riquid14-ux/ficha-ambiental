@@ -251,61 +251,65 @@ export async function updateCompany(id: number, data: Partial<InsertCompany>) {
 
 // ─── Sections & Measures ─────────────────────────────────────────────────────
 
+export type CatalogueScope = "weekly" | "dcape";
+
 export async function getAllSections() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(sections).orderBy(sections.orderIndex);
 }
 
-export async function getProjectSections(projectId: number) {
+export async function getProjectSections(projectId: number, catalogueScope: CatalogueScope = "weekly") {
   const database = await getDb();
   if (!database) return [];
   return database.select().from(sections)
-    .where(eq(sections.projectId, projectId))
+    .where(and(eq(sections.projectId, projectId), eq(sections.catalogueScope, catalogueScope)))
     .orderBy(sections.orderIndex);
 }
 
-export async function getAllMeasures() {
+export async function getAllMeasures(catalogueScope: CatalogueScope = "weekly") {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(measures).orderBy(measures.orderIndex);
+  return db.select().from(measures).where(eq(measures.catalogueScope, catalogueScope)).orderBy(measures.orderIndex);
 }
 
-export async function getProjectMeasures(projectId: number) {
+export async function getProjectMeasures(projectId: number, catalogueScope: CatalogueScope = "weekly") {
   const database = await getDb();
   if (!database) return [];
   return database.select().from(measures)
-    .where(eq(measures.projectId, projectId))
+    .where(and(eq(measures.projectId, projectId), eq(measures.catalogueScope, catalogueScope)))
     .orderBy(measures.sectionId, measures.orderIndex);
 }
 
-export async function getMeasureById(id: number, projectId?: number) {
+export async function getMeasureById(id: number, projectId?: number, catalogueScope?: CatalogueScope) {
   const db = await getDb();
   if (!db) return undefined;
-  const condition = projectId === undefined
-    ? eq(measures.id, id)
-    : and(eq(measures.id, id), eq(measures.projectId, projectId));
+  const predicates = [eq(measures.id, id)];
+  if (projectId !== undefined) predicates.push(eq(measures.projectId, projectId));
+  if (catalogueScope !== undefined) predicates.push(eq(measures.catalogueScope, catalogueScope));
+  const condition = predicates.length === 1 ? predicates[0] : and(...predicates);
   const result = await db.select().from(measures).where(condition).limit(1);
   return result[0];
 }
 
-export async function getMeasuresBySection(sectionId: number, projectId?: number) {
+export async function getMeasuresBySection(sectionId: number, projectId?: number, catalogueScope: CatalogueScope = "weekly") {
   const db = await getDb();
   if (!db) return [];
   const condition = projectId === undefined
-    ? eq(measures.sectionId, sectionId)
-    : and(eq(measures.sectionId, sectionId), eq(measures.projectId, projectId));
+    ? and(eq(measures.sectionId, sectionId), eq(measures.catalogueScope, catalogueScope))
+    : and(eq(measures.sectionId, sectionId), eq(measures.projectId, projectId), eq(measures.catalogueScope, catalogueScope));
   return db.select().from(measures).where(condition).orderBy(measures.orderIndex);
 }
 
-export async function createMeasure(data: { projectId: number; number: string; description: string; responsible: string; sectionId: number }) {
+export async function createMeasure(data: { projectId: number; catalogueScope?: CatalogueScope; number: string; description: string; responsible: string; sectionId: number }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+  const catalogueScope = data.catalogueScope || "weekly";
   const existing = await db.select().from(measures)
-    .where(and(eq(measures.sectionId, data.sectionId), eq(measures.projectId, data.projectId)))
+    .where(and(eq(measures.sectionId, data.sectionId), eq(measures.projectId, data.projectId), eq(measures.catalogueScope, catalogueScope)))
     .orderBy(desc(measures.orderIndex));
   const nextOrder = existing.length > 0 ? existing[0].orderIndex + 1 : 1;
-  const result = await db.insert(measures).values({ ...data, orderIndex: nextOrder });
+  const result = await db.insert(measures).values({ ...data, catalogueScope, orderIndex: nextOrder });
   return result[0].insertId;
 }
 
@@ -382,7 +386,7 @@ export async function getLatestSubmissionForCompany(companyId: number, projectId
     .where(and(
       eq(weeklySubmissions.companyId, companyId),
       eq(weeklySubmissions.projectId, projectId),
-      eq(weeklySubmissions.status, "submitted"),
+      sql`${weeklySubmissions.status} IN ('submitted', 'approved')`,
     ))
     .orderBy(desc(weeklySubmissions.weekYear), desc(weeklySubmissions.weekNumber))
     .limit(1);
@@ -687,7 +691,7 @@ export async function getAnalytics(filters?: {
 
   // Filter by section if needed
   if (filters?.sectionId) {
-    const sectionMeasures = await db.select().from(measures).where(eq(measures.sectionId, filters.sectionId));
+    const sectionMeasures = await db.select().from(measures).where(and(eq(measures.sectionId, filters.sectionId), eq(measures.catalogueScope, "weekly")));
     const measureIds = new Set(sectionMeasures.map((m) => m.id));
     allResponses = allResponses.filter((r) => measureIds.has(r.measureId));
   }
@@ -726,8 +730,8 @@ export async function getAnalytics(filters?: {
     ? [filters.projectId]
     : filters?.projectIds;
   const allMeasuresList = scopedProjectIds && scopedProjectIds.length > 0
-    ? await db.select().from(measures).where(inArray(measures.projectId, scopedProjectIds))
-    : await db.select().from(measures);
+    ? await db.select().from(measures).where(and(inArray(measures.projectId, scopedProjectIds), eq(measures.catalogueScope, "weekly")))
+    : await db.select().from(measures).where(eq(measures.catalogueScope, "weekly"));
   const sectionMap = new Map<number, { I: number; C: number; NC: number; NA: number }>();
   for (const r of allResponses) {
     const measure = allMeasuresList.find((m) => m.id === r.measureId);
@@ -740,8 +744,8 @@ export async function getAnalytics(filters?: {
   }
 
   const allSections = scopedProjectIds && scopedProjectIds.length > 0
-    ? await db.select().from(sections).where(inArray(sections.projectId, scopedProjectIds)).orderBy(sections.orderIndex)
-    : await db.select().from(sections).orderBy(sections.orderIndex);
+    ? await db.select().from(sections).where(and(inArray(sections.projectId, scopedProjectIds), eq(sections.catalogueScope, "weekly"))).orderBy(sections.orderIndex)
+    : await db.select().from(sections).where(eq(sections.catalogueScope, "weekly")).orderBy(sections.orderIndex);
   const bySection = allSections.map((s) => ({
     sectionId: s.id,
     sectionName: s.name,
@@ -832,6 +836,86 @@ export async function createProject(data: InsertProject) {
   if (!db) throw new Error("DB not available");
   const result = await db.insert(projects).values(data);
   return { id: result[0].insertId };
+}
+
+/**
+ * Replica a estrutura aprovada do SIN02 para um novo projeto sem reutilizar
+ * chaves, respostas semanais, estados, evidências ou auditoria. Cada âmbito
+ * fica independente desde a origem: weekly é o Word de controlo; dcape é a
+ * Timeline/Fases regulatória.
+ */
+export async function cloneProjectEnvironmentalCatalogues(
+  sourceProjectId: number,
+  targetProjectId: number,
+  options: { weekly: boolean; dcape: boolean },
+) {
+  const database = await getDb();
+  if (!database) throw new Error("DB not available");
+  const requestedScopes = ([options.weekly && "weekly", options.dcape && "dcape"].filter(Boolean) as CatalogueScope[]);
+  if (requestedScopes.length === 0) return { sections: 0, measures: 0, phases: 0 };
+
+  return database.transaction(async (tx) => {
+    const sourceSections = await tx
+      .select()
+      .from(sections)
+      .where(and(eq(sections.projectId, sourceProjectId), inArray(sections.catalogueScope, requestedScopes)))
+      .orderBy(sections.catalogueScope, sections.orderIndex, sections.id);
+    const sourceMeasures = await tx
+      .select()
+      .from(measures)
+      .where(and(eq(measures.projectId, sourceProjectId), inArray(measures.catalogueScope, requestedScopes)))
+      .orderBy(measures.catalogueScope, measures.orderIndex, measures.id);
+
+    const sectionIds = new Map<number, number>();
+    for (const section of sourceSections) {
+      const result = await tx.insert(sections).values({
+        projectId: targetProjectId,
+        catalogueScope: section.catalogueScope,
+        name: section.name,
+        orderIndex: section.orderIndex,
+        phase: section.phase,
+      });
+      sectionIds.set(section.id, Number(result[0].insertId));
+    }
+
+    for (const measure of sourceMeasures) {
+      const sectionId = sectionIds.get(measure.sectionId);
+      if (!sectionId) throw new Error(`Missing cloned section for measure ${measure.id}`);
+      await tx.insert(measures).values({
+        projectId: targetProjectId,
+        catalogueScope: measure.catalogueScope,
+        number: measure.number,
+        description: measure.description,
+        responsible: measure.responsible,
+        sectionId,
+        orderIndex: measure.orderIndex,
+      });
+    }
+
+    let phases = 0;
+    if (options.dcape) {
+      const sourcePhases = await tx
+        .select()
+        .from(projectPhases)
+        .where(and(eq(projectPhases.projectId, sourceProjectId), eq(projectPhases.active, 1)))
+        .orderBy(projectPhases.orderIndex, projectPhases.id);
+      for (const phase of sourcePhases) {
+        await tx.insert(projectPhases).values({
+          projectId: targetProjectId,
+          phaseKey: phase.phaseKey,
+          phaseName: phase.phaseName,
+          active: phase.active,
+          orderIndex: phase.orderIndex,
+          hidden: phase.hidden,
+          progress: 0,
+          trackingStatus: "nao_iniciado",
+        });
+      }
+      phases = sourcePhases.length;
+    }
+
+    return { sections: sourceSections.length, measures: sourceMeasures.length, phases };
+  });
 }
 
 export async function updateProject(id: number, data: Partial<InsertProject>) {

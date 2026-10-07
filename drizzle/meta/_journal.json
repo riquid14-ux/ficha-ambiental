@@ -463,6 +463,13 @@
       "when": 1791300893527,
       "tag": "0067_bms_signed_events",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "5",
+      "when": 1791363117785,
+      "tag": "0068_separate_weekly_dcape_catalogues",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,7 @@
 /* Generated fixed translations for historical static UI literals. */
 export const uiLiteralTranslations: Record<string, string> = {
+  "FICHA SEMANAL · CONTROLO DE MEDIDAS": "WEEKLY FORM · MEASURE CONTROL",
+  "Ficha semanal autónoma · controlo por responsabilidade": "Independent weekly form · responsibility-based control",
   "Selecione um domínio para abrir visualizações de escala operacional. Passe sobre qualquer ponto ou barra para comparar valores exatos; a legenda mantém a cor de cada série.": "Select a domain to open operational-scale views. Hover over any point or bar to compare exact values; the legend preserves each series colour.",
   "semanas com dados": "weeks with data",
   "em revisão": "under review",

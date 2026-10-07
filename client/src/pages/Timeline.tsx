@@ -88,16 +88,17 @@ export default function Timeline() {
   const [selectedPhaseKey, setSelectedPhaseKey] = useState<DcapePhaseKey | undefined>();
   const projectId = activeProject?.id;
 
-  // Fetch the isolated catalogue for the active project.
+  // Timeline/Fases usa exclusivamente a cópia regulatória DCAPE; nunca as
+  // 156 linhas do Word semanal nem as respetivas respostas por empresa.
   const catalogueProjectId = projectId ?? 0;
   const { data: allSections } = trpc.sections.list.useQuery(
-    { projectId: catalogueProjectId },
+    { projectId: catalogueProjectId, catalogueScope: "dcape" },
     { enabled: catalogueProjectId > 0 }
   );
   const timelineImage = useBrandImage("timeline");
   const portfolioImage = useBrandImage("timeline_portfolio");
   const { data: allMeasures } = trpc.measures.list.useQuery(
-    { projectId: catalogueProjectId },
+    { projectId: catalogueProjectId, catalogueScope: "dcape" },
     { enabled: catalogueProjectId > 0 }
   );
 

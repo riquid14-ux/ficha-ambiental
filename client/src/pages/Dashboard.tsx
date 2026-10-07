@@ -362,8 +362,8 @@ export default function Dashboard() {
 
   const companiesQuery = trpc.companies.list.useQuery();
   const catalogueProjectId = activeProject?.id ?? 0;
-  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
-  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
   const phaseStatusesQuery = trpc.phaseMeasures.getStatuses.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
 
   const canSeeAll = user?.role === "admin" || user?.role === "dono_obra" || user?.role === "raa" || user?.role === "observador";

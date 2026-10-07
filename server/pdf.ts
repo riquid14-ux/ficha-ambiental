@@ -213,7 +213,7 @@ export function registerPdfRoutes(app: Express) {
       if (!await canExportProjectPdf(user, projectId, "timeline")) return res.status(403).json({ error: "Sem permissão para exportar este projeto" });
       const project = await db.getProjectById(projectId);
       if (!project) return res.status(404).json({ error: "Projeto não encontrado" });
-      const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getProjectSections(projectId), db.getProjectMeasures(projectId), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
+      const [phases, sections, measures, statuses, evidence] = await Promise.all([db.getProjectPhases(projectId), db.getProjectSections(projectId, "dcape"), db.getProjectMeasures(projectId, "dcape"), db.getPhaseMeasureStatuses(projectId), db.getPhaseEvidence(projectId)]);
       const requestedPhaseId = req.query.phaseId === undefined ? null : Number(req.query.phaseId);
       if (requestedPhaseId !== null && (!Number.isInteger(requestedPhaseId) || requestedPhaseId < 1)) return res.status(400).json({ error: "Fase inválida" });
       const renderedPhases = requestedPhaseId === null ? phases.filter((phase: any) => !phase.hidden) : phases.filter((phase: any) => phase.id === requestedPhaseId && !phase.hidden);
@@ -337,8 +337,8 @@ export function registerPdfRoutes(app: Express) {
       }
 
       const formalCompany = await db.getCompanyById(sub.companyId);
-      const formalSections = await db.getProjectSections(sub.projectId);
-      const formalMeasures = await db.getProjectMeasures(sub.projectId);
+      const formalSections = await db.getProjectSections(sub.projectId, "weekly");
+      const formalMeasures = await db.getProjectMeasures(sub.projectId, "weekly");
       const formalPdfBuffer = await buildWeeklyControlPdf(sub, formalCompany, formalSections, formalMeasures);
 
       res.setHeader("Content-Type", "application/pdf");
@@ -416,8 +416,8 @@ export function registerPdfRoutes(app: Express) {
 
           const [company, sections, measures] = await Promise.all([
             db.getCompanyById(sub.companyId),
-            db.getProjectSections(sub.projectId),
-            db.getProjectMeasures(sub.projectId),
+            db.getProjectSections(sub.projectId, "weekly"),
+            db.getProjectMeasures(sub.projectId, "weekly"),
           ]);
           const pdfBuffer = await buildWeeklyControlPdf(sub, company, sections, measures);
 
@@ -471,7 +471,7 @@ export function registerPdfRoutes(app: Express) {
       }
 
       // Get the measures info
-      const allMeasures = await db.getProjectMeasures(projectId);
+      const allMeasures = await db.getProjectMeasures(projectId, "weekly");
       // Filter measures by user role first, then by requested IDs
       const allowedMeasures = filterMeasuresForUser(allMeasures, user);
       const allowedIds = new Set(allowedMeasures.map((m: any) => m.id));
@@ -480,7 +480,7 @@ export function registerPdfRoutes(app: Express) {
         return res.status(403).json({ error: "Sem permissão para exportar as medidas selecionadas" });
       }
 
-      const allSections = await db.getProjectSections(projectId);
+      const allSections = await db.getProjectSections(projectId, "weekly");
 
       // Get all submissions in the date range (approved or submitted)
       const { weeklySubmissions: wsTbl, measureResponses: mrTbl, evidenceImages: eiTbl } = await import("../drizzle/schema");

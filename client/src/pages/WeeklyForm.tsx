@@ -87,8 +87,10 @@ export default function WeeklyForm() {
   }), [selectedWeek, selectedYear, weekDates, activeProject]);
 
   const catalogueProjectId = activeProject?.id ?? 0;
-  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
-  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  // A ficha trabalha apenas com as 156 linhas operacionais do Word, com
+  // responsabilidades EE/RAA/DO/RAP; nunca consome a Timeline DCAPE.
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
   // FLOW-07 FIX: Query project phases to determine current phase and scope the ficha
   const projectPhasesQuery = trpc.projectPhases.list.useQuery(
     { projectId: activeProject?.id ?? 0 },
@@ -138,7 +140,8 @@ export default function WeeklyForm() {
     { enabled: !!user?.companyId }
   );
   // Determine which measures to show based on user role
-  // admin → all 156, EE → measures containing "EE", RAP → measures containing "RAP", dono_obra → measures containing "DO"
+  // Admin/DO veem as 156 linhas; EE e RAP veem apenas as responsabilidades
+  // atribuídas à respetiva entidade. RAA atua na revisão independente.
   const userRole = user?.role;
   const measureFilterType = useMemo(() => {
     if (userRole === "admin") return null; // show all
@@ -399,9 +402,8 @@ export default function WeeklyForm() {
       if (!map.has(m.sectionId)) map.set(m.sectionId, []);
       map.get(m.sectionId)!.push(m);
     }
-    // FLOW-07 FIX: Filter sections to current phase only (unless showAllPhases is on)
-    // Ficha semanal shows ALL measures from the DCAPE Word document
-    // Filtered only by responsible (EE/RAP/DO) - no phase filtering
+    // A ficha semanal apresenta todas as linhas do seu próprio modelo Word,
+    // filtradas apenas pela responsabilidade da entidade; não segue fases DCAPE.
     return sectionsQuery.data.map((s) => ({
       section: s,
       measures: map.get(s.id) || [],
@@ -501,7 +503,7 @@ export default function WeeklyForm() {
       <div className="mx-auto max-w-[1440px] space-y-5 pb-8">
         <div className="print:hidden">
           <StandPageHeader
-            eyebrow="DCAPE · ACOMPANHAMENTO OPERACIONAL"
+            eyebrow={t("FICHA SEMANAL · CONTROLO DE MEDIDAS")}
             title="Ficha de Controlo de Medidas Ambientais"
             description={t("Registe evidências, acompanhe medidas e submeta o controlo semanal para revisão ambiental.")}
             context={activeProject?.code || "STAND"}
@@ -540,7 +542,7 @@ export default function WeeklyForm() {
               <h1 className="text-xl font-bold tracking-tight text-foreground text-center mb-1">
                 Ficha de Controlo de Medidas Ambientais
               </h1>
-              <p className="text-xs text-muted-foreground text-center">{t("DCAPE — Acompanhamento Semanal")}</p>
+              <p className="text-xs text-muted-foreground text-center">{t("Ficha semanal autónoma · controlo por responsabilidade")}</p>
             </div>
           </CardContent>
         </Card>

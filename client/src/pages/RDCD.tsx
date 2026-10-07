@@ -422,11 +422,11 @@ export default function RDCD() {
     { enabled: catalogueProjectId > 0 }
   );
   const { data: sections } = trpc.sections.list.useQuery(
-    { projectId: catalogueProjectId },
+    { projectId: catalogueProjectId, catalogueScope: "weekly" },
     { enabled: step >= 3 && catalogueProjectId > 0 }
   );
   const { data: measures } = trpc.measures.list.useQuery(
-    { projectId: catalogueProjectId },
+    { projectId: catalogueProjectId, catalogueScope: "weekly" },
     { enabled: step >= 3 && catalogueProjectId > 0 }
   );
   const { data: plans } = trpc.monitoringPlans.list.useQuery(undefined, {

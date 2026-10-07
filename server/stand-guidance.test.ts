@@ -40,8 +40,9 @@ describe("Guia STAND — tema, idioma e catálogo por projeto", () => {
     const migration = read("drizzle", "0056_conscious_multiple_man.sql");
 
     expect(schema).toContain('projectId: int("projectId")');
-    expect(routers).toContain("db.getProjectSections(input.projectId)");
-    expect(routers).toContain("db.getProjectMeasures(input.projectId)");
+    expect(routers).toContain('catalogueScope: z.enum(["weekly", "dcape"])');
+    expect(routers).toContain("db.getProjectSections(input.projectId, input.catalogueScope)");
+    expect(routers).toContain("db.getProjectMeasures(input.projectId, input.catalogueScope)");
     expect(migration).toContain("NEST/SIN01 conserva apenas as medidas aplicáveis à Exploração e à Desativação");
     expect(migration).toContain("60001");
     expect(migration).not.toMatch(/\bDROP\b|\bDELETE\b/i);
@@ -51,8 +52,8 @@ describe("Guia STAND — tema, idioma e catálogo por projeto", () => {
     const pdf = read("server", "pdf.ts");
     const history = read("client", "src", "pages", "SubmissionHistory.tsx");
 
-    expect(pdf).toContain("db.getProjectSections(sub.projectId)");
-    expect(pdf).toContain("db.getProjectMeasures(sub.projectId)");
+    expect(pdf).toContain('db.getProjectSections(sub.projectId, "weekly")');
+    expect(pdf).toContain('db.getProjectMeasures(sub.projectId, "weekly")');
     expect(pdf).toContain("eq(wsTbl.projectId, projectId)");
     expect(history).toContain("projectId: String(activeProject.id)");
   });

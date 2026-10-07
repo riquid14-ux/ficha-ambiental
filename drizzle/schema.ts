@@ -132,36 +132,42 @@ export type EepRequestUser = typeof eepRequestUsers.$inferSelect;
 export type InsertEepRequestUser = typeof eepRequestUsers.$inferInsert;
 
 /**
- * Sections (14 secções do documento)
+ * Sections — catálogos distintos para a Ficha Semanal e o acompanhamento DCAPE.
+ * As secções semanais são a estrutura operacional das 156 linhas do Word; as
+ * secções DCAPE sustentam a Timeline/Fases e nunca recebem respostas semanais.
  */
 export const sections = mysqlTable("sections", {
   id: int("id").autoincrement().primaryKey(),
-  // O catálogo regulatório pertence a um projeto; SIN01 mantém o seu catálogo de operação isolado.
+  // O catálogo pertence a um projeto; SIN01 mantém o seu catálogo de operação isolado.
   projectId: int("projectId"),
+  catalogueScope: mysqlEnum("catalogueScope", ["weekly", "dcape"]).default("weekly").notNull(),
   name: varchar("name", { length: 500 }).notNull(),
   orderIndex: int("orderIndex").notNull(),
   phase: varchar("phase", { length: 100 }).notNull(),
 }, (table) => ({
-  projectOrderIdx: index("sections_project_order_idx").on(table.projectId, table.orderIndex),
+  projectScopeOrderIdx: index("sections_project_scope_order_idx").on(table.projectId, table.catalogueScope, table.orderIndex),
 }));
 
 export type Section = typeof sections.$inferSelect;
 export type InsertSection = typeof sections.$inferInsert;
 
 /**
- * Measures (156 medidas de minimização)
+ * Measures — o Word semanal e a DCAPE usam registos independentes, mesmo
+ * quando o texto de origem é coincidente. Isto impede que uma aprovação de
+ * ficha altere o estado regulatório da Timeline.
  */
 export const measures = mysqlTable("measures", {
   id: int("id").autoincrement().primaryKey(),
   // Redundância controlada para consultas e validações de pertença sem depender apenas da secção.
   projectId: int("projectId"),
+  catalogueScope: mysqlEnum("catalogueScope", ["weekly", "dcape"]).default("weekly").notNull(),
   number: varchar("number", { length: 20 }).notNull(),
   description: text("description").notNull(),
   responsible: varchar("responsible", { length: 50 }).notNull(),
   sectionId: int("sectionId").notNull(),
   orderIndex: int("orderIndex").notNull(),
 }, (table) => ({
-  projectSectionOrderIdx: index("measures_project_section_order_idx").on(table.projectId, table.sectionId, table.orderIndex),
+  projectScopeSectionOrderIdx: index("measures_project_scope_section_order_idx").on(table.projectId, table.catalogueScope, table.sectionId, table.orderIndex),
 }));
 
 export type Measure = typeof measures.$inferSelect;

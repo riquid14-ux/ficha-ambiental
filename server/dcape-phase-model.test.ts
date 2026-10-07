@@ -135,6 +135,18 @@ describe("modelo canónico de fases DCAPE", () => {
     expect(dashboard).not.toContain("const isDone = i < 3");
   });
 
+  it("declara um âmbito DCAPE independente da ficha semanal", () => {
+    const schema = read("drizzle/schema.ts");
+    const database = read("server/db.ts");
+    const router = read("server/routers.ts");
+
+    expect(schema).toContain('mysqlEnum("catalogueScope", ["weekly", "dcape"])');
+    expect(database).toContain('cloneProjectEnvironmentalCatalogues');
+    expect(router).toContain('getProjectMeasures(input.projectId, "dcape")');
+    expect(router).toContain('getMeasureById(measureId, submission.projectId, "weekly")');
+    expect(read("drizzle/0068_separate_weekly_dcape_catalogues.sql")).toContain("TESTE UAT (Claude/Rita)%");
+  });
+
   it("regista a migração que preserva duplicados legados sem os exibir", () => {
     const migration = read("drizzle/0060_normalize_dcape_phases.sql");
     expect(migration).toContain("pre_licenciamento");

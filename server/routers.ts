@@ -8,7 +8,7 @@ import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, partnerAllowedProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
-import { sql, eq } from "drizzle-orm";
+import { and, sql, eq } from "drizzle-orm";
 import * as schema from "../drizzle/schema";
 import { storageGet, storagePut } from "./storage";
 import bcrypt from "bcryptjs";
@@ -261,11 +261,40 @@ async function assertMeasureBelongsToSubmission(
   if (!submission.projectId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "A ficha não tem projecto associado." });
   }
-  const measure = await db.getMeasureById(measureId, submission.projectId);
+  const measure = await db.getMeasureById(measureId, submission.projectId, "weekly");
   if (!measure) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "A medida não pertence ao projecto desta ficha.",
+    });
+  }
+  return measure;
+}
+
+/**
+ * A entidade executante vê e preenche apenas as linhas que lhe pertencem no
+ * Word semanal. Este controlo é repetido no servidor: esconder linhas na UI
+ * nunca é uma autorização. Admin e DO podem completar uma ficha em nome de
+ * uma entidade; RAA mantém-se exclusivamente no circuito de revisão.
+ */
+function canWriteWeeklyMeasure(user: any, measure: { responsible: string }) {
+  if (isAdminOrDono(user.role)) return true;
+  const responsible = String(measure.responsible || "").toUpperCase();
+  if (user.role === "rap") return responsible.includes("RAP");
+  if (user.role === "ee") return responsible.includes("EE");
+  return false;
+}
+
+async function assertWeeklyMeasureWriteAccess(
+  user: any,
+  submission: { projectId: number | null },
+  measureId: number,
+) {
+  const measure = await assertMeasureBelongsToSubmission(submission, measureId);
+  if (!canWriteWeeklyMeasure(user, measure)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Esta medida não está atribuída ao papel da sua entidade na ficha semanal.",
     });
   }
   return measure;
@@ -1994,28 +2023,29 @@ export const appRouter = router({
 
   // ─── Sections & Measures ───────────────────────────────────────────────────
   sections: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number(), catalogueScope: z.enum(["weekly", "dcape"]).default("weekly") })).query(async ({ ctx, input }) => {
       await assertProjectAccess(ctx.user, input.projectId);
-      return db.getProjectSections(input.projectId);
+      return db.getProjectSections(input.projectId, input.catalogueScope);
     }),
   }),
 
   measures: router({
-    list: protectedProcedure.input(z.object({ projectId: z.number() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(z.object({ projectId: z.number(), catalogueScope: z.enum(["weekly", "dcape"]).default("weekly") })).query(async ({ ctx, input }) => {
       await assertProjectAccess(ctx.user, input.projectId);
-      return db.getProjectMeasures(input.projectId);
+      return db.getProjectMeasures(input.projectId, input.catalogueScope);
     }),
     bySection: protectedProcedure
-      .input(z.object({ projectId: z.number(), sectionId: z.number() }))
+      .input(z.object({ projectId: z.number(), sectionId: z.number(), catalogueScope: z.enum(["weekly", "dcape"]).default("weekly") }))
       .query(async ({ ctx, input }) => {
         await assertProjectAccess(ctx.user, input.projectId);
-        const section = (await db.getProjectSections(input.projectId)).find(item => item.id === input.sectionId);
+        const section = (await db.getProjectSections(input.projectId, input.catalogueScope)).find(item => item.id === input.sectionId);
         if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Secção não encontrada neste projeto." });
-        return db.getMeasuresBySection(input.sectionId, input.projectId);
+        return db.getMeasuresBySection(input.sectionId, input.projectId, input.catalogueScope);
       }),
     create: protectedProcedure
       .input(z.object({
         projectId: z.number(),
+        catalogueScope: z.enum(["weekly", "dcape"]).default("weekly"),
         number: z.string().min(1),
         description: z.string().min(1),
         responsible: z.string().default("DO"),
@@ -2026,10 +2056,11 @@ export const appRouter = router({
          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin ou Dono de Obra" });
        }
        await assertProjectAccess(ctx.user, input.projectId);
-       const section = (await db.getProjectSections(input.projectId)).find(item => item.id === input.sectionId);
+       const section = (await db.getProjectSections(input.projectId, input.catalogueScope)).find(item => item.id === input.sectionId);
        if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Secção não encontrada neste projeto." });
        const id = await db.createMeasure({
          projectId: input.projectId,
+         catalogueScope: input.catalogueScope,
          number: input.number,
          description: input.description,
          responsible: input.responsible,
@@ -2041,6 +2072,7 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         projectId: z.number(),
+        catalogueScope: z.enum(["weekly", "dcape"]).default("weekly"),
         number: z.string().optional(),
         description: z.string().optional(),
         responsible: z.string().optional(),
@@ -2050,19 +2082,19 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode editar medidas" });
         }
         await assertProjectAccess(ctx.user, input.projectId);
-        const measure = await db.getMeasureById(input.id, input.projectId);
+        const measure = await db.getMeasureById(input.id, input.projectId, input.catalogueScope);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         await db.updateMeasure(input.id, { number: input.number, description: input.description, responsible: input.responsible });
         return { success: true };
       }),
     delete: protectedProcedure
-      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .input(z.object({ id: z.number(), projectId: z.number(), catalogueScope: z.enum(["weekly", "dcape"]).default("weekly") }))
       .mutation(async ({ ctx, input }) => {
         if (ctx.user.role !== "admin") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas Admin pode eliminar medidas" });
         }
         await assertProjectAccess(ctx.user, input.projectId);
-        const measure = await db.getMeasureById(input.id, input.projectId);
+        const measure = await db.getMeasureById(input.id, input.projectId, input.catalogueScope);
         if (!measure) throw new TRPCError({ code: "NOT_FOUND", message: "Medida não encontrada neste projeto." });
         await db.deleteMeasure(input.id);
         return { success: true };
@@ -2097,6 +2129,11 @@ export const appRouter = router({
         const existing = await db.getSubmissionForWeek(user.companyId, input.weekNumber, input.weekYear, input.projectId);
         if (existing) return existing;
 
+        // Capture the previous ficha before creating this week. Querying after
+        // the insert would find the new empty draft and silently disable the
+        // promised pre-load of the last submitted record.
+        const latest = await db.getLatestSubmissionForCompany(user.companyId, input.projectId);
+
         // Create new
         const { id } = await db.createWeeklySubmission({
           companyId: user.companyId,
@@ -2108,14 +2145,17 @@ export const appRouter = router({
           createdBy: user.id,
         });
 
-        // Pre-fill from previous week
-        const latest = await db.getLatestSubmissionForCompany(user.companyId, input.projectId);
+        // Pre-fill from the last ficha of the same company and project.
         if (latest) {
           const prevResponses = await db.getResponsesBySubmission(latest.id);
-          if (prevResponses.length > 0) {
+          const weeklyMeasureIds = new Set(
+            (await db.getProjectMeasures(input.projectId, "weekly")).map((measure) => measure.id),
+          );
+          const weeklyResponses = prevResponses.filter((response) => weeklyMeasureIds.has(response.measureId));
+          if (weeklyResponses.length > 0) {
             await db.bulkUpsertResponses(
               id,
-              prevResponses.map((r) => ({
+              weeklyResponses.map((r) => ({
                 measureId: r.measureId,
                 status: r.status,
                 observations: r.observations ?? null,
@@ -2179,26 +2219,9 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.createdBy !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o criador ou admin pode submeter esta ficha." });
         }
-        // Auto-fill NA for measures not relevant to this company type
-        const company = await db.getCompanyById(sub.companyId);
-        if (company && !isAdminOrDono(ctx.user.role)) {
-          // Determine filter type based on user role or company type
-          let filterType: string;
-          if (ctx.user.role === "rap") {
-            filterType = "RAP";
-          } else {
-            // Use company type for EE
-            filterType = company.companyType.toUpperCase() === "RAP" ? "RAP" : "EE";
-          }
-          const allMeasures = sub.projectId ? await db.getProjectMeasures(sub.projectId) : [];
-          const nonRelevant = allMeasures.filter((m) => !m.responsible.toUpperCase().includes(filterType));
-          if (nonRelevant.length > 0) {
-            await db.bulkUpsertResponses(
-              input.id,
-              nonRelevant.map((m) => ({ measureId: m.id, status: "NA" as const, observations: null }))
-            );
-          }
-        }
+        // Não gravar N/A artificial nas medidas de outras entidades. A RAA
+        // revê apenas as respostas efetivamente submetidas por cada EE/RAP;
+        // N/A fica reservado a uma escolha expressa numa medida atribuída.
         await db.submitWeeklySubmission(input.id, ctx.user.id);
         // Send email notification to RAA users (async, don't block)
         try {
@@ -2371,22 +2394,11 @@ export const appRouter = router({
             }
           }
         } catch {}
-        // FLOW-02 FIX: When a ficha is APPROVED, update phase measure statuses
-        // Each measure with status "C" (Conforme) or "I" (Implementado) marks that measure as "concluido"
+        // A ficha semanal e a DCAPE são controlos distintos. A aprovação da
+        // RAA é auditada na ficha, mas não pode concluir automaticamente uma
+        // obrigação da Timeline/Fases.
         if (input.status === "approved" && sub.projectId) {
           const responses = await db.getResponsesBySubmission(input.id);
-          for (const resp of responses) {
-            if (resp.status === "C" || resp.status === "I") {
-              await db.upsertPhaseMeasureStatus({
-                measureId: resp.measureId,
-                projectId: sub.projectId,
-                status: "concluido",
-                notes: `Aprovado via ficha #${input.id} (S${sub.weekNumber}/${sub.weekYear})`,
-                updatedBy: ctx.user.id,
-              });
-            }
-          }
-
           // ─── ARCHIVE: Send approved ficha to external storage ─────────
           try {
             const { archiveDocument } = await import("./archive-provider");
@@ -2475,7 +2487,13 @@ export const appRouter = router({
           console.warn("Image extraction failed (non-fatal):", error);
         }
 
-        const allMeasures = await database.select().from(schema.measures);
+        const allMeasures = await database
+          .select()
+          .from(schema.measures)
+          .where(and(
+            eq(schema.measures.projectId, input.projectId),
+            eq(schema.measures.catalogueScope, "weekly"),
+          ));
         const measureList = allMeasures
           .map((measure: any) => `ID:${measure.id} | ${measure.number || ""} | ${measure.description}`)
           .join("\n");
@@ -2588,9 +2606,19 @@ export const appRouter = router({
 
         const database = await db.getDb();
         if (!database) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de dados indisponível." });
-        const allMeasures = await database.select({ id: schema.measures.id }).from(schema.measures);
-        const validMeasureIds = new Set(allMeasures.map(item => item.id));
-        const validResponses = input.responses.filter(response => validMeasureIds.has(response.measureId));
+        const allMeasures = await database
+          .select()
+          .from(schema.measures)
+          .where(and(
+            eq(schema.measures.projectId, input.projectId),
+            eq(schema.measures.catalogueScope, "weekly"),
+          ));
+        const weeklyMeasuresById = new Map(allMeasures.map(item => [item.id, item]));
+        const mayImportWholeWeeklyForm = isAdminOrDono(ctx.user.role) || ctx.user.role === "raa";
+        const validResponses = input.responses.filter(response => {
+          const measure = weeklyMeasuresById.get(response.measureId);
+          return !!measure && (mayImportWholeWeeklyForm || canWriteWeeklyMeasure(ctx.user, measure));
+        });
         if (validResponses.length === 0) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "A pré-visualização não contém medidas válidas." });
         }
@@ -2773,7 +2801,7 @@ export const appRouter = router({
         }
 
         // Get all measures for this project
-        const allMeasures = await db.getProjectMeasures(input.projectId);
+        const allMeasures = await db.getProjectMeasures(input.projectId, "weekly");
         const measureList = allMeasures.map((m: any) => `ID:${m.id} - ${m.number || ''} ${m.description}`).join('\n');
         
         // Use LLM to extract responses from the PDF
@@ -2949,7 +2977,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
-        await Promise.all(input.responses.map(response => assertMeasureBelongsToSubmission(sub, response.measureId)));
+        await Promise.all(input.responses.map(response => assertWeeklyMeasureWriteAccess(ctx.user, sub, response.measureId)));
         await db.bulkUpsertResponses(input.submissionId, input.responses);
         return { success: true };
       }),
@@ -3335,15 +3363,27 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const { enabledModules, ...projectData } = input;
+        const resolvedModules = enabledModules || ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"];
         const created = await db.createProject({
           ...projectData,
-          enabledModules: JSON.stringify(enabledModules || ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"]),
+          enabledModules: JSON.stringify(resolvedModules),
         });
-        const projectId = (created as any)?.[0]?.insertId ?? (created as any)?.insertId ?? null;
+        const projectId = Number((created as any)?.id ?? (created as any)?.[0]?.insertId ?? (created as any)?.insertId ?? 0) || null;
+        if (projectId) {
+          const sin02Template = (await db.getAllProjects()).find((project) => project.code === "SIN02");
+          // SIN02 é o modelo aprovado de obra. A cópia cria linhas novas nos
+          // dois âmbitos, sem copiar qualquer ficha, resposta ou estado.
+          if (sin02Template) {
+            await db.cloneProjectEnvironmentalCatalogues(sin02Template.id, projectId, {
+              weekly: resolvedModules.includes("ficha"),
+              dcape: resolvedModules.includes("timeline"),
+            });
+          }
+        }
         await db.insertAuditLog(ctx.user.id, getUserDisplayName(ctx.user), "project_created", "projects", projectId, null, JSON.stringify({
           code: input.code,
           name: input.name,
-          enabledModules: enabledModules || ["dashboard", "calendar", "map", "timeline", "ficha", "residuos", "kpi"],
+          enabledModules: resolvedModules,
         }));
         return created;
       }),
@@ -3499,7 +3539,7 @@ export const appRouter = router({
         if (!isAdminOrDono(ctx.user.role) && sub.companyId !== ctx.user.companyId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
-        await assertMeasureBelongsToSubmission(sub, input.measureId);
+        await assertWeeklyMeasureWriteAccess(ctx.user, sub, input.measureId);
         // Decode base64
         // Security: validate file type and size
         if (!ALLOWED_FILE_TYPES.has(input.mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Tipo de ficheiro não permitido" });
@@ -4254,8 +4294,8 @@ export const appRouter = router({
           }
           const [statuses, projectSections, projectMeasures] = await Promise.all([
             db.getPhaseMeasureStatuses(proj.id),
-            db.getProjectSections(proj.id),
-            db.getProjectMeasures(proj.id),
+            db.getProjectSections(proj.id, "dcape"),
+            db.getProjectMeasures(proj.id, "dcape"),
           ]);
           const projPhases = allProjectPhases.filter((pp: any) => pp.projectId === proj.id);
           const statusMap = new Map<number, string>();
@@ -4306,7 +4346,7 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const project = await assertProjectModuleAccess(ctx.user, input.projectId, "timeline");
         const [projectMeasures, statuses, updates] = await Promise.all([
-          db.getProjectMeasures(input.projectId),
+          db.getProjectMeasures(input.projectId, "dcape"),
           db.getPhaseMeasureStatuses(input.projectId),
           db.getPhaseMeasureUpdatesForProject(input.projectId),
         ]);

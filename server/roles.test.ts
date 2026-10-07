@@ -103,6 +103,14 @@ describe("Roles Drill Tests", () => {
       expect(weeklyFormCode).toContain('role === "admin"');
       expect(weeklyFormCode).toContain('role === "dono_obra"');
     });
+
+    it("separa o preenchimento semanal das obrigações DCAPE no servidor", () => {
+      expect(routerCode).toContain('getMeasureById(measureId, submission.projectId, "weekly")');
+      expect(routerCode).toContain("assertWeeklyMeasureWriteAccess");
+      expect(routerCode).toContain('eq(schema.measures.catalogueScope, "weekly")');
+      expect(routerCode).not.toContain("Auto-fill NA for measures not relevant");
+      expect(routerCode).not.toContain("Aprovado via ficha #");
+    });
   });
 
   describe("Review Permissions", () => {
@@ -143,6 +151,13 @@ describe("Roles Drill Tests", () => {
       expect(routerCode).toContain('"company_updated"');
       expect(routerCode).toContain('"user_role_updated"');
       expect(routerCode).toContain('"invitation_created"');
+    });
+
+    it("cria novos projetos com cópias independentes dos dois catálogos", () => {
+      expect(routerCode).toContain('project.code === "SIN02"');
+      expect(routerCode).toContain("cloneProjectEnvironmentalCatalogues");
+      expect(routerCode).toContain('weekly: resolvedModules.includes("ficha")');
+      expect(routerCode).toContain('dcape: resolvedModules.includes("timeline")');
     });
   });
 

@@ -104,8 +104,9 @@ describe("sections.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.sections.list({ projectId: 1 });
     expect(Array.isArray(result)).toBe(true);
-    // Should have sections (14 construction + 6 new phases = 20)
-    expect(result.length).toBeGreaterThanOrEqual(17);
+    // O contrato por omissão é o modelo Word semanal, isolado do DCAPE.
+    expect(result.length).toBe(14);
+    expect(result.every((section) => section.catalogueScope === "weekly")).toBe(true);
   });
 });
 
@@ -115,8 +116,9 @@ describe("measures.list", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.measures.list({ projectId: 1 });
     expect(Array.isArray(result)).toBe(true);
-    // Catálogo atual: 204 linhas existentes + 2 elementos documentais da construção (CC-24 e CC-25).
-    expect(result.length).toBe(206);
+    // As 156 linhas da ficha semanal não incluem obrigações DCAPE.
+    expect(result.length).toBe(156);
+    expect(result.every((measure) => measure.catalogueScope === "weekly")).toBe(true);
   });
 });
 

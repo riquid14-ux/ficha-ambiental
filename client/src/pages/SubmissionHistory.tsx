@@ -92,8 +92,8 @@ export default function SubmissionHistory(props: any) {
 
   // Fetch measures and sections for per-measure export
   const catalogueProjectId = activeProject?.id ?? 0;
-  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
-  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId }, { enabled: catalogueProjectId > 0 });
+  const measuresQuery = trpc.measures.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
+  const sectionsQuery = trpc.sections.list.useQuery({ projectId: catalogueProjectId, catalogueScope: "weekly" }, { enabled: catalogueProjectId > 0 });
 
   // Filter measures by search
   const filteredMeasures = useMemo(() => {

@@ -116,6 +116,8 @@ export default function Welcome() {
   const userName = (user as any)?.name || (user as any)?.email?.split("@")[0] || "";
   const primaryPath = isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard";
   const primaryLabel = isNest ? t("Abrir operação NEST") : t("Abrir centro de controlo");
+  const canSeeProjectLifecycle = visiblePaths.includes("/timeline");
+  const canOpenWeeklyControl = visiblePaths.includes("/ficha");
   const quickCommands = features.slice(0, 8);
   const rackPathSignature = quickCommands.map((feature) => feature.path).join("|");
   const selectedRackFeature = quickCommands.find((feature) => feature.path === selectedRackPath) || quickCommands[0];
@@ -165,7 +167,7 @@ export default function Welcome() {
               <p>{t("Cada registo liga a operação, a conformidade e decisões ambientais mais conscientes.")}</p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button type="button" onClick={() => setLocation(primaryPath)} className="stand-os-primary-action"><Activity className="size-4" />{primaryLabel}<ArrowRight className="size-4" /></button>
-                {visiblePaths.includes("/timeline") && <button type="button" onClick={() => setLocation("/timeline")} className="stand-os-secondary-action"><Workflow className="size-4" />{t("Ver ciclo do projeto")}</button>}
+                {canSeeProjectLifecycle && <button type="button" onClick={() => setLocation("/timeline")} className="stand-os-secondary-action"><Workflow className="size-4" />{t("Ver ciclo do projeto")}</button>}
               </div>
             </div>
             <aside className="stand-os-status-module" aria-label={t("Estado do ambiente de trabalho")}>
@@ -188,16 +190,16 @@ export default function Welcome() {
         </section>
 
         <section className="stand-os-command-grid" aria-label={t("Acessos rápidos") }>
-          <button type="button" className="stand-os-visual-command stand-os-visual-command--operations" onClick={() => setLocation(isNest && visiblePaths.includes("/operacao") ? "/operacao" : "/dashboard")}>
-            <img src={operationsImage.url} alt="" style={{ objectPosition: operationsImage.position }} />
+          <button type="button" className="stand-os-visual-command stand-os-visual-command--operations" onClick={() => setLocation(isNest && visiblePaths.includes("/operacao") ? "/operacao" : canOpenWeeklyControl ? "/ficha" : "/dashboard")}>
+            <img src={(isNest && visiblePaths.includes("/operacao") ? operationsImage : welcomeHeaderImage).url} alt="" style={{ objectPosition: (isNest && visiblePaths.includes("/operacao") ? operationsImage : welcomeHeaderImage).position }} />
             <span className="stand-os-command-scrim" />
-            <span className="stand-os-command-content"><span className="stand-os-code">SYS.01</span><strong>{t("Edifício, sistemas e eficiência")}</strong><small>{t("Da infraestrutura aos sinais de operação")}</small></span><span className="stand-os-arrow"><ArrowRight className="size-4" /></span>
+            <span className="stand-os-command-content"><span className="stand-os-code">{isNest && visiblePaths.includes("/operacao") ? "SYS.01" : "CTL.01"}</span><strong>{isNest && visiblePaths.includes("/operacao") ? t("Edifício, sistemas e eficiência") : canOpenWeeklyControl ? t("Fichas semanais e evidências") : t("Conformidade no seu âmbito")}</strong><small>{isNest && visiblePaths.includes("/operacao") ? t("Da infraestrutura aos sinais de operação") : canOpenWeeklyControl ? t("Preencha apenas as medidas atribuídas à sua entidade") : t("Aceda aos módulos autorizados")}</small></span><span className="stand-os-arrow"><ArrowRight className="size-4" /></span>
           </button>
-          <button type="button" className="stand-os-visual-command stand-os-visual-command--delivery" onClick={() => setLocation(visiblePaths.includes("/timeline") ? "/timeline" : "/dashboard")}>
+          {canSeeProjectLifecycle && <button type="button" className="stand-os-visual-command stand-os-visual-command--delivery" onClick={() => setLocation("/timeline")}>
             <img src={timelineImage.url} alt="" style={{ objectPosition: timelineImage.position }} />
             <span className="stand-os-command-scrim" />
             <span className="stand-os-command-content"><span className="stand-os-code">PRJ.02</span><strong>{t("Fases, equipas e evidências")}</strong><small>{t("Cumprimento DCAPE ponto a ponto")}</small></span><span className="stand-os-arrow"><ArrowRight className="size-4" /></span>
-          </button>
+          </button>}
           <div className="stand-os-trust-panel"><span className="stand-os-code">STAND / START CAMPUS</span><p>{t("Uma plataforma de conformidade que se comporta como um sistema de missão crítica.")}</p><div><Shield className="size-4 text-primary" /><span>{t("Permissões, histórico e fontes visíveis")}</span></div></div>
         </section>
 

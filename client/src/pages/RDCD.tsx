@@ -93,6 +93,10 @@ import {
   localizeWeeklyControlDescription,
   localizeWeeklyControlSectionName,
 } from "@/lib/weekly-control-presentation";
+import {
+  summarizeWeeklyRdcdResponses,
+  type WeeklyRdcdSummary,
+} from "@/lib/weekly-rdcd-consolidation";
 
 // Wizard steps
 const STEPS = [
@@ -151,6 +155,9 @@ type MeasureSelection = {
   selectedImageUrls: string[];
   notes: string;
 };
+
+const describeWeeklySource = (summary: WeeklyRdcdSummary) =>
+  `S${summary.week}/${summary.year}`;
 
 type ReportLogo = {
   name: string;
@@ -689,9 +696,14 @@ export default function RDCD() {
   }, [filteredSubmissions, allResponses, measures]);
 
   const projectChoices = projects.length > 0 ? projects : authorisedProjects;
-  const availableProjects = projectChoices;
+  // SIN01 é acompanhado no cockpit de Operação/NEST. O emissor RDCD de obra
+  // compila exclusivamente fichas semanais de construção e não apresenta esse
+  // projeto como uma opção de relatório.
+  const availableProjects = projectChoices.filter(
+    project => project.code !== "SIN01"
+  );
   const selectedProject =
-    projectChoices.find(project => project.id === selectedProjects[0]) || null;
+    availableProjects.find(project => project.id === selectedProjects[0]) || null;
   const reportModel = getRdcdProjectModel(selectedProject?.code);
   const presentedReportModel = presentRdcdModel(
     selectedProject?.code,
@@ -712,22 +724,23 @@ export default function RDCD() {
       : localizeWeeklyControlDescription(measure.description, language);
 
   useEffect(() => {
-    if (!projectWasChosen && activeProject) {
+    if (!projectWasChosen && activeProject && activeProject.code !== "SIN01") {
       setSelectedProjects(current =>
         current.length === 1 && current[0] === activeProject.id
           ? current
           : [activeProject.id]
       );
+    } else if (!projectWasChosen && activeProject?.code === "SIN01") {
+      setSelectedProjects([]);
     }
   }, [activeProject?.id, activeProject?.code, projectWasChosen]);
 
   // Year options
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
+  const yearOptions = [2025, 2026, 2027, 2028, 2029, 2030];
 
   function toggleProject(id: number) {
     setProjectWasChosen(true);
-    const selected = projectChoices.find(project => project.id === id);
+    const selected = availableProjects.find(project => project.id === id);
     const wasSelected = selectedProjects.includes(id);
     setSelectedProjects(wasSelected ? [] : [id]);
     if (!wasSelected && selected)
@@ -1155,6 +1168,7 @@ export default function RDCD() {
                   `${response.year}-W${String(response.week).padStart(2, "0")}`
                 )
               );
+          const weeklySummaries = summarizeWeeklyRdcdResponses(responses);
           const images = (evidenceByMeasure[measure.id] || []).filter(image =>
             selection.selectedImageUrls.includes(image.url)
           );
@@ -1167,12 +1181,13 @@ export default function RDCD() {
             !selection.notes.trim()
           )
             return null;
-          return { measure, selection, responses, images };
+          return { measure, selection, responses, weeklySummaries, images };
         })
         .filter(Boolean) as Array<{
         measure: any;
         selection: MeasureSelection;
         responses: any[];
+        weeklySummaries: WeeklyRdcdSummary[];
         images: Array<{
           url: string;
           filename: string;
@@ -1856,26 +1871,40 @@ export default function RDCD() {
                       `${item.measure.number || item.measure.id} — ${(item.measure.description || "").slice(0, 140)}`,
                       isOperationsReport
                         ? periodLabel
-                        : item.responses.length > 0
-                          ? item.responses
-                              .map(
-                                response => `S${response.week}/${response.year}`
-                              )
+                        : item.weeklySummaries.length > 0
+                          ? item.weeklySummaries
+                              .map(summary => describeWeeklySource(summary))
                               .join(", ")
                           : "Sem semanas selecionadas",
                       isOperationsReport
                         ? statusLabels[item.measure.autoStatus] ||
                           item.measure.status ||
                           "—"
-                        : item.responses.length > 0
-                          ? item.responses
-                              .map(response => response.status || "—")
+                        : item.weeklySummaries.length > 0
+                          ? item.weeklySummaries
+                              .map(summary =>
+                                `${describeWeeklySource(summary)}: ${summary.statuses
+                                  .map(
+                                    status =>
+                                      responseStatusLabels[status] || status
+                                  )
+                                  .join(" · ")}`
+                              )
                               .join(", ")
                           : "—",
                       ...(isOperationsReport
                         ? [item.measure.ownerName || "Por definir"]
                         : []),
                       item.selection.notes.trim() ||
+                        item.weeklySummaries
+                          .map(summary => {
+                            const observation = summary.observations.join(" · ");
+                            return observation
+                              ? `${describeWeeklySource(summary)} — ${observation}`
+                              : "";
+                          })
+                          .filter(Boolean)
+                          .join(" | ") ||
                         item.measure.latestUpdate?.updateText ||
                         "—",
                     ])
@@ -2273,6 +2302,9 @@ export default function RDCD() {
           )
         )
     : [];
+  const curationPreviewWeeklySummaries = summarizeWeeklyRdcdResponses(
+    curationPreviewResponses
+  );
   const curationPreviewImages = curationPreviewMeasure
     ? (evidenceByMeasure[curationPreviewMeasure.id] || []).filter(image =>
         curationPreviewSelection?.selectedImageUrls.includes(image.url)
@@ -2386,7 +2418,7 @@ export default function RDCD() {
                         </tbody>
                       </table>
                     </div>
-                  ) : curationPreviewResponses.length > 0 ? (
+                  ) : curationPreviewWeeklySummaries.length > 0 ? (
                     <div className="rdcd-document-table-wrap">
                       <table className="rdcd-document-table">
                         <thead>
@@ -2397,18 +2429,22 @@ export default function RDCD() {
                           </tr>
                         </thead>
                         <tbody>
-                          {curationPreviewResponses.map((response: any) => (
+                          {curationPreviewWeeklySummaries.map(summary => (
                             <tr
-                              key={`${response.submissionId}-${response.week}`}
+                              key={summary.key}
                             >
                               <td>
-                                S{response.week}/{response.year}
+                                {describeWeeklySource(summary)}
                               </td>
                               <td>
-                                {responseStatusLabels[response.status] ||
-                                  response.status}
+                                {summary.statuses
+                                  .map(
+                                    status =>
+                                      responseStatusLabels[status] || status
+                                  )
+                                  .join(" · ")}
                               </td>
-                              <td>{response.observations || "—"}</td>
+                              <td>{summary.observations.join(" · ") || "—"}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2812,6 +2848,7 @@ export default function RDCD() {
             {selectedDocumentMeasures.length > 0 ? selectedDocumentMeasures.map((measure: any) => {
               const selection = measureSelections[measure.id];
               const selectedResponses = isOperationsReport ? [] : (measure.responses || []).filter((response: any) => selection.selectedWeeks.includes(`${response.year}-W${String(response.week).padStart(2, "0")}`));
+              const selectedWeeklySummaries = summarizeWeeklyRdcdResponses(selectedResponses);
               return (
                 <section key={`preview-measure-${measure.id}`} className={`rdcd-document-measure ${measure.id === activeMeasurePreviewId ? "is-active" : ""}`}>
                   <div className="rdcd-document-heading-row">
@@ -2819,7 +2856,7 @@ export default function RDCD() {
                     <span className="rdcd-document-status">{t(statusLabels[measure.autoStatus] || measure.autoStatus)}</span>
                   </div>
                   <p className="rdcd-document-measure-meta">{selection.selectedWeeks.length} {t("semanas selecionadas")} · {selection.selectedImageUrls.length} {t("fotografias selecionadas")}</p>
-                  {selectedResponses.length > 0 && <div className="rdcd-document-table-wrap"><table className="rdcd-document-table"><thead><tr><th>{t("Semana")}</th><th>{t("Estado")}</th><th>{t("Observações")}</th></tr></thead><tbody>{selectedResponses.map((response: any) => <tr key={`${response.submissionId}-${response.week}`}><td>S{response.week}/{response.year}</td><td>{responseStatusLabels[response.status] || response.status}</td><td>{response.observations || "—"}</td></tr>)}</tbody></table></div>}
+                  {selectedWeeklySummaries.length > 0 && <div className="rdcd-document-table-wrap"><table className="rdcd-document-table"><thead><tr><th>{t("Semana")}</th><th>{t("Estado")}</th><th>{t("Observações")}</th></tr></thead><tbody>{selectedWeeklySummaries.map(summary => <tr key={summary.key}><td>{describeWeeklySource(summary)}</td><td>{summary.statuses.map(status => responseStatusLabels[status] || status).join(" · ")}</td><td>{summary.observations.join(" · ") || "—"}</td></tr>)}</tbody></table></div>}
                   {selection.notes.trim() && <p className="rdcd-document-paragraph mt-2"><strong>{t("Nota editorial")}:</strong> {selection.notes}</p>}
                 </section>
               );
@@ -3826,10 +3863,9 @@ export default function RDCD() {
                                     selectedImageUrls: [],
                                     notes: "",
                                   }),
-                                  selectedWeeks: measure.responses.map(
-                                    (response: any) =>
-                                      `${response.year}-W${String(response.week).padStart(2, "0")}`
-                                  ),
+                                  selectedWeeks: summarizeWeeklyRdcdResponses(
+                                    measure.responses
+                                  ).map(summary => summary.key),
                                 },
                               ])
                             )
@@ -3863,6 +3899,9 @@ export default function RDCD() {
                                 selectedImageUrls: [],
                                 notes: "",
                               };
+                              const weeklySummaries = summarizeWeeklyRdcdResponses(
+                                m.responses
+                              );
                               const selectedSubmissionIds = new Set(
                                 m.responses
                                   .filter((response: any) =>
@@ -3911,8 +3950,8 @@ export default function RDCD() {
                                       {t("Semanas respondidas nesta medida")}
                                     </p>
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                      {m.responses.map((response: any) => {
-                                        const weekKey = `${response.year}-W${String(response.week).padStart(2, "0")}`;
+                                      {weeklySummaries.map(summary => {
+                                        const weekKey = summary.key;
                                         const selected =
                                           selection.selectedWeeks.includes(
                                             weekKey
@@ -3920,7 +3959,7 @@ export default function RDCD() {
                                         return (
                                           <Button
                                             type="button"
-                                            key={`${response.submissionId}-${weekKey}`}
+                                            key={weekKey}
                                             size="sm"
                                             variant={
                                               selected ? "default" : "outline"
@@ -3957,10 +3996,14 @@ export default function RDCD() {
                                               );
                                             }}
                                           >
-                                            S{response.week}/{response.year} ·{" "}
-                                            {responseStatusLabels[
-                                              response.status
-                                            ] || response.status}
+                                            {describeWeeklySource(summary)} ·{" "}
+                                            {summary.statuses
+                                              .map(
+                                                status =>
+                                                  responseStatusLabels[status] ||
+                                                  status
+                                              )
+                                              .join(" · ")}
                                           </Button>
                                         );
                                       })}

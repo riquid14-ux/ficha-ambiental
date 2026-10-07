@@ -124,30 +124,65 @@ export function buildRdcdWeeklyRows(
 ) {
   const measureById = new Map(measures.map(item => [item.id, item]));
   const sectionById = new Map(sections.map(item => [item.id, item.name]));
-  return submissions
+  const orderedSubmissions = submissions
     .slice()
-    .sort((a, b) => a.weekYear - b.weekYear || a.weekNumber - b.weekNumber)
-    .map(submission => {
-      const submissionResponses = responses.filter(item => item.submissionId === submission.id);
-      const counts = responseCounts(submissionResponses);
-      const phases = Array.from(new Set(submissionResponses.map(item => sectionById.get(measureById.get(item.measureId)?.sectionId || -1)).filter(Boolean)));
-      const observations = [submission.reviewNotes, ...submissionResponses.map(item => item.observations).filter(Boolean)]
-        .filter(Boolean)
-        .join(" · ")
-        .slice(0, 320);
-      return {
-        submissionId: submission.id,
-        reference: `ID ${submission.id}`,
-        week: submission.weekNumber,
-        period: shortPeriod(submission, language),
-        // O quadro semanal deve identificar a fase declarada no relatório, não
-        // enumerar todas as secções técnicas (incluindo N.A.), que pertencem ao
-        // detalhe consolidado do ponto 5.
-        phases: reportPhase?.trim() || (phases.length > 0 ? phases.join(", ") : "—"),
-        ...counts,
-        observations: observations || "Sem observações relevantes.",
-      };
-    });
+    .sort((a, b) => a.weekYear - b.weekYear || a.weekNumber - b.weekNumber);
+  const byWeek = new Map<string, RdcdSubmission[]>();
+  for (const submission of orderedSubmissions) {
+    const key = `${submission.weekYear}-W${String(submission.weekNumber).padStart(2, "0")}`;
+    const current = byWeek.get(key) || [];
+    current.push(submission);
+    byWeek.set(key, current);
+  }
+
+  // O corpo do RDCD não replica uma linha por GC. A ficha de cada GC mantém-se
+  // como fonte aprovada e auditável; o quadro de contexto apresenta uma síntese
+  // única por semana para evitar uma emissão extensa e ilegível.
+  return Array.from(byWeek.values()).map(weekSubmissions => {
+    const sourceIds = new Set(weekSubmissions.map(item => item.id));
+    const weekResponses = responses.filter(item => sourceIds.has(item.submissionId));
+    const counts = responseCounts(weekResponses);
+    const phases = Array.from(
+      new Set(
+        weekResponses
+          .map(item =>
+            sectionById.get(measureById.get(item.measureId)?.sectionId || -1)
+          )
+          .filter(Boolean)
+      )
+    );
+    const observations = [
+      ...weekSubmissions.map(item => item.reviewNotes),
+      ...weekResponses.map(item => item.observations),
+    ]
+      .filter((value): value is string => Boolean(value?.trim()))
+      .filter((value, index, values) => values.indexOf(value) === index)
+      .join(" · ")
+      .slice(0, 320);
+    const firstSubmission = weekSubmissions[0];
+    const formCount = weekSubmissions.length;
+    return {
+      submissionId: firstSubmission.id,
+      submissionIds: Array.from(sourceIds),
+      reference:
+        language === "en"
+          ? `${formCount} approved weekly form${formCount === 1 ? "" : "s"}`
+          : `${formCount} ficha${formCount === 1 ? "" : "s"} aprovada${formCount === 1 ? "" : "s"}`,
+      week: firstSubmission.weekNumber,
+      period: shortPeriod(firstSubmission, language),
+      // O quadro semanal deve identificar a fase declarada no relatório, não
+      // enumerar todas as secções técnicas (incluindo N.A.), que pertencem ao
+      // detalhe consolidado do ponto 5.
+      phases:
+        reportPhase?.trim() || (phases.length > 0 ? phases.join(", ") : "—"),
+      ...counts,
+      observations:
+        observations ||
+        (language === "en"
+          ? "No relevant observations."
+          : "Sem observações relevantes."),
+    };
+  });
 }
 
 export function buildRdcdPhaseRows(

@@ -15,4 +15,9 @@ describe("Bem-vindo — vídeo institucional", () => {
     expect(source).toContain('onClick={() => setVideoPlaying(true)}');
     expect(source).toContain('welcomeHeaderImage.url');
   });
+
+  it("só mostra a navegação do ciclo a perfis que podem consultar a timeline", () => {
+    expect(source).toContain('const canSeeProjectLifecycle = visiblePaths.includes("/timeline")');
+    expect(source).toContain('{canSeeProjectLifecycle && <button');
+  });
 });

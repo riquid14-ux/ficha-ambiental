@@ -24,4 +24,10 @@ describe("RDCD — pré-visualização documental integral", () => {
     expect(source).toContain("reportLogoMediaUrl(logo.url)");
     expect(source).toContain("A pré-visualização organiza fontes e composição.");
   });
+
+  it("apresenta uma síntese por medida e semana, nunca uma linha por GC", () => {
+    expect(source).toContain("summarizeWeeklyRdcdResponses");
+    expect(source).toContain("selectedWeeklySummaries.map");
+    expect(source).toContain("curationPreviewWeeklySummaries.map");
+  });
 });

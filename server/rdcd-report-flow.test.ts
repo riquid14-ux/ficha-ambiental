@@ -79,7 +79,7 @@ describe("RDCD — relatório estruturado e rastreável", () => {
     );
   });
 
-  it("preserva a seleção individual de semanas por medida na compilação", () => {
+  it("preserva a seleção individual de semanas por medida numa síntese legível", () => {
     const rows = buildRdcdWeeklyRows(
       [
         {
@@ -119,8 +119,8 @@ describe("RDCD — relatório estruturado e rastreável", () => {
       "Execução da obra"
     );
     expect(rows.map(row => row.week)).toEqual([22, 26]);
-    expect(rows[0].reference).toBe("ID 10");
-    expect(rows[1].reference).toBe("ID 11");
+    expect(rows[0].reference).toBe("1 ficha aprovada");
+    expect(rows[1].reference).toBe("1 ficha aprovada");
     expect(rows.every(row => row.phases === "Execução da obra")).toBe(true);
   });
 

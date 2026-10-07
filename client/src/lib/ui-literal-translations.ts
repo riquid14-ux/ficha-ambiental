@@ -1983,4 +1983,9 @@ export const uiLiteralTranslations: Record<string, string> = {
   ,"Guardar": "Save"
   ,"Resp. Acomp. Patrimonial": "Heritage monitoring lead"
   ,"Resp. Acomp. Ambiental": "Environmental monitoring lead"
+  ,"Fichas semanais e evidências": "Weekly forms and evidence"
+  ,"Preencha apenas as medidas atribuídas à sua entidade": "Complete only the measures assigned to your entity"
+  ,"Conformidade no seu âmbito": "Compliance within your scope"
+  ,"Aceda aos módulos autorizados": "Access the authorised modules"
+  ,"Selecionar semana": "Select week"
 };

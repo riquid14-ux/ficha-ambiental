@@ -53,7 +53,7 @@ export function StandPageHeader({
           <img
             src={image}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            className="stand-page-header-photo absolute inset-0 h-full w-full object-cover"
             style={{ objectPosition: imagePosition }}
             onError={(event) => { event.currentTarget.style.display = "none"; }}
           />
@@ -68,7 +68,7 @@ export function StandPageHeader({
       )}
       {!isOperations && !hasBackgroundImage && <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary/55" />}
 
-      <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+      <div className="stand-page-header-content relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 max-w-3xl">
           {eyebrow && <p className={`stand-kicker ${useLightText ? "text-primary" : "text-primary"}`}>{eyebrow}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-2">

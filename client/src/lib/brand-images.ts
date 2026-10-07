@@ -44,6 +44,18 @@ export function getBrandImageDefinition(pageKey: string) {
   return BRAND_IMAGE_BY_PAGE[pageKey] || BRAND_IMAGE_BY_PAGE.dashboard;
 }
 
+/**
+ * Public institutional assets are streamed from the app origin. Direct
+ * /manus-storage redirects can fail in corporate browsers even when the
+ * object itself exists, which would otherwise leave the visual shell blank.
+ */
+export function resolvePublicBrandImageUrl(url: string) {
+  const prefix = "/manus-storage/";
+  if (!url.startsWith(prefix)) return url;
+  const key = url.slice(prefix.length);
+  return `/api/brand/media?key=${encodeURIComponent(key)}`;
+}
+
 export function resolveBrandImage(settings: Record<string, string> | undefined, pageKey: string) {
   const definition = getBrandImageDefinition(pageKey);
   const customKey = Object.entries(settings || {}).find(
@@ -60,7 +72,7 @@ export function resolveBrandImage(settings: Record<string, string> | undefined, 
 
   return {
     key,
-    url: settings?.[key] || definition.fallback,
+    url: resolvePublicBrandImageUrl(settings?.[key] || definition.fallback),
     position: settings?.[`${key}_position`] || definition.position,
     mode: mode === "side" || mode === "background" ? mode : definition.mode || "background",
     definition,

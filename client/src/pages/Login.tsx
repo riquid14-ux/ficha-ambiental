@@ -8,10 +8,10 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getBrandImageDefinition } from "@/lib/brand-images";
+import { getBrandImageDefinition, resolvePublicBrandImageUrl } from "@/lib/brand-images";
 
 type ViewMode = "login" | "register" | "2fa" | "changePassword" | "forgotPassword";
-const LOGIN_FALLBACK_IMAGE = getBrandImageDefinition("login").fallback;
+const LOGIN_FALLBACK_IMAGE = resolvePublicBrandImageUrl(getBrandImageDefinition("login").fallback);
 
 export default function Login() {
   const { t, language, setLanguage } = useLanguage();
@@ -187,17 +187,18 @@ export default function Login() {
           a fronteira de segurança antes de apresentar as credenciais. */}
       <div className="stand-login-visual hidden lg:flex lg:w-1/2 relative border-r border-white/10">
         <img
-          src={brandImages?.image_login || LOGIN_FALLBACK_IMAGE}
+          src={resolvePublicBrandImageUrl(brandImages?.image_login || LOGIN_FALLBACK_IMAGE)}
           alt=""
           aria-hidden="true"
           className="photo-grade"
           style={{ objectPosition: brandImages?.image_login_position || "center" }}
           onError={(event) => {
             const image = event.currentTarget;
-            if (image.src.endsWith(LOGIN_FALLBACK_IMAGE)) {
+            if (image.dataset.fallbackApplied === "true") {
               image.style.display = "none";
               return;
             }
+            image.dataset.fallbackApplied = "true";
             image.src = LOGIN_FALLBACK_IMAGE;
           }}
         />

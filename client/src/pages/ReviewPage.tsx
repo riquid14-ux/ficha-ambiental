@@ -17,7 +17,10 @@ import { CheckCircle, XCircle, MessageSquare, Eye, Filter, Check, X as XIcon, Se
 import { useLocation } from "wouter";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
-import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
+import {
+  localizeWeeklyControlDescription,
+  localizeWeeklyControlSectionName,
+} from "@/lib/weekly-control-presentation";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Rascunho",
@@ -350,12 +353,12 @@ export default function ReviewPage(props: any) {
 
                 {/* Measures grouped by section — with review controls */}
                 <Accordion type="multiple" className="space-y-2" defaultValue={filteredMeasuresBySection.map(g => String(g.section.id))}>
-                  {filteredMeasuresBySection.map(({ section, measures }) => (
+                  {filteredMeasuresBySection.map(({ section, measures }, sectionIndex) => (
                     <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-3">
                       <AccordionTrigger className="text-sm font-medium hover:no-underline">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">{section.phase}</Badge>
-                          <span className="text-left">{section.name.length > 50 ? section.name.slice(0, 50) + "..." : section.name}</span>
+                          <Badge variant="secondary" className="text-xs">{String(sectionIndex + 1).padStart(2, "0")}</Badge>
+                          <span className="text-left">{localizeWeeklyControlSectionName(section.name, language).length > 50 ? localizeWeeklyControlSectionName(section.name, language).slice(0, 50) + "..." : localizeWeeklyControlSectionName(section.name, language)}</span>
                           <Badge variant="outline" className="ml-auto text-xs">{measures.length}</Badge>
                         </div>
                       </AccordionTrigger>
@@ -368,7 +371,7 @@ export default function ReviewPage(props: any) {
                                 {/* Measure info */}
                                 <div className="flex items-start gap-2">
                                   <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
-                                  <p className="text-sm flex-1">{localizeDcapeDescription(m.description, language)}</p>
+                                  <p className="text-sm flex-1">{localizeWeeklyControlDescription(m.description, language)}</p>
                                   {m.response?.status && (
                                     <Badge className={`text-xs shrink-0 ${MEASURE_STATUS_COLORS[m.response.status]}`}>
                                       {m.response.status}
@@ -481,12 +484,12 @@ export default function ReviewPage(props: any) {
 
                 {/* Measures grouped by section */}
                 <Accordion type="multiple" className="space-y-2">
-                  {filteredMeasuresBySection.map(({ section, measures }) => (
+                  {filteredMeasuresBySection.map(({ section, measures }, sectionIndex) => (
                     <AccordionItem key={section.id} value={String(section.id)} className="border rounded-lg px-3">
                       <AccordionTrigger className="text-sm font-medium hover:no-underline">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">{section.phase}</Badge>
-                          <span className="text-left">{section.name.length > 50 ? section.name.slice(0, 50) + "..." : section.name}</span>
+                          <Badge variant="secondary" className="text-xs">{String(sectionIndex + 1).padStart(2, "0")}</Badge>
+                          <span className="text-left">{localizeWeeklyControlSectionName(section.name, language).length > 50 ? localizeWeeklyControlSectionName(section.name, language).slice(0, 50) + "..." : localizeWeeklyControlSectionName(section.name, language)}</span>
                           <Badge variant="outline" className="ml-auto text-xs">{measures.length}</Badge>
                         </div>
                       </AccordionTrigger>
@@ -496,7 +499,7 @@ export default function ReviewPage(props: any) {
                             <div key={m.id} className="p-3 border rounded bg-card space-y-1">
                               <div className="flex items-start gap-2">
                                 <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{m.number}</span>
-                                <p className="text-sm flex-1">{localizeDcapeDescription(m.description, language)}</p>
+                                <p className="text-sm flex-1">{localizeWeeklyControlDescription(m.description, language)}</p>
                                 {m.response?.status && (
                                   <Badge className={`text-xs shrink-0 ${MEASURE_STATUS_COLORS[m.response.status]}`}>
                                     {m.response.status}

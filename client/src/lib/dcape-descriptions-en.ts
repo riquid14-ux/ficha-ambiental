@@ -205,6 +205,21 @@ export const dcapeDescriptionEnglish: Record<string, string> = {
 };
 
 export function localizeDcapeDescription(text: string | null | undefined, language: "pt" | "en") {
-  if (!text || language !== "en") return text || "";
-  return dcapeDescriptionEnglish[text] || text;
+  const original = String(text || "").trim();
+  const clean = original
+    .replace(/^\s*Medida\s+DCAPE\s*-\s*/i, "")
+    .replace(/^\s*DCAPE\s+measure\s*-\s*/i, "")
+    .trim();
+  if (language !== "en") return clean;
+
+  // The verified dictionary was compiled from legacy source strings that
+  // carried this prefix.  Accept both the old and the normalised values while
+  // keeping the visible description free of duplicated DCAPE labelling.
+  const translated =
+    dcapeDescriptionEnglish[original] ||
+    dcapeDescriptionEnglish[`Medida DCAPE - ${clean}`] ||
+    original;
+  return String(translated)
+    .replace(/^\s*DCAPE\s+measure\s*-\s*/i, "")
+    .trim();
 }

@@ -1,3 +1,8 @@
+import {
+  cleanWeeklyControlDescription,
+  localizeWeeklyControlSectionName,
+} from "@/lib/weekly-control-presentation";
+
 export type RdcdSubmission = {
   id: number;
   weekNumber: number;
@@ -161,7 +166,9 @@ export function buildRdcdPhaseRows(
     const sectionResponses = sectionMeasures.flatMap(measure => responsesByMeasure.get(measure.id) || []);
     const counts = responseCounts(sectionResponses);
     return {
-      section: localizeRdcdSectionName(section.name, language),
+      // This table summarises the approved weekly construction controls. It
+      // must not render the DCAPE lifecycle headings used by Timeline/Fases.
+      section: localizeWeeklyControlSectionName(section.name, language),
       totalMeasures: sectionMeasures.length,
       ...counts,
     };
@@ -181,7 +188,7 @@ export function buildRdcdNonConformityRows(
     const submission = submissionById.get(response.submissionId);
     return {
       number: measure?.number || String(response.measureId),
-      description: measure?.description || "Medida sem descrição disponível.",
+      description: cleanWeeklyControlDescription(measure?.description) || "Medida sem descrição disponível.",
       reference: submission ? `S${submission.weekNumber}/${submission.weekYear} · ID ${submission.id}` : "—",
       finding:
         response.status === "NC"

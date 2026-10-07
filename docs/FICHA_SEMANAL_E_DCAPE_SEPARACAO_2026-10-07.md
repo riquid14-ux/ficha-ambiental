@@ -22,10 +22,11 @@ A plataforma passa a manter dois catálogos independentes por projeto:
 4. As medidas `PL-*`, `SL-*`, `PC-*`, `CC-*`, `FC-*`, `DA-*` e `EX-*` são obrigações DCAPE e não podem integrar uma resposta semanal.
 5. O fluxo de revisão mantém a separação de deveres: quem submete não aprova a sua própria ficha; RAA/Admin/DO seguem as regras server-side já existentes.
 6. Novos projetos recebem cópias independentes do template SIN02 apenas para os módulos ativados: **Ficha** cria o catálogo semanal; **Timeline** cria o catálogo DCAPE. Não são copiadas fichas, respostas, evidências ou estados.
+7. A superfície de Ficha, Revisão, Histórico e curadoria de obra do RDCD mostra texto de **Controlo Semanal**: remove o prefixo legado `Medida DCAPE -`, usa grupos semanais legíveis e mantém a descrição regulamentar apenas como texto de origem, não como identidade do workflow.
 
 ## Migração
 
-A migração `0068_separate_weekly_dcape_catalogues.sql` adiciona o campo explícito `catalogueScope` às secções e medidas, cria índices por âmbito e separa os elementos regulatórios dos elementos do modelo semanal. O histórico de fichas, respostas, evidências e revisões é preservado.
+A migração `0068_separate_weekly_dcape_catalogues.sql` adiciona o campo explícito `catalogueScope` às secções e medidas, cria índices por âmbito e separa os elementos regulatórios dos elementos do modelo semanal. A migração `0069_clean_measure_presentation_prefixes.sql` remove exclusivamente o prefixo de apresentação legado nas descrições; não modifica identificadores, âmbitos, respostas, evidências, estados ou registos de auditoria. O histórico de fichas, respostas, evidências e revisões é preservado.
 
 Foi também removido apenas um registo UAT reconhecível (`TESTE UAT (Claude/Rita)`) que tinha sido associado por engano a `PC-1`, uma obrigação DCAPE. Não foram eliminadas respostas operacionais nem histórico de utilizadores.
 

@@ -6,6 +6,8 @@ const routerCode = fs.readFileSync(`${process.cwd()}/server/routers.ts`, "utf-8"
 const layoutCode = fs.readFileSync(`${process.cwd()}/client/src/components/AppLayout.tsx`, "utf-8");
 const weeklyFormCode = fs.readFileSync(`${process.cwd()}/client/src/pages/WeeklyForm.tsx`, "utf-8");
 const reviewCode = fs.readFileSync(`${process.cwd()}/client/src/pages/ReviewPage.tsx`, "utf-8");
+const historyCode = fs.readFileSync(`${process.cwd()}/client/src/pages/SubmissionHistory.tsx`, "utf-8");
+const rdcdCode = fs.readFileSync(`${process.cwd()}/client/src/pages/RDCD.tsx`, "utf-8");
 const dashboardCode = fs.readFileSync(`${process.cwd()}/client/src/pages/Dashboard.tsx`, "utf-8");
 const projectContextCode = fs.readFileSync(`${process.cwd()}/client/src/contexts/ProjectContext.tsx`, "utf-8");
 const projectInput = { isAllProjects: false, isOperationOnly: false, enabledModules: null };
@@ -110,6 +112,15 @@ describe("Roles Drill Tests", () => {
       expect(routerCode).toContain('eq(schema.measures.catalogueScope, "weekly")');
       expect(routerCode).not.toContain("Auto-fill NA for measures not relevant");
       expect(routerCode).not.toContain("Aprovado via ficha #");
+    });
+
+    it("usa apresentação própria da ficha nas superfícies semanais e no RDCD", () => {
+      for (const page of [weeklyFormCode, reviewCode, historyCode, rdcdCode]) {
+        expect(page).toContain("localizeWeeklyControlDescription");
+      }
+      expect(weeklyFormCode).toContain("localizeWeeklyControlSectionName");
+      expect(reviewCode).toContain("localizeWeeklyControlSectionName");
+      expect(historyCode).toContain("localizeWeeklyControlSectionName");
     });
   });
 

@@ -26,13 +26,16 @@ import { isWeeklyControlMeasureNumber } from "@shared/weekly-control";
 import { StandPageHeader } from "@/components/stand/StandPageHeader";
 import { StandMetricCard } from "@/components/stand/StandMetricCard";
 import { StandStatusBadge } from "@/components/stand/StandStatusBadge";
-import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
-function getWeekOptions() {
+import {
+  localizeWeeklyControlDescription,
+  localizeWeeklyControlSectionName,
+} from "@/lib/weekly-control-presentation";
+function getWeekOptions(language: "pt" | "en") {
   const now = new Date();
   const year = now.getFullYear();
   const options = [];
   for (let w = 1; w <= 53; w++) {
-    options.push({ value: w, label: `Semana ${w}` });
+    options.push({ value: w, label: `${language === "en" ? "Week" : "Semana"} ${w}` });
   }
   return { options, year, currentWeek: getISOWeek(now) };
 }
@@ -71,7 +74,7 @@ export default function WeeklyForm() {
   const [uploadingMeasure, setUploadingMeasure] = useState<number | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [started, setStarted] = useState(!!params.id);
-  const weekOpts = useMemo(() => getWeekOptions(), []);
+  const weekOpts = useMemo(() => getWeekOptions(language), [language]);
   const [selectedWeek, setSelectedWeek] = useState(weekOpts.currentWeek);
   const [selectedYear, setSelectedYear] = useState(weekOpts.year);
   const [activeTab, setActiveTab] = useState<string>(params.id ? "nova" : "nova");
@@ -504,7 +507,7 @@ export default function WeeklyForm() {
         <div className="print:hidden">
           <StandPageHeader
             eyebrow={t("FICHA SEMANAL · CONTROLO DE MEDIDAS")}
-            title="Ficha de Controlo de Medidas Ambientais"
+            title={t("Ficha de Controlo de Medidas Ambientais")}
             description={t("Registe evidências, acompanhe medidas e submeta o controlo semanal para revisão ambiental.")}
             context={activeProject?.code || "STAND"}
             tone="operations"
@@ -688,12 +691,12 @@ export default function WeeklyForm() {
                         disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Eliminar
+                        {t("Eliminar")}
                       </Button>
                     )}
                     <Button variant="outline" className="h-10" onClick={handleSave} disabled={saving}>
                       {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Guardar
+                      {t("Guardar")}
                     </Button>
                     {canSubmitThis && (
                       <Button className="h-10" onClick={isRejected ? handleResubmit : handleSubmit} disabled={submitting}>
@@ -705,10 +708,10 @@ export default function WeeklyForm() {
                 )}
               </div>
               <div className="grid gap-3 border-t bg-muted/25 p-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StandMetricCard label={t("medidas")} value={responseSummary.total} detail="Disponíveis nesta ficha" icon={ListChecks} tone="brand" />
-                <StandMetricCard label="RESPONDIDAS" value={<>{responseSummary.completed}<span className="ml-1 text-sm font-medium text-muted-foreground">/ {responseSummary.total}</span></>} detail="Com estado de avaliação" icon={Check} tone="info" />
-                <StandMetricCard label="CONFORMES" value={responseSummary.compliant} detail="Implementadas ou conformes" icon={Check} tone="success" />
-                <StandMetricCard label="NÃO CONFORMES" value={responseSummary.nonCompliant} detail="Exigem acompanhamento" icon={CircleAlert} tone={responseSummary.nonCompliant > 0 ? "danger" : "neutral"} />
+                <StandMetricCard label={t("MEDIDAS")} value={responseSummary.total} detail={t("Disponíveis nesta ficha")} icon={ListChecks} tone="brand" />
+                <StandMetricCard label={t("RESPONDIDAS")} value={<>{responseSummary.completed}<span className="ml-1 text-sm font-medium text-muted-foreground">/ {responseSummary.total}</span></>} detail={t("Com estado de avaliação")} icon={Check} tone="info" />
+                <StandMetricCard label={t("CONFORMES")} value={responseSummary.compliant} detail={t("Implementadas ou conformes")} icon={Check} tone="success" />
+                <StandMetricCard label={t("NÃO CONFORMES")} value={responseSummary.nonCompliant} detail={t("Exigem acompanhamento")} icon={CircleAlert} tone={responseSummary.nonCompliant > 0 ? "danger" : "neutral"} />
               </div>
             </section>
 
@@ -745,17 +748,17 @@ export default function WeeklyForm() {
             <div className="flex flex-wrap items-end justify-between gap-3 pt-1">
               <div>
                 <p className="stand-kicker text-primary">MEDIDAS A AVALIAR</p>
-                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("medidas")}</h3>
+                <h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">{t("MEDIDAS")}</h3>
               </div>
-              <p className="text-[12px] leading-5 text-muted-foreground">{responseSummary.completed} / {responseSummary.total} {t("medidas")}</p>
+              <p className="text-[12px] leading-5 text-muted-foreground">{responseSummary.completed} / {responseSummary.total} {t("MEDIDAS")}</p>
             </div>
             <Accordion type="multiple" className="space-y-3">
-          {measuresBySection.map(({ section, measures }) => (
+          {measuresBySection.map(({ section, measures }, sectionIndex) => (
             <AccordionItem key={section.id} value={String(section.id)} className="overflow-hidden rounded-xl border border-border/80 bg-card px-0 shadow-sm">
               <AccordionTrigger className="px-4 py-4 text-sm font-semibold hover:bg-muted/40 hover:no-underline sm:px-5">
                 <div className="flex min-w-0 flex-1 items-center gap-3 pr-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{String(section.phase).slice(0, 2)}</span>
-                  <span className="min-w-0 text-left leading-5">{section.name.length > 60 ? section.name.slice(0, 60) + "..." : section.name}</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{String(sectionIndex + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0 text-left leading-5">{localizeWeeklyControlSectionName(section.name, language).length > 60 ? localizeWeeklyControlSectionName(section.name, language).slice(0, 60) + "..." : localizeWeeklyControlSectionName(section.name, language)}</span>
                   <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-[12px] font-semibold text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{measures.length}</span>
                 </div>
               </AccordionTrigger>
@@ -772,9 +775,9 @@ export default function WeeklyForm() {
                             {measure.number}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm leading-6 text-foreground">{localizeDcapeDescription(measure.description, language)}</p>
+                            <p className="text-sm leading-6 text-foreground">{localizeWeeklyControlDescription(measure.description, language)}</p>
                             <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
-                              Responsável: {measure.responsible.replace(/\|/g, " / ").replace(/\bDO\b/g, "Dono de Obra").replace(/\bEE\b/g, "Entidade Executante").replace(/\bRAP\b/g, "Resp. Acomp. Patrimonial").replace(/\bRAA\b/g, "Resp. Acomp. Ambiental")}
+                              {t("Responsável:")} {measure.responsible.replace(/\|/g, " / ").replace(/\bDO\b/g, t("Dono de Obra")).replace(/\bEE\b/g, t("Entidade Executante")).replace(/\bRAP\b/g, t("Resp. Acomp. Patrimonial")).replace(/\bRAA\b/g, t("Resp. Acomp. Ambiental"))}
                             </p>
                           </div>
                           {reviewFeedback && (
@@ -791,7 +794,7 @@ export default function WeeklyForm() {
 
                         {/* Status Radio */}
                         <fieldset className="space-y-2">
-                          <legend className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Estado da medida</legend>
+                          <legend className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("Estado da medida")}</legend>
                           <RadioGroup
                             value={response?.status || ""}
                             onValueChange={(v) => handleStatusChange(measure.id, v as any)}

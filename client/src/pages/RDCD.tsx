@@ -89,6 +89,10 @@ import {
   type RdcdBrandProfileId,
 } from "@/lib/rdcd-template";
 import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
+import {
+  localizeWeeklyControlDescription,
+  localizeWeeklyControlSectionName,
+} from "@/lib/weekly-control-presentation";
 
 // Wizard steps
 const STEPS = [
@@ -702,6 +706,10 @@ export default function RDCD() {
       ? `/api/rdcd/media/asset?projectId=${selectedProject.id}&key=${encodeURIComponent(figureUrl.replace(/^\/manus-storage\//, ""))}`
       : figureUrl;
   const usesSin02Template = selectedProject?.code === "SIN02";
+  const presentMeasureDescription = (measure: { description?: string | null }) =>
+    isOperationsReport
+      ? localizeDcapeDescription(measure.description, language)
+      : localizeWeeklyControlDescription(measure.description, language);
 
   useEffect(() => {
     if (!projectWasChosen && activeProject) {
@@ -2351,10 +2359,7 @@ export default function RDCD() {
                       {t("Medida")} {curationPreviewMeasure.number}
                     </h4>
                     <p>
-                      {localizeDcapeDescription(
-                        curationPreviewMeasure.description,
-                        language
-                      )}
+                      {presentMeasureDescription(curationPreviewMeasure)}
                     </p>
                   </div>
                   <span className="rdcd-document-status">{measureStatus}</span>
@@ -2810,7 +2815,7 @@ export default function RDCD() {
               return (
                 <section key={`preview-measure-${measure.id}`} className={`rdcd-document-measure ${measure.id === activeMeasurePreviewId ? "is-active" : ""}`}>
                   <div className="rdcd-document-heading-row">
-                    <div><h5>{t("Medida")} {measure.number}</h5><p>{localizeDcapeDescription(measure.description, language)}</p></div>
+                    <div><h5>{t("Medida")} {measure.number}</h5><p>{presentMeasureDescription(measure)}</p></div>
                     <span className="rdcd-document-status">{t(statusLabels[measure.autoStatus] || measure.autoStatus)}</span>
                   </div>
                   <p className="rdcd-document-measure-meta">{selection.selectedWeeks.length} {t("semanas selecionadas")} · {selection.selectedImageUrls.length} {t("fotografias selecionadas")}</p>
@@ -3402,10 +3407,7 @@ export default function RDCD() {
                                           {t("Medida")} {m.number}
                                         </p>
                                         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                          {localizeDcapeDescription(
-                                            m.description,
-                                            language
-                                          )}
+                                          {presentMeasureDescription(m)}
                                         </p>
                                       </div>
                                       <Badge
@@ -3758,10 +3760,7 @@ export default function RDCD() {
                                             response.measure.id}
                                         </td>
                                         <td className="max-w-md px-3 py-2 align-top leading-5 text-foreground">
-                                          {localizeDcapeDescription(
-                                            response.measure.description,
-                                            language
-                                          )}
+                                          {presentMeasureDescription(response.measure)}
                                         </td>
                                         <td className="px-3 py-2 align-top">
                                           <Badge
@@ -3848,7 +3847,9 @@ export default function RDCD() {
                         >
                           <div className="border-b border-border bg-muted/20 px-4 py-3">
                             <p className="text-xs font-semibold uppercase tracking-wide text-foreground">
-                              {localizeRdcdSectionName(sec.name, language)}
+                              {isOperationsReport
+                                ? localizeRdcdSectionName(sec.name, language)
+                                : localizeWeeklyControlSectionName(sec.name, language)}
                             </p>
                             <p className="mt-1 text-[11px] text-muted-foreground">
                               {sec.measures.length}{" "}
@@ -3890,10 +3891,7 @@ export default function RDCD() {
                                         {t("Medida")} {m.number}
                                       </p>
                                       <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                        {localizeDcapeDescription(
-                                          m.description,
-                                          language
-                                        )}
+                                        {presentMeasureDescription(m)}
                                       </p>
                                     </div>
                                     <Badge

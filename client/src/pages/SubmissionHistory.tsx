@@ -18,7 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { localizeDcapeDescription } from "@/lib/dcape-descriptions-en";
+import {
+  localizeWeeklyControlDescription,
+  localizeWeeklyControlSectionName,
+} from "@/lib/weekly-control-presentation";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -112,7 +115,7 @@ export default function SubmissionHistory(props: any) {
     if (!measureSearch) return roleMeasures;
     const q = measureSearch.toLowerCase();
     return roleMeasures.filter(
-      (m) => m.number.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || localizeDcapeDescription(m.description, language).toLowerCase().includes(q)
+      (m) => m.number.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || localizeWeeklyControlDescription(m.description, language).toLowerCase().includes(q)
     );
   }, [measuresQuery.data, measureSearch, user?.role]);
 
@@ -537,9 +540,9 @@ export default function SubmissionHistory(props: any) {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded shrink-0">{measure.number}</span>
-                                <span className="text-xs text-muted-foreground">{section?.name?.substring(0, 40)}</span>
+                                <span className="text-xs text-muted-foreground">{localizeWeeklyControlSectionName(section?.name, language).substring(0, 40)}</span>
                               </div>
-                              <p className="text-xs text-foreground mt-0.5 line-clamp-2">{localizeDcapeDescription(measure.description, language)}</p>
+                              <p className="text-xs text-foreground mt-0.5 line-clamp-2">{localizeWeeklyControlDescription(measure.description, language)}</p>
                             </div>
                           </div>
                         );

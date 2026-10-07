@@ -21,6 +21,7 @@ import { registerDocumentLibraryRoutes } from "../document-library";
 import { registerOperationMediaRoutes } from "../operation-media";
 import { registerRdcdMediaRoutes } from "../rdcd-media";
 import { registerBmsIngestRoutes } from "../bms-ingest";
+import { registerBrandMediaRoutes } from "../brand-media";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -158,6 +159,7 @@ async function startServer() {
   registerDocumentLibraryRoutes(app);
   registerOperationMediaRoutes(app);
   registerRdcdMediaRoutes(app);
+  registerBrandMediaRoutes(app);
   registerBmsIngestRoutes(app);
   // Scheduled endpoints (Heartbeat cron callbacks)
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);

@@ -33,7 +33,7 @@ jobs:
           tar -czf "release-${GITHUB_SHA}.tar.gz" \
             dist package.json pnpm-lock.yaml ecosystem.config.cjs ops drizzle
           sha256sum "release-${GITHUB_SHA}.tar.gz" > "release-${GITHUB_SHA}.tar.gz.sha256"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ github.sha }}
           path: |

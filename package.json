@@ -83,7 +83,7 @@
     "mysql2": "3.24.3",
     "nanoid": "^5.1.16",
     "nodemailer": "^10.0.13",
-    "otpauth": "^9.5.1",
+    "otpauth": "^9.5.2",
     "path-to-regexp": "0.1.13",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.19.1",

@@ -79,7 +79,7 @@
     "jose": "6.1.0",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "lucide-react": "^0.453.0",
+    "lucide-react": "^1.56.0",
     "mysql2": "3.24.3",
     "nanoid": "^5.1.16",
     "nodemailer": "^10.0.13",

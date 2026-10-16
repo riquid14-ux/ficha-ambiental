@@ -21,16 +21,16 @@ A arquitetura proposta **funciona como Fase 1**, com os seguintes princípios j�
 
 ### 1.1 Correspondência com o diagrama
 
-| Zona do diagrama | Papel na Fase 1 | Configuração STAND exigida | Observação de segurança |
-| --- | --- | --- | --- |
-| Rede interna | Utilizadores, IT, RAA, PM, EE, GC e EEP | DNS interno/externo aponta apenas para o VIP de entrada | Não existe acesso direto a APP, DB, NAS ou Valkey. |
-| DMZ Web Ingress | VIP VRRP, HAProxy e dois BunkerWeb workers | Encaminhar `X-Forwarded-For`, `X-Forwarded-Proto=https`, `Host`; limitar request size a 50 MB | O TLS termina no BunkerWeb/WAF. A aplicação já confia em **um** reverse proxy e aplica CSP/Helmet. |
-| DMZ App Services | `APP node 1` e `APP node 2` | Mesma release, mesmo `/etc/plataforma-ambiental/app.env`, mas segredos injetados pelo cofre | Cada nó executa uma instância PM2. Não é necessário sticky session. |
-| DMZ Data DB | Dois MariaDB em Galera, acessíveis por VIP DB | `DATABASE_URL` aponta para o VIP, com utilizador de menor privilégio | O quorum Galera, backups e restauros são responsabilidade do IT/DBA. |
-| Synology NAS | Object storage privado e destino de backup | `S3_*` no cofre; bucket privado, versão e retenção | Um NAS isolado é ponto único de falha: usar RAID **não** substitui uma segunda cópia/replicação. |
-| BunkerWeb Manager + Valkey | Gestão WAF e estado distribuído | `VALKEY_URL` privado para limites de autenticação | Valkey não é exposto à Internet. Considerar Sentinel/replica em fase de alta disponibilidade. |
-| Office 365 / Azure OpenAI | Email e importação PDF, quando configurada | SMTP com STARTTLS; credenciais Azure apenas nos APP nodes | As saídas partem dos **APP nodes**, não dos workers WAF. |
-| ACC | Integração documental | App APS técnica, `ADS_*`, mapeamento por projeto | Tokens nunca chegam ao browser nem são commitados. |
+| Zona do diagrama           | Papel na Fase 1                               | Configuração STAND exigida                                                                    | Observação de segurança                                                                            |
+| -------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Rede interna               | Utilizadores, IT, RAA, PM, EE, GC e EEP       | DNS interno/externo aponta apenas para o VIP de entrada                                       | Não existe acesso direto a APP, DB, NAS ou Valkey.                                                 |
+| DMZ Web Ingress            | VIP VRRP, HAProxy e dois BunkerWeb workers    | Encaminhar `X-Forwarded-For`, `X-Forwarded-Proto=https`, `Host`; limitar request size a 50 MB | O TLS termina no BunkerWeb/WAF. A aplicação já confia em **um** reverse proxy e aplica CSP/Helmet. |
+| DMZ App Services           | `APP node 1` e `APP node 2`                   | Mesma release, mesmo `/etc/plataforma-ambiental/app.env`, mas segredos injetados pelo cofre   | Cada nó executa uma instância PM2. Não é necessário sticky session.                                |
+| DMZ Data DB                | Dois MariaDB em Galera, acessíveis por VIP DB | `DATABASE_URL` aponta para o VIP, com utilizador de menor privilégio                          | O quorum Galera, backups e restauros são responsabilidade do IT/DBA.                               |
+| Synology NAS               | Object storage privado e destino de backup    | `S3_*` no cofre; bucket privado, versão e retenção                                            | Um NAS isolado é ponto único de falha: usar RAID **não** substitui uma segunda cópia/replicação.   |
+| BunkerWeb Manager + Valkey | Gestão WAF e estado distribuído               | `VALKEY_URL` privado para limites de autenticação                                             | Valkey não é exposto à Internet. Considerar Sentinel/replica em fase de alta disponibilidade.      |
+| Office 365 / Azure OpenAI  | Email e importação PDF, quando configurada    | SMTP com STARTTLS; credenciais Azure apenas nos APP nodes                                     | As saídas partem dos **APP nodes**, não dos workers WAF.                                           |
+| ACC                        | Integração documental                         | App APS técnica, `ADS_*`, mapeamento por projeto                                              | Tokens nunca chegam ao browser nem são commitados.                                                 |
 
 ## 2. Pré-requisitos e decisões que o IT tem de fechar
 
@@ -48,18 +48,18 @@ Antes de criar VMs, devem ser aprovados estes valores no CAB/change record:
 
 ## 3. O que o repositório já entrega
 
-| Artefacto | Finalidade | Ação IT |
-| --- | --- | --- |
-| `ecosystem.config.cjs` | Processo PM2, backoff, memória e reload | Executar uma instância em **cada** APP node. |
-| `ops/bootstrap-app-node.sh` | Base Ubuntu/Node/pnpm/PM2, utilizador de serviço e diretórios | Executar uma vez por APP node com URL da cópia interna do repositório. |
-| `ops/app.env.example` | Checklist das variáveis corporativas, sem segredo real | Copiar para `/etc/plataforma-ambiental/app.env`, preencher no cofre, permissões 640. |
-| `ops/node-readiness-check.sh` | Valida binários, `current`, configuração e readiness | Executar antes de colocar o nó no balanceador. |
-| `ops/nginx/stand.conf.example` | Referência de proxy de dois nós e cabeçalhos corretos | Adaptar ao BunkerWeb/HAProxy existente; não instalar Nginx adicional se BunkerWeb cumprir esse papel. |
-| `ops/backup-database.sh` | Dump consistente, gzip, checksum e retenção | Agendar no servidor/serviço autorizado e testar restauro. |
-| `ops/deploy-release.sh` + `ops/rollback-to-previous.sh` | Release imutável, symlink atómico, health check e rollback | Usar pelo workflow aprovado, nunca por cópia manual em `current`. |
-| `ops/pm2-crash-watchdog.mjs` | Detecta crash-loop, guarda log sanitizado, executa backup e pode pedir rollback | Instalar a unidade `plataforma-watchdog.service`. |
-| `ops/systemd/plataforma-*-reminder.*` | Lembretes semanais e de prazos com timers locais | Instalar com `ops/install-schedulers.sh` após configurar token. |
-| `server/bms-ingest.ts` | Endpoint BMS com HMAC, timestamp, allowlist e idempotência | Manter inativo até à Fase 2. |
+| Artefacto                                               | Finalidade                                                                      | Ação IT                                                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ecosystem.config.cjs`                                  | Processo PM2, backoff, memória e reload                                         | Executar uma instância em **cada** APP node.                                                          |
+| `ops/bootstrap-app-node.sh`                             | Base Ubuntu/Node/pnpm/PM2, utilizador de serviço e diretórios                   | Executar uma vez por APP node com URL da cópia interna do repositório.                                |
+| `ops/app.env.example`                                   | Checklist das variáveis corporativas, sem segredo real                          | Copiar para `/etc/plataforma-ambiental/app.env`, preencher no cofre, permissões 640.                  |
+| `ops/node-readiness-check.sh`                           | Valida binários, `current`, configuração e readiness                            | Executar antes de colocar o nó no balanceador.                                                        |
+| `ops/nginx/stand.conf.example`                          | Referência de proxy de dois nós e cabeçalhos corretos                           | Adaptar ao BunkerWeb/HAProxy existente; não instalar Nginx adicional se BunkerWeb cumprir esse papel. |
+| `ops/backup-database.sh`                                | Dump consistente, gzip, checksum e retenção                                     | Agendar no servidor/serviço autorizado e testar restauro.                                             |
+| `ops/deploy-release.sh` + `ops/rollback-to-previous.sh` | Release imutável, symlink atómico, health check e rollback                      | Usar pelo workflow aprovado, nunca por cópia manual em `current`.                                     |
+| `ops/pm2-crash-watchdog.mjs`                            | Detecta crash-loop, guarda log sanitizado, executa backup e pode pedir rollback | Instalar a unidade `plataforma-watchdog.service`.                                                     |
+| `ops/systemd/plataforma-*-reminder.*`                   | Lembretes semanais e de prazos com timers locais                                | Instalar com `ops/install-schedulers.sh` após configurar token.                                       |
+| `server/bms-ingest.ts`                                  | Endpoint BMS com HMAC, timestamp, allowlist e idempotência                      | Manter inativo até à Fase 2.                                                                          |
 
 ## 4. Procedimento de instalação, por ordem
 
@@ -101,6 +101,7 @@ Variáveis mínimas de produção:
 
 ```dotenv
 NODE_ENV=production
+STAND_RUNTIME_MODE=corporate
 PORT=3000
 APP_BASE_URL=https://stand.startcampus.pt
 DATABASE_URL=mysql://stand_app:<segredo>@<vip-db>:3306/stand
@@ -117,7 +118,7 @@ VALKEY_URL=rediss://:<segredo>@<valkey-vip>:6379/0
 SCHEDULER_TOKEN=<32+ caracteres aleatórios>
 ```
 
-A aplicação recusa arrancar em produção sem DB, segredo de sessão, URL pública, object storage S3, Valkey e token do scheduler. Isto evita um deployment que pareça funcional, mas esteja dependente de memória local ou armazenamento de desenvolvimento.
+Nas VMs Start Campus, `STAND_RUNTIME_MODE=corporate` ativa a verificação de arranque: a aplicação recusa arrancar sem DB, segredo de sessão, URL pública, object storage S3, Valkey e token do scheduler. Isto evita um deployment corporativo que pareça funcional, mas esteja dependente de memória local ou armazenamento de desenvolvimento. O modo gerido existente não ativa por engano estes pré-requisitos internos.
 
 ### Passo 3 — MariaDB Galera e migrations
 
@@ -203,18 +204,18 @@ O scheduler usa token próprio, não uma sessão de utilizador. O watchdog, ao i
 
 ## 5. Testes obrigatórios de aceitação
 
-| Teste | Procedimento | Critério de aceitação |
-| --- | --- | --- |
-| Compilação | `pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm audit --prod` | Todos os comandos terminam com sucesso. |
-| Nó 1 / nó 2 | Retirar alternadamente cada APP node do pool durante uma sessão ativa | O utilizador continua no outro nó e o serviço responde. |
-| Sessão revogada | Alterar/resetar password ou revogar sessão e reutilizar token antigo | Token é recusado porque `sessionVersion` já não coincide. |
-| Limite distribuído | Simular falhas de login alternando os nós | A limitação é aplicada em ambos pelo Valkey. |
-| S3 protegido | Carregar evidência; tentar URL/chave sem acesso e com outro projeto | Aceder apenas pela rota autorizada; 401/404 sem enumerar objeto. |
-| Base de dados | Parar um membro Galera conforme runbook | O cluster só se mantém disponível se o quorum estiver preservado; documentar resultado. |
-| Backup/restauro | Restauro num ambiente isolado | Dump, checksum e recuperação validados pelo DBA. |
-| WAF/Proxy | Upload, CORS ACC, CSP, IP real e 50 MB | Funcionalidade esperada sem abrir APP diretamente à Internet. |
-| Watchdog | Simular crash-loop em staging | Incidente, log sanitizado, backup, alerta e rollback conforme a política. |
-| BMS Fase 2 | Aplicar os nove testes do documento BMS | Só ativar após HMAC, idempotência e reconciliação aprovados. |
+| Teste              | Procedimento                                                                                   | Critério de aceitação                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Compilação         | `pnpm install --frozen-lockfile && pnpm check && pnpm test && pnpm build && pnpm audit --prod` | Todos os comandos terminam com sucesso.                                                 |
+| Nó 1 / nó 2        | Retirar alternadamente cada APP node do pool durante uma sessão ativa                          | O utilizador continua no outro nó e o serviço responde.                                 |
+| Sessão revogada    | Alterar/resetar password ou revogar sessão e reutilizar token antigo                           | Token é recusado porque `sessionVersion` já não coincide.                               |
+| Limite distribuído | Simular falhas de login alternando os nós                                                      | A limitação é aplicada em ambos pelo Valkey.                                            |
+| S3 protegido       | Carregar evidência; tentar URL/chave sem acesso e com outro projeto                            | Aceder apenas pela rota autorizada; 401/404 sem enumerar objeto.                        |
+| Base de dados      | Parar um membro Galera conforme runbook                                                        | O cluster só se mantém disponível se o quorum estiver preservado; documentar resultado. |
+| Backup/restauro    | Restauro num ambiente isolado                                                                  | Dump, checksum e recuperação validados pelo DBA.                                        |
+| WAF/Proxy          | Upload, CORS ACC, CSP, IP real e 50 MB                                                         | Funcionalidade esperada sem abrir APP diretamente à Internet.                           |
+| Watchdog           | Simular crash-loop em staging                                                                  | Incidente, log sanitizado, backup, alerta e rollback conforme a política.               |
+| BMS Fase 2         | Aplicar os nove testes do documento BMS                                                        | Só ativar após HMAC, idempotência e reconciliação aprovados.                            |
 
 ## 6. Integrações aplicacionais
 

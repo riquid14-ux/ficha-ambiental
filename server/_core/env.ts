@@ -7,6 +7,10 @@ export const ENV = {
   oAuthServerUrl: process.env.OAUTH_SERVER_URL ?? "",
   ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
   isProduction: process.env.NODE_ENV === "production",
+  // O modo corporativo é ativado explicitamente nas VMs Start Campus. O modo
+  // gerido mantém os controlos da aplicação mas não exige serviços internos
+  // que esse ambiente não disponibiliza.
+  runtimeMode: process.env.STAND_RUNTIME_MODE ?? "managed",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   storageProvider: process.env.STORAGE_PROVIDER ?? "auto",
@@ -23,5 +27,6 @@ export const ENV = {
   adsRedirectUri: process.env.ADS_REDIRECT_URI ?? "",
   // Apenas para o gateway BMS corporativo. Nunca expor no browser, no Git ou em logs.
   bmsIngestHmacSecret: process.env.BMS_INGEST_HMAC_SECRET ?? "",
-  bmsServiceUserId: Number.parseInt(process.env.BMS_SERVICE_USER_ID ?? "", 10) || 0,
+  bmsServiceUserId:
+    Number.parseInt(process.env.BMS_SERVICE_USER_ID ?? "", 10) || 0,
 };

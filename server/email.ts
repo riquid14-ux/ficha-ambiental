@@ -1,6 +1,8 @@
 import nodemailer from "nodemailer";
 import * as db from "./db";
 
+const PLATFORM_URL = (process.env.APP_BASE_URL || "https://stand.startcampus.pt").replace(/\/$/, "");
+
 // Email configuration - stored in app_settings, configurable by admin
 // Default: uses a generic SMTP config that IT can replace
 interface EmailConfig {
@@ -108,7 +110,7 @@ export async function sendFichaSubmittedNotification(
     </table>
     <p style="color: #333;">Esta ficha aguarda a sua revisão na plataforma.</p>
     <div style="text-align: center; margin: 20px 0;">
-      <a href="https://ambientfich.co/revisao" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Rever Ficha</a>
+      <a href="${PLATFORM_URL}/revisao" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Rever Ficha</a>
     </div>`;
   try {
     const transporter = createTransporter(config);
@@ -155,7 +157,7 @@ export async function sendFichaReviewedNotification(
       <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Ficha ID:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">#${submissionId}</td></tr>
     </table>
     ${reviewNotes ? `<div style="background: #f9fafb; padding: 12px 16px; border-radius: 4px; margin: 15px 0;"><strong>Notas da revisão:</strong><p style="margin: 8px 0 0; color: #333;">${reviewNotes}</p></div>` : ''}
-    ${!isApproved ? '<p style="color: #333;">Por favor, reveja as observações e resubmeta a ficha corrigida.</p><div style="text-align: center; margin: 20px 0;"><a href="https://ambientfich.co/ficha" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Corrigir Ficha</a></div>' : '<p style="color: #333;">A ficha foi aprovada com sucesso. Não é necessária nenhuma ação adicional.</p>'}`;
+    ${!isApproved ? `<p style="color: #333;">Por favor, reveja as observações e resubmeta a ficha corrigida.</p><div style="text-align: center; margin: 20px 0;"><a href="${PLATFORM_URL}/ficha" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Corrigir Ficha</a></div>` : '<p style="color: #333;">A ficha foi aprovada com sucesso. Não é necessária nenhuma ação adicional.</p>'}`;
   try {
     const transporter = createTransporter(config);
     await transporter.sendMail({
@@ -197,7 +199,7 @@ export async function sendInvitationEmail(
     <p style="color: #333;">No primeiro acesso, seleccione <strong>Criar conta</strong>, utilize este email e defina uma palavra-passe pessoal.</p>
     <p style="color: #e11d48; font-size: 13px;">⚠️ Nunca partilhe a sua palavra-passe com outras pessoas.</p>
     <div style="text-align: center; margin: 20px 0;">
-      <a href="https://ambientfich.co" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Aceder à Plataforma</a>
+      <a href="${PLATFORM_URL}" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">Aceder à Plataforma</a>
     </div>`;
   try {
     const transporter = createTransporter(config);
@@ -313,6 +315,34 @@ export async function sendDeadlineReminderEmail(params: {
     return true;
   } catch (err) {
     console.warn("[Email] Failed to send deadline reminder:", err);
+    return false;
+  }
+}
+
+/**
+ * Envia resumos de operação para uma lista de distribuição corporativa. A lista
+ * é ambiente-específica e não reside na base de dados nem no repositório.
+ */
+export async function sendOperationalSummaryEmail(params: {
+  title: string;
+  content: string;
+}): Promise<boolean> {
+  const config = await getEmailConfig();
+  const recipients = (process.env.ALERT_EMAIL_RECIPIENTS || "")
+    .split(",")
+    .map(value => value.trim())
+    .filter(Boolean);
+  if (!config.enabled || recipients.length === 0) return false;
+  try {
+    await createTransporter(config).sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to: recipients.join(", "),
+      subject: params.title,
+      html: wrapHtml(params.title, `<h3 style="color:#333;">${params.title}</h3><p style="color:#333;white-space:pre-line;">${params.content.replace(/[&<>]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[character] || character)}</p>`),
+    });
+    return true;
+  } catch (error) {
+    console.warn("[Email] Falha no resumo operacional:", error);
     return false;
   }
 }

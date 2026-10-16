@@ -7,14 +7,14 @@ Aplicação web para monitorização e compliance ambiental em projectos de cons
 | Camada | Tecnologia | Versão |
 |--------|-----------|--------|
 | Frontend | React + Tailwind CSS + shadcn/ui | 19 / 4 |
-| Backend | Node.js + Express + tRPC | 22 / 4 / 11 |
+| Backend | Node.js + Express + tRPC | 22 / 5 / 11 |
 | Base de Dados | MySQL (Drizzle ORM) | 8+ |
 | Autenticação | Email + Password + 2FA (TOTP) | jose + otpauth |
 | Testes | Vitest | Segurança, roles, funcionalidade e resiliência |
 
 ## Funcionalidades
 
-- **Fichas de Controlo Semanais** — 156 medidas DCAPE, submissão por EE/RAP, revisão e aprovação por RAA
+- **Fichas de Controlo Semanais** — 156 pontos de controlo de construção, submissão por GC/EE e revisão/aprovação por RAA/DO conforme a matriz de responsabilidade
 - **Dashboard** — cumprimento ambiental por projecto com gráficos e filtros por ano
 - **Matriz de Acompanhamento** — estado das fichas por empresa e semana
 - **RDCD** — Relatório de Demonstração de Cumprimento (exportação Word com fotos)
@@ -22,7 +22,7 @@ Aplicação web para monitorização e compliance ambiental em projectos de cons
 - **Gestão de Resíduos** — eGARs, MIRR, Wastemap
 - **Certificações** — LEED O&M, EED, CELE
 - **GAMMA** — Programa comunitário com candidaturas e avaliações
-- **Timeline** — Fases de projecto (Pré-licenciamento → Operação)
+- **Timeline DCAPE** — obrigações regulatórias do ciclo de vida do projecto (Pré-licenciamento → Operação/Desativação), separadas das fichas semanais
 - **Calendário** — Prazos regulatórios e internos de reporting
 - **Importação PDF** — Fichas históricas com extracção automática via LLM
 - **9 papéis com permissões** — admin, dono_obra, pm, raa, ee, ee_partner, rap, observador e user
@@ -53,9 +53,11 @@ JWT_SECRET=<segredo-aleatorio-com-pelo-menos-32-caracteres>
 ### Guias para a equipa de IT
 
 - [Guia de implementação Start Campus](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md) — instalação, staging, segurança, SharePoint, ACC, CI/CD, recuperação e aceitação.
+- [Guia prático Fase 1](docs/GUIA_PRATICO_FASE_1_START_CAMPUS.md) — implementação na arquitetura HAProxy/BunkerWeb, dois nós APP, Galera, Synology S3 e Valkey.
 - [Guia de implementação em Word](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx) — versão formatada para partilha direta com a equipa de IT.
 - [Integração BMS — Fase 2](docs/INTEGRACAO_BMS_FASE_2.md) — gateway outbound, contrato HMAC, allowlist de métricas, idempotência e testes de ativação para SIN01/NEST.
 - [Resiliência operacional](docs/OPERATIONS-RESILIENCE.md) — vigia, backup, rollback e resposta a crash-loop.
+- `ops/migrate-brand-assets.mjs` — carga inicial restrita das fotografias institucionais no object storage Synology/S3.
 
 Nenhum destes guias contém segredos. A configuração efetiva reside no cofre/ambiente de cada instalação.
 

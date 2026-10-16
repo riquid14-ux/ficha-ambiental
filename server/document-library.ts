@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { Readable } from "node:stream";
 import * as db from "./db";
-import { sdk } from "./_core/sdk";
+import { authenticateLocalRequest } from "./auth/session";
 import { storageGetSignedUrl } from "./storage";
 
 export const DOCUMENT_LIBRARY_READER_ROLES = new Set(["admin", "dono_obra", "pm", "raa", "ee"]);
@@ -53,7 +53,7 @@ export function registerDocumentLibraryRoutes(app: Express) {
 
     let user;
     try {
-      user = await sdk.authenticateRequest(req);
+      user = await authenticateLocalRequest(req);
     } catch {
       res.status(401).send("Autenticação necessária.");
       return;

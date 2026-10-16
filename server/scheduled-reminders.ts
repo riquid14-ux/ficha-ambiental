@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
-import { sdk } from "./_core/sdk";
-import { notifyOwner } from "./_core/notification";
+import { isAuthorizedSchedulerRequest } from "./scheduled-auth";
 import * as db from "./db";
-import { sendDeadlineReminderEmail } from "./email";
+import { sendDeadlineReminderEmail, sendOperationalSummaryEmail } from "./email";
 import { daysUntilDeadline, isPlanReminderDay } from "./plan-reminders";
 
 /**
@@ -12,8 +11,7 @@ import { daysUntilDeadline, isPlanReminderDay } from "./plan-reminders";
  */
 export async function deadlineReminderHandler(req: Request, res: Response) {
   try {
-    const user = await sdk.authenticateRequest(req);
-    if (!user || !(user as any).isCron) {
+    if (!isAuthorizedSchedulerRequest(req)) {
       return res.status(403).json({ error: "cron-only" });
     }
 
@@ -102,7 +100,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
     });
 
     if (urgentEvents.length > 0) {
-      await notifyOwner({
+      await sendOperationalSummaryEmail({
         title: `⚠️ ${urgentEvents.length} prazo(s) a vencer em 7 dias ou menos`,
         content: urgentEvents.map((e) => {
           const dl = e.nextDate || e.firstDate;
@@ -131,8 +129,7 @@ export async function deadlineReminderHandler(req: Request, res: Response) {
  */
 export async function weeklyReminderHandler(req: Request, res: Response) {
   try {
-    const user = await sdk.authenticateRequest(req);
-    if (!user || !(user as any).isCron) {
+    if (!isAuthorizedSchedulerRequest(req)) {
       return res.status(403).json({ error: "cron-only" });
     }
 
@@ -158,7 +155,7 @@ export async function weeklyReminderHandler(req: Request, res: Response) {
 
     if (pendingCompanies.length > 0) {
       // Notify owner about pending submissions
-      await notifyOwner({
+      await sendOperationalSummaryEmail({
         title: `⚠️ Fichas Ambientais Pendentes - Semana ${weekNumber}/${weekYear}`,
         content: `As seguintes empresas ainda não submeteram a ficha semanal:\n\n${pendingCompanies.map((c) => `• ${c}`).join("\n")}\n\nTotal: ${pendingCompanies.length} empresa(s) pendente(s) de ${activeCompanies.length} ativa(s).`,
       });

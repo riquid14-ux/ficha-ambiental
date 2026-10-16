@@ -1,0 +1,17 @@
+[Unit]
+Description=Lembrete semanal da Plataforma de Gestão Ambiental
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=plataforma
+Group=plataforma
+WorkingDirectory=/opt/plataforma-ambiental/current
+EnvironmentFile=/etc/plataforma-ambiental/scheduler.env
+ExecStart=/usr/bin/env node /opt/plataforma-ambiental/current/ops/run-scheduled-reminder.mjs weekly
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/opt/plataforma-ambiental/current

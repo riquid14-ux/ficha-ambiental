@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { createMfaPendingToken, getMfaPendingCookieOptions, MFA_PENDING_COOKIE, verifyMfaPendingRequest } from "./_core/mfa";
 import { assertAuthenticationAttemptAllowed, clearAuthenticationFailures, recordAuthenticationFailure } from "./auth-rate-limit";
-import { sdk } from "./_core/sdk";
+import { createLocalSessionToken } from "./auth/session";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, partnerAllowedProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
@@ -1425,11 +1425,11 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const email = input.email.toLowerCase().trim();
         const rateLimitScope = `password:${email}`;
-        assertAuthenticationAttemptAllowed(ctx.req, rateLimitScope);
+        await assertAuthenticationAttemptAllowed(ctx.req, rateLimitScope);
         const existingUsers = await db.getAllUsers();
         const user = existingUsers.find((u) => u.email?.toLowerCase().trim() === email);
         if (!user) {
-          recordAuthenticationFailure(ctx.req, rateLimitScope);
+          await recordAuthenticationFailure(ctx.req, rateLimitScope);
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou palavra-passe incorretos." });
         }
         if ((user as any).accountStatus === "pending") {
@@ -1441,15 +1441,15 @@ export const appRouter = router({
         // Verify password
         const passwordHash = (user as any).passwordHash;
         if (!passwordHash) {
-          recordAuthenticationFailure(ctx.req, rateLimitScope);
+          await recordAuthenticationFailure(ctx.req, rateLimitScope);
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Conta sem palavra-passe definida. Contacte o administrador." });
         }
         const passwordValid = await bcrypt.compare(input.password, passwordHash);
         if (!passwordValid) {
-          recordAuthenticationFailure(ctx.req, rateLimitScope);
+          await recordAuthenticationFailure(ctx.req, rateLimitScope);
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Email ou palavra-passe incorretos." });
         }
-        clearAuthenticationFailures(ctx.req, rateLimitScope);
+        await clearAuthenticationFailures(ctx.req, rateLimitScope);
         // Check if 2FA is enabled
         if ((user as any).totpEnabled) {
           const pendingToken = await createMfaPendingToken(user.id);
@@ -1457,7 +1457,7 @@ export const appRouter = router({
           return { success: true, requires2FA: true, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
         }
         // Create session
-        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || email });
+        const sessionToken = await createLocalSessionToken(user);
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
         return { success: true, requires2FA: false, userId: user.id, mustChangePassword: !!(user as any).mustChangePassword };
@@ -1507,7 +1507,7 @@ export const appRouter = router({
         const user = await db.getUserById(input.userId);
         if (!user) throw new TRPCError({ code: "NOT_FOUND" });
         const rateLimitScope = `totp:${user.id}`;
-        assertAuthenticationAttemptAllowed(ctx.req, rateLimitScope);
+        await assertAuthenticationAttemptAllowed(ctx.req, rateLimitScope);
         if (user.accountStatus !== "active" || !await verifyMfaPendingRequest(ctx.req, user.id)) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "A sessão de verificação expirou. Volte a iniciar sessão." });
         }
@@ -1517,11 +1517,11 @@ export const appRouter = router({
         const totp = new TOTP({ secret: Secret.fromBase32(totpSecret), algorithm: "SHA1", digits: 6, period: 30 });
         const valid = totp.validate({ token: input.code, window: 1 }) !== null;
         if (!valid) {
-          recordAuthenticationFailure(ctx.req, rateLimitScope);
+          await recordAuthenticationFailure(ctx.req, rateLimitScope);
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Código inválido. Tente novamente." });
         }
-        clearAuthenticationFailures(ctx.req, rateLimitScope);
-        const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name || user.email || "" });
+        await clearAuthenticationFailures(ctx.req, rateLimitScope);
+        const sessionToken = await createLocalSessionToken(user);
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
         return { success: true, mustChangePassword: !!(user as any).mustChangePassword };

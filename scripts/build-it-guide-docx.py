@@ -15,6 +15,7 @@ from docx.shared import Cm, Pt, RGBColor
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx"
 SOURCES = [
+    ROOT / "docs" / "GUIA_PRATICO_FASE_1_START_CAMPUS.md",
     ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md",
     ROOT / "docs" / "INTEGRACAO_BMS_FASE_2.md",
 ]
@@ -119,7 +120,7 @@ def add_cover(document: Document) -> None:
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title.paragraph_format.space_before = Pt(20)
     title.paragraph_format.space_after = Pt(10)
-    run = title.add_run("Guia de Implementação\npara a Equipa de IT")
+    run = title.add_run("Guia Prático de Implementação\npara a Equipa de IT")
     run.bold = True
     run.font.name = "Aptos Display"
     run.font.size = Pt(30)
@@ -127,7 +128,7 @@ def add_cover(document: Document) -> None:
     sub = document.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sub.paragraph_format.space_after = Pt(28)
-    run = sub.add_run("STAND — Plataforma de Governação Ambiental\nInstalação, segurança, integrações e Operação NEST / BMS")
+    run = sub.add_run("STAND — Plataforma de Governação Ambiental\nFase 1, segurança, integrações e Operação NEST / BMS")
     run.font.name = "Aptos"
     run.font.size = Pt(13)
     run.font.color.rgb = RGBColor.from_string(MUTED)

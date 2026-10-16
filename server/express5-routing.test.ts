@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 const projectRoot = path.resolve(import.meta.dirname, "..");
 
 describe("compatibilidade de rotas com Express 5", () => {
-  it("usa um wildcard nomeado para a proxy de armazenamento", () => {
+  it("usa wildcard nomeado e streaming same-origin para o armazenamento", () => {
     const storageProxy = fs.readFileSync(path.join(projectRoot, "server/_core/storageProxy.ts"), "utf-8");
     expect(storageProxy).toContain('app.get("/manus-storage/*key"');
-    expect(storageProxy).toContain("Array.isArray(rawKey)");
+    expect(storageProxy).toContain('app.get("/api/storage/object/*key"');
+    expect(storageProxy).toContain("Array.isArray(value)");
+    expect(storageProxy).toContain("Readable.fromWeb(upstream.body as never).pipe(res)");
   });
 
   it("serve fotografia institucional através de uma rota de mesma origem", () => {

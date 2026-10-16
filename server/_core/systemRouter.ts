@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { notifyOwner } from "./notification";
+import { sendOperationalSummaryEmail } from "../email";
 import { adminProcedure, publicProcedure, router } from "./trpc";
 
 export const systemRouter = router({
@@ -21,7 +21,7 @@ export const systemRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const delivered = await notifyOwner(input);
+      const delivered = await sendOperationalSummaryEmail(input);
       return {
         success: delivered,
       } as const;

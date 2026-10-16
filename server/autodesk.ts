@@ -1,6 +1,6 @@
 import { Express, Request, Response } from "express";
 import { ENV } from "./_core/env";
-import { sdk } from "./_core/sdk";
+import { createLocalSessionToken } from "./auth/session";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { COOKIE_NAME, THIRTY_DAYS_MS } from "@shared/const";
 import * as db from "./db";
@@ -270,10 +270,7 @@ async function autodeskEmailLogin(
 
   if (existingUser) {
     if (existingUser.accountStatus !== "active" || Boolean(existingUser.totpEnabled)) return { success: false };
-    const sessionToken = await sdk.createSessionToken(existingUser.openId, {
-      name: existingUser.name || name,
-      expiresInMs: THIRTY_DAYS_MS,
-    });
+    const sessionToken = await createLocalSessionToken(existingUser, { expiresInMs: THIRTY_DAYS_MS });
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, {
       ...cookieOptions,
@@ -301,7 +298,9 @@ async function autodeskEmailLogin(
     }
     await db.acceptInvitation(invitation.id);
 
-    const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: THIRTY_DAYS_MS });
+    if (!newUser) return { success: false };
+
+    const sessionToken = await createLocalSessionToken(newUser, { expiresInMs: THIRTY_DAYS_MS });
     const cookieOptions = getSessionCookieOptions(req);
     res.cookie(COOKIE_NAME, sessionToken, {
       ...cookieOptions,

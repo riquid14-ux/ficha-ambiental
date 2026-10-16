@@ -5,7 +5,6 @@ import net from "net";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -22,6 +21,8 @@ import { registerOperationMediaRoutes } from "../operation-media";
 import { registerRdcdMediaRoutes } from "../rdcd-media";
 import { registerBmsIngestRoutes } from "../bms-ingest";
 import { registerBrandMediaRoutes } from "../brand-media";
+import { assertProductionRuntime } from "../runtime-config";
+import { assertDistributedRateLimitReady } from "../auth-rate-limit";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -52,6 +53,8 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  assertProductionRuntime();
+  await assertDistributedRateLimitReady();
   const app = express();
   const cspScriptSources = process.env.NODE_ENV === "production" ? ["'self'"] : ["'self'", "'unsafe-inline'"];
   // A aplicação corre atrás de um único reverse proxy (Nginx/hosting gerido).
@@ -73,7 +76,7 @@ async function startServer() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         fontSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", "https://api.manus.im"],
+        connectSrc: ["'self'"],
         frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
         frameAncestors: ["'self'", "https://*.autodesk.com", "https://*.autodesk.io", "https://acc.autodesk.com", "https://construction.autodesk.com"],
         formAction: ["'self'"],
@@ -150,7 +153,12 @@ async function startServer() {
   });
 
   registerStorageProxy(app);
-  registerOAuthRoutes(app);
+  // OAuth externo é opcional. A autenticação local por email continua disponível
+  // em qualquer instalação Start Campus, sem um fornecedor de hosting.
+  if (process.env.ENABLE_EXTERNAL_OAUTH === "true" && process.env.OAUTH_SERVER_URL && process.env.VITE_APP_ID) {
+    const { registerOAuthRoutes } = await import("./oauth");
+    registerOAuthRoutes(app);
+  }
   registerUploadRoutes(app);
   registerPdfRoutes(app);
   registerApiDocs(app);
@@ -161,7 +169,7 @@ async function startServer() {
   registerRdcdMediaRoutes(app);
   registerBrandMediaRoutes(app);
   registerBmsIngestRoutes(app);
-  // Scheduled endpoints (Heartbeat cron callbacks)
+  // Chamadas autenticadas pelos systemd timers do servidor Start Campus.
   app.post("/api/scheduled/weekly-reminder", weeklyReminderHandler);
   app.post("/api/scheduled/deadline-reminder", deadlineReminderHandler);
   // tRPC API
@@ -180,13 +188,13 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const port = process.env.NODE_ENV === "production" ? preferredPort : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
 }

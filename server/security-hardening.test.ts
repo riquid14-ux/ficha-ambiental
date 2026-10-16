@@ -46,10 +46,10 @@ describe("endurecimento de segurança", () => {
     expect(isPublicBrandingKey("evidence/10/photo.png")).toBe(false);
   });
 
-  it("limita repetidas tentativas de autenticação por origem", () => {
+  it("limita repetidas tentativas de autenticação por origem", async () => {
     const req = requestWithCookies();
-    for (let attempt = 0; attempt < 8; attempt += 1) recordAuthenticationFailure(req, "password:teste@startcampus.pt");
-    expect(() => assertAuthenticationAttemptAllowed(req, "password:teste@startcampus.pt")).toThrow(/Demasiadas tentativas/);
+    for (let attempt = 0; attempt < 8; attempt += 1) await recordAuthenticationFailure(req, "password:teste@startcampus.pt");
+    await expect(assertAuthenticationAttemptAllowed(req, "password:teste@startcampus.pt")).rejects.toThrow(/Demasiadas tentativas/);
   });
 
   it("desativa a rota legada de upload sem validação de âmbito", () => {
@@ -87,6 +87,7 @@ describe("endurecimento de segurança", () => {
     const source = readSource("server/pdf.ts");
     expect(source).toContain("canReadSubmissionPdf");
     expect(source).toContain('canExportProjectPdf(user, submission.projectId, "ficha")');
+    expect(source).toContain("authenticateLocalRequest(req)");
     expect(source).toContain("Sem permissão para uma ou mais fichas selecionadas");
   });
 

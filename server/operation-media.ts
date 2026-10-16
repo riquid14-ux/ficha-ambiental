@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { Readable } from "node:stream";
-import { sdk } from "./_core/sdk";
+import { authenticateLocalRequest } from "./auth/session";
 import { assertOperationAccess } from "./routers";
 import { storageGetSignedUrl } from "./storage";
 import * as db from "./db";
@@ -23,7 +23,7 @@ export function registerOperationMediaRoutes(app: Express) {
 
     let user;
     try {
-      user = await sdk.authenticateRequest(req);
+      user = await authenticateLocalRequest(req);
       await assertOperationAccess(user, projectId);
     } catch {
       res.status(403).send("Sem acesso à fotografia de infraestrutura.");
@@ -58,7 +58,7 @@ export function registerOperationMediaRoutes(app: Express) {
       return;
     }
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       await assertOperationAccess(user, projectId);
       const database = await db.getDb();
       if (!database) throw new Error("Base de dados indisponível.");

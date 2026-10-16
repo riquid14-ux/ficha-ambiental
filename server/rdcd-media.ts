@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { Readable } from "node:stream";
-import { sdk } from "./_core/sdk";
+import { authenticateLocalRequest } from "./auth/session";
 import { storageGetSignedUrl } from "./storage";
 import * as db from "./db";
 
@@ -38,7 +38,7 @@ export function registerRdcdMediaRoutes(app: Express) {
     }
 
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (user.role !== "admin" && user.role !== "dono_obra") {
         res.status(403).send("Sem acesso às marcas do RDCD.");
         return;
@@ -100,7 +100,7 @@ export function registerRdcdMediaRoutes(app: Express) {
     }
 
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (user.role !== "admin" && user.role !== "dono_obra") {
         res.status(403).send("Sem acesso às figuras do RDCD.");
         return;

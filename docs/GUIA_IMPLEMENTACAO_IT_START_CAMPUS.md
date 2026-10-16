@@ -3,7 +3,9 @@
 **Versão de referência:** branch `main`, confirmar o checkpoint/release mais recente antes da passagem a staging.
 **Repositório:** `https://github.com/riquid14-ux/ficha-ambiental`  
 **Branch de integração:** `main`  
-**Publicação de referência:** RMD / `riquid14-ux`; repositório público sem segredos, ficheiros de produção ou documentação privada. O IT deve usar uma cópia interna/branch protegido para qualquer configuração de produção.
+**Publicação de referência:** `RmdRicardo <rmd@startcampus.pt>`; repositório público sem segredos, ficheiros de produção ou documentação privada. O IT deve usar uma cópia interna/branch protegido para qualquer configuração de produção.
+
+> Para a implementação na arquitetura de Fase 1 com HAProxy/BunkerWeb, dois nós APP, Galera, Synology e Valkey, seguir primeiro o [Guia prático de implementação — Fase 1](./GUIA_PRATICO_FASE_1_START_CAMPUS.md). Este documento mantém o detalhe funcional das integrações.
 
 ## 1. Objectivo e princípio de arquitectura
 

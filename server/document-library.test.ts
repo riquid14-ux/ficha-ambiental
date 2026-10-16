@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
 import { canReadDocumentLibrary, registerDocumentLibraryRoutes } from "./document-library";
-import { sdk } from "./_core/sdk";
+import * as localSession from "./auth/session";
 import type { TrpcContext } from "./_core/context";
 import { readFileSync } from "node:fs";
 import { getDocumentLibraryView } from "../client/src/lib/document-library-view";
@@ -165,7 +165,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
       fileKey: "document-library/referencia-interna.pdf",
       filename: "referencia.pdf",
     } as any);
-    const authSpy = vi.spyOn(sdk, "authenticateRequest");
+    const authSpy = vi.spyOn(localSession, "authenticateLocalRequest");
     vi.spyOn(db, "documentLibraryAppliesToProject").mockResolvedValue(true);
 
     for (const role of ["dono_obra", "pm", "raa"]) {
@@ -180,7 +180,7 @@ describe("Biblioteca documental — acesso por perfil", () => {
 
   it("recusa a rota privada de PDF a perfil não autorizado antes de consultar metadados", async () => {
     const route = capturePdfRoute();
-    vi.spyOn(sdk, "authenticateRequest").mockResolvedValue({ role: "ee_partner" } as any);
+    vi.spyOn(localSession, "authenticateLocalRequest").mockResolvedValue({ role: "ee_partner" } as any);
     const documentSpy = vi.spyOn(db, "getDocumentLibraryItemById");
     const response = createResponse();
 

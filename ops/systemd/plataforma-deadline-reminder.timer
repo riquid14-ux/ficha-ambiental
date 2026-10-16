@@ -1,0 +1,11 @@
+[Unit]
+Description=Temporizador de lembretes de prazo da Plataforma de Gestão Ambiental
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 UTC
+Persistent=true
+RandomizedDelaySec=90
+Unit=plataforma-deadline-reminder.service
+
+[Install]
+WantedBy=timers.target

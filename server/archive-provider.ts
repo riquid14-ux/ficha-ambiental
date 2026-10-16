@@ -9,7 +9,7 @@
  * is archived here. The local DB only holds in-transit data.
  */
 
-import { storagePut, storageGet } from "./storage";
+import { storagePut, storageGetSignedUrl } from "./storage";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -57,8 +57,8 @@ const INDEX_PREFIX = "archive/index";
 async function getIndex(projectCode: string, year: number): Promise<ArchivedDocument[]> {
   const indexKey = `${INDEX_PREFIX}/${projectCode}/${year}.json`;
   try {
-    const { url } = await storageGet(indexKey);
-    const resp = await fetch(url.startsWith("/") ? `http://localhost:${process.env.PORT || 3000}${url}` : url);
+    const url = await storageGetSignedUrl(indexKey);
+    const resp = await fetch(url);
     if (!resp.ok) return [];
     return await resp.json();
   } catch {
@@ -69,7 +69,7 @@ async function getIndex(projectCode: string, year: number): Promise<ArchivedDocu
 async function saveIndex(projectCode: string, year: number, index: ArchivedDocument[]): Promise<void> {
   const indexKey = `${INDEX_PREFIX}/${projectCode}/${year}.json`;
   const data = JSON.stringify(index, null, 2);
-  await storagePut(indexKey, Buffer.from(data), "application/json");
+  await storagePut(indexKey, Buffer.from(data), "application/json", { unique: false });
 }
 
 // ─── S3 Provider (default) ──────────────────────────────────────────────────
@@ -157,11 +157,8 @@ export async function listArchived(query: ArchiveQuery): Promise<ArchivedDocumen
  */
 export async function getArchivedData(doc: ArchivedDocument): Promise<any> {
   try {
-    const resp = await fetch(
-      doc.dataUrl.startsWith("/") 
-        ? `http://localhost:${process.env.PORT || 3000}${doc.dataUrl}` 
-        : doc.dataUrl
-    );
+    const key = doc.dataUrl.replace(/^\/api\/storage\/object\//, "");
+    const resp = await fetch(await storageGetSignedUrl(key));
     if (!resp.ok) throw new Error(`Failed to fetch archived data: ${resp.status}`);
     return await resp.json();
   } catch (e) {

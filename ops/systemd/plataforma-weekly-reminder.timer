@@ -1,0 +1,11 @@
+[Unit]
+Description=Temporizador de lembrete semanal da Plataforma de Gestão Ambiental
+
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00 UTC
+Persistent=true
+RandomizedDelaySec=90
+Unit=plataforma-weekly-reminder.service
+
+[Install]
+WantedBy=timers.target

@@ -2,7 +2,7 @@ import { Express, Request, Response } from "express";
 import PDFDocument from "pdfkit";
 import { ZipArchive } from "archiver";
 import https from "https";
-import { sdk } from "./_core/sdk";
+import { authenticateLocalRequest } from "./auth/session";
 import * as db from "./db";
 import { generateWeeklyControlPdfBuffer } from "./weekly-control-pdf";
 
@@ -206,7 +206,7 @@ async function buildWeeklyControlPdf(
 export function registerPdfRoutes(app: Express) {
   app.get("/api/pdf/fases/:projectId", async (req: Request, res: Response) => {
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (!user) return res.status(401).json({ error: "Não autorizado" });
       const projectId = Number(req.params.projectId);
       if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
@@ -271,7 +271,7 @@ export function registerPdfRoutes(app: Express) {
 
   app.get("/api/pdf/planos/:projectId", async (req: Request, res: Response) => {
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (!user) return res.status(401).json({ error: "Não autorizado" });
       const projectId = Number(req.params.projectId);
       if (!Number.isInteger(projectId) || projectId < 1) return res.status(400).json({ error: "Projeto inválido" });
@@ -310,7 +310,7 @@ export function registerPdfRoutes(app: Express) {
   app.get("/api/pdf/submission/:id", async (req: Request, res: Response) => {
     try {
       // Authenticate
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (!user) {
         return res.status(401).json({ error: "Não autorizado" });
       }
@@ -361,7 +361,7 @@ export function registerPdfRoutes(app: Express) {
   app.get("/api/pdf/batch", async (req: Request, res: Response) => {
     try {
       // Authenticate
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (!user) {
         return res.status(401).json({ error: "Não autorizado" });
       }
@@ -444,7 +444,7 @@ export function registerPdfRoutes(app: Express) {
   // Query params: measureIds (comma-separated), startDate, endDate, status (optional filter)
   app.get("/api/pdf/measure", async (req: Request, res: Response) => {
     try {
-      const user = await sdk.authenticateRequest(req);
+      const user = await authenticateLocalRequest(req);
       if (!user) {
         return res.status(401).json({ error: "Não autorizado" });
       }

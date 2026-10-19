@@ -17,6 +17,8 @@ OUTPUT = ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx"
 SOURCES = [
     ROOT / "docs" / "GUIA_PRATICO_FASE_1_START_CAMPUS.md",
     ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md",
+    ROOT / "handover" / "database-fresh-start" / "README.md",
+    ROOT / "handover" / "database-fresh-start" / "EXEMPLO_ESTRUTURA_BASE_DADOS.md",
     ROOT / "docs" / "INTEGRACAO_BMS_FASE_2.md",
 ]
 
@@ -256,7 +258,14 @@ def main() -> None:
         if source_index:
             document.add_page_break()
         markdown = source.read_text(encoding="utf-8")
-        add_markdown(document, markdown, "Integração BMS — Fase 2 — SIN01 / NEST" if source.name.startswith("INTEGRACAO") else None)
+        title = None
+        if source.name.startswith("INTEGRACAO"):
+            title = "Integração BMS — Fase 2 — SIN01 / NEST"
+        elif source.name == "README.md" and source.parent.name == "database-fresh-start":
+            title = "Base de dados STAND — Fresh Start"
+        elif source.name == "EXEMPLO_ESTRUTURA_BASE_DADOS.md":
+            title = "Exemplo de estrutura da base de dados"
+        add_markdown(document, markdown, title)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     document.save(OUTPUT)
     print(OUTPUT)

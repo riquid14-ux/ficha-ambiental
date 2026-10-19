@@ -124,18 +124,20 @@ Nas VMs Start Campus, `STAND_RUNTIME_MODE=corporate` ativa a verificação de ar
 
 1. O DBA instala e valida Galera com dois nós **e define o plano de perda de quorum**. Com apenas dois nós, a decisão sobre arbitrator/terceiro voto deve ser explícita; o diagrama apresenta um arbitrator e essa configuração deve ser testada.
 2. Criar `stand_app` com apenas os privilégios necessários sobre a base STAND. A conta de migração pode ser distinta e usada só na janela de mudança.
-3. Restaurar uma cópia sanitizada de staging ou iniciar uma base vazia conforme o plano de dados aprovado.
-4. Na janela de alteração, executar migrations uma única vez contra o VIP DB, a partir de um nó de administração controlado:
+3. Para esta passagem, o IT escolheu **fresh start**: criar uma base vazia e aplicar a baseline única em `handover/database-fresh-start/`. Não aplicar o histórico de desenvolvimento em `drizzle/`, que contém transformações de dados e não é o instalador de uma base nova.
+4. O DBA valida primeiro o checksum e a natureza exclusivamente DDL da baseline. Na janela de alteração, executa-a uma única vez contra o VIP DB, a partir de um nó de administração controlado:
 
 ```bash
 cd /opt/plataforma-ambiental/current
 set -a; source /etc/plataforma-ambiental/app.env; set +a
-pnpm drizzle-kit migrate
+node handover/database-fresh-start/validate-baseline.mjs
+pnpm drizzle-kit migrate --config handover/database-fresh-start/drizzle.config.ts
 ```
 
-5. Só depois de backup e migration bem-sucedidos, validar `SELECT 1`, tabelas e `/api/health/ready`.
+5. A baseline cria 59 tabelas e não cria qualquer utilizador, empresa, submissão, documento, evidência, telemetria, dado demonstrativo ou segredo. Criar o primeiro administrador com `bootstrap-initial-admin.mjs`; se aprovado pela equipa Ambiental, importar o catálogo-modelo SIN02 com `import-catalogue-template.mjs`. O procedimento integral está em [`handover/database-fresh-start/README.md`](../handover/database-fresh-start/README.md).
+6. Só depois de backup, baseline e bootstrap bem-sucedidos, validar `SELECT 1`, 59 tabelas, uma migration baseline e `/api/health/ready`.
 
-> Nunca executar migrações destrutivas automaticamente no deploy. O pipeline publica uma release; a alteração de esquema é uma etapa aprovada e registada.
+> Nunca executar migrações destrutivas automaticamente no deploy. O pipeline publica uma release; a alteração de esquema é uma etapa aprovada e registada. Em Galera, a baseline é executada pelo DBA via VIP uma vez; não é aplicada nó a nó nem através de RSU.
 
 ### Passo 4 — Synology Object Storage / NAS
 
@@ -256,6 +258,8 @@ O endpoint existe, mas permanece desativado sem `BMS_INGEST_HMAC_SECRET` e `BMS_
 ## Referências técnicas no repositório
 
 - [Guia geral de implementação IT](./GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md)
+- [Fresh start da base de dados](../handover/database-fresh-start/README.md)
+- [Manifesto da entrega IT](../handover/MANIFESTO_ENTREGA_IT.md)
 - [Integração BMS — Fase 2](./INTEGRACAO_BMS_FASE_2.md)
 - [Avaliação da arquitetura Fase 1](./AVALIACAO_ARQUITETURA_FASE_1_STAND.docx)
 - `ops/app.env.example`
@@ -264,3 +268,4 @@ O endpoint existe, mas permanece desativado sem `BMS_INGEST_HMAC_SECRET` e `BMS_
 - `ops/deploy-release.sh`
 - `ops/rollback-to-previous.sh`
 - `ops/pm2-crash-watchdog.mjs`
+- `ops/create-it-handover-zip.sh` — cria o ZIP a partir do commit validado, sem ficheiros não versionados ou segredos

@@ -7,6 +7,8 @@
 
 > Para a implementação na arquitetura de Fase 1 com HAProxy/BunkerWeb, dois nós APP, Galera, Synology e Valkey, seguir primeiro o [Guia prático de implementação — Fase 1](./GUIA_PRATICO_FASE_1_START_CAMPUS.md). Este documento mantém o detalhe funcional das integrações.
 
+> **Decisão de base de dados:** o IT solicitou um fresh start. A entrega inclui `handover/database-fresh-start/`, uma baseline nova e vazia do esquema final. Não aplicar as migrações históricas de desenvolvimento em `drizzle/` a uma base virgem.
+
 ## 1. Objectivo e princípio de arquitectura
 
 A Plataforma de Gestão Ambiental centraliza workflows de fichas semanais, KPI, resíduos/e-GAR, calendário, planos, fases, EEP, dashboards, relatórios e controlo de acessos. A aplicação deve manter-se **stateless para ficheiros definitivos**: a base de dados guarda identidades, permissões, metadados, estados, auditoria e referências; os documentos aprovados devem ser arquivados no SharePoint da Start Campus como fonte documental oficial.
@@ -28,13 +30,15 @@ A Plataforma de Gestão Ambiental centraliza workflows de fichas semanais, KPI, 
 | ---: | --- | --- |
 | 1 | Clonar, compilar e executar em **staging** | `pnpm install --frozen-lockfile`, verificação de tipos, testes e build passam. |
 | 2 | Preparar DNS, TLS, reverse proxy, conta de serviço e MySQL | `/api/health/live` e `/api/health/ready` respondem correctamente através do domínio de staging. |
-| 3 | Configurar segredos e identidade corporativa | Nenhum segredo está no repositório, no frontend ou em ficheiros `.env` versionados. |
-| 4 | Integrar SharePoint e validar arquivo/restituição | Uma ficha aprovada é arquivada, fica pesquisável e é recuperável através da referência guardada. |
-| 5 | Integrar ACC | Um PDF de teste é entregue na pasta correcta do projecto ACC e a referência devolvida é guardada. |
-| 6 | Configurar email corporativo | Convites e notificações chegam ao grupo de teste com remetente Start Campus autenticado. |
-| 7 | Activar CI/CD, watchdog, backup e rollback em staging | Um crash-loop simulado cria backup, alerta redundante e recuperação controlada. |
-| 8 | Ativar a integração BMS fase 2 do SIN01/NEST | Gateway outbound assinado, idempotência, allowlist de métricas e validação contra fonte operacional aprovados. |
-| 9 | Aprovação de segurança e passagem a produção | Todos os testes de aceitação desta guia têm evidência guardada. |
+| 3 | Aplicar a baseline fresh start uma vez pelo VIP Galera | 59 tabelas, uma migration baseline e zero dados herdados. |
+| 4 | Criar primeiro Admin e configurar catálogos aprovados | 2FA ativa; o catálogo SIN02, se usado, não traz fichas, pessoas ou evidências. |
+| 5 | Configurar segredos e identidade corporativa | Nenhum segredo está no repositório, no frontend ou em ficheiros `.env` versionados. |
+| 6 | Integrar SharePoint e validar arquivo/restituição | Uma ficha aprovada é arquivada, fica pesquisável e é recuperável através da referência guardada. |
+| 7 | Integrar ACC | Um PDF de teste é entregue na pasta correcta do projecto ACC e a referência devolvida é guardada. |
+| 8 | Configurar email corporativo | Convites e notificações chegam ao grupo de teste com remetente Start Campus autenticado. |
+| 9 | Activar CI/CD, watchdog, backup e rollback em staging | Um crash-loop simulado cria backup, alerta redundante e recuperação controlada. |
+| 10 | Ativar a integração BMS fase 2 do SIN01/NEST | Gateway outbound assinado, idempotência, allowlist de métricas e validação contra fonte operacional aprovados. |
+| 11 | Aprovação de segurança e passagem a produção | Todos os testes de aceitação desta guia têm evidência guardada. |
 
 ## 3. Clonagem e execução em staging
 
@@ -51,6 +55,12 @@ pnpm build
 ```
 
 O servidor deve correr com uma conta de serviço sem privilégios de administração do sistema. A aplicação usa Node.js 22, pnpm 10, MySQL compatível, reverse proxy TLS e um gestor de processos. Em produção, as variáveis de ambiente devem residir num gestor de segredos ou em ficheiros de sistema com permissões restritas; nunca no Git ou no frontend.
+
+### Fresh start da base de dados
+
+O instalador suportado de uma base nova é [`handover/database-fresh-start/README.md`](../handover/database-fresh-start/README.md). A pasta contém o SQL DDL de uma única baseline, journal/snapshot Drizzle, SHA-256, validação estática, bootstrap do primeiro administrador e importador opcional do catálogo SIN02. Não contém quaisquer dados de produção, utilizadores, palavras-passe, documentos, evidências ou dados de demonstração.
+
+O DBA cria uma base vazia com a collation aprovada, valida Galera e aplica a baseline uma só vez através do VIP. O primeiro Admin é criado de modo interativo e só depois é permitido configurar projetos, empresas, utilizadores e integrações. Esta separação impede que o fresh start herde dados do ambiente de desenvolvimento.
 
 | Grupo de configuração | Variáveis/elementos necessários | Regra de segurança |
 | --- | --- | --- |
@@ -149,6 +159,8 @@ Caso a Start Campus pretenda retomar esta possibilidade, deverá ser planeada co
 ## 11. Entregáveis que o IT deve devolver à Start Campus
 
 A passagem a produção deve terminar com um dossier de evidências: diagrama de rede e identidades técnicas; inventário de segredos e rotação; mapeamento projecto plataforma→ACC→SharePoint; resultado de testes de upload/arquivo/restauro; prova de SPF/DKIM/DMARC; relatório de health check e rollback; e evidência de branch protection/reviews. O template RDCD final continua a ser o elemento funcional que falta para validar a geração do relatório oficial com a estrutura exigida pela APA.
+
+O ZIP de transferência deve ser verificado contra o [`Manifesto de entrega IT`](../handover/MANIFESTO_ENTREGA_IT.md). Contém o código, `ops/`, workflows GitHub, documentação, esquema corrente para referência e a baseline fresh start para instalação. Não deve ser enriquecido com segredos, dumps ou ficheiros internos.
 
 ## Referências
 

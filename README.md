@@ -56,6 +56,8 @@ Não use valores de produção numa instalação local. A configuração complet
 
 | Documento                                                                       | Utilização                                                                                                             |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [Pacote de transferência IT](handover/README.md)                                | Índice de recursos para infraestrutura, operação, base de dados e validação da entrega.                               |
+| [Fresh start da base de dados](handover/database-fresh-start/README.md)         | Baseline única sem dados, checksum, primeiro Admin e catálogo-modelo SIN02 opcional.                                  |
 | [Guia prático — Fase 1](docs/GUIA_PRATICO_FASE_1_START_CAMPUS.md)               | Sequência para a arquitetura com HAProxy/BunkerWeb, dois APP nodes, Galera, Synology S3, Valkey, backup e recuperação. |
 | [Guia de implementação IT](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md)          | Integrações de aplicação, ACC, SharePoint, email, segurança e critérios de aceitação.                                  |
 | [Guia de implementação IT — Word](docs/GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx) | Versão formatada para partilha direta com a equipa de IT.                                                              |
@@ -98,6 +100,7 @@ drizzle/         esquema e migrações MySQL/MariaDB
 ops/             bootstrap, backup, deploy, watchdog e rollback
 .github/         CI, análise de código, atualizações e automação de incidentes
 docs/            guias de implementação e operação
+handover/        pacote de transferência IT e baseline fresh start
 ```
 
 ## Contacto

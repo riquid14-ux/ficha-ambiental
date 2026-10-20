@@ -62,6 +62,14 @@ O instalador suportado de uma base nova é [`handover/database-fresh-start/READM
 
 O DBA cria uma base vazia com a collation aprovada, valida Galera e aplica a baseline uma só vez através do VIP. O primeiro Admin é criado de modo interativo e só depois é permitido configurar projetos, empresas, utilizadores e integrações. Esta separação impede que o fresh start herde dados do ambiente de desenvolvimento.
 
+### Estrutura da entrega IT
+
+O ZIP de transferência é organizado por ordem de execução, em vez de reproduzir uma árvore genérica do repositório: `00_LEIA_PRIMEIRO`, `01_CODIGO_FONTE_COMPLETO`, `02_FASE_1_INFRAESTRUTURA`, `03_BASE_DE_DADOS_FRESH_START`, `04_FASE_2_OPERACAO_BMS`, `05_DOCUMENTACAO_FUNCIONAL` e `06_GOVERNANCA_E_VALIDACAO`. A descrição e o mapa de recursos estão em [`ESTRUTURA_PACOTE_IT.md`](../handover/ESTRUTURA_PACOTE_IT.md). O código completo e compilável permanece numa única fonte canónica em `01_CODIGO_FONTE_COMPLETO/STAND`; os restantes diretórios são guias operacionais e cópias focadas para navegação.
+
+### 2FA e Microsoft Authenticator
+
+A STAND usa TOTP normalizado de seis dígitos, compatível com Google Authenticator e Microsoft Authenticator. Uma tolerância temporária de inscrição apenas evita bloquear contas **que ainda não têm 2FA inscrito**; não desativa nem ignora um segundo fator já configurado. Para uma conta que já pede código e o rejeita, confirmar hora automática no telemóvel, introduzir o código antes de expirar e, se persistir, o Administrador deve executar o procedimento controlado de reset/reinscrição em vez de desativar o MFA globalmente.
+
 | Grupo de configuração | Variáveis/elementos necessários | Regra de segurança |
 | --- | --- | --- |
 | Aplicação e base de dados | `DATABASE_URL`, segredo de sessão, URL pública, configuração OAuth/identidade | Conta DB com privilégios mínimos; rotação de segredos; cópias de segurança restauráveis. |

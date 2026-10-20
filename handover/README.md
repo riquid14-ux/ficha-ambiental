@@ -6,6 +6,8 @@
 
 ## Ordem de utilização
 
+O comando `ops/create-it-handover-zip.sh` não entrega apenas a raiz do repositório: constrói um ZIP com pastas numeradas por fase, índice e checksums. A estrutura exata está em [`ESTRUTURA_PACOTE_IT.md`](./ESTRUTURA_PACOTE_IT.md).
+
 | Ordem | Localização | O que contém | Quem executa |
 | ---: | --- | --- | --- |
 | 1 | `../docs/GUIA_PRATICO_FASE_1_START_CAMPUS.md` | Runbook por zona do diagrama e sequência de go-live | Infraestruturas + IT |

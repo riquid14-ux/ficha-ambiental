@@ -17,6 +17,7 @@ OUTPUT = ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.docx"
 SOURCES = [
     ROOT / "docs" / "GUIA_PRATICO_FASE_1_START_CAMPUS.md",
     ROOT / "docs" / "GUIA_IMPLEMENTACAO_IT_START_CAMPUS.md",
+    ROOT / "handover" / "ESTRUTURA_PACOTE_IT.md",
     ROOT / "handover" / "database-fresh-start" / "README.md",
     ROOT / "handover" / "database-fresh-start" / "EXEMPLO_ESTRUTURA_BASE_DADOS.md",
     ROOT / "docs" / "INTEGRACAO_BMS_FASE_2.md",
@@ -265,6 +266,8 @@ def main() -> None:
             title = "Base de dados STAND — Fresh Start"
         elif source.name == "EXEMPLO_ESTRUTURA_BASE_DADOS.md":
             title = "Exemplo de estrutura da base de dados"
+        elif source.name == "ESTRUTURA_PACOTE_IT.md":
+            title = "Estrutura do pacote de implementação IT"
         add_markdown(document, markdown, title)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     document.save(OUTPUT)

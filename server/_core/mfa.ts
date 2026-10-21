@@ -3,12 +3,13 @@ import type { Request } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import { ENV } from "./env";
 import { getSessionCookieOptions } from "./cookies";
+import { deriveLocalSessionKey } from "../auth/session-key";
 
 export const MFA_PENDING_COOKIE = "__Host-mfa_pending";
 const MFA_PENDING_TTL_SECONDS = 5 * 60;
 
 function secretKey() {
-  return new TextEncoder().encode(ENV.cookieSecret);
+  return deriveLocalSessionKey(ENV.cookieSecret);
 }
 
 /** Cria uma prova httpOnly de que a palavra-passe acabou de ser validada. */

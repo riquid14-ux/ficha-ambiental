@@ -6,6 +6,7 @@ import type { User } from "../../drizzle/schema";
 import { COOKIE_NAME, THIRTY_DAYS_MS } from "../../shared/const";
 import { ENV } from "../_core/env";
 import * as db from "../db";
+import { deriveLocalSessionKey } from "./session-key";
 
 const LOCAL_SESSION_AUDIENCE = "stand-environmental-web";
 
@@ -17,11 +18,7 @@ type SessionClaims = {
 };
 
 function signingKey(): Uint8Array {
-  const secret = ENV.cookieSecret;
-  if (secret.length < 32) {
-    throw new Error("JWT_SECRET tem de ter pelo menos 32 caracteres para assinar sessões.");
-  }
-  return new TextEncoder().encode(secret);
+  return deriveLocalSessionKey(ENV.cookieSecret);
 }
 
 function sessionIssuer(): string {
